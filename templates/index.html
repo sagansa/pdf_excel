@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BCA Statement PDF to Excel Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { 
+            background-color: #f8f9fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            padding: 2rem;
+        }
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            background: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #0d6efd;
+            background: #f8f9fa;
+        }
+        .upload-icon {
+            font-size: 48px;
+            color: #6c757d;
+            margin-bottom: 1rem;
+        }
+        #loading {
+            display: none;
+            margin-top: 1rem;
+        }
+        .success-message {
+            display: none;
+            color: #198754;
+            margin-top: 1rem;
+        }
+        .file-info {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .file-name {
+            font-weight: 500;
+            color: #212529;
+        }
+        .conversion-note {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 0.5rem;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+</head>
+<body>
+    <div class="container">
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">BCA Statement Converter</h1>
+            <p class="lead text-muted">Convert your BCA Statement PDF to Excel format in seconds</p>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form id="pdfForm">
+                    <div class="upload-area mb-4" id="dropZone" onclick="document.getElementById('pdfFile').click();">
+                        <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                        <h5>Drag & Drop your BCA Statement PDF here</h5>
+                        <p class="text-muted">or click to browse</p>
+                        <input type="file" class="form-control d-none" id="pdfFile" name="pdf_file" accept=".pdf" required>
+                        <div id="fileName" class="file-name mt-2"></div>
+                        <div class="conversion-note">
+                            Format: BCA Statement with columns for Date, Description (2 parts), CBG, Mutation, and Balance
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg px-4">
+                            <i class="bi bi-file-earmark-excel me-2"></i>Convert to Excel
+                        </button>
+                        <div id="loading" class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Converting your file...</p>
+                        </div>
+                        <div id="successMessage" class="success-message">
+                            <i class="bi bi-check-circle me-2"></i>Conversion successful!
+                        </div>
+                    </div>
+                </form>
+                <div id="errorMessage" class="alert alert-danger mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('pdfFile');
+        const fileName = document.getElementById('fileName');
+        const loading = document.getElementById('loading');
+        const successMessage = document.getElementById('successMessage');
+        const errorDiv = document.getElementById('errorMessage');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('border-primary');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('border-primary');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            fileInput.files = files;
+            updateFileName();
+        }
+
+        fileInput.addEventListener('change', updateFileName);
+
+        function updateFileName() {
+            const file = fileInput.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+            } else {
+                fileName.textContent = '';
+            }
+        }
+        document.getElementById('pdfForm').onsubmit = async (e) => {
+            e.preventDefault();
+            errorDiv.style.display = 'none';
+            loading.style.display = 'block';
+            successMessage.style.display = 'none';
+            
+            const formData = new FormData(e.target);
+            try {
+                const response = await fetch('/convert_pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'bca_statement.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    loading.style.display = 'none';
+                    successMessage.style.display = 'block';
+                    setTimeout(() => {
+                        successMessage.style.display = 'none';
+                    }, 3000);
+                } else {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            }
+        };
+    </script>
+</body>
+</html>
