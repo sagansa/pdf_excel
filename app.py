@@ -78,9 +78,21 @@ def parse_bca_statement(pdf_path):
                 use_text_flow=True
             )
 
+            # Add footer markers
+            footer_markers = [
+                'TRANSAKSI TIDAK TERSEDIA',
+                'bersambung ke halaman berikut',
+            ]
+            
             # Group words by y-position (rows)
             rows = {}
             for word in words:
+                # Skip if line contains any footer markers
+                line_text = word['text'].upper()  # Convert to uppercase for better matching
+                if any(marker.upper() in line_text for marker in footer_markers):
+                    header_found = False  # Reset header flag when footer is found
+                    continue
+                    
                 y = round(word['top'])
                 if y not in rows:
                     rows[y] = []
@@ -124,37 +136,52 @@ def parse_bca_statement(pdf_path):
                         # Group words into fields based on x-position
                         for word in row_words:
                             x = word['x0']
+                            text = word['text']
                             if x < 50:  # Date field
                                 continue
-                            elif x > 50 and x < 300:  # Keterangan fields
-                                if not current_transaction['keterangan1']:
-                                    current_transaction['keterangan1'] = word['text'][:18]
-                                else:
-                                    current_transaction['keterangan2'] = word['text'][:18]
+                            elif x > 50 and x < 175:  # Keterangan1 field
+                                current_transaction['keterangan1'] = text[:36]
+                            elif x > 175 and x < 300:  # Keterangan2 field
+                                current_transaction['keterangan2'] = text[:90]
                             elif x > 300 and x < 500:  # Mutasi field
-                                # Collect all parts of the mutasi value
                                 if current_transaction['mutasi']:
-                                    current_transaction['mutasi'] += ' ' + word['text']
+                                    current_transaction['mutasi'] += ' ' + text
                                 else:
-                                    current_transaction['mutasi'] = word['text']
+                                    current_transaction['mutasi'] = text
                                 
-                                # Format the complete mutasi value
-                                if current_transaction['mutasi']:
-                                    if 'DB' in current_transaction['mutasi']:
-                                        # Handle debit transactions
-                                        amount = current_transaction['mutasi'].replace('DB', '').strip()
-                                        current_transaction['mutasi'] = amount
-                                        current_transaction['db_cr'] = 'DB'
-                                    else:
-                                        # Handle credit transactions
-                                        current_transaction['mutasi'] = current_transaction['mutasi'].strip()
-                                        current_transaction['db_cr'] = 'CR'
-
+                                if 'DB' in current_transaction['mutasi']:
+                                    amount = current_transaction['mutasi'].replace('DB', '').strip()
+                                    current_transaction['mutasi'] = amount
+                                    current_transaction['db_cr'] = 'DB'
+                                else:
+                                    current_transaction['mutasi'] = current_transaction['mutasi'].strip()
+                                    current_transaction['db_cr'] = 'CR'
                             elif x > 500:  # Saldo field
-                                current_transaction['saldo'] = word['text'][:20]
-                    elif current_transaction and line.strip():
-                        current_transaction['keterangan2'] = (current_transaction['keterangan2'] + ' ' + line.strip())[:18]
-                
+                                current_transaction['saldo'] = text[:20]
+                    else:
+                        # Handle rows without date by concatenating to current transaction
+                        if current_transaction:
+                            for word in row_words:
+                                x = word['x0']
+                                text = word['text'].strip()
+                                if x > 50 and x < 175:
+                                    if current_transaction['keterangan1']:
+                                        current_transaction['keterangan1'] = (current_transaction['keterangan1'] + ' ' + text)[:36]
+                                    else:
+                                        current_transaction['keterangan1'] = text[:36]
+                                elif x > 175 and x < 300:
+                                    if current_transaction['keterangan2']:
+                                        current_transaction['keterangan2'] = (current_transaction['keterangan2'] + ' ' + text)[:90]
+                                    else:
+                                        current_transaction['keterangan2'] = text[:90]
+                                elif x > 300 and x < 500:  # Mutasi field
+                                    if current_transaction['mutasi']:
+                                        current_transaction['mutasi'] += ' ' + text
+                                    else:
+                                        current_transaction['mutasi'] = text
+                                elif x > 500:  # Saldo field
+                                    current_transaction['saldo'] = text[:20]
+                            
                 except (IndexError, ValueError):
                     continue
             
