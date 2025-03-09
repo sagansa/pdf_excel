@@ -13,36 +13,46 @@ def index():
 @app.route('/convert_pdf', methods=['POST'])
 def convert_pdf():
     if 'pdf_file' not in request.files:
-        return 'No file uploaded', 400
+        return {'error': 'No file uploaded'}, 400
     
     file = request.files['pdf_file']
     if file.filename == '':
-        return 'No file selected', 400
+        return {'error': 'No file selected'}, 400
+    
+    if not file.filename.lower().endswith('.pdf'):
+        return {'error': 'Invalid file type. Please upload a PDF file'}, 400
     
     # Create necessary directories
     os.makedirs('pdfs', exist_ok=True)
     os.makedirs('excel', exist_ok=True)
     
     pdf_path = os.path.join('pdfs', file.filename)
-    file.save(pdf_path)
+    excel_path = None
     
     try:
+        # Save uploaded file
+        file.save(pdf_path)
+        
         # Parse statement
         df = parse_bca_statement(pdf_path)
         
         # Generate output filename
         base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-        output_path = os.path.join('excel', f'{base_name}.xlsx')
+        excel_path = os.path.join('excel', f'{base_name}.xlsx')
         
         # Save to Excel
-        df.to_excel(output_path, index=False)
+        df.to_excel(excel_path, index=False)
         
-        return send_file(output_path, as_attachment=True)
+        return send_file(excel_path, as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     
+    except pdfplumber.PDFSyntaxError:
+        return {'error': 'Invalid or corrupted PDF file'}, 400
+    except pd.errors.EmptyDataError:
+        return {'error': 'Could not extract data from the PDF file'}, 400
     except Exception as e:
-        return f'Error: {str(e)}', 400
+        return {'error': f'Error processing file: {str(e)}'}, 400
     finally:
-        # Clean up
+        # Clean up temporary files
         if os.path.exists(pdf_path):
             os.remove(pdf_path)
 
