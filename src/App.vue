@@ -1,11 +1,14 @@
 <template>
-  <div class="app">
-    <PdfConverter />
+  <div class="app min-h-screen flex flex-col">
+    <div class="flex-grow">
+      <PdfConverter />
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import PdfConverter from './components/PdfConverter.vue'
+import PdfConverter from './layouts/PdfConverter.vue'
 </script>
 
 <style>
