@@ -12,12 +12,13 @@
             <div class="flex-grow overflow-hidden">
               <BcaConverter v-if="activeTab === 'bca'" />
               <MandiriConverter v-if="activeTab === 'mandiri'" />
+              <DbsConverter v-if="activeTab === 'dbs'" />
             </div>
           </div>
         </div>
 
         <footer class="w-full py-4 bg-gray-100 dark:bg-gray-800">
-          <div class="container mx-auto px-4">
+          <div class="container mx-auto px-8">
             <div class="flex flex-col items-center justify-center space-y-2">
               <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">Our Services</h2>
               <div class="flex flex-wrap justify-center gap-4 mb-4">
@@ -27,9 +28,8 @@
                 <a href="https://pos.sagansa.id" target="_blank" rel="noopener noreferrer"
                   class="text-sm text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors duration-200">Sagansa
                   POS</a>
-                <a href="https://kasir.sagansa.id" target="_blank" rel="noopener noreferrer"
-                  class="text-sm text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors duration-200">Sagansa
-                  Kasir</a>
+                <a href="https://ev.sagansa.id" target="_blank" rel="noopener noreferrer"
+                  class="text-sm text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors duration-200">Electric Vehicle</a>
               </div>
               <p class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Contact Information</p>
               <div class="flex items-center flex-wrap justify-center gap-4">
@@ -80,6 +80,7 @@
 import { ref } from 'vue'
 import BcaConverter from './BcaConverter.vue'
 import MandiriConverter from './MandiriConverter.vue'
+import DbsConverter from './DbsConverter.vue'
 import TabComponent from '../components/TabComponent.vue'
 
 const activeTab = ref('bca') // Default to BCA tab
@@ -87,6 +88,7 @@ const activeTab = ref('bca') // Default to BCA tab
 // Define tabs configuration
 const tabs = [
   { name: 'BCA', value: 'bca', icon: 'bi bi-bank' },
-  { name: 'Mandiri', value: 'mandiri', icon: 'bi bi-bank' },
+  { name: 'Mandiri', value: 'mandiri', icon: 'bi bi-bank2' },
+  { name: 'DBS', value: 'dbs', icon: 'bi bi-bank' },
 ]
 </script>
