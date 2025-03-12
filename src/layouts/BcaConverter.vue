@@ -6,6 +6,7 @@
     supportImageAlt="Support us on Saweria"
     supportText="Support Us"
     convertEndpoint="/convert_pdf"
+    :requirePassword="false"
     @file-selected="onFileSelected"
     @conversion-start="onConversionStart"
     @conversion-success="onConversionSuccess"

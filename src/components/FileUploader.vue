@@ -31,14 +31,25 @@
       </div>
     </div>
     
+    <div v-if="selectedFile && requirePassword" class="mt-4">
+      <div class="relative w-full">
+        <input
+          type="password"
+          v-model="password"
+          placeholder="Enter PDF password"
+          class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none bg-white"
+        />
+      </div>
+    </div>
+    
     <div class="mt-4 flex justify-center">
       <slot name="convert-button" 
-            :disabled="!selectedFile || isConverting"
+            :disabled="!selectedFile || isConverting || (requirePassword && !password)"
             :is-converting="isConverting"
             :on-convert="handleConvert">
         <BaseButton
           @click="handleConvert"
-          :disabled="!selectedFile || isConverting"
+          :disabled="!selectedFile || isConverting || (requirePassword && !password)"
         >
           {{ isConverting ? 'Converting...' : 'Convert to Excel' }}
         </BaseButton>
@@ -70,7 +81,7 @@ const props = defineProps({
   },
   dropzoneText: {
     type: String,
-      default: 'Drag and drop here or click to browse'
+    default: 'Drag and drop here or click to browse'
   },
   supportedFileText: {
     type: String,
@@ -95,6 +106,10 @@ const props = defineProps({
   convertEndpoint: {
     type: String,
     required: true
+  },
+  requirePassword: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -106,6 +121,7 @@ const isDragging = ref(false)
 const isConverting = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+const password = ref('')
 
 const handleDrop = (e) => {
   isDragging.value = false
@@ -139,7 +155,7 @@ const formatFileSize = (bytes) => {
 }
 
 const handleConvert = async () => {
-  if (!selectedFile.value) return
+  if (!selectedFile.value || (props.requirePassword && !password.value)) return
   
   isConverting.value = true
   errorMessage.value = ''
@@ -148,6 +164,9 @@ const handleConvert = async () => {
   
   const formData = new FormData()
   formData.append('pdf_file', selectedFile.value)
+  if (props.requirePassword) {
+    formData.append('password', password.value)
+  }
   
   try {
     const response = await fetch(props.convertEndpoint, {
@@ -173,6 +192,7 @@ const handleConvert = async () => {
     
     successMessage.value = 'PDF successfully converted to Excel!'
     selectedFile.value = null
+    password.value = ''
     fileInput.value.value = ''
     emit('conversion-success')
   } catch (error) {
