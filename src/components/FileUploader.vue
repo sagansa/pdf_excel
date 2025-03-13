@@ -1,13 +1,13 @@
 <template>
-  <div class="file-uploader h-full flex flex-col">
-    <div class="drop-zone flex-grow flex flex-col items-center justify-center p-8 cursor-pointer relative" 
+  <div class="flex flex-col h-full file-uploader">
+    <div class="flex relative flex-col flex-grow justify-center items-center p-8 cursor-pointer drop-zone" 
          @dragover.prevent 
          @drop.prevent="handleDrop"
          @click="triggerFileInput"
          :class="{ 'drop-zone--active': isDragging }">
       <div v-if="showSupportWidget" class="absolute top-4 right-4 text-center">
-        <img :src="supportImage" :alt="supportImageAlt" class="w-32 h-32 object-contain" />
-        <p class="text-sm font-medium text-gray-600 mt-2">{{ supportText }}</p>
+        <img :src="supportImage" :alt="supportImageAlt" class="object-contain w-32 h-32" />
+        <p class="mt-2 text-sm font-medium text-gray-600">{{ supportText }}</p>
       </div>
       <input
         type="file"
@@ -19,11 +19,11 @@
       
       <i :class="[uploadIcon, 'upload-icon mb-4']"></i>
       
-      <div class="drop-zone__prompt text-center">
+      <div class="text-center drop-zone__prompt">
         <p class="mb-2">{{ dropzoneText }}</p>
       </div>
       
-      <p class="drop-zone__hint mt-2">{{ supportedFileText }}</p>
+      <p class="mt-2 drop-zone__hint">{{ supportedFileText }}</p>
       
       <div v-if="selectedFile" class="file-info">
         <p class="font-medium">{{ selectedFile.name }}</p>
@@ -37,12 +37,12 @@
           type="password"
           v-model="password"
           placeholder="Enter PDF password"
-          class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none bg-white"
+          class="px-4 py-2 w-full bg-white rounded-md border border-gray-300 focus:outline-none"
         />
       </div>
     </div>
     
-    <div class="mt-4 flex justify-center">
+    <div class="flex justify-center mt-4">
       <slot name="convert-button" 
             :disabled="!selectedFile || isConverting || (requirePassword && !password)"
             :is-converting="isConverting"
@@ -110,6 +110,10 @@ const props = defineProps({
   requirePassword: {
     type: Boolean,
     default: false
+  },
+  formData: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -164,9 +168,14 @@ const handleConvert = async () => {
   
   const formData = new FormData()
   formData.append('pdf_file', selectedFile.value)
-  if (props.requirePassword) {
+  if (props.requirePassword && password.value) {
     formData.append('password', password.value)
   }
+  
+  // Append additional form data from props
+  Object.entries(props.formData).forEach(([key, value]) => {
+    formData.append(key, value)
+  })
   
   try {
     const response = await fetch(props.convertEndpoint, {
@@ -174,9 +183,43 @@ const handleConvert = async () => {
       body: formData
     })
     
+    const contentType = response.headers.get('content-type')
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Failed to convert PDF')
+      let errorText = 'Failed to convert PDF'
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json()
+          if (error.error && typeof error.error === 'string') {
+            const errorMessage = error.error.toLowerCase()
+            if (errorMessage.includes('password required') || errorMessage.includes('need password')) {
+              errorText = 'This PDF is password protected. Please enter the password.'
+            } else if (errorMessage.includes('incorrect password') || errorMessage.includes('wrong password')) {
+              errorText = 'Incorrect password. Please try again.'
+            } else if (errorMessage.includes('invalid bank statement') || errorMessage.includes('no transaction data')) {
+              errorText = 'Invalid bank statement format. Please ensure you are uploading the correct bank statement type.'
+            } else if (errorMessage.includes('module') && errorMessage.includes('has no attribute')) {
+              errorText = 'Server error: Unable to process PDF. Please try again or contact support.'
+            } else {
+              errorText = error.error
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing error response:', e)
+      }
+      errorMessage.value = errorText
+      emit('conversion-error', errorText)
+      return
+    }
+    
+    // Handle successful response
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json()
+      if (data.error) {
+        errorMessage.value = data.error
+        emit('conversion-error', errorMessage.value)
+        return
+      }
     }
     
     // Trigger file download

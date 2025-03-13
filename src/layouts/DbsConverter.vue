@@ -1,12 +1,5 @@
 <template>
-  <FileUploader
-    supportedFileText="Supports DBS bank statement PDF files"
-    :showSupportWidget="true"
-    :supportImage="saweria"
-    supportImageAlt="Support us on Saweria"
-    supportText="Support Us"
-    convertEndpoint="/convert_pdf"
-    :requirePassword="true"
+  <DbsFileUploader
     @file-selected="onFileSelected"
     @conversion-start="onConversionStart"
     @conversion-success="onConversionSuccess"
@@ -15,22 +8,21 @@
 </template>
 
 <script setup>
-import FileUploader from '../components/FileUploader.vue'
-import saweria from '../assets/saweria.png'
+import DbsFileUploader from '../components/bank-uploaders/DbsFileUploader.vue'
 
 const onFileSelected = (file) => {
   console.log('File selected:', file.name)
 }
 
 const onConversionStart = () => {
-  console.log('Starting conversion...')
+  console.log('Starting DBS statement conversion...')
 }
 
 const onConversionSuccess = () => {
-  console.log('Conversion completed successfully')
+  console.log('DBS statement conversion completed successfully')
 }
 
 const onConversionError = (error) => {
-  console.error('Conversion failed:', error)
+  console.error('DBS statement conversion failed:', error)
 }
 </script>

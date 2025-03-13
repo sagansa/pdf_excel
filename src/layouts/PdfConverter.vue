@@ -77,13 +77,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import BcaConverter from './BcaConverter.vue'
 import MandiriConverter from './MandiriConverter.vue'
 import DbsConverter from './DbsConverter.vue'
 import TabComponent from '../components/TabComponent.vue'
 
-const activeTab = ref('bca') // Default to BCA tab
+const activeTab = ref(localStorage.getItem('activeTab') || 'bca') // Get from localStorage or default to BCA
+
+// Watch for changes and save to localStorage
+watch(activeTab, (newValue) => {
+  localStorage.setItem('activeTab', newValue)
+})
 
 // Define tabs configuration
 const tabs = [
