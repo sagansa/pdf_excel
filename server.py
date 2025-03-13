@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, send_file
 from werkzeug.utils import secure_filename
 import os
-from app import parse_bca_statement, parse_mandiri_statement
+from bank_parsers import bca, mandiri, dbs
 import pandas as pd
 import pdfplumber
 from flask_cors import CORS
@@ -30,20 +30,26 @@ def convert_pdf():
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
         return response
         
-    if 'pdf_file' not in request.files:
-        return {'error': 'No file uploaded'}, 400, {'Content-Type': 'application/json'}
-    
-    file = request.files['pdf_file']
-    if file.filename == '':
-        return {'error': 'No file selected'}, 400, {'Content-Type': 'application/json'}
-    
-    if not file.filename.lower().endswith('.pdf'):
-        return {'error': 'Invalid file type. Please upload a PDF file'}, 400, {'Content-Type': 'application/json'}
-    
-    # Get bank type from form data (default to BCA if not specified)
-    bank_type = request.form.get('bank_type', 'bca')
-    
     try:
+        # Validate file upload
+        if 'pdf_file' not in request.files:
+            return {'error': 'No file uploaded. Please select a PDF file.'}, 400, {'Content-Type': 'application/json'}
+        
+        file = request.files['pdf_file']
+        if file.filename == '':
+            return {'error': 'No file selected. Please choose a PDF file to upload.'}, 400, {'Content-Type': 'application/json'}
+        
+        if not file.filename.lower().endswith('.pdf'):
+            return {'error': 'Invalid file type. Please upload a PDF file.'}, 400, {'Content-Type': 'application/json'}
+            
+        # Validate file size (max 10MB)
+        if len(file.read()) > 10 * 1024 * 1024:  # 10MB in bytes
+            return {'error': 'File size too large. Maximum file size is 10MB.'}, 400, {'Content-Type': 'application/json'}
+        file.seek(0)  # Reset file pointer after reading
+
+        # Get bank type from form data
+        bank_type = request.form.get('bank_type', 'bca')
+        
         # Create necessary directories
         os.makedirs('pdfs', exist_ok=True)
         os.makedirs('excel', exist_ok=True)
@@ -59,9 +65,11 @@ def convert_pdf():
         try:
             # Parse the PDF based on bank type
             if bank_type.lower() == 'mandiri':
-                df = parse_mandiri_statement(pdf_path)
+                df = mandiri.parse_statement(pdf_path)
+            elif bank_type.lower() == 'dbs':
+                df = dbs.parse_statement(pdf_path)
             else:  # Default to BCA
-                df = parse_bca_statement(pdf_path)
+                df = bca.parse_statement(pdf_path)
                 
             # Save to Excel
             df.to_excel(excel_output, index=False)
@@ -76,12 +84,17 @@ def convert_pdf():
             
             return response
             
+        except ValueError as e:
+            return {'error': str(e)}, 400, {'Content-Type': 'application/json'}
         except pdfplumber.PDFSyntaxError:
-            return {'error': 'Invalid or corrupted PDF file'}, 400, {'Content-Type': 'application/json'}
+            return {'error': 'Invalid or corrupted PDF file. Please ensure this is a valid bank statement in PDF format.'}, 400, {'Content-Type': 'application/json'}
         except pd.errors.EmptyDataError:
-            return {'error': 'Could not extract data from the PDF file'}, 400, {'Content-Type': 'application/json'}
+            return {'error': 'Could not extract data from the PDF file. Please ensure this is a valid bank statement with transaction data.'}, 400, {'Content-Type': 'application/json'}
+        except PermissionError:
+            return {'error': 'Permission denied while processing the file. Please try again.'}, 500, {'Content-Type': 'application/json'}
         except Exception as e:
-            return {'error': f'Error processing PDF: {str(e)}'}, 500, {'Content-Type': 'application/json'}
+            app.logger.error(f'Unexpected error processing PDF: {str(e)}')
+            return {'error': 'An unexpected error occurred while processing the PDF. Please try again or contact support if the issue persists.'}, 500, {'Content-Type': 'application/json'}
             
     except Exception as e:
         return {'error': f'Server error: {str(e)}'}, 500, {'Content-Type': 'application/json'}

@@ -1,12 +1,5 @@
 <template>
-  <FileUploader
-    supportedFileText="Supports BCA bank statement PDF files"
-    :showSupportWidget="true"
-    :supportImage="saweria"
-    supportImageAlt="Support us on Saweria"
-    supportText="Support Us"
-    convertEndpoint="/convert_pdf"
-    :requirePassword="false"
+  <BcaFileUploader
     @file-selected="onFileSelected"
     @conversion-start="onConversionStart"
     @conversion-success="onConversionSuccess"
@@ -15,22 +8,21 @@
 </template>
 
 <script setup>
-import FileUploader from '../components/FileUploader.vue'
-import saweria from '../assets/saweria.png'
+import BcaFileUploader from '../components/bank-uploaders/BcaFileUploader.vue'
 
 const onFileSelected = (file) => {
   console.log('File selected:', file.name)
 }
 
 const onConversionStart = () => {
-  console.log('Starting conversion...')
+  console.log('Starting BCA statement conversion...')
 }
 
 const onConversionSuccess = () => {
-  console.log('Conversion completed successfully')
+  console.log('BCA statement conversion completed successfully')
 }
 
 const onConversionError = (error) => {
-  console.error('Conversion failed:', error)
+  console.error('BCA statement conversion failed:', error)
 }
 </script>
