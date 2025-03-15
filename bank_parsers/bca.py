@@ -61,8 +61,12 @@ def parse_statement(pdf_path):
                 footer_markers = [
                     'TRANSAKSI TIDAK TERSEDIA',
                     'bersambung ke halaman berikut',
+                    'SALDO AWAL :',
+                    'MUTASI CR :',
+                    'MUTASI DB :',
+                    'SALDO AKHIR :'
                 ]
-                
+        
                 # Group words by y-position (rows)
                 rows = {}
                 for word in words:
@@ -84,9 +88,9 @@ def parse_statement(pdf_path):
                     # Sort words in row by x-position
                     row_words.sort(key=lambda w: w['x0'])
                     
-                    # Skip header rows
-                    if any(header in ' '.join(w['text'] for w in row_words) 
-                          for header in ['TANGGAL', 'KETERANGAN', 'CBG', 'MUTASI', 'SALDO']):
+                    # Skip header rows with more robust detection
+                    header_line = ' '.join(w['text'].upper() for w in row_words)
+                    if 'TANGGAL' in header_line and ('KETERANGAN' in header_line or 'MUTASI' in header_line):
                         header_found = True
                         continue
                     
@@ -96,69 +100,92 @@ def parse_statement(pdf_path):
                     try:
                         # Process row words into transaction
                         line = ' '.join(w['text'] for w in row_words)
-                        date_match = re.search(r'(\d{2}/\d{2})', line[:6])
+                        # Skip if line contains any footer markers
+                        if any(marker.upper() in line.upper() for marker in footer_markers):
+                            continue
                         
-                        if date_match:
-                            if current_transaction:
-                                process_transaction(transactions, current_transaction)
-                            
-                            # Initialize new transaction with date
-                            current_transaction = {
-                                'date': date_match.group(1),
-                                'keterangan1': '',
-                                'keterangan2': '',
-                                'cbg': '',
-                                'mutasi': '',
-                                'saldo': ''
-                            }
-                            
-                            # Process fields for the row with date
-                            for word in row_words:
-                                x = word['x0']
-                                text = word['text']
-                                if x < 50:  # Date field
-                                    continue
-                                elif x > 50 and x < 175:  # Keterangan1 field
-                                    current_transaction['keterangan1'] = text[:36]
-                                elif x > 175 and x < 300:  # Keterangan2 field
-                                    current_transaction['keterangan2'] = text[:90]
-                                elif x > 300 and x < 500:  # Mutasi field
-                                    if current_transaction['mutasi']:
-                                        current_transaction['mutasi'] += ' ' + text
-                                    else:
-                                        current_transaction['mutasi'] = text
-                                    
-                                    if 'DB' in current_transaction['mutasi']:
-                                        amount = current_transaction['mutasi'].replace('DB', '').strip()
-                                        current_transaction['mutasi'] = amount
-                                        current_transaction['db_cr'] = 'DB'
-                                    else:
-                                        current_transaction['mutasi'] = current_transaction['mutasi'].strip()
-                                        current_transaction['db_cr'] = 'CR'
-                                elif x > 500:  # Saldo field
-                                    current_transaction['saldo'] = text[:20]
+                        # Enhanced date pattern matching for DD/MM format
+                        date_match = re.match(r'^s*([0-3][0-9]/[0-1][0-9])s*', line)
+                        
+                        if date_match and len(date_match.group(1)) == 5:  # Ensure exact DD/MM format
+                            # Validate date components
+                            day, month = map(int, date_match.group(1).split('/'))
+                            if 1 <= day <= 31 and 1 <= month <= 12:
+                                if current_transaction:
+                                    process_transaction(transactions, current_transaction)
+                                
+                                # Initialize new transaction with date
+                                current_transaction = {
+                                    'date': date_match.group(1),
+                                    'keterangan1': '',
+                                    'keterangan2': '',
+                                    'cbg': '',
+                                    'mutasi': '',
+                                    'saldo': ''
+                                }
+                                
+                                # Process fields for the row with date
+                                for word in row_words:
+                                    x = word['x0']
+                                    text = word['text']
+                                    if x < 75:  # Date field
+                                        continue
+                                    elif x >= 75 and x < 180:  # Keterangan1 field
+                                        current_transaction['keterangan1'] = text[:36]
+                                    elif x >= 180 and x < 300:  # Keterangan2 field
+                                        current_transaction['keterangan2'] = text[:90]
+                                    elif x >= 300 and x < 320:  # CBG field
+                                        if current_transaction['cbg']:
+                                            current_transaction['cbg'] += ' ' + text
+                                        else:
+                                            current_transaction['cbg'] = text
+                                    elif x >= 320 and x < 430:  # Mutasi field
+                                        if current_transaction['mutasi']:
+                                            current_transaction['mutasi'] += ' ' + text
+                                        else:
+                                            current_transaction['mutasi'] = text
+                                    elif x >= 430 and x < 500:  # DB/CR indicator field
+                                        text_upper = text.strip().upper()
+                                        if text_upper == 'D' or text_upper == 'DB':
+                                            current_transaction['db_cr'] = 'DB'
+                                        else:
+                                            current_transaction['db_cr'] = 'CR'
+                                    elif x >= 500:  # Saldo field
+                                        if current_transaction['saldo']:
+                                            current_transaction['saldo'] += ' ' + text
+                                        else:
+                                            current_transaction['saldo'] = text
+                                        current_transaction['saldo'] = text[:20]
                         else:
                             # Handle rows without date by concatenating to current transaction
                             if current_transaction:
                                 for word in row_words:
                                     x = word['x0']
                                     text = word['text'].strip()
-                                    if x > 50 and x < 175:
+                                    if x >= 75 and x < 180:
                                         if current_transaction['keterangan1']:
                                             current_transaction['keterangan1'] = (current_transaction['keterangan1'] + ' ' + text)[:36]
                                         else:
                                             current_transaction['keterangan1'] = text[:36]
-                                    elif x > 175 and x < 300:
+                                    elif x >= 180 and x < 300:
                                         if current_transaction['keterangan2']:
                                             current_transaction['keterangan2'] = (current_transaction['keterangan2'] + ' ' + text)[:90]
                                         else:
                                             current_transaction['keterangan2'] = text[:90]
-                                    elif x > 300 and x < 500:  # Mutasi field
+                                    elif x >= 300 and x < 320:  # CBG field
+                                        if current_transaction['cbg']:
+                                            current_transaction['cbg'] += ' ' + text
+                                        else:
+                                            current_transaction['cbg'] = text
+                                    elif x >= 320 and x < 430:  # Mutasi field
                                         if current_transaction['mutasi']:
                                             current_transaction['mutasi'] += ' ' + text
                                         else:
                                             current_transaction['mutasi'] = text
-                                    elif x > 500:  # Saldo field
+                                    elif x >= 430 and x < 500:  # DB/CR indicator field
+                                        if text.strip().upper() == 'D':
+                                            current_transaction['db_cr'] = 'DB'
+                                    elif x >= 500:  # Saldo field
                                         current_transaction['saldo'] = text[:20]
                     except (IndexError, ValueError) as e:
                         # Log the error and continue with next row

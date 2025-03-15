@@ -7,7 +7,7 @@
       supportImageAlt="Support us on Saweria"
       supportText="Support Us"
       convertEndpoint="/convert_pdf"
-      :requirePassword="true"
+      :requirePassword="false"
       :formData="{ bank_type: 'dbs' }"
       @file-selected="onFileSelected"
       @conversion-start="onConversionStart"
