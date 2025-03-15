@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, jsonify
 import os
 import pandas as pd
 import pdfplumber
@@ -70,6 +70,25 @@ def convert_pdf():
         # Clean up temporary files
         if os.path.exists(pdf_path):
             os.remove(pdf_path)
+
+@app.route('/check_password', methods=['POST'])
+def check_password():
+    if 'pdf_file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    
+    file = request.files['pdf_file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if not file.filename.lower().endswith('.pdf'):
+        return jsonify({'error': 'Invalid file type'}), 400
+    
+    try:
+        with pdfplumber.open(file) as pdf:
+            needs_password = pdf.is_encrypted
+            return jsonify({'needs_password': needs_password})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
