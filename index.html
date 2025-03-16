@@ -136,7 +136,10 @@
 
     const bankFormats = {
       'bca': 'Format: BCA Statement with columns for Date, Description (2 parts), CBG, Mutation, and Balance',
-      'dbs': 'Format: DBS Statement with transaction details including Date, Description, Debit, Credit, and Balance'
+      'mandiri': 'Format: Mandiri Statement with columns for Date, Description, Debit, Credit, and Balance',
+      'ccbca': 'Format: BCA Credit Card Statement with columns for Date, Description, Amount, and Balance',
+      'dbs': 'Format: DBS Credit Card Statement with transaction details including Date, Description, Debit, Credit, and Balance',
+      'ccmandiri': 'Format: Mandiri Credit Card Statement with columns for Date, Description, Amount, and Balance'
     };
 
     bankType.addEventListener('change', function () {

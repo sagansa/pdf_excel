@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, send_file
 from werkzeug.utils import secure_filename
 import os
-from bank_parsers import bca, mandiri, dbs
+from bank_parsers import bca, mandiri, dbs, bca_cc, mandiri_cc
 import pandas as pd
 import pdfplumber
 from flask_cors import CORS
@@ -68,6 +68,10 @@ def convert_pdf():
                 df = mandiri.parse_statement(pdf_path)
             elif bank_type.lower() == 'dbs':
                 df = dbs.parse_statement(pdf_path)
+            elif bank_type.lower() == 'ccbca':
+                df = bca_cc.parse_statement(pdf_path)
+            elif bank_type.lower() == 'ccmandiri':
+                df = mandiri_cc.parse_statement(pdf_path)
             else:  # Default to BCA
                 df = bca.parse_statement(pdf_path)
                 
