@@ -118,4 +118,8 @@ def convert_pdf():
                 pass
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    # Get port from environment variable with a default of 5001
+    port = int(os.environ.get('PORT', 5001))
+    # In production, disable debug mode
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=debug)
