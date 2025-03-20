@@ -5,6 +5,8 @@ from bank_parsers import bca, mandiri, dbs, bca_cc, mandiri_cc
 import pandas as pd
 import pdfplumber
 from flask_cors import CORS
+import PyPDF2
+from pdf_unlock import unlock_pdf
 
 app = Flask(__name__)
 # Configure CORS with more specific settings
@@ -20,6 +22,49 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 @app.route('/')
 def index():
     return send_file('index.html')
+
+@app.route('/check_password', methods=['POST', 'OPTIONS'])
+def check_password():
+    # Handle preflight OPTIONS request for CORS
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response
+
+    try:
+        if 'pdf_file' not in request.files:
+            return {'error': 'No file uploaded'}, 400, {'Content-Type': 'application/json'}
+        
+        file = request.files['pdf_file']
+        if file.filename == '':
+            return {'error': 'No file selected'}, 400, {'Content-Type': 'application/json'}
+            
+        # Save the uploaded PDF temporarily
+        filename = secure_filename(file.filename)
+        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(pdf_path)
+        
+        try:
+            # Check if PDF is password protected
+            with open(pdf_path, 'rb') as pdf_file:
+                reader = PyPDF2.PdfReader(pdf_file)
+                is_protected = reader.is_encrypted
+                
+            return {'password_protected': is_protected}, 200, {'Content-Type': 'application/json'}
+            
+        except PyPDF2.PdfReadError:
+            return {'error': 'Invalid or corrupted PDF file'}, 400, {'Content-Type': 'application/json'}
+        finally:
+            # Clean up temporary file
+            if os.path.exists(pdf_path):
+                try:
+                    os.remove(pdf_path)
+                except Exception:
+                    pass
+                    
+    except Exception as e:
+        return {'error': str(e)}, 400, {'Content-Type': 'application/json'}
 
 @app.route('/convert_pdf', methods=['POST', 'OPTIONS'])
 def convert_pdf():
@@ -58,6 +103,17 @@ def convert_pdf():
         filename = secure_filename(file.filename)
         pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(pdf_path)
+        
+        # Handle password-protected PDFs
+        password = request.form.get('password')
+        if password:
+            try:
+                unlocked_path = unlock_pdf(pdf_path, password)
+                pdf_path = unlocked_path
+            except PyPDF2.PdfReadError as e:
+                return {'error': 'Invalid PDF password'}, 400, {'Content-Type': 'application/json'}
+            except Exception as e:
+                return {'error': f'Error processing PDF: {str(e)}'}, 400, {'Content-Type': 'application/json'}
         
         # Process the PDF and create Excel file
         excel_output = os.path.join('excel', f'{os.path.splitext(filename)[0]}.xlsx')
