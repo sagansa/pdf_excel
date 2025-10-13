@@ -118,6 +118,19 @@
               <option value="ccmandiri">CC Mandiri</option>
             </select>
           </div>
+          <div class="mb-4 text-center">
+            <h5 class="mb-3">Choose Output Format</h5>
+            <div class="d-flex justify-content-center gap-3">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="output_format" id="formatExcel" value="excel" checked>
+                <label class="form-check-label" for="formatExcel">Excel (.xlsx)</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="output_format" id="formatCsv" value="csv">
+                <label class="form-check-label" for="formatCsv">CSV (.csv)</label>
+              </div>
+            </div>
+          </div>
           <div class="mb-4 upload-area" id="dropZone" onclick="document.getElementById('pdfFile').click();">
             <i class="bi bi-cloud-arrow-up upload-icon"></i>
             <h5>Drag & Drop your Bank Statement PDF here</h5>
@@ -130,7 +143,7 @@
           </div>
           <div class="text-center">
             <button type="submit" class="px-4 btn btn-primary btn-lg">
-              <i class="bi bi-file-earmark-excel me-2"></i>Convert to Excel
+              <i class="bi bi-file-earmark-arrow-down me-2"></i>Convert File
             </button>
             <div id="loading" class="text-center">
               <div class="spinner-border text-primary" role="status">
@@ -156,8 +169,9 @@
       <div class="mb-3">
         <input type="password" class="form-control" id="pdfPassword" placeholder="Enter PDF password">
       </div>
+      <div id="passwordError" class="mb-3 text-danger" style="display: none;"></div>
       <div class="gap-2 d-flex justify-content-end">
-        <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Cancel</button>
+        <button type="button" class="btn btn-secondary" onclick="closePasswordModal(true)">Cancel</button>
         <button type="button" class="btn btn-primary" onclick="submitPassword()">Submit</button>
       </div>
     </div>
@@ -172,6 +186,7 @@
     const errorDiv = document.getElementById('errorMessage');
     const bankType = document.getElementById('bankType');
     const formatNote = document.getElementById('formatNote');
+    const passwordError = document.getElementById('passwordError');
 
     const bankFormats = {
       'bca': 'Format: BCA Statement with columns for Date, Description (2 parts), CBG, Mutation, and Balance',
@@ -239,19 +254,24 @@
     let currentFile = null;
     let isPasswordProtected = false;
 
-    function showPasswordModal() {
+    function showPasswordModal(message = '') {
       passwordModal.classList.add('show');
       document.getElementById('pdfPassword').value = '';
       document.getElementById('pdfPassword').focus();
+      passwordError.textContent = message || '';
+      passwordError.style.display = message ? 'block' : 'none';
     }
 
-    function closePasswordModal() {
+    function closePasswordModal(resetSelection = false) {
       passwordModal.classList.remove('show');
-      if (isPasswordProtected) {
+      passwordError.textContent = '';
+      passwordError.style.display = 'none';
+      if (resetSelection) {
         fileInput.value = '';
         fileName.textContent = '';
-        isPasswordProtected = false;
+        currentFile = null;
       }
+      isPasswordProtected = false;
     }
 
     async function checkPasswordProtection(file) {
@@ -280,40 +300,99 @@
       formData.append('pdf_file', currentFile);
       formData.append('password', password);
       formData.append('bank_type', bankType.value);
+      formData.append('output_format', getSelectedOutputFormat());
 
       closePasswordModal();
       loading.style.display = 'block';
       errorDiv.style.display = 'none';
 
       try {
-        const response = await fetch('/convert_pdf', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (response.ok) {
-          handleSuccessfulConversion(response);
-        } else {
-          const error = await response.text();
-          throw new Error(error);
-        }
+        const response = await requestConversion(formData);
+        await handleSuccessfulConversion(response);
       } catch (error) {
         handleConversionError(error);
       }
     }
 
+    function getSelectedOutputFormat() {
+      const selected = document.querySelector('input[name="output_format"]:checked');
+      return selected ? selected.value : 'excel';
+    }
+
+    function getFilenameFromResponse(response, fallbackName) {
+      const contentDisposition = response.headers.get('Content-Disposition');
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i);
+        if (match) {
+          const filename = decodeURIComponent(match[1] || match[2]);
+          if (filename) {
+            return filename;
+          }
+        }
+      }
+      return fallbackName;
+    }
+    
+    async function requestConversion(formData) {
+      const response = await fetch('/convert_pdf', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        let message = 'Conversion failed. Please try again.';
+        let requirePassword = false;
+        
+        try {
+          const data = await response.json();
+          if (data && data.error) {
+            message = data.error;
+          }
+          if (data && data.require_password) {
+            requirePassword = true;
+          }
+        } catch (jsonError) {
+          try {
+            const text = await response.text();
+            if (text) {
+              message = text;
+            }
+          } catch (textError) {
+            console.error('Unable to read error response:', textError);
+          }
+        }
+        
+        const error = new Error(message);
+        if (requirePassword) {
+          error.requirePassword = true;
+        }
+        throw error;
+      }
+      
+      return response;
+    }
+
     async function handleSuccessfulConversion(response) {
+      const outputFormat = getSelectedOutputFormat();
+      const fallbackFilename = `${bankType.value || 'statement'}_statement.${outputFormat === 'csv' ? 'csv' : 'xlsx'}`;
+      const downloadName = getFilenameFromResponse(response, fallbackFilename);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${bankType.value}_statement.xlsx`;
+      a.download = downloadName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       loading.style.display = 'none';
       successMessage.style.display = 'block';
+      errorDiv.style.display = 'none';
+      fileInput.value = '';
+      fileName.textContent = '';
+      currentFile = null;
+      isPasswordProtected = false;
+      document.getElementById('pdfPassword').value = '';
       setTimeout(() => {
         successMessage.style.display = 'none';
       }, 3000);
@@ -321,7 +400,17 @@
 
     function handleConversionError(error) {
       loading.style.display = 'none';
-      errorDiv.textContent = error.message;
+      const message = error && error.message ? error.message : 'An unexpected error occurred.';
+      const needsPassword = Boolean(error && error.requirePassword);
+
+      if (currentFile && (needsPassword || message.toLowerCase().includes('password'))) {
+        isPasswordProtected = true;
+        showPasswordModal(message);
+        errorDiv.style.display = 'none';
+        return;
+      }
+
+      errorDiv.textContent = message;
       errorDiv.style.display = 'block';
     }
 
@@ -340,20 +429,12 @@
           showPasswordModal();
         } else {
           const formData = new FormData(e.target);
+          formData.set('output_format', getSelectedOutputFormat());
           loading.style.display = 'block';
           errorDiv.style.display = 'none';
           
-          const response = await fetch('/convert_pdf', {
-            method: 'POST',
-            body: formData
-          });
-
-          if (response.ok) {
-            handleSuccessfulConversion(response);
-          } else {
-            const error = await response.text();
-            throw new Error(error);
-          }
+          const response = await requestConversion(formData);
+          await handleSuccessfulConversion(response);
         }
       } catch (error) {
         handleConversionError(error);

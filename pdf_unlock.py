@@ -1,5 +1,14 @@
 import PyPDF2
 import os
+try:  # Support both new and legacy PyPDF2 packages
+    from PyPDF2.errors import PdfReadError  # type: ignore[attr-defined]
+except (ImportError, AttributeError):  # pragma: no cover
+    try:
+        from PyPDF2.utils import PdfReadError  # type: ignore
+    except (ImportError, AttributeError):
+        class PdfReadError(Exception):  # type: ignore
+            """Fallback PdfReadError for very old PyPDF2 releases."""
+            pass
 
 def unlock_pdf(input_path, password, output_path=None):
     """Unlock a password-protected PDF file.
@@ -15,7 +24,7 @@ def unlock_pdf(input_path, password, output_path=None):
     
     Raises:
         FileNotFoundError: If input file doesn't exist
-        PyPDF2.PdfReadError: If password is incorrect or PDF is corrupted
+        PdfReadError: If password is incorrect or PDF is corrupted
     """
     # Validate input file
     if not os.path.exists(input_path):
@@ -37,8 +46,22 @@ def unlock_pdf(input_path, password, output_path=None):
                 raise ValueError("PDF is not password protected")
             
             # Try to decrypt with provided password
-            if not reader.decrypt(password):
-                raise PyPDF2.PdfReadError("Incorrect password")
+            try:
+                decrypt_result = reader.decrypt(password)
+            except NotImplementedError as e:
+                raise RuntimeError(
+                    "AES encrypted PDF requires the 'pycryptodome' package to be installed."
+                ) from e
+            except Exception as e:
+                message = str(e)
+                if 'pycryptodome' in message.lower():
+                    raise RuntimeError(
+                        "AES encrypted PDF requires the 'pycryptodome' package to be installed."
+                    ) from e
+                raise RuntimeError(f"Failed to decrypt PDF: {message}") from e
+
+            if not decrypt_result:
+                raise PdfReadError("Incorrect password")
             
             # Create a PDF writer object
             writer = PyPDF2.PdfWriter()
@@ -53,8 +76,8 @@ def unlock_pdf(input_path, password, output_path=None):
             
             return output_path
             
-    except PyPDF2.PdfReadError as e:
-        raise PyPDF2.PdfReadError(f"Error reading PDF: {str(e)}")
+    except PdfReadError as e:
+        raise PdfReadError(f"Error reading PDF: {str(e)}")
     except Exception as e:
         raise Exception(f"An unexpected error occurred: {str(e)}")
 
