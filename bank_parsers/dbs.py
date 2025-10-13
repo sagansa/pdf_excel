@@ -1,8 +1,10 @@
 import pdfplumber
 import pandas as pd
 import re
+from datetime import datetime
 
 def parse_statement(pdf_path, password=None):
+    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     transactions = []
     header_found = False
     current_transaction = None
@@ -70,7 +72,8 @@ def parse_statement(pdf_path, password=None):
                                     'Posting Date': '',
                                     'Transaction Details': '',
                                     'Amount': '',
-                                    'DB/CR': 'DB'  # Default to DB
+                                    'DB/CR': 'DB',  # Default to DB
+                                    'created_at': conversion_timestamp
                                 }
                                 
                                 # Process remaining fields based on x-position
@@ -115,10 +118,19 @@ def parse_statement(pdf_path, password=None):
                 
                 # Add the last transaction of the page
                 if current_transaction:
+                    current_transaction['created_at'] = current_transaction.get('created_at', conversion_timestamp)
                     transactions.append(current_transaction)
                     current_transaction = None
     
     except Exception as e:
         raise ValueError(f"Error processing PDF: {str(e)}")
     
-    return pd.DataFrame(transactions) if transactions else pd.DataFrame(columns=['Transaction Date', 'Posting Date', 'Transaction Details', 'Amount', 'DB/CR'])
+    if not transactions:
+        return pd.DataFrame(columns=['Transaction Date', 'Posting Date', 'Transaction Details', 'Amount', 'DB/CR', 'created_at'])
+
+    df = pd.DataFrame(transactions)
+    expected_columns = ['Transaction Date', 'Posting Date', 'Transaction Details', 'Amount', 'DB/CR', 'created_at']
+    for column in expected_columns:
+        if column not in df.columns:
+            df[column] = ''
+    return df[expected_columns]

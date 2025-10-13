@@ -2,6 +2,7 @@ import re
 import os
 import pdfplumber
 import pandas as pd
+from datetime import datetime
 
 def parse_statement(pdf_path):
     if not os.path.exists(pdf_path):
@@ -14,6 +15,8 @@ def parse_statement(pdf_path):
     current_transaction = None
     header_found = False
     
+    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
     try:
         with pdfplumber.open(pdf_path) as pdf:
             if not pdf.pages:
@@ -112,7 +115,7 @@ def parse_statement(pdf_path):
                             day, month = map(int, date_match.group(1).split('/'))
                             if 1 <= day <= 31 and 1 <= month <= 12:
                                 if current_transaction:
-                                    process_transaction(transactions, current_transaction)
+                                    process_transaction(transactions, current_transaction, conversion_timestamp)
                                 
                                 # Initialize new transaction with date
                                 current_transaction = {
@@ -193,12 +196,8 @@ def parse_statement(pdf_path):
                         continue
                 
                 if current_transaction:
-                    process_transaction(transactions, current_transaction)
+                    process_transaction(transactions, current_transaction, conversion_timestamp)
                     current_transaction = None
-    except pdfplumber.PDFSyntaxError as e:
-        raise ValueError(f"Invalid PDF format: {str(e)}")
-    except pdfplumber.pdfminer.pdfparser.PDFSyntaxError as e:
-        raise ValueError(f"PDF parsing error: {str(e)}")
     except Exception as e:
         raise ValueError(f"Error processing PDF: {str(e)}")
     
@@ -207,7 +206,7 @@ def parse_statement(pdf_path):
         
     return pd.DataFrame(transactions) if transactions else pd.DataFrame(columns=['Tanggal', 'Keterangan 1', 'Keterangan 2', 'CBG', 'Mutasi', 'DB/CR', 'Saldo'])
 
-def process_transaction(transactions, transaction):
+def process_transaction(transactions, transaction, conversion_timestamp):
     transactions.append({
         'Tanggal': transaction['date'],
         'Keterangan 1': transaction['keterangan1'].strip(),
@@ -215,5 +214,6 @@ def process_transaction(transactions, transaction):
         'CBG': transaction['cbg'].strip(),
         'Mutasi': transaction['mutasi'].strip(),
         'DB/CR': transaction.get('db_cr', 'CR'),  # Default to CR if not specified
-        'Saldo': transaction['saldo'].strip()
+        'Saldo': transaction['saldo'].strip(),
+        'created_at': conversion_timestamp
     })

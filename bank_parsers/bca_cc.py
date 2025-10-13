@@ -2,6 +2,7 @@ import pdfplumber
 import pandas as pd
 import re
 import os
+from datetime import datetime
 
 # Month abbreviation to number mapping
 MONTH_MAP = {
@@ -31,6 +32,7 @@ def parse_statement(pdf_path):
         raise ValueError("Invalid file format. Please provide a PDF file")
         
     transactions = []
+    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     current_transaction = None
     header_found = False
     
@@ -127,6 +129,7 @@ def parse_statement(pdf_path):
                     # If we found a transaction date, create a new transaction
                     if transaction_date:
                         if current_transaction:
+                            current_transaction['created_at'] = conversion_timestamp
                             transactions.append(current_transaction)
                         
                         current_transaction = {
@@ -134,7 +137,8 @@ def parse_statement(pdf_path):
                             'posting_date': posting_date,
                             'transaction_details': ' '.join(transaction_details),
                             'amount': amount,
-                            'db_cr': db_cr
+                            'db_cr': db_cr,
+                            'created_at': conversion_timestamp
                         }
                     # If no date found and we have a current transaction, append details
                     elif current_transaction and transaction_details:
@@ -148,6 +152,7 @@ def parse_statement(pdf_path):
                 
                 # Add the last transaction if exists
                 if current_transaction:
+                    current_transaction['created_at'] = conversion_timestamp
                     transactions.append(current_transaction)
                     current_transaction = None
                     
@@ -155,5 +160,5 @@ def parse_statement(pdf_path):
         raise ValueError(f"Error processing PDF: {str(e)}")
     
     return pd.DataFrame(transactions) if transactions else pd.DataFrame(
-        columns=['transaction_date', 'posting_date', 'transaction_details', 'amount', 'db_cr']
+        columns=['transaction_date', 'posting_date', 'transaction_details', 'amount', 'db_cr', 'created_at']
     )
