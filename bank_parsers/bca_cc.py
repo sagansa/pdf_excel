@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import os
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 # Month abbreviation to number mapping
 MONTH_MAP = {
@@ -35,6 +36,7 @@ def parse_statement(pdf_path):
     conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     current_transaction = None
     header_found = False
+    full_text_parts = []
     
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -53,6 +55,9 @@ def parse_statement(pdf_path):
                 raise ValueError(f"PDF file validation failed. The file may be corrupted: {str(e)}")
 
             for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    full_text_parts.append(page_text)
                 # Extract text with position information
                 words = page.extract_words(
                     keep_blank_chars=True,
@@ -155,10 +160,132 @@ def parse_statement(pdf_path):
                     current_transaction['created_at'] = conversion_timestamp
                     transactions.append(current_transaction)
                     current_transaction = None
-                    
+
     except Exception as e:
         raise ValueError(f"Error processing PDF: {str(e)}")
     
-    return pd.DataFrame(transactions) if transactions else pd.DataFrame(
-        columns=['transaction_date', 'posting_date', 'transaction_details', 'amount', 'db_cr', 'created_at']
-    )
+    if not transactions:
+        return pd.DataFrame(columns=['bank_code', 'account_no', 'txn_date', 'posting_date', 'description', 'amount', 'db_cr', 'balance', 'currency', 'created_at', 'source_file'])
+
+    full_text = '\n'.join(full_text_parts)
+    account_no = _extract_account_number(full_text)
+    currency = _extract_currency(full_text) or 'IDR'
+    base_year = _extract_year(full_text) or datetime.now().year
+    bank_code = 'BCA_CC'
+    source_file = os.path.basename(pdf_path)
+
+    rows = []
+    current_year = base_year
+    last_month = None
+
+    for entry in transactions:
+        raw_txn = entry.get('transaction_date', '').strip()
+        raw_post = entry.get('posting_date', '').strip()
+        txn_iso, last_month, current_year = _convert_cc_date(raw_txn, last_month, current_year)
+        post_iso, _, _ = _convert_cc_date(raw_post, None, current_year)
+
+        description = (entry.get('transaction_details') or '').strip()
+
+        amount_dec = _parse_decimal(entry.get('amount', ''))
+        if amount_dec is None:
+            amount_value = ''
+            db_cr = entry.get('db_cr', '').strip().upper()
+        else:
+            db_cr = entry.get('db_cr', '').strip().upper() or ('CR' if amount_dec >= 0 else 'DB')
+            if db_cr == 'DB' and amount_dec > 0:
+                amount_dec = -amount_dec
+            elif db_cr == 'CR' and amount_dec < 0:
+                amount_dec = -amount_dec
+            amount_value = _format_amount(amount_dec)
+
+        rows.append({
+            'bank_code': bank_code,
+            'account_no': account_no,
+            'txn_date': txn_iso,
+            'posting_date': post_iso,
+            'description': description,
+            'amount': amount_value,
+            'db_cr': db_cr or '',
+            'balance': '',
+            'currency': currency,
+            'created_at': entry.get('created_at', conversion_timestamp),
+            'source_file': source_file
+        })
+
+    columns = ['bank_code', 'account_no', 'txn_date', 'posting_date', 'description', 'amount', 'db_cr', 'balance', 'currency', 'created_at', 'source_file']
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _extract_account_number(text: str) -> str:
+    match = re.search(r'(\d{4}-\d{2}XX-XXXX-\d{4})', text)
+    if match:
+        return match.group(1)
+    return ''
+
+
+def _extract_currency(text: str) -> str:
+    match = re.search(r'JUMLAH\s*\(\s*([A-Z]{2,3})\s*\)', text, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    return ''
+
+
+def _extract_year(text: str) -> int | None:
+    match = re.search(r'TANGGAL\s+REKENING\s*:\s*\d{1,2}\s+[A-Za-z]+\s+(\d{4})', text, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    years = re.findall(r'(?:19|20)\d{2}', text)
+    if years:
+        return int(years[0])
+    return None
+
+
+def _convert_cc_date(raw: str, last_month: int | None, current_year: int):
+    if not raw:
+        return '', last_month, current_year
+    raw = raw.strip()
+    if '-' in raw:
+        day_part, month_part = raw.split('-', 1)
+        day = int(day_part)
+        month = MONTH_MAP.get(month_part.upper())
+        if not month:
+            return '', last_month, current_year
+        month_int = int(month)
+        if last_month is not None and month_int < last_month:
+            current_year += 1
+        last_month = month_int
+        date_iso = f"{current_year}-{month}-{str(day).zfill(2)}"
+        return f"{date_iso} 00:00:00", last_month, current_year
+    if '/' in raw:
+        try:
+            month, day = map(int, raw.split('/'))
+            if last_month is not None and month < last_month:
+                current_year += 1
+            last_month = month
+            date_iso = datetime(current_year, month, day).strftime('%Y-%m-%d')
+            return f"{date_iso} 00:00:00", last_month, current_year
+        except ValueError:
+            return '', last_month, current_year
+    return '', last_month, current_year
+
+
+def _parse_decimal(value: str):
+    if not value:
+        return None
+    cleaned = value.strip().replace('\u00a0', '').replace(' ', '').replace('CR', '').replace('DB', '')
+    if not cleaned:
+        return None
+    sign = -1 if cleaned.startswith('-') else 1
+    cleaned = cleaned.lstrip('+-')
+    cleaned = cleaned.replace('.', '').replace(',', '.')
+    try:
+        dec = Decimal(cleaned)
+    except InvalidOperation:
+        return None
+    return dec * sign
+
+
+def _format_amount(dec: Decimal) -> str:
+    if dec is None:
+        return ''
+    return format(dec, '.2f')

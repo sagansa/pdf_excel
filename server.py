@@ -352,6 +352,10 @@ def convert_pdf():
             else:  # Default to BCA
                 df = bca.parse_statement(pdf_path)
                 df = standardize_bca_dates(df, pdf_path, inferred_year)
+
+            original_name = os.path.basename(original_pdf_path)
+            if 'source_file' in df.columns:
+                df['source_file'] = original_name
                 
             if bank_key not in {'dbs'}:
                 df = normalize_date_columns(df, inferred_year)

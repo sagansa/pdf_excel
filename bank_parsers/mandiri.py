@@ -1,3 +1,4 @@
+import os
 import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -106,6 +107,7 @@ def parse_statement(pdf_path):
 
     conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     transactions = []
+    full_text_parts = []
 
     try:
         lines = []
@@ -113,6 +115,7 @@ def parse_statement(pdf_path):
             for page in pdf.pages:
                 text = page.extract_text()
                 if text:
+                    full_text_parts.append(text)
                     lines.extend([ln.rstrip() for ln in text.split('\n')])
 
         in_table = False
@@ -275,10 +278,91 @@ def parse_statement(pdf_path):
     if not transactions:
         raise ValueError("No transaction data found in the PDF. Please ensure this is a valid Mandiri statement")
 
-    df = pd.DataFrame(transactions)
-    expected_columns = ['no', 'date', 'remarks', 'amount', 'balance', 'created_at']
-    for column in expected_columns:
-        if column not in df.columns:
-            df[column] = ''
+    full_text = '\n'.join(full_text_parts)
+    account_no = _extract_account_number(full_text)
+    currency = _extract_currency(full_text) or 'IDR'
+    bank_code = 'MANDIRI'
+    source_file = os.path.basename(pdf_path)
 
-    return df[expected_columns]
+    standard_rows = []
+
+    for entry in transactions:
+        raw_date = entry.get('date', '').strip()
+        txn_datetime = ''
+        if raw_date:
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+                try:
+                    parsed_dt = datetime.strptime(raw_date, fmt)
+                    if fmt == '%Y-%m-%d':
+                        parsed_dt = parsed_dt.replace(hour=0, minute=0, second=0)
+                    txn_datetime = parsed_dt.strftime('%Y-%m-%d %H:%M:%S')
+                    break
+                except ValueError:
+                    continue
+
+        amount_dec = _parse_decimal(entry.get('amount', ''))
+        if amount_dec is None:
+            amount_value = ''
+            db_cr = ''
+        else:
+            db_cr = 'DB' if amount_dec < 0 else 'CR'
+            amount_value = _format_decimal(amount_dec)
+
+        balance_dec = _parse_decimal(entry.get('balance', ''))
+        balance_value = _format_decimal(balance_dec) if balance_dec is not None else ''
+
+        standard_rows.append({
+            'bank_code': bank_code,
+            'account_no': account_no,
+            'txn_date': txn_datetime,
+            'posting_date': txn_datetime,
+            'description': entry.get('remarks', '').strip(),
+            'amount': amount_value,
+            'db_cr': db_cr,
+            'balance': balance_value,
+            'currency': currency,
+            'created_at': entry.get('created_at', conversion_timestamp),
+            'source_file': source_file
+        })
+
+    columns = ['bank_code', 'account_no', 'txn_date', 'posting_date', 'description', 'amount', 'db_cr', 'balance', 'currency', 'created_at', 'source_file']
+
+    return pd.DataFrame(standard_rows, columns=columns)
+
+
+def _extract_account_number(text: str) -> str:
+    match = re.search(r'Nomor\s+Rekening(?:/Account Number)?\s*:\s*([0-9\s]+)', text, re.IGNORECASE)
+    if match:
+        return re.sub(r'\D', '', match.group(1))
+    return ''
+
+
+def _extract_currency(text: str) -> str:
+    match = re.search(r'Mata\s+Uang(?:/Currency)?\s*:\s*([A-Z]{3})', text, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    return ''
+
+
+def _parse_decimal(value: str):
+    if not value:
+        return None
+    cleaned = value.strip().replace('\u00a0', '').replace(' ', '')
+    if not cleaned:
+        return None
+    sign = -1 if cleaned.startswith('-') else 1
+    cleaned = cleaned.lstrip('+-')
+    if not cleaned:
+        return None
+    cleaned = cleaned.replace('.', '').replace(',', '.')
+    try:
+        dec = Decimal(cleaned)
+    except InvalidOperation:
+        return None
+    return dec * sign
+
+
+def _format_decimal(dec: Decimal | None) -> str:
+    if dec is None:
+        return ''
+    return format(dec, '.2f')
