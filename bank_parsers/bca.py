@@ -3,6 +3,7 @@ import os
 import pdfplumber
 import pandas as pd
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 def parse_statement(pdf_path):
     if not os.path.exists(pdf_path):
@@ -16,6 +17,7 @@ def parse_statement(pdf_path):
     header_found = False
     
     conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    full_text_parts = []
 
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -35,6 +37,10 @@ def parse_statement(pdf_path):
 
                 
             for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    full_text_parts.append(page_text)
+
                 # Debug table structure
                 table_settings = {
                     "vertical_strategy": "text",
@@ -203,8 +209,66 @@ def parse_statement(pdf_path):
     
     if not transactions:
         raise ValueError("No transaction data found in the PDF. Please ensure this is a valid BCA statement")
-        
-    return pd.DataFrame(transactions) if transactions else pd.DataFrame(columns=['Tanggal', 'Keterangan 1', 'Keterangan 2', 'CBG', 'Mutasi', 'DB/CR', 'Saldo'])
+
+    full_text = '\n'.join(full_text_parts)
+    account_no = _extract_account_number(full_text)
+    currency = _extract_currency(full_text) or 'IDR'
+    base_year = _extract_period_year(full_text) or datetime.now().year
+    bank_code = 'BCA'
+    source_file = os.path.basename(pdf_path)
+
+    standard_rows = []
+    current_year = base_year
+    last_month = None
+
+    for entry in transactions:
+        raw_date = entry.get('Tanggal', '').strip()
+        txn_datetime = ''
+        if raw_date:
+            try:
+                day, month = map(int, raw_date.split('/'))
+                if last_month is not None and month < last_month:
+                    current_year += 1
+                last_month = month
+                date_iso = datetime(current_year, month, day).strftime('%Y-%m-%d')
+                txn_datetime = f"{date_iso} 00:00:00"
+            except ValueError:
+                txn_datetime = ''
+
+        description_parts = [
+            entry.get('Keterangan 1', '').strip(),
+            entry.get('Keterangan 2', '').strip(),
+            entry.get('CBG', '').strip()
+        ]
+        description = ' '.join(part for part in description_parts if part).strip()
+
+        amount_value = _normalize_amount(entry.get('Mutasi', ''))
+        db_cr = entry.get('DB/CR', 'CR').strip().upper() or 'CR'
+        if amount_value:
+            if db_cr == 'DB' and not amount_value.startswith('-'):
+                amount_value = '-' + amount_value
+            elif db_cr == 'CR' and amount_value.startswith('-'):
+                amount_value = amount_value.lstrip('-')
+
+        balance_value = _normalize_amount(entry.get('Saldo', ''))
+
+        standard_rows.append({
+            'bank_code': bank_code,
+            'account_no': account_no,
+            'txn_date': txn_datetime,
+            'posting_date': txn_datetime,
+            'description': description,
+            'amount': amount_value,
+            'db_cr': db_cr,
+            'balance': balance_value,
+            'currency': currency,
+            'created_at': entry.get('created_at', conversion_timestamp),
+            'source_file': source_file
+        })
+
+    columns = ['bank_code', 'account_no', 'txn_date', 'posting_date', 'description', 'amount', 'db_cr', 'balance', 'currency', 'created_at', 'source_file']
+
+    return pd.DataFrame(standard_rows, columns=columns)
 
 def process_transaction(transactions, transaction, conversion_timestamp):
     transactions.append({
@@ -217,3 +281,49 @@ def process_transaction(transactions, transaction, conversion_timestamp):
         'Saldo': transaction['saldo'].strip(),
         'created_at': conversion_timestamp
     })
+
+
+def _extract_account_number(text: str) -> str:
+    match = re.search(r'NO\.?\s*REK(?:ENING)?\s*:?[\s\n]*([0-9\s]+)', text, re.IGNORECASE)
+    if match:
+        return re.sub(r'\D', '', match.group(1))
+    return ''
+
+
+def _extract_currency(text: str) -> str:
+    match = re.search(r'MATA\s+UANG\s*:?[\s\n]*([A-Z]{3})', text, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    return ''
+
+
+def _extract_period_year(text: str) -> int | None:
+    match = re.search(r'PERIODE\s*:?[\s\n]*[A-Z]+\s+(\d{4})', text, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    years = re.findall(r'(?:19|20)\d{2}', text)
+    if years:
+        return int(years[0])
+    return None
+
+
+def _normalize_amount(value: str) -> str:
+    if not value:
+        return ''
+
+    cleaned = value
+    cleaned = cleaned.replace('CR', '').replace('DB', '').replace('Rp', '')
+    cleaned = cleaned.replace(' ', '').replace('\u00a0', '')
+    cleaned = cleaned.replace('.', '').replace(',', '.')
+
+    if cleaned.count('.') > 1:
+        parts = cleaned.split('.')
+        integer = ''.join(parts[:-1])
+        decimal = parts[-1]
+        cleaned = integer + '.' + decimal
+
+    try:
+        dec = Decimal(cleaned)
+        return format(dec, '.2f')
+    except InvalidOperation:
+        return value.strip()
