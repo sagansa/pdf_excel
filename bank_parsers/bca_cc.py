@@ -8,8 +8,9 @@ from decimal import Decimal, InvalidOperation
 # Month abbreviation to number mapping
 MONTH_MAP = {
     'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04',
-    'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08',
-    'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12'
+    'MAY': '05', 'MEI': '05', 'JUN': '06', 'JUL': '07', 
+    'AUG': '08', 'AGT': '08', 'SEP': '09', 'OCT': '10', 
+    'OKT': '10', 'NOV': '11', 'DEC': '12', 'DES': '12'
 }
 
 def convert_date_format(date_str):
@@ -244,28 +245,47 @@ def _convert_cc_date(raw: str, last_month: int | None, current_year: int):
     if not raw:
         return '', last_month, current_year
     raw = raw.strip()
+    
+    day = None
+    month_int = None
+    
     if '-' in raw:
-        day_part, month_part = raw.split('-', 1)
-        day = int(day_part)
-        month = MONTH_MAP.get(month_part.upper())
-        if not month:
-            return '', last_month, current_year
-        month_int = int(month)
-        if last_month is not None and month_int < last_month:
-            current_year += 1
-        last_month = month_int
-        date_iso = f"{current_year}-{month}-{str(day).zfill(2)}"
-        return f"{date_iso} 00:00:00", last_month, current_year
-    if '/' in raw:
+        # Handle DD-MMM format (e.g., 22-DES)
+        parts = raw.split('-', 1)
+        if len(parts) == 2:
+            try:
+                day = int(parts[0])
+                month_str = parts[1].upper()
+                month_val = MONTH_MAP.get(month_str)
+                if month_val:
+                    month_int = int(month_val)
+            except ValueError:
+                pass
+    elif '/' in raw:
+        # Handle DD/MM format
+        parts = raw.split('/', 1)
+        if len(parts) == 2:
+            try:
+                # BCA typically uses DD/MM in CC statements
+                day = int(parts[0])
+                month_int = int(parts[1])
+            except ValueError:
+                pass
+
+    if day is not None and month_int is not None:
         try:
-            month, day = map(int, raw.split('/'))
-            if last_month is not None and month < last_month:
+            # Basic validation
+            if not (1 <= day <= 31 and 1 <= month_int <= 12):
+                return '', last_month, current_year
+                
+            if last_month is not None and month_int < last_month:
                 current_year += 1
-            last_month = month
-            date_iso = datetime(current_year, month, day).strftime('%Y-%m-%d')
+            last_month = month_int
+            date_iso = f"{current_year}-{str(month_int).zfill(2)}-{str(day).zfill(2)}"
             return f"{date_iso} 00:00:00", last_month, current_year
-        except ValueError:
+        except Exception:
             return '', last_month, current_year
+            
     return '', last_month, current_year
 
 
