@@ -8,12 +8,23 @@ def parse_statement(pdf_path, password=None):
     transactions = []
     header_found = False
     current_transaction = None
-    processed_transactions = set()  # Track processed transactions
+    last_y = 0
+    MAX_Y_GAP = 15  # Maximum vertical space to consider a line a continuation
+    
+    # Text fragments that indicate a line is footer/info text, not transaction detail
+    BLACKLIST = [
+        'CONTINUE TO NEXT PAGE', 'IMPORTANT!', 'USE YOUR PIN', 'TO SET OR CHANGE',
+        'LOG IN TO YOUR', 'VISIT HTTPS', 'DBS CUSTOMER CENTRE', 'TOTAL TRANSAKSI',
+        'POIN SEKARANG', 'BUNGA DAN', 'PEMBAYARAN DAN KREDIT'
+    ]
     
     try:
         # Open PDF with password if provided
         with pdfplumber.open(pdf_path, password=password) as pdf:
             for page in pdf.pages:
+                # Reset vertical tracking for each page
+                last_y = 0
+                
                 # Extract text with position information
                 words = page.extract_words(
                     keep_blank_chars=True,
@@ -24,7 +35,7 @@ def parse_statement(pdf_path, password=None):
                 # Group words by y-position (rows)
                 rows = {}
                 for word in words:
-                    y = round(word['top'])
+                    y = round(word['top'], 1)
                     if y not in rows:
                         rows[y] = []
                     rows[y].append(word)
@@ -35,90 +46,96 @@ def parse_statement(pdf_path, password=None):
                 for y, row_words in sorted_rows:
                     # Sort words in row by x-position
                     row_words.sort(key=lambda w: w['x0'])
-                    line = ' '.join(w['text'] for w in row_words)
+                    line_text = ' '.join(w['text'] for w in row_words).strip()
                     
-                    # Look for transaction date pattern MM/DD
+                    # Detect potential date (MM/DD) at the start (x < 100)
+                    row_date = None
                     for word in row_words:
                         text = word['text']
                         x = word['x0']
-                        
-                        # Check for MM/DD pattern and validate date
                         if len(text) == 5 and text[2] == '/' and 0 < x < 100:
                             try:
                                 month = int(text[:2])
                                 day = int(text[3:])
-                                
-                                # Validate day and month values
-                                if not (1 <= day <= 31 and 1 <= month <= 12):
-                                    continue
-                                    
-                                # Additional validation for days in each month
-                                days_in_month = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-                                if day > days_in_month[month]:
-                                    continue
-                                
-                                # Create transaction key for deduplication
-                                transaction_key = f"{text}_{line}"  # Combine date and full line text
-                                
-                                # Skip if we've already processed this transaction
-                                if transaction_key in processed_transactions:
-                                    continue
-                                    
-                                if current_transaction:
-                                    transactions.append(current_transaction)
-                                
-                                current_transaction = {
-                                    'Transaction Date': text,
-                                    'Posting Date': '',
-                                    'Transaction Details': '',
-                                    'Amount': '',
-                                    'DB/CR': 'DB',  # Default to DB
-                                    'created_at': conversion_timestamp
-                                }
-                                
-                                # Process remaining fields based on x-position
-                                details_found = False
-                                for detail_word in row_words:
-                                    detail_x = detail_word['x0']
-                                    detail_text = detail_word['text']
-                                    
-                                    if 100 <= detail_x < 200:
-                                        # Check for posting date pattern MM/DD
-                                        if len(detail_text) == 5 and detail_text[2] == '/':
-                                            try:
-                                                p_month = int(detail_text[:2])
-                                                p_day = int(detail_text[3:])
-                                                if 1 <= p_day <= 31 and 1 <= p_month <= 12:
-                                                    current_transaction['Posting Date'] = detail_text
-                                            except ValueError:
-                                                pass
-                                    elif 200 <= detail_x < 450:
-                                        # Add to transaction details
-                                        if not details_found:
-                                            current_transaction['Transaction Details'] = detail_text
-                                            details_found = True
-                                        else:
-                                            current_transaction['Transaction Details'] += ' ' + detail_text
-                                    # elif 450 <= detail_x < 510:
-                                    #     # Store Rp. prefix
-                                    #     current_transaction['Rp'] = detail_text.strip()
-                                    elif detail_x >= 510:
-                                        # Process amount and DB/CR indicator
-                                        amount_text = detail_text.replace(',', '').strip()
-                                        if 'CR' in amount_text:
-                                            amount_text = amount_text.replace('CR', '').strip()
-                                            current_transaction['DB/CR'] = 'CR'
-                                        current_transaction['Amount'] = amount_text
-                                
-                                # Mark this transaction as processed
-                                processed_transactions.add(transaction_key)
-                                break  # Exit the date search loop once we've found and processed a date
+                                if 1 <= day <= 31 and 1 <= month <= 12:
+                                    row_date = text
+                                    break
                             except ValueError:
                                 continue
+                    
+                    if row_date:
+                        # If a new date is found, save the previous transaction if it exists
+                        if current_transaction:
+                            transactions.append(current_transaction)
+                        
+                        current_transaction = {
+                            'Transaction Date': row_date,
+                            'Posting Date': '',
+                            'Transaction Details': '',
+                            'Amount': '',
+                            'DB/CR': 'DB',
+                            'created_at': conversion_timestamp
+                        }
+                        
+                        # Process fields for the current row
+                        for word in row_words:
+                            x = word['x0']
+                            text = word['text']
+                            
+                            # Posting Date (approx x=169)
+                            if 100 <= x < 200:
+                                if len(text) == 5 and text[2] == '/':
+                                    current_transaction['Posting Date'] = text
+                            # Details (approx x=242)
+                            elif 200 <= x < 450:
+                                if not current_transaction['Transaction Details']:
+                                    current_transaction['Transaction Details'] = text
+                                else:
+                                    current_transaction['Transaction Details'] += ' ' + text
+                            # Amount (approx x >= 479)
+                            elif x >= 479:
+                                val = text.replace(',', '').strip()
+                                if 'CR' in val:
+                                    val = val.replace('CR', '').strip()
+                                    current_transaction['DB/CR'] = 'CR'
+                                # Skip "Rp." label but keep the value
+                                if val.upper() != 'RP.':
+                                    current_transaction['Amount'] = val
+                        
+                        last_y = y  # Update last vertical position
+                    
+                    elif current_transaction:
+                        # Skip explicit navigation/footer lines
+                        is_blacklist = any(item in line_text.upper() for item in BLACKLIST)
+                        is_too_far = (y - last_y) > MAX_Y_GAP
+                        
+                        if is_blacklist or is_too_far:
+                            # If we hit garbage or wide gap, finalize current transaction
+                            transactions.append(current_transaction)
+                            current_transaction = None
+                            continue
+
+                        # This line has no date, check if it's a detail continuation
+                        detail_parts = []
+                        has_amount = False
+                        for word in row_words:
+                            x = word['x0']
+                            text = word['text']
+                            if 200 <= x < 450:
+                                detail_parts.append(text)
+                            elif x >= 479 and any(c.isdigit() for c in text):
+                                has_amount = True
+                        
+                        # If it only has details and no new amount, it's a continuation
+                        if detail_parts and not has_amount:
+                            current_transaction['Transaction Details'] += ' ' + ' '.join(detail_parts)
+                            last_y = y  # Only update last_y for successful continuation
+                        # If it has a new amount but no date, it shouldn't happen in DBS, 
+                        # but we save previous and handle this as a weird case?
+                        # For now, let's just ignore non-transaction lines like headers.
                 
-                # Add the last transaction of the page
+                # Save last transaction of the page
                 if current_transaction:
-                    current_transaction['created_at'] = current_transaction.get('created_at', conversion_timestamp)
                     transactions.append(current_transaction)
                     current_transaction = None
     
