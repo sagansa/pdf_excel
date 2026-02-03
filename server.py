@@ -291,7 +291,9 @@ def index():
     return send_file('index.html')
 
 @app.route('/check_password', methods=['POST', 'OPTIONS'])
+@app.route('/api/check-password', methods=['POST', 'OPTIONS'])
 def check_password():
+
     # Handle preflight OPTIONS request for CORS
     if request.method == 'OPTIONS':
         response = app.make_default_options_response()
@@ -341,7 +343,9 @@ def check_password():
         return {'error': str(e)}, 400, {'Content-Type': 'application/json'}
 
 @app.route('/convert_pdf', methods=['POST', 'OPTIONS'])
+@app.route('/api/convert', methods=['POST', 'OPTIONS'])
 def convert_pdf():
+
     # Handle preflight OPTIONS request for CORS
     if request.method == 'OPTIONS':
         response = app.make_default_options_response()
@@ -755,20 +759,37 @@ def delete_mark(mark_id):
     except Exception as e:
         return {'error': str(e)}, 500
 
-@app.route('/api/transactions/<txn_id>/mark', methods=['POST'])
-def mark_transaction(txn_id):
+@app.route('/api/transactions/<txn_id>/assign-mark', methods=['POST'])
+def assign_mark_transaction(txn_id):
     engine, error_msg = get_db_engine()
     if engine is None:
         return {'error': error_msg}, 500
     try:
         data = request.json
-        mark_id = data.get('mark_id') # Can be None to unmark
+        mark_id = data.get('mark_id')
         now = datetime.now()
         with engine.connect() as conn:
             query = text("UPDATE transactions SET mark_id = :mark_id, updated_at = :updated_at WHERE id = :id")
             conn.execute(query, {'id': txn_id, 'mark_id': mark_id, 'updated_at': now})
             conn.commit()
             return {'message': 'Transaction marked successfully'}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/transactions/<txn_id>/assign-company', methods=['POST'])
+def assign_company_transaction(txn_id):
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    try:
+        data = request.json
+        company_id = data.get('company_id')
+        now = datetime.now()
+        with engine.connect() as conn:
+            query = text("UPDATE transactions SET company_id = :company_id, updated_at = :updated_at WHERE id = :id")
+            conn.execute(query, {'id': txn_id, 'company_id': company_id, 'updated_at': now})
+            conn.commit()
+            return {'message': 'Company assigned successfully'}
     except Exception as e:
         return {'error': str(e)}, 500
 
@@ -790,6 +811,28 @@ def bulk_mark_transactions():
             # SQLAlchemy handles list/tuple for IN clause if using :ids
             query = text("UPDATE transactions SET mark_id = :mark_id, updated_at = :updated_at WHERE id IN :ids")
             conn.execute(query, {'ids': txn_ids, 'mark_id': mark_id, 'updated_at': now})
+            conn.commit()
+            return {'message': f'{len(txn_ids)} transactions updated successfully'}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/transactions/bulk-assign-company', methods=['POST'])
+def bulk_assign_company_transactions():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    try:
+        data = request.json
+        txn_ids = data.get('transaction_ids', [])
+        company_id = data.get('company_id') or None
+        
+        if not txn_ids:
+            return {'error': 'No transaction IDs provided'}, 400
+            
+        now = datetime.now()
+        with engine.connect() as conn:
+            query = text("UPDATE transactions SET company_id = :company_id, updated_at = :updated_at WHERE id IN :ids")
+            conn.execute(query, {'ids': txn_ids, 'company_id': company_id, 'updated_at': now})
             conn.commit()
             return {'message': f'{len(txn_ids)} transactions updated successfully'}
     except Exception as e:
