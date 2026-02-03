@@ -244,11 +244,9 @@ def parse_statement(pdf_path):
 
         amount_value = _normalize_amount(entry.get('Mutasi', ''))
         db_cr = entry.get('DB/CR', 'CR').strip().upper() or 'CR'
-        if amount_value:
-            if db_cr == 'DB' and not amount_value.startswith('-'):
-                amount_value = '-' + amount_value
-            elif db_cr == 'CR' and amount_value.startswith('-'):
-                amount_value = amount_value.lstrip('-')
+        # Keep all amounts positive, DB/CR column indicates transaction type
+        if amount_value and amount_value.startswith('-'):
+            amount_value = amount_value.lstrip('-')
 
         balance_value = _normalize_amount(entry.get('Saldo', ''))
 
@@ -314,7 +312,9 @@ def _normalize_amount(value: str) -> str:
     cleaned = value
     cleaned = cleaned.replace('CR', '').replace('DB', '').replace('Rp', '')
     cleaned = cleaned.replace(' ', '').replace('\u00a0', '')
-    cleaned = cleaned.replace('.', '').replace(',', '.')
+    # BCA uses comma as thousand separator and period as decimal separator
+    # Remove commas (thousand separator), keep periods (decimal separator)
+    cleaned = cleaned.replace(',', '')
 
     if cleaned.count('.') > 1:
         parts = cleaned.split('.')

@@ -26,7 +26,7 @@ def convert_date_format(date_str):
     except Exception:
         return date_str
 
-def parse_statement(pdf_path):
+def parse_statement(pdf_path, base_year=None):
     if not os.path.exists(pdf_path):
         raise ValueError("PDF file not found")
         
@@ -171,7 +171,8 @@ def parse_statement(pdf_path):
     full_text = '\n'.join(full_text_parts)
     account_no = _extract_account_number(full_text)
     currency = _extract_currency(full_text) or 'IDR'
-    base_year = _extract_year(full_text) or datetime.now().year
+    extracted_year = _extract_year(full_text) or datetime.now().year
+    base_year = base_year or extracted_year
     bank_code = 'BCA_CC'
     source_file = os.path.basename(pdf_path)
 
@@ -193,10 +194,8 @@ def parse_statement(pdf_path):
             db_cr = entry.get('db_cr', '').strip().upper()
         else:
             db_cr = entry.get('db_cr', '').strip().upper() or ('CR' if amount_dec >= 0 else 'DB')
-            if db_cr == 'DB' and amount_dec > 0:
-                amount_dec = -amount_dec
-            elif db_cr == 'CR' and amount_dec < 0:
-                amount_dec = -amount_dec
+            # Always use absolute value for consistency across parsers
+            amount_dec = abs(amount_dec)
             amount_value = _format_amount(amount_dec)
 
         rows.append({
@@ -277,8 +276,38 @@ def _convert_cc_date(raw: str, last_month: int | None, current_year: int):
             # Basic validation
             if not (1 <= day <= 31 and 1 <= month_int <= 12):
                 return '', last_month, current_year
+
+            # Heuristic for Ambiguous Dates (e.g. 01/07 vs 07/01)
+            # If standard DD/MM results in a month that is 'far' from last_month,
+            # but swapping to MM/DD results in a 'close' month, assume logic flip (or PDF bad text).
+            if day <= 12 and month_int <= 12 and last_month is not None:
+                 # Standard: month_int. Swapped: month_new = day.
+                 diff_standard = abs(month_int - last_month)
+                 month_swapped = day
+                 diff_swapped = abs(month_swapped - last_month)
+                 
+                 # Logic: If standard jump is > 3 months, and swapped is <= 1 month.
+                 # Also exclude year rollover which is detected separately (month < last_month).
+                 # Here we care about absolute distance.
+                 # E.g. last=1, current=7 (Diff 6). Swapped=1 (Diff 0). Swap!
+                 if diff_standard > 2 and diff_swapped <= 1:
+                      # Swap!
+                      temp = day
+                      day = month_int
+                      month_int = temp
                 
             if last_month is not None and month_int < last_month:
+                # Year rollover check (Dec -> Jan) or simple late transaction
+                # If gap is huge (e.g. Jan to Dec), maybe previous year.
+                # If simple decrement (e.g. May -> Apr), same year.
+                # Standard logic: if < last_month, assumes next year?
+                # No, statements are usually descending or ascending?
+                # BCA CC Usually Ascending/Descending.
+                # Logic in code: current_year += 1. This assumes Chronological Ascending across Year Boundary.
+                # E.g. Dec 2024 -> Jan 2025.
+                # If we are in Jan, and see Dec date?
+                # If input PDF has year, we rely on it slightly.
+                # Existing logic: current_year += 1.
                 current_year += 1
             last_month = month_int
             date_iso = f"{current_year}-{str(month_int).zfill(2)}-{str(day).zfill(2)}"

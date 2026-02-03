@@ -350,6 +350,7 @@ def _parse_decimal(value: str):
     cleaned = value.strip().replace('\u00a0', '').replace(' ', '')
     if not cleaned:
         return None
+    # Detect sign for DB/CR determination
     sign = -1 if cleaned.startswith('-') else 1
     cleaned = cleaned.lstrip('+-')
     if not cleaned:
@@ -359,10 +360,10 @@ def _parse_decimal(value: str):
         dec = Decimal(cleaned)
     except InvalidOperation:
         return None
-    return dec * sign
+    return dec * sign  # Return with sign for DB/CR detection
 
 
 def _format_decimal(dec: Decimal | None) -> str:
     if dec is None:
         return ''
-    return format(dec, '.2f')
+    return format(abs(dec), '.2f')  # Always format as positive
