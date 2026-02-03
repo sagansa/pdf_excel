@@ -1,446 +1,1824 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+  <head>
+    <title>Bank Statement PDF to Excel Converter</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script type="module" src="/src/main.js"></script>
+    <style>
+      /* Modal Styles */
+      .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        z-index: 1040;
+        display: none;
+      }
+      .modal-backdrop.show {
+        display: block;
+      }
+      .modal-tailwind {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1050;
+        overflow-x: hidden;
+        overflow-y: auto;
+        outline: 0;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-tailwind.show {
+        display: flex;
+      }
+      
+      /* Force Light Mode for History Table */
+      #mainHistoryTable, #previewTable, #marksTable {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+      }
+      #mainHistoryTable thead th, #previewTable thead th, #marksTable thead th {
+        background-color: #f9fafb !important;
+        color: #374151 !important;
+      }
+      #mainHistoryTable tbody tr:hover, #previewTable tbody tr:hover, #marksTable tbody tr:hover {
+        background-color: #f3f4f6 !important;
+      }
+      
+      .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(8px);
+        z-index: 3000;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+      .loading-overlay.active {
+        display: flex;
+      }
+      .loader-card {
+        background: white;
+        padding: 2rem 3rem;
+        border-radius: 24px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        text-align: center;
+      }
+      
+      /* Password Toggle Utility */
+      .password-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .password-toggle-btn {
+        position: absolute;
+        right: 12px;
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s;
+        z-index: 10;
+      }
+      .password-toggle-btn:hover {
+        color: #4f46e5;
+      }
+    </style>
 
-<head>
-  <title>Bank Statement PDF to Excel Converter</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      background-color: #f8f9fa;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-    }
+  </head>
 
-    .container {
-      max-width: 800px;
-      padding: 2rem;
-    }
+  <body class="flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col h-screen sticky top-0 shadow-sm z-50 overflow-y-auto">
+      <div class="p-6 mb-4 flex items-center gap-3">
+        <div class="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-100">
+          <i class="bi bi-lightning-fill text-xl"></i>
+        </div>
+        <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 sidebar-logo-text">StatementX</span>
+      </div>
+      
+      <nav class="flex-1 px-4 space-y-1">
+        <div 
+          id="side-tab-converter" 
+          class="sidebar-item active" 
+          onclick="switchTo('converter')"
+        >
+          <i class="bi bi-file-earmark-medical text-lg"></i>
+          <span class="ml-3 sidebar-text">Converter</span>
+        </div>
+        
+        <div 
+          id="side-tab-history" 
+          class="sidebar-item" 
+          onclick="switchTo('history')"
+        >
+          <i class="bi bi-database-fill text-lg"></i>
+          <span class="ml-3 sidebar-text">History & DB</span>
+        </div>
 
-    .upload-area {
-      border: 2px dashed #dee2e6;
-      border-radius: 10px;
-      padding: 2rem;
-      text-align: center;
-      background: white;
-      transition: all 0.3s ease;
-      cursor: pointer;
-    }
+        <div 
+          class="sidebar-item" 
+          onclick="openModal('manageCompaniesModal')"
+        >
+          <i class="bi bi-building text-lg"></i>
+          <span class="ml-3 sidebar-text">Manage Companies</span>
+        </div>
+      </nav>
 
-    .upload-area:hover {
-      border-color: #0d6efd;
-      background: #f8f9fa;
-    }
+      <div class="p-4 border-t border-gray-100">
+        <div class="bg-gray-50 rounded-xl p-4 flex items-center gap-3 sidebar-logo-text">
+          <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">A</div>
+          <div class="overflow-hidden">
+            <p class="text-xs font-bold text-gray-800 truncate">Admin Account</p>
+            <p class="text-[10px] text-gray-500">Premium Plan</p>
+          </div>
+        </div>
+      </div>
+    </aside>
 
-    .upload-icon {
-      font-size: 48px;
-      color: #6c757d;
-      margin-bottom: 1rem;
-    }
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col min-h-screen">
+      <!-- Navbar -->
+      <header class="h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-40">
+        <div class="flex items-center gap-4">
+          <button class="btn-ghost p-1.5 rounded-lg border border-gray-100 shadow-sm" onclick="toggleSidebar()">
+            <i class="bi bi-layout-sidebar-inset text-lg"></i>
+          </button>
+          <div class="h-6 w-px bg-gray-200 mx-1"></div>
+          <h2 class="text-sm font-semibold text-gray-800 uppercase tracking-tight" id="pageTitle">Bank Statement Converter</h2>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <div class="hidden md:flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-[10px] font-bold border border-green-100">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            SERVER ONLINE
+          </div>
+        </div>
+      </header>
 
-    #loading {
-      display: none;
-      margin-top: 1rem;
-    }
+      <main class="p-6 flex-1 bg-[#f9fafb]">
+        <!-- Converter Section -->
+        <section id="converter-section" class="max-w-3xl mx-auto space-y-6">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <form id="pdfForm">
+              <div class="space-y-8">
+                <!-- Bank Selection -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div class="space-y-2">
+                    <label class="label-base">Select Your Bank</label>
+                    <select
+                      class="input-base"
+                      id="bankType"
+                      name="bank_type"
+                      required
+                    >
+                      <option value="">Choose bank...</option>
+                      <option value="bca">REK BCA</option>
+                      <option value="mandiri">REK Mandiri</option>
+                      <option value="bri">REK BRI (CSV)</option>
+                      <option value="saqu">SAQU</option>
+                      <option value="blu">BLU BY BCA</option>
+                      <option value="ccbca">CC BCA</option>
+                      <option value="dbs">CC DBS</option>
+                      <option value="ccmandiri">CC Mandiri</option>
+                    </select>
+                  </div>
+                  
+                  <div class="space-y-2">
+                    <label class="label-base">Statement Year</label>
+                    <select id="statementYear" name="statement_year" class="input-base"></select>
+                  </div>
+                </div>
 
-    .success-message {
-      display: none;
-      color: #198754;
-      margin-top: 1rem;
-    }
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div class="space-y-2">
+                    <label class="label-base">Select Company</label>
+                    <select id="companySelect" name="company_id" class="input-base" required>
+                      <option value="none">Choose company...</option>
+                    </select>
+                  </div>
+                </div>
+                <!-- Output Format Removed (Not needed anymore per user request) -->
 
-    .file-info {
-      margin-top: 1rem;
-      font-size: 0.9rem;
-      color: #6c757d;
-    }
 
-    .file-name {
-      font-weight: 500;
-      color: #212529;
-    }
+                <!-- Upload Area -->
+                <div class="space-y-2">
+                  <label class="label-base">Upload Statement (PDF or CSV)</label>
+                  <div
+                    id="dropZone"
+                    class="relative group border-2 border-dashed border-gray-200 hover:border-indigo-400 rounded-2xl p-10 transition-all duration-300 bg-gray-50/50 hover:bg-white cursor-pointer overflow-hidden"
+                  >
+                    <div class="absolute inset-0 bg-gradient-to-b from-indigo-50/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="relative text-center">
+                      <div class="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <i class="bi bi-file-earmark-arrow-up text-3xl text-indigo-500"></i>
+                      </div>
+                      <p class="text-sm font-semibold text-gray-700">Drag & drop your PDF or CSV here</p>
+                      <p class="text-xs text-gray-500 mt-1">or click to browse from your computer</p>
+                       <div id="fileName" class="text-center font-bold text-indigo-600 text-sm py-2"></div>
+                      <input
+                        type="file"
+                        id="pdfFile"
+                        name="pdf_file"
+                        class="hidden"
+                        accept="application/pdf,.csv"
+                      />
+                    </div>
+                  </div>
+                  <div class="conversion-note text-center text-xs text-gray-400 mt-2" id="formatNote">
+                    Please select a bank to see format requirements
+                  </div>
+                </div>
 
-    .conversion-note {
-      font-size: 0.85rem;
-      color: #6c757d;
-      margin-top: 0.5rem;
-    }
+                <div class="pt-4">
+                  <button type="submit" class="btn-primary w-full py-4 text-base font-bold rounded-2xl">
+                    <i class="bi bi-lightning-charge-fill me-2"></i> Convert & Extract Data
+                  </button>
+                  
+                  <div id="loading" class="loading-overlay hidden">
+                    <div class="loader-card">
+                      <div class="spinner-border text-primary" role="status"></div>
+                      <p>Processing & Saving...</p>
+                    </div>
+                  </div>
 
-    .bank-selector {
-      margin-bottom: 2rem;
-    }
-  </style>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-  <style>
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-    }
-    .modal.show {
-      display: block;
-    }
-    .modal-content {
-      background-color: #fefefe;
-      margin: 15% auto;
-      padding: 20px;
-      border: 1px solid #888;
-      width: 80%;
-      max-width: 500px;
-      border-radius: 8px;
-    }
-  </style>
-</head>
+                  <div id="successMessage" class="mt-4 p-4 bg-green-50 border border-green-100 rounded-xl text-green-700 text-sm hidden">
+                    <div class="flex items-center">
+                      <i class="bi bi-check-circle-fill me-3 text-lg"></i>
+                      <span>Conversion & DB Sync successful!</span>
+                    </div>
+                  </div>
+                </div>
 
-<body>
-  <div class="container">
-    <div class="mb-5 text-center">
-      <h1 class="mb-3 display-4">Bank Statement Converter</h1>
-      <p class="lead text-muted">Convert your Bank Statement PDF to Excel format in seconds</p>
+              </form>
+            <div id="errorMessage" class="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm hidden"></div>
+          </div>
+          
+
+        </section>
+
+        <!-- History Section -->
+        <section id="history-section" class="hidden space-y-6">
+          <div class="flex flex-col space-y-4">
+            <!-- Header & Action Buttons -->
+            <div class="flex justify-between items-center">
+              <div>
+                <h3 class="text-xl font-bold text-gray-900">Database Transactions</h3>
+                <p class="text-xs text-gray-500">Manage and analyze your historical statement data</p>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn-primary" onclick="showManageMarksModal()">
+                  <i class="bi bi-bookmark-plus me-2"></i> Manage Marks
+                </button>
+                <button class="btn-secondary" onclick="loadHistory()">
+                  <i class="bi bi-arrow-clockwise me-2"></i> Refresh
+                </button>
+              </div>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
+              <div class="space-y-1">
+                <label class="label-base">Year</label>
+                <select id="filterYear" class="input-base !py-1.5" onchange="handleYearChange()">
+                  <option value="">All Years</option>
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="label-base">Date Start</label>
+                <input type="date" id="filterDateStart" class="input-base !py-1.5" oninput="handleDateChange()">
+              </div>
+              <div class="space-y-1">
+                <label class="label-base">Date End</label>
+                <input type="date" id="filterDateEnd" class="input-base !py-1.5" oninput="handleDateChange()">
+              </div>
+              <div class="space-y-1">
+                <label class="label-base">Bank</label>
+                <select id="filterBank" class="input-base !py-1.5" onchange="applyFilters()">
+                  <option value="">All Banks</option>
+                  <option value="BCA">BCA</option>
+                  <option value="BCA_CC">BCA CC</option>
+                  <option value="MANDIRI">Mandiri</option>
+                  <option value="MANDIRI_CC">Mandiri CC</option>
+                  <option value="DBS">DBS</option>
+                  <option value="BRI">BRI</option>
+                  <option value="SAQU">SAQU</option>
+                  <option value="BLU">BLU</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="label-base">Company</label>
+                <select id="filterCompany" class="input-base !py-1.5" onchange="applyFilters()">
+                  <option value="">All Companies</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="label-base">Mark Status</label>
+                <select id="filterMark" class="input-base !py-1.5" onchange="applyFilters()">
+                  <option value="">All Transactions</option>
+                  <option value="marked">Marked Only</option>
+                  <option value="unmarked">Unmarked Only</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="label-base">Search</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                    <i class="bi bi-search text-xs"></i>
+                  </span>
+                  <input type="text" id="filterSearch" placeholder="Search..." class="input-base !py-1.5 !pl-9" oninput="applyFilters()">
+                </div>
+              </div>
+
+              <div class="flex items-end">
+                <button class="w-full btn-secondary !py-2" onclick="resetFilters()">
+                  <i class="bi bi-x-circle me-2"></i> Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Bulk Actions Toolbar -->
+            <div id="bulkActionsBar" class="hidden bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex justify-between items-center animate-fade-in-down mb-4">
+              <div class="flex items-center gap-3">
+                <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-sm font-bold border border-indigo-200">
+                  <span id="selectedCount">0</span> Selected
+                </span>
+                <span class="text-sm text-gray-500">Select items to apply actions</span>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn-primary !py-1.5 !px-3 !text-xs" onclick="openBulkMarkModal()">
+                  <i class="bi bi-tags-fill me-2"></i> Bulk Mark
+                </button>
+                <button class="btn-secondary !py-1.5 !px-3 !text-xs !bg-red-50 !text-red-600 !border-red-100 hover:!bg-red-100" onclick="bulkDelete()">
+                  <i class="bi bi-trash3-fill me-2"></i> Bulk Delete
+                </button>
+                <button class="btn-secondary !py-1.5 !px-3 !text-xs" onclick="deselectAll()">
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <!-- Advanced Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 table-compact" id="mainHistoryTable">
+                  <thead>
+                    <tr>
+                      <th class="w-10 px-3 py-2 text-center bg-gray-50">
+                        <input type="checkbox" id="selectAllCheckbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" onclick="toggleSelectAll()">
+                      </th>
+                      <th onclick="handleSort('txn_date')" class="cursor-pointer hover:bg-gray-100 transition-colors">Date <span id="sort-txn_date"></span></th>
+                      <th class="text-left">Company</th>
+                      <th onclick="handleSort('description')" class="cursor-pointer hover:bg-gray-100 transition-colors">Description <span id="sort-description"></span></th>
+                      <th onclick="handleSort('amount')" class="text-right cursor-pointer hover:bg-gray-100 transition-colors">Amount <span id="sort-amount"></span></th>
+                      <th class="text-center">Type</th>
+                      <th>Bank</th>
+                      <th class="text-center">Marking</th>
+                      <th>Source</th>
+                      <th class="text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100" id="historyTableBody"></tbody>
+                </table>
+              </div>
+
+              <!-- Empty State -->
+              <div id="historyEmptyState" class="hidden flex flex-col items-center justify-center p-12 text-gray-400">
+                <i class="bi bi-inbox text-5xl mb-4"></i>
+                <p class="font-medium">No transactions found</p>
+              </div>
+              
+              <!-- Pagination -->
+              <div class="bg-gray-50/50 px-6 py-4 flex items-center justify-between border-t border-gray-100">
+                <div class="flex flex-col md:flex-row md:items-center gap-4 w-full justify-between">
+                  <p class="text-xs text-gray-500 font-medium">
+                    Showing <span id="pageStartIndex" class="text-gray-900">1</span>-<span id="pageEndIndex" class="text-gray-900">10</span> of <span class="font-medium" id="totalRecords" class="text-gray-900">0</span>
+                  </p>
+                  
+                  <div class="flex gap-4 items-center">
+                    <select id="itemsPerPage" class="text-xs border-gray-300 rounded-lg bg-white px-3 py-1.5 focus:border-indigo-500 focus:ring-0" onchange="changeItemsPerPage(this.value)">
+                      <option value="10">10 / Page</option>
+                      <option value="25">25 / Page</option>
+                      <option value="50">50 / Page</option>
+                      <option value="100">100 / Page</option>
+                    </select>
+                    
+                    <nav class="flex rounded-lg shadow-sm -space-x-px" id="paginationControls"></nav>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
 
-    <div class="shadow-sm card">
-      <div class="p-4 card-body">
-        <form id="pdfForm">
-          <div class="text-center bank-selector">
-            <h5 class="mb-3">Select Your Bank</h5>
-            <select class="mx-auto form-select form-select-lg w-50" id="bankType" name="bank_type" required>
-              <option value="">Choose bank...</option>
-              <option value="bca">REK BCA</option>
-              <option value="mandiri">REK Mandiri</option>
-              <option value="ccbca">CC BCA</option>
-              <option value="dbs">CC DBS</option>
-              <option value="ccmandiri">CC Mandiri</option>
-            </select>
-          </div>
-          <div class="mb-4 text-center">
-            <h5 class="mb-3">Choose Output Format</h5>
-            <div class="d-flex justify-content-center gap-3">
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="output_format" id="formatExcel" value="excel" checked>
-                <label class="form-check-label" for="formatExcel">Excel (.xlsx)</label>
-              </div>
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="output_format" id="formatCsv" value="csv">
-                <label class="form-check-label" for="formatCsv">CSV (.csv)</label>
-              </div>
-            </div>
-          </div>
-          <div class="mb-4 upload-area" id="dropZone" onclick="document.getElementById('pdfFile').click();">
-            <i class="bi bi-cloud-arrow-up upload-icon"></i>
-            <h5>Drag & Drop your Bank Statement PDF here</h5>
-            <p class="text-muted">or click to browse</p>
-            <input type="file" class="form-control d-none" id="pdfFile" name="pdf_file" accept=".pdf" required>
-            <div id="fileName" class="mt-2 file-name"></div>
-            <div class="conversion-note" id="formatNote">
-              Please select a bank to see format requirements
-            </div>
-          </div>
-          <div class="text-center">
-            <button type="submit" class="px-4 btn btn-primary btn-lg">
-              <i class="bi bi-file-earmark-arrow-down me-2"></i>Convert File
+  <!-- Global Backdrop -->
+  <div id="modalBackdrop" class="modal-backdrop"></div>
+
+  <!-- Preview Modal (Tailwind) -->
+  <div id="previewModal" class="modal-tailwind">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <h3 class="text-lg font-bold text-gray-900">Data Preview (Review Before Saving)</h3>
+        <button onclick="closeModal('previewModal')" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 overflow-y-auto">
+        <p class="text-sm text-gray-500 mb-4">The following data was extracted from your statement. Please review it carefully before committing to the database.</p>
+        <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <table class="min-w-full divide-y divide-gray-200" id="previewTable">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Company</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Description</th>
+                <th class="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Amount</th>
+                <th class="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Type</th>
+                <th class="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="previewTableBody" class="bg-white divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+        <div id="previewSummary" class="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex justify-between items-center">
+          <span id="previewCount" class="text-sm font-bold text-indigo-700">0 Transactions Found</span>
+          <span id="previewTotal" class="text-sm font-bold text-indigo-700"></span>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+        <button onclick="closeModal('previewModal')" class="btn-secondary">Discard & Cancel</button>
+        <button id="confirmSaveBtn" class="btn-primary !bg-green-600 hover:!bg-green-700 border-none shadow-lg shadow-green-100">
+          <i class="bi bi-check-circle-fill me-2"></i> Confirm & Save
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Password Modal (Tailwind) -->
+  <div id="passwordModal" class="modal-tailwind">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <h3 class="text-lg font-bold text-gray-900">PDF Password Required</h3>
+        <button onclick="closeModal('passwordModal')" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <p class="text-sm text-gray-500">This PDF is password protected. Please enter the password to continue.</p>
+        <div class="space-y-1">
+          <div class="password-wrapper">
+            <input type="password" id="pdfPassword" placeholder="Enter password" class="input-base focus:ring-2 ring-indigo-500/20 pr-10">
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('pdfPassword', 'toggleIcon')">
+              <i id="toggleIcon" class="bi bi-eye"></i>
             </button>
-            <div id="loading" class="text-center">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <p class="mt-2">Converting your file...</p>
-            </div>
-            <div id="successMessage" class="success-message">
-              <i class="bi bi-check-circle me-2"></i>Conversion successful!
-            </div>
           </div>
-        </form>
-        <div id="errorMessage" class="mt-3 alert alert-danger" style="display: none;"></div>
+          <div id="passwordError" class="text-xs text-red-600 font-medium hidden"></div>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+        <button onclick="closeModal('passwordModal', true)" class="btn-secondary">Cancel</button>
+        <button onclick="submitPassword()" class="btn-primary shadow-lg shadow-indigo-100">Unlock & Convert</button>
       </div>
     </div>
   </div>
 
-  <!-- Password Modal -->
-  <div id="passwordModal" class="modal">
-    <div class="modal-content">
-      <h5 class="mb-3">PDF Password Required</h5>
-      <p class="mb-3 text-muted">This PDF is password protected. Please enter the password to continue.</p>
-      <div class="mb-3">
-        <input type="password" class="form-control" id="pdfPassword" placeholder="Enter PDF password">
+  <!-- Manage Marks Modal (Tailwind) -->
+  <div id="manageMarksModal" class="modal-tailwind">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <h3 class="text-lg font-bold text-gray-900">Manage Reporting Marks</h3>
+        <button onclick="showMarkForm()" class="btn-primary !py-1.5 !px-3 !text-xs !bg-green-600 hover:!bg-green-700">
+          <i class="bi bi-plus-lg me-1"></i> Add New Mark
+        </button>
       </div>
-      <div id="passwordError" class="mb-3 text-danger" style="display: none;"></div>
-      <div class="gap-2 d-flex justify-content-end">
-        <button type="button" class="btn btn-secondary" onclick="closePasswordModal(true)">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="submitPassword()">Submit</button>
+      <div class="flex-1 overflow-y-auto">
+        <table class="min-w-full divide-y divide-gray-200" id="marksTable">
+          <thead class="bg-gray-50 sticky top-0">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Internal Report</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Personal Use</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tax Report</th>
+              <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="marksTableBody" class="bg-white divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end">
+        <button onclick="closeModal('manageMarksModal')" class="btn-secondary">Close</button>
       </div>
     </div>
   </div>
 
+  <!-- Mark Form Modal (Tailwind) -->
+  <div id="markFormModal" class="modal-tailwind">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <h3 id="markFormTitle" class="text-lg font-bold text-gray-900">Add New Mark</h3>
+        <button onclick="closeModal('markFormModal')" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="editMarkId">
+        <div class="space-y-1">
+          <label class="label-base">Internal Report Description</label>
+          <textarea id="markInternal" rows="2" class="input-base" placeholder="e.g. Office Expenses Q1"></textarea>
+        </div>
+        <div class="space-y-1">
+          <label class="label-base">Personal Use Description</label>
+          <textarea id="markPersonal" rows="2" class="input-base" placeholder="e.g. Family Vacation"></textarea>
+        </div>
+        <div class="space-y-1">
+          <label class="label-base">Tax Report Description</label>
+          <textarea id="markTax" rows="2" class="input-base" placeholder="e.g. Tax Deductible Donation"></textarea>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+        <button onclick="closeModal('markFormModal')" class="btn-secondary">Cancel</button>
+        <button onclick="saveMark()" class="btn-primary shadow-lg shadow-indigo-100">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Select Mark Modal (Tailwind) -->
+  <div id="selectMarkModal" class="modal-tailwind">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <h3 class="text-lg font-bold text-gray-900">Assign Mark</h3>
+        <button onclick="closeModal('selectMarkModal')" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="pendingTxnId">
+        <p class="text-sm text-gray-500">Select a predefined mark category for this transaction:</p>
+        <select id="markSelector" class="input-base focus:ring-2 ring-indigo-500/20"></select>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+        <button onclick="closeModal('selectMarkModal')" class="btn-secondary">Cancel</button>
+        <button onclick="applyMarkToTransaction()" class="btn-primary shadow-lg shadow-indigo-100">Apply Mark</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  </div>
+
+  <!-- Manage Companies Modal (Tailwind) -->
+  <div id="manageCompaniesModal" class="modal-tailwind">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <h3 class="text-lg font-bold text-gray-900">Manage Companies</h3>
+        <button onclick="showCompanyForm()" class="btn-primary !py-1.5 !px-3 !text-xs !bg-green-600 hover:!bg-green-700">
+          <i class="bi bi-plus-lg me-1"></i> Add Company
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <table class="min-w-full divide-y divide-gray-200" id="companiesTable">
+          <thead class="bg-gray-50 sticky top-0">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Company Name</th>
+              <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="companiesTableBody" class="bg-white divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end">
+        <button onclick="closeModal('manageCompaniesModal')" class="btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Company Form Modal (Tailwind) -->
+  <div id="companyFormModal" class="modal-tailwind">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <h3 id="companyFormTitle" class="text-lg font-bold text-gray-900">Add Company</h3>
+        <button onclick="closeModal('companyFormModal')" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="editCompanyId">
+        <div class="space-y-1">
+          <label class="label-base">Company Name</label>
+          <input type="text" id="companyNameInput" class="input-base" placeholder="e.g. PT Asa Pangan Bangsa">
+        </div>
+        <div class="space-y-1">
+          <label class="label-base">Short Name (Abbreviation)</label>
+          <input type="text" id="companyShortNameInput" class="input-base" placeholder="e.g. APB">
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+        <button onclick="closeModal('companyFormModal')" class="btn-secondary">Cancel</button>
+        <button onclick="saveCompany()" class="btn-primary shadow-lg shadow-indigo-100">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transaction Details Modal (Tailwind) - NEW -->
+  <div id="detailsModal" class="modal-tailwind">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <h3 class="text-lg font-bold text-gray-900">Transaction Details</h3>
+        <button onclick="closeModal('detailsModal')" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div id="detailsContent" class="p-6 space-y-5">
+        <!-- Populated by JS -->
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
+        <button id="deleteBtnModal" class="btn-primary !bg-red-50 !text-red-600 !border-red-100 hover:!bg-red-100 border !py-2 !px-4">
+          <i class="bi bi-trash3 me-2"></i> Delete
+        </button>
+        <button onclick="closeModal('detailsModal')" class="btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('pdfFile');
-    const fileName = document.getElementById('fileName');
-    const loading = document.getElementById('loading');
-    const successMessage = document.getElementById('successMessage');
-    const errorDiv = document.getElementById('errorMessage');
-    const bankType = document.getElementById('bankType');
-    const formatNote = document.getElementById('formatNote');
-    const passwordError = document.getElementById('passwordError');
+      const dropZone = document.getElementById("dropZone");
+      const fileInput = document.getElementById("pdfFile");
+      const fileName = document.getElementById("fileName");
+      const loading = document.getElementById("loading");
+      const successMessage = document.getElementById("successMessage");
+      const errorDiv = document.getElementById("errorMessage");
+      const bankType = document.getElementById("bankType");
+      const formatNote = document.getElementById("formatNote");
+      const passwordError = document.getElementById("passwordError");
+      const statementYear = document.getElementById("statementYear");
+      const previewModalEl = document.getElementById("previewModal");
+      const previewTableBody = document.getElementById("previewTableBody");
+      const previewCount = document.getElementById("previewCount");
+      const previewTotal = document.getElementById("previewTotal");
+      const confirmSaveBtn = document.getElementById("confirmSaveBtn");
+      
+      let lastFormData = null;
 
-    const bankFormats = {
-      'bca': 'Format: BCA Statement with columns for Date, Description (2 parts), CBG, Mutation, and Balance',
-      'mandiri': 'Format: Mandiri Statement with columns for Date, Description, Debit, Credit, and Balance',
-      'ccbca': 'Format: BCA Credit Card Statement with columns for Date, Description, Amount, and Balance',
-      'dbs': 'Format: DBS Credit Card Statement with transaction details including Date, Description, Debit, Credit, and Balance',
-      'ccmandiri': 'Format: Mandiri Credit Card Statement with columns for Date, Description, Amount, and Balance'
-    };
-
-    bankType.addEventListener('change', function () {
-      const selectedBank = this.value;
-      if (selectedBank in bankFormats) {
-        formatNote.textContent = bankFormats[selectedBank];
-      } else {
-        formatNote.textContent = 'Please select a bank to see format requirements';
+      // Populate Statement Year
+      const currentYear = new Date().getFullYear();
+      for (let y = currentYear; y >= 2020; y--) {
+        const opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = y;
+        statementYear.appendChild(opt);
       }
-    });
+      statementYear.value = currentYear;
 
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-      dropZone.addEventListener(eventName, preventDefaults, false);
-    });
+      // History Tab State
+      let allTransactions = [];
+      let filteredTransactions = [];
+      let currentPage = 1;
+      let itemsPerPage = 10;
+      let sortConfig = { key: 'txn_date', direction: 'desc' };
 
-    function preventDefaults(e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    ['dragenter', 'dragover'].forEach(eventName => {
-      dropZone.addEventListener(eventName, highlight, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-      dropZone.addEventListener(eventName, unhighlight, false);
-    });
-
-    function highlight(e) {
-      dropZone.classList.add('border-primary');
-    }
-
-    function unhighlight(e) {
-      dropZone.classList.remove('border-primary');
-    }
-
-    dropZone.addEventListener('drop', handleDrop, false);
-
-    function handleDrop(e) {
-      const dt = e.dataTransfer;
-      const files = dt.files;
-      fileInput.files = files;
-      updateFileName();
-    }
-
-    fileInput.addEventListener('change', updateFileName);
-
-    function updateFileName() {
-      const file = fileInput.files[0];
-      if (file) {
-        fileName.textContent = file.name;
-      } else {
-        fileName.textContent = '';
+      // Utility Functions
+      function formatDate(dateStr) {
+        if (!dateStr) return "-";
+        try {
+          // Assuming ISO YYYY-MM-DD
+          return dateStr.split(" ")[0];
+        } catch (e) { return dateStr; }
       }
+
+      function formatAmount(amount) {
+        return new Intl.NumberFormat('id-ID').format(amount);
+      }
+
+      // Navigation & Sidebar Logic
+      function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        // Simple toggle for mobile/desktop visibility
+        // On mobile (default hidden usually), this toggles it.
+        // For this layout where sidebar is visible by default on desktop, 
+        // we might want to collapse it. For simplicity, let's toggle visibility.
+        sidebar.classList.toggle('hidden');
+      }
+
+      function switchTo(tab) {
+        // Toggle Sections
+        const converterSection = document.getElementById('converter-section');
+        const historySection = document.getElementById('history-section');
+        const pageTitle = document.getElementById('pageTitle');
+        
+        if (tab === 'converter') {
+          converterSection.classList.remove('hidden');
+          historySection.classList.add('hidden');
+          pageTitle.innerText = 'Bank Statement Converter';
+        } else {
+          converterSection.classList.add('hidden');
+          historySection.classList.remove('hidden');
+          pageTitle.innerText = 'Transaction History & Database';
+          loadHistory();
+        }
+
+        // Toggle Sidebar Active State
+        document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(`side-tab-${tab}`).classList.add('active');
+        
+        // On mobile, auto-close sidebar after selection
+        if (window.innerWidth < 768) {
+           document.getElementById('sidebar').classList.add('hidden');
+        }
+      }
+
+      function showPreview(data) {
+        previewTableBody.innerHTML = "";
+        const transactions = data.data || [];
+        previewCount.textContent = `${transactions.length} Transactions Found`;
+        
+        if (transactions.length === 0) {
+          previewTableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted italic">No transactions were extracted from this file.</td></tr>`;
+        } else {
+          transactions.forEach(row => {
+            const tr = document.createElement("tr");
+            
+            // Get correct date column
+            const date = row.txn_date || row['Transaction Date'] || row['transaction_date'] || row['Date'] || '';
+            const desc = row.description || row['Transaction Details'] || row['transaction_details'] || row['Description'] || '';
+            const amount = row.amount || row.Amount || '0.00';
+            const type = row.db_cr || row['DB/CR'] || row['db_cr'] || 'DB';
+            
+            tr.innerHTML = `
+              <td class="px-4 py-2 text-sm text-gray-900 font-medium">${date}</td>
+              <td class="px-4 py-2 text-sm text-gray-500">${desc}</td>
+              <td class="px-4 py-2 text-sm text-right font-mono font-bold ${type === 'CR' ? 'text-green-600' : 'text-red-500'}">${amount}</td>
+              <td class="px-4 py-2 text-center text-xs"><span class="px-2 py-0.5 rounded-full font-bold ${type === 'CR' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${type}</span></td>
+            `;
+            previewTableBody.appendChild(tr);
+          });
+        }
+        
+        openModal('previewModal');
+      }
+
+      confirmSaveBtn.onclick = async () => {
+        if (!lastFormData) return;
+        
+        closeModal('previewModal');
+        loading.classList.add("active");
+        
+        try {
+          // Final conversion (preview=false)
+          lastFormData.set("preview", "false");
+          const response = await requestConversion(lastFormData);
+          await handleSuccessfulConversion(response);
+        } catch (error) {
+          handleConversionError(error);
+        }
+      };
+
+      // History & Marks Logic
+    let allMarks = [];
+    let allCompanies = [];
+    let selectedTxnIds = new Set();
+    const modalRefs = {};
+
+    // Populate Year Filter logic
+    function populateYearDropdown() {
+        const yearSelect = document.getElementById('filterYear');
+        const currentYear = new Date().getFullYear();
+        // Clear except first
+        yearSelect.innerHTML = '<option value="">All Years</option>';
+        for (let y = currentYear; y >= currentYear - 10; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            yearSelect.appendChild(opt);
+        }
+    }
+    
+    // Call on init
+    populateYearDropdown();
+
+    function handleYearChange() {
+        // Clear specific date inputs when Year is selected
+        document.getElementById('filterDateStart').value = '';
+        document.getElementById('filterDateEnd').value = '';
+        applyFilters();
     }
 
-    const passwordModal = document.getElementById('passwordModal');
-    let currentFile = null;
-    let isPasswordProtected = false;
-
-    function showPasswordModal(message = '') {
-      passwordModal.classList.add('show');
-      document.getElementById('pdfPassword').value = '';
-      document.getElementById('pdfPassword').focus();
-      passwordError.textContent = message || '';
-      passwordError.style.display = message ? 'block' : 'none';
+    function handleDateChange() {
+        // Clear Year input when specific dates are selected
+        document.getElementById('filterYear').value = '';
+        applyFilters();
     }
 
-    function closePasswordModal(resetSelection = false) {
-      passwordModal.classList.remove('show');
-      passwordError.textContent = '';
-      passwordError.style.display = 'none';
-      if (resetSelection) {
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      const backdrop = document.getElementById('modalBackdrop');
+      if (modal) modal.classList.add('show');
+      if (backdrop) backdrop.classList.add('show');
+      document.body.style.overflow = 'hidden';
+      
+      // Focus first input if exists
+      const firstInput = modal.querySelector('input, textarea, select');
+      if (firstInput) setTimeout(() => firstInput.focus(), 100);
+    }
+
+    function closeModal(id, resetSelection = false) {
+      const modal = document.getElementById(id);
+      const backdrop = document.getElementById('modalBackdrop');
+      if (modal) modal.classList.remove('show');
+      
+      // Only hide backdrop if no other modals are open
+      const otherOpenModal = document.querySelector('.modal-tailwind.show');
+      if (!otherOpenModal && backdrop) {
+          backdrop.classList.remove('show');
+          document.body.style.overflow = '';
+      }
+
+      if (id === 'passwordModal' && resetSelection) {
         fileInput.value = '';
         fileName.textContent = '';
         currentFile = null;
       }
-      isPasswordProtected = false;
     }
 
-    async function checkPasswordProtection(file) {
-      const formData = new FormData();
-      formData.append('pdf_file', file);
+    function showPasswordModal(message = '') {
+      openModal('passwordModal');
+      const passInput = document.getElementById('pdfPassword');
+      passInput.value = '';
+      passInput.type = 'password';
+      document.getElementById('toggleIcon').className = 'bi bi-eye';
       
+      const pErr = document.getElementById('passwordError');
+      pErr.textContent = message || '';
+      if (message) pErr.classList.remove('hidden');
+      else pErr.classList.add('hidden');
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+      }
+    }
+
+    async function loadCompanies() {
       try {
-        const response = await fetch('/check_password', {
-          method: 'POST',
-          body: formData
+        const response = await fetch('/api/companies');
+        const data = await response.json();
+        allCompanies = data.companies || [];
+        
+        // Update upload select
+        const companySelect = document.getElementById('companySelect');
+        const filterCompany = document.getElementById('filterCompany');
+        
+        companySelect.innerHTML = '<option value="none">Choose company...</option>';
+        filterCompany.innerHTML = '<option value="">All Companies</option>';
+        
+        allCompanies.forEach(c => {
+          const displayName = c.short_name ? `${c.name} (${c.short_name})` : c.name;
+          companySelect.innerHTML += `<option value="${c.id}">${displayName}</option>`;
+          filterCompany.innerHTML += `<option value="${c.id}">${displayName}</option>`;
         });
         
-        const result = await response.json();
-        return result.password_protected;
-      } catch (error) {
-        console.error('Error checking password protection:', error);
-        return false;
+        renderCompaniesList();
+      } catch (e) {
+        console.error('Failed to load companies:', e);
       }
     }
 
-    async function submitPassword() {
-      const password = document.getElementById('pdfPassword').value;
-      if (!password) return;
+    function renderCompaniesList() {
+      const tbody = document.getElementById('companiesTableBody');
+      tbody.innerHTML = '';
+      allCompanies.forEach(c => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm font-medium text-gray-900">
+              ${c.name} ${c.short_name ? `<span class="ml-2 text-xs text-gray-400 font-normal">[${c.short_name}]</span>` : ''}
+            </td>
+            <td class="px-6 py-4 text-right text-sm font-medium">
+              <button onclick="showCompanyForm('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${(c.short_name || '').replace(/'/g, "\\'")}')" class="text-indigo-600 hover:text-indigo-900 me-3">
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <button onclick="deleteCompany('${c.id}')" class="text-red-600 hover:text-red-900">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
 
-      const formData = new FormData();
-      formData.append('pdf_file', currentFile);
-      formData.append('password', password);
-      formData.append('bank_type', bankType.value);
-      formData.append('output_format', getSelectedOutputFormat());
+    function showCompanyForm(id = '', name = '', shortName = '') {
+      document.getElementById('editCompanyId').value = id;
+      document.getElementById('companyNameInput').value = name;
+      document.getElementById('companyShortNameInput').value = shortName;
+      document.getElementById('companyFormTitle').textContent = id ? 'Edit Company' : 'Add Company';
+      openModal('companyFormModal');
+    }
 
-      closePasswordModal();
-      loading.style.display = 'block';
-      errorDiv.style.display = 'none';
-
+    async function saveCompany() {
+      const id = document.getElementById('editCompanyId').value;
+      const name = document.getElementById('companyNameInput').value;
+      const short_name = document.getElementById('companyShortNameInput').value;
+      if (!name) return alert('Name is required');
+      
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/companies/${id}` : '/api/companies';
+      
       try {
-        const response = await requestConversion(formData);
-        await handleSuccessfulConversion(response);
-      } catch (error) {
-        handleConversionError(error);
-      }
-    }
-
-    function getSelectedOutputFormat() {
-      const selected = document.querySelector('input[name="output_format"]:checked');
-      return selected ? selected.value : 'excel';
-    }
-
-    function getFilenameFromResponse(response, fallbackName) {
-      const contentDisposition = response.headers.get('Content-Disposition');
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i);
-        if (match) {
-          const filename = decodeURIComponent(match[1] || match[2]);
-          if (filename) {
-            return filename;
-          }
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, short_name })
+        });
+        if (response.ok) {
+          closeModal('companyFormModal');
+          loadCompanies();
+        } else {
+          const err = await response.json();
+          alert(err.error || 'Failed to save company');
         }
-      }
-      return fallbackName;
+      } catch (e) { alert(e.message); }
     }
-    
-    async function requestConversion(formData) {
-      const response = await fetch('/convert_pdf', {
-        method: 'POST',
-        body: formData
+
+    async function deleteCompany(id) {
+      if (!confirm('Are you sure? This will unlink transactions from this company.')) return;
+      try {
+        const response = await fetch(`/api/companies/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          loadCompanies();
+        } else {
+          const err = await response.json();
+          alert(err.error || 'Failed to delete company');
+        }
+      } catch (e) { alert(e.message); }
+    }
+
+    async function loadHistory() {
+      const tbody = document.getElementById('historyTableBody');
+      
+      try {
+        // Load marks first for association
+        const mRes = await fetch('/api/marks');
+        const mData = await mRes.json();
+        allMarks = mData.marks || [];
+
+        const response = await fetch('/api/transactions');
+        const data = await response.json();
+        
+        if (data.error) {
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-red-500 py-8 italic font-medium">Error: ${data.error}</td></tr>`;
+          return;
+        }
+
+        allTransactions = data.transactions || [];
+        applyFilters(); 
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-red-500 py-8 italic font-medium">Fetch failed: ${error.message}</td></tr>`;
+      }
+    }
+
+    function applyFilters() {
+      const dateStart = document.getElementById('filterDateStart').value;
+      const dateEnd = document.getElementById('filterDateEnd').value;
+      const bank = document.getElementById('filterBank').value;
+      const search = document.getElementById('filterSearch').value.toLowerCase();
+      const mark = document.getElementById('filterMark').value;
+      const year = document.getElementById('filterYear').value;
+      const company = document.getElementById('filterCompany').value;
+
+      filteredTransactions = allTransactions.filter(t => {
+        const txnDate = t.txn_date.split(' ')[0]; // YYYY-MM-DD
+        const txnYear = txnDate.split('-')[0];
+
+        const dateMatch = (!year || txnYear === year) && (!dateStart || txnDate >= dateStart) && (!dateEnd || txnDate <= dateEnd);
+        const searchMatch = !search || 
+          t.description.toLowerCase().includes(search) || 
+          t.amount.toString().includes(search) ||
+          (t.company_name && t.company_name.toLowerCase().includes(search));
+        const bankMatch = !bank || t.bank_code === bank;
+        const companyMatch = !company || t.company_id === company;
+        let markMatch = true;
+        if (mark === 'marked') markMatch = !!t.mark_id;
+        else if (mark === 'unmarked') markMatch = !t.mark_id;
+        
+        return dateMatch && searchMatch && bankMatch && markMatch && companyMatch;
+      });
+
+      currentPage = 1;
+      selectedTxnIds.clear(); // Safe reset on filter change
+      updateBulkActionsBar();
+      renderHistoryTable();
+    }
+
+    function resetFilters() {
+      document.getElementById('filterDateStart').value = '';
+      document.getElementById('filterDateEnd').value = '';
+      document.getElementById('filterBank').value = '';
+      document.getElementById('filterSearch').value = '';
+      document.getElementById('filterMark').value = '';
+      document.getElementById('filterYear').value = '';
+      applyFilters();
+    }
+
+    function handleSort(key) {
+      if (sortConfig.key === key) {
+        sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortConfig.key = key;
+        sortConfig.direction = 'asc';
+      }
+      
+      ['txn_date', 'description', 'amount'].forEach(k => {
+        const el = document.getElementById(`sort-${k}`);
+        if (el) el.innerHTML = '';
       });
       
-      if (!response.ok) {
-        let message = 'Conversion failed. Please try again.';
-        let requirePassword = false;
-        
-        try {
-          const data = await response.json();
-          if (data && data.error) {
-            message = data.error;
-          }
-          if (data && data.require_password) {
-            requirePassword = true;
-          }
-        } catch (jsonError) {
-          try {
-            const text = await response.text();
-            if (text) {
-              message = text;
-            }
-          } catch (textError) {
-            console.error('Unable to read error response:', textError);
-          }
-        }
-        
-        const error = new Error(message);
-        if (requirePassword) {
-          error.requirePassword = true;
-        }
-        throw error;
+      const currentIndicator = document.getElementById(`sort-${key}`);
+      if (currentIndicator) {
+        currentIndicator.innerHTML = sortConfig.direction === 'asc' ? 
+          '<i class="bi bi-sort-up text-indigo-500 ml-1"></i>' : 
+          '<i class="bi bi-sort-down text-indigo-500 ml-1"></i>';
       }
+
+      renderHistoryTable();
+    }
+
+    // Bulk Logic / Selection
+    function toggleSelectAll() {
+        const master = document.getElementById('selectAllCheckbox');
+        // Select only visible checkboxes
+        const checkboxes = document.querySelectorAll('.txn-checkbox');
+        
+        if (master.checked) {
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                selectedTxnIds.add(cb.value);
+            });
+        } else {
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+                selectedTxnIds.delete(cb.value);
+            });
+        }
+        updateBulkActionsBar();
+    }
+
+    function handleCheckboxChange(el) {
+        if (el.checked) {
+            selectedTxnIds.add(el.value);
+        } else {
+            selectedTxnIds.delete(el.value);
+            document.getElementById('selectAllCheckbox').checked = false;
+        }
+        updateBulkActionsBar();
+    }
+
+    function updateBulkActionsBar() {
+        const bar = document.getElementById('bulkActionsBar');
+        const countSpan = document.getElementById('selectedCount');
+        const count = selectedTxnIds.size;
+        
+        if (countSpan) countSpan.textContent = count;
+        if (bar) {
+            if (count > 0) bar.classList.remove('hidden');
+            else bar.classList.add('hidden');
+        }
+    }
+
+    function deselectAll() {
+        selectedTxnIds.clear();
+        const master = document.getElementById('selectAllCheckbox');
+        if (master) master.checked = false;
+        const checkboxes = document.querySelectorAll('.txn-checkbox');
+        checkboxes.forEach(cb => cb.checked = false);
+        updateBulkActionsBar();
+    }
+
+    function openBulkMarkModal() {
+        if (selectedTxnIds.size === 0) return;
+        getModal('selectMarkModal').show();
+        document.getElementById('pendingTxnId').value = 'BULK';
+        
+        let commonMarkId = null;
+        let first = true;
+        let uniform = true;
+        
+        // Find common mark
+        for (let id of selectedTxnIds) {
+             const txn = allTransactions.find(t => t.id === id);
+             if (txn) {
+                 if (first) {
+                     commonMarkId = txn.mark_id;
+                     first = false;
+                 } else {
+                     if (txn.mark_id !== commonMarkId) {
+                         uniform = false;
+                         break;
+                     }
+                 }
+             }
+        }
+        
+        const selector = document.getElementById('markSelector');
+        const preSelect = (uniform && commonMarkId) ? commonMarkId : '';
+        
+        selector.innerHTML = '<option value="">-- Apply to All Selected or Clear --</option>' + 
+          allMarks.map(m => `<option value="${m.id}" ${m.id === preSelect ? 'selected' : ''}>I: ${m.internal_report.substring(0,25)}... | P: ${m.personal_use.substring(0,20)}...</option>`).join('');
+    }
+
+    function renderHistoryTable() {
+      const tbody = document.getElementById('historyTableBody');
+      const emptyState = document.getElementById('historyEmptyState');
+      const table = document.getElementById('mainHistoryTable');
       
-      return response;
-    }
+      const sortedData = [...filteredTransactions].sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        
+        if (sortConfig.key === 'amount') {
+          valA = parseFloat(valA);
+          valB = parseFloat(valB);
+        }
 
-    async function handleSuccessfulConversion(response) {
-      const outputFormat = getSelectedOutputFormat();
-      const fallbackFilename = `${bankType.value || 'statement'}_statement.${outputFormat === 'csv' ? 'csv' : 'xlsx'}`;
-      const downloadName = getFilenameFromResponse(response, fallbackFilename);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = downloadName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      loading.style.display = 'none';
-      successMessage.style.display = 'block';
-      errorDiv.style.display = 'none';
-      fileInput.value = '';
-      fileName.textContent = '';
-      currentFile = null;
-      isPasswordProtected = false;
-      document.getElementById('pdfPassword').value = '';
-      setTimeout(() => {
-        successMessage.style.display = 'none';
-      }, 3000);
-    }
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
 
-    function handleConversionError(error) {
-      loading.style.display = 'none';
-      const message = error && error.message ? error.message : 'An unexpected error occurred.';
-      const needsPassword = Boolean(error && error.requirePassword);
+      const total = sortedData.length;
+      document.getElementById('totalRecords').textContent = total;
+      
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, total);
+      
+      document.getElementById('pageStartIndex').textContent = total === 0 ? 0 : startIndex + 1;
+      document.getElementById('pageEndIndex').textContent = endIndex;
 
-      if (currentFile && (needsPassword || message.toLowerCase().includes('password'))) {
-        isPasswordProtected = true;
-        showPasswordModal(message);
-        errorDiv.style.display = 'none';
-        return;
+      const pageData = sortedData.slice(startIndex, endIndex);
+
+      // Check Select All status for this page
+      const allOnPageSelected = pageData.length > 0 && pageData.every(t => selectedTxnIds.has(t.id));
+      const masterCheckbox = document.getElementById('selectAllCheckbox');
+      if (masterCheckbox) masterCheckbox.checked = allOnPageSelected;
+
+      if (total === 0) {
+        table.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        tbody.innerHTML = '';
+      } else {
+        table.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        
+        tbody.innerHTML = pageData.map(t => {
+          const amountClass = t.db_cr === 'CR' ? 'text-green-600 font-bold' : 'text-red-500 font-bold';
+          const bankName = t.bank_code.replace('_CC', ' CC');
+          const currentMark = allMarks.find(m => m.id === t.mark_id);
+          const markDisplay = currentMark ? 
+            `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 cursor-help" title="I: ${currentMark.internal_report}\nP: ${currentMark.personal_use}\nT: ${currentMark.tax_report}" onclick="showSelectMarkModal('${t.id}', '${t.mark_id || ''}')"><i class="bi bi-bookmark-fill me-1"></i>Marked</span>` : 
+            `<button class="text-xs text-indigo-600 hover:text-indigo-900 font-medium px-3 py-1 border border-indigo-200 rounded hover:bg-indigo-50 transition-colors" onclick="showSelectMarkModal('${t.id}', '${t.mark_id || ''}')">Assign Mark</button>`;
+          
+          const isChecked = selectedTxnIds.has(t.id) ? 'checked' : '';
+
+          const row = `
+          <tr class="hover:bg-gray-50/80 transition-colors group">
+            <td class="px-3 py-2 text-center bg-gray-50/30">
+                <input type="checkbox" class="txn-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" value="${t.id}" ${isChecked} onchange="handleCheckboxChange(this)">
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+              ${formatDate(t.txn_date)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ${t.company_short_name || t.company_name || '<span class="text-gray-300 italic">None</span>'}
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title="${t.description}">
+              ${t.description}
+            </td>
+              <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-mono ${amountClass}">${new Intl.NumberFormat('id-ID').format(t.amount)}</td>
+              <td class="px-2 py-2 whitespace-nowrap text-center text-xs">
+                <span class="px-2 py-1 rounded ${t.db_cr === 'CR' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'} font-semibold border ${t.db_cr === 'CR' ? 'border-green-200' : 'border-orange-200'}">
+                  ${t.db_cr}
+                </span>
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-600 font-medium uppercase">${bankName}</td>
+              <td class="px-3 py-2 whitespace-nowrap text-center text-sm">${markDisplay}</td>
+              <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-400 font-medium" title="${t.source_file}">${t.source_file.length > 15 ? t.source_file.substring(0, 12) + '...' : t.source_file}</td>
+              <td class="px-3 py-2 whitespace-nowrap text-center">
+                <div class="flex justify-center gap-1">
+                    <button class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Details" onclick="viewTransactionDetails('${t.id}')">
+                        <i class="bi bi-eye-fill"></i>
+                    </button>
+                    <button class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete" onclick="deleteTransaction('${t.id}')">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </div>
+              </td>
+            </tr>
+          `;
+          return row;
+        }).join('');
       }
 
-      errorDiv.textContent = message;
-      errorDiv.style.display = 'block';
+      renderPagination(total);
     }
 
-    document.getElementById('pdfForm').onsubmit = async (e) => {
-      e.preventDefault();
-      errorDiv.style.display = 'none';
-      loading.style.display = 'block';
-      successMessage.style.display = 'none';
+    function renderPagination(total) {
+      const controls = document.getElementById('paginationControls');
+      const totalPages = Math.ceil(total / itemsPerPage);
+      let html = '';
 
-      currentFile = fileInput.files[0];
-      if (!currentFile) return;
+      // Previous button
+      html += `
+        <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}">
+          <span class="sr-only">Previous</span>
+          <i class="bi bi-chevron-left"></i>
+        </button>
+      `;
+
+      // Page numbers (limited)
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, startPage + 4);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        html += `
+          <button onclick="changePage(${i})" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium ${i === currentPage ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'text-gray-700 hover:bg-gray-50'}">
+            ${i}
+          </button>
+        `;
+      }
+
+      // Next button
+      html += `
+        <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages || total === 0 ? 'disabled' : ''} class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${currentPage === totalPages || total === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+          <span class="sr-only">Next</span>
+          <i class="bi bi-chevron-right"></i>
+        </button>
+      `;
+
+      controls.innerHTML = html;
+    }
+
+    function changePage(page) {
+      const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      renderHistoryTable();
+    }
+
+    function changeItemsPerPage(val) {
+      itemsPerPage = parseInt(val);
+      currentPage = 1;
+      renderHistoryTable();
+    }
+
+    async function showManageMarksModal() {
+      openModal('manageMarksModal');
+      refreshMarksTable();
+    }
+
+    async function refreshMarksTable() {
+      const tbody = document.getElementById('marksTableBody');
+      const res = await fetch('/api/marks');
+      const data = await res.json();
+      allMarks = data.marks || [];
+      
+      tbody.innerHTML = allMarks.map(m => `
+        <tr class="hover:bg-gray-50">
+          <td class="px-6 py-4 text-sm text-gray-700 font-medium">${m.internal_report}</td>
+          <td class="px-6 py-4 text-sm text-gray-600">${m.personal_use}</td>
+          <td class="px-6 py-4 text-sm text-gray-600">${m.tax_report}</td>
+          <td class="px-6 py-4 text-right whitespace-nowrap text-sm font-medium">
+            <button class="text-indigo-600 hover:text-indigo-900 mr-3" onclick="showMarkForm('${m.id}')">Edit</button>
+            <button class="text-red-500 hover:text-red-700" onclick="deleteMark('${m.id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function showMarkForm(id = null) {
+      openModal('markFormModal');
+      document.getElementById('markFormTitle').textContent = id ? 'Edit Reporting Mark' : 'Add New Reporting Mark';
+      document.getElementById('editMarkId').value = id || '';
+      
+      if (id) {
+        const mark = allMarks.find(m => m.id === id);
+        document.getElementById('markInternal').value = mark.internal_report;
+        document.getElementById('markPersonal').value = mark.personal_use;
+        document.getElementById('markTax').value = mark.tax_report;
+      } else {
+        document.getElementById('markInternal').value = '';
+        document.getElementById('markPersonal').value = '';
+        document.getElementById('markTax').value = '';
+      }
+    }
+
+    async function saveMark() {
+      const id = document.getElementById('editMarkId').value;
+      const data = {
+        internal_report: document.getElementById('markInternal').value,
+        personal_use: document.getElementById('markPersonal').value,
+        tax_report: document.getElementById('markTax').value
+      };
+
+      const url = id ? `/api/marks/${id}` : '/api/marks';
+      const method = id ? 'PUT' : 'POST';
 
       try {
-        isPasswordProtected = await checkPasswordProtection(currentFile);
-        if (isPasswordProtected) {
-          showPasswordModal();
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          closeModal('markFormModal');
+          refreshMarksTable();
+          loadHistory(); // Refresh main table
         } else {
-          const formData = new FormData(e.target);
-          formData.set('output_format', getSelectedOutputFormat());
-          loading.style.display = 'block';
-          errorDiv.style.display = 'none';
-          
-          const response = await requestConversion(formData);
-          await handleSuccessfulConversion(response);
+           const err = await res.json();
+           alert(err.error || 'Save failed');
         }
-      } catch (error) {
-        handleConversionError(error);
-      }
-    };
-  </script>
-</body>
+      } catch (e) { alert(e.message); }
+    }
 
+    async function deleteMark(id) {
+      if (!confirm('Are you sure you want to delete this mark?')) return;
+      try {
+        const res = await fetch(`/api/marks/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          refreshMarksTable();
+          loadHistory();
+        } else {
+          const err = await res.json();
+          alert(err.error || 'Delete failed');
+        }
+      } catch (e) { alert(e.message); }
+    }
+
+    function viewTransactionDetails(id) {
+        const t = allTransactions.find(x => x.id === id);
+        if (!t) return;
+        
+        const currentMark = allMarks.find(m => m.id === t.mark_id);
+        const detailsContent = document.getElementById('detailsContent');
+        const amountClass = t.db_cr === 'CR' ? 'text-green-600' : 'text-red-600';
+        
+        detailsContent.innerHTML = `
+        <div class="grid grid-cols-2 gap-y-4 gap-x-6">
+          <div class="space-y-1">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date</p>
+            <p class="text-sm font-semibold text-gray-900">${formatDate(t.txn_date)}</p>
+          </div>
+          <div class="space-y-1">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Company</p>
+            <p class="text-sm font-semibold text-gray-900">
+              ${t.company_name || '-'} ${t.company_short_name ? `(${t.company_short_name})` : ''}
+            </p>
+          </div>
+          <div class="space-y-1">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Amount</p>
+            <p class="text-sm font-bold ${t.db_cr === 'CR' ? 'text-green-600' : 'text-red-600'}">
+              ${t.db_cr === 'CR' ? '+' : '-'}${formatAmount(t.amount)}
+            </p>
+          </div>
+          <div class="space-y-1">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bank</p>
+            <p class="text-sm text-gray-700">${t.bank_code.replace('_CC', ' Credit Card')}</p>
+          </div>
+          <div class="col-span-2 space-y-1">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Description</p>
+            <p class="text-sm text-gray-700 leading-relaxed">${t.description}</p>
+          </div>
+          <div class="col-span-2 space-y-1">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Source File</p>
+            <p class="text-xs text-gray-400 truncate">${t.source_file}</p>
+          </div>
+        </div>
+            <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                <div class="text-xs font-bold text-indigo-400 uppercase mb-2">Category Marks</div>
+                ${currentMark ? `
+                    <div class="space-y-2">
+                        <div><p class="text-[10px] text-gray-500 uppercase font-bold">Internal</p><p class="text-sm font-medium">${currentMark.internal_report}</p></div>
+                        <div><p class="text-[10px] text-gray-500 uppercase font-bold">Personal</p><p class="text-sm font-medium">${currentMark.personal_use}</p></div>
+                        <div><p class="text-[10px] text-gray-500 uppercase font-bold">Tax</p><p class="text-sm font-medium">${currentMark.tax_report}</p></div>
+                    </div>
+                ` : '<p class="text-sm text-gray-500 italic">No marks assigned to this transaction.</p>'}
+                <button class="mt-3 text-xs font-bold text-indigo-600 hover:text-indigo-800" onclick="showSelectMarkModal('${t.id}', '${t.mark_id || ''}')">
+                    <i class="bi bi-tag-fill me-1"></i> ${currentMark ? 'Change Mark' : 'Assign Mark'}
+                </button>
+            </div>
+        `;
+        
+        const deleteBtn = document.getElementById('deleteBtnModal');
+        deleteBtn.onclick = () => deleteTransaction(t.id);
+        
+        openModal('detailsModal');
+    }
+
+    async function deleteTransaction(id) {
+        if (!confirm('Are you sure you want to delete this transaction permanently?')) return;
+        
+        try {
+            const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                closeModal('detailsModal');
+                loadHistory();
+            } else {
+                const err = await res.json();
+                alert('Delete failed: ' + (err.error || 'Unknown error'));
+            }
+        } catch (e) { alert(e.message); }
+    }
+
+    async function bulkDelete() {
+        if (selectedTxnIds.size === 0) return;
+        if (!confirm(`Are you sure you want to delete ${selectedTxnIds.size} transactions permanently?`)) return;
+        
+        try {
+            const res = await fetch('/api/transactions/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transaction_ids: Array.from(selectedTxnIds) })
+            });
+            if (res.ok) {
+                deselectAll();
+                loadHistory();
+            } else {
+                const err = await res.json();
+                alert('Bulk delete failed: ' + (err.error || 'Unknown error'));
+            }
+        } catch (e) { alert(e.message); }
+    }
+
+    function showSelectMarkModal(txnId, currentMarkId) {
+      openModal('selectMarkModal');
+      document.getElementById('pendingTxnId').value = txnId;
+      const selector = document.getElementById('markSelector');
+      selector.innerHTML = '<option value="">-- No Mark (Clear) --</option>' + 
+        allMarks.map(m => `<option value="${m.id}" ${m.id === currentMarkId ? 'selected' : ''}>I: ${m.internal_report.substring(0,20)}... | P: ${m.personal_use.substring(0,20)}...</option>`).join('');
+    }
+
+    async function applyMarkToTransaction() {
+      const txnId = document.getElementById('pendingTxnId').value;
+      const markId = document.getElementById('markSelector').value || null;
+      
+      // BULK UPDATE
+      if (txnId === 'BULK') {
+          try {
+              const res = await fetch('/api/transactions/bulk-mark', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({ 
+                       transaction_ids: Array.from(selectedTxnIds), 
+                       mark_id: markId 
+                   })
+              });
+              
+              if (res.ok) {
+                   closeModal('selectMarkModal');
+                   // Clear selection and update UI
+                   selectedTxnIds.clear();
+                   updateBulkActionsBar();
+                   loadHistory();
+              } else {
+                   const err = await res.json();
+                   alert('Bulk update failed: ' + (err.error || 'Unknown error'));
+              }
+          } catch(e) { 
+              alert('Error applying bulk mark: ' + e.message); 
+          }
+          return;
+      }
+      
+      // SINGLE UPDATE
+      try {
+        const res = await fetch(`/api/transactions/${txnId}/mark`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mark_id: markId })
+        });
+        if (res.ok) {
+          closeModal('selectMarkModal');
+          // If details modal is open, refresh it
+          if (document.getElementById('detailsModal').classList.contains('show')) {
+              // We need to wait for loadHistory to finish or manually update detail
+              await loadHistory();
+              viewTransactionDetails(txnId);
+          } else {
+              loadHistory();
+          }
+        } else {
+          alert('Failed to apply mark');
+        }
+      } catch (e) { alert(e.message); }
+    }
+
+      const bankFormats = {
+        bca: "Format: BCA Statement with columns for Date, Description (2 parts), CBG, Mutation, and Balance",
+        mandiri:
+          "Format: Mandiri Statement with columns for Date, Description, Debit, Credit, and Balance",
+        ccbca:
+          "Format: BCA Credit Card Statement with columns for Date, Description, Amount, and Balance",
+        dbs: "Format: DBS Credit Card Statement with transaction details including Date, Description, Debit, Credit, and Balance",
+        ccmandiri:
+          "Format: Mandiri Credit Card Statement with columns for Date, Description, Amount, and Balance",
+      };
+
+      bankType.addEventListener("change", function () {
+        const selectedBank = this.value;
+        if (selectedBank in bankFormats) {
+          formatNote.textContent = bankFormats[selectedBank];
+        } else {
+          formatNote.textContent =
+            "Please select a bank to see format requirements";
+        }
+      });
+
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dropZone.addEventListener(eventName, highlight, false);
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+      });
+
+      function highlight(e) {
+        dropZone.classList.add("border-primary");
+      }
+
+      function unhighlight(e) {
+        dropZone.classList.remove("border-primary");
+      }
+
+      dropZone.addEventListener("click", () => fileInput.click());
+
+      dropZone.addEventListener("drop", handleDrop, false);
+
+      function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        fileInput.files = files;
+        updateFileName();
+      }
+
+      fileInput.addEventListener("change", updateFileName);
+
+      function updateFileName() {
+        const file = fileInput.files[0];
+        if (file) {
+          fileName.textContent = file.name;
+        } else {
+          fileName.textContent = "";
+        }
+      }
+
+      const passwordModal = document.getElementById("passwordModal");
+      let currentFile = null;
+      let isPasswordProtected = false;
+
+      // Replaced by getModal('passwordModal').show() below
+
+      async function checkPasswordProtection(file) {
+        const formData = new FormData();
+        formData.append("pdf_file", file);
+
+        try {
+          const response = await fetch("/check_password", {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await response.json();
+          return result.password_protected;
+        } catch (error) {
+          console.error("Error checking password protection:", error);
+          return false;
+        }
+      }
+
+      async function submitPassword() {
+        const password = document.getElementById("pdfPassword").value;
+        if (!password) return;
+
+        const formData = new FormData();
+        formData.append("pdf_file", currentFile);
+        formData.append("password", password);
+        formData.append("bank_type", bankType.value);
+        formData.append("company_id", document.getElementById('companySelect').value);
+        formData.append("output_format", getSelectedOutputFormat());
+        formData.append("statement_year", statementYear.value);
+        formData.append("preview", "true");
+        lastFormData = formData;
+
+        closeModal('passwordModal');
+        loading.classList.add("active");
+        errorDiv.style.display = "none";
+
+        try {
+          const response = await requestConversion(formData);
+          loading.classList.remove("active");
+          const data = await response.json();
+          showPreview(data);
+        } catch (error) {
+          console.error("Error in submitPassword:", error);
+          handleConversionError(error);
+        }
+      }
+
+      function getSelectedOutputFormat() {
+        const selected = document.querySelector(
+          'input[name="output_format"]:checked',
+        );
+        return selected ? selected.value : "excel";
+      }
+
+      function getFilenameFromResponse(response, fallbackName) {
+        const contentDisposition = response.headers.get("Content-Disposition");
+        if (contentDisposition) {
+          const match = contentDisposition.match(
+            /filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i,
+          );
+          if (match) {
+            const filename = decodeURIComponent(match[1] || match[2]);
+            if (filename) {
+              return filename;
+            }
+          }
+        }
+        return fallbackName;
+      }
+
+      async function requestConversion(formData) {
+        const response = await fetch("/convert_pdf", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          let message = "Conversion failed. Please try again.";
+          let requirePassword = false;
+
+          try {
+            // Clone response so we can try to read as JSON then fallback to text
+            const responseClone = response.clone();
+            try {
+              const data = await responseClone.json();
+              if (data && data.error) message = data.error;
+              if (data && data.require_password) requirePassword = true;
+            } catch (jsonError) {
+              const text = await response.text();
+              if (text) message = text;
+            }
+          } catch (err) {
+            console.error("Error reading error response:", err);
+          }
+
+          const error = new Error(message);
+          if (requirePassword) error.requirePassword = true;
+          throw error;
+        }
+
+        return response;
+      }
+
+      async function handleSuccessfulConversion(response) {
+        const outputFormat = getSelectedOutputFormat();
+        const fallbackFilename = `${bankType.value || "statement"}_statement.${outputFormat === "csv" ? "csv" : "xlsx"}`;
+        const downloadName = getFilenameFromResponse(
+          response,
+          fallbackFilename,
+        );
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = downloadName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        closeModal('passwordModal');
+        loading.classList.remove("active");
+        successMessage.style.display = "block";
+        errorDiv.style.display = "none";
+        fileInput.value = "";
+        fileName.textContent = "";
+        currentFile = null;
+        isPasswordProtected = false;
+        document.getElementById("pdfPassword").value = "";
+        setTimeout(() => {
+          successMessage.style.display = "none";
+        }, 3000);
+        
+        // Auto-refresh history if it was loaded
+        loadHistory();
+      }
+
+      function handleConversionError(error) {
+        closeModal('passwordModal');
+        loading.classList.remove("active");
+        const message =
+          error && error.message
+            ? error.message
+            : "An unexpected error occurred.";
+        const needsPassword = Boolean(error && error.requirePassword);
+
+        if (
+          currentFile &&
+          (needsPassword || message.toLowerCase().includes("password"))
+        ) {
+          isPasswordProtected = true;
+          showPasswordModal(message);
+          errorDiv.style.display = "none";
+          return;
+        }
+
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
+      }
+
+      document.getElementById("pdfForm").onsubmit = async (e) => {
+        e.preventDefault();
+        
+        currentFile = fileInput.files[0];
+        if (!currentFile) {
+            alert("Please select a PDF file first");
+            return;
+        }
+        if (!bankType.value) {
+            alert("Please select a bank type first");
+            return;
+        }
+
+        errorDiv.style.display = "none";
+        loading.classList.add("active");
+        successMessage.style.display = "none";
+
+        try {
+          isPasswordProtected = await checkPasswordProtection(currentFile);
+          if (isPasswordProtected) {
+            loading.classList.remove("active");
+            showPasswordModal();
+          } else {
+            const formData = new FormData(e.target);
+            formData.set("output_format", getSelectedOutputFormat());
+            formData.set("company_id", document.getElementById('companySelect').value);
+            formData.append("preview", "true");
+            lastFormData = formData;
+            errorDiv.style.display = "none";
+
+            const response = await requestConversion(formData);
+            loading.classList.remove("active");
+            const data = await response.json();
+            showPreview(data);
+          }
+        } catch (error) {
+          handleConversionError(error);
+        }
+      };
+
+      window.addEventListener('load', () => {
+        loadHistory();
+        loadCompanies();
+      });
+    </script>
+  </body>
 </html>

@@ -8,8 +8,15 @@ export default defineConfig({
     proxy: {
       '/convert_pdf': {
         target: 'http://localhost:5001',
-        changeOrigin: true,
-        rewrite: (path) => path
+        changeOrigin: true
+      },
+      '/check_password': {
+        target: 'http://localhost:5001',
+        changeOrigin: true
+      },
+      '/api': {
+        target: 'http://localhost:5001',
+        changeOrigin: true
       }
     }
   }
