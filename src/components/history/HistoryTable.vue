@@ -17,7 +17,7 @@
                 Date 
                 <i v-if="store.sortConfig.key === 'txn_date'" :class="{ 'bi-caret-down-fill': store.sortConfig.direction === 'desc', 'bi-caret-up-fill': store.sortConfig.direction === 'asc' }" class="bi ms-1"></i>
             </th>
-            <th class="text-left">Company</th>
+             <th class="text-center">Co.</th>
             <th class="cursor-pointer hover:bg-gray-100 transition-colors" @click="store.toggleSort('description')">
                 Description
                 <i v-if="store.sortConfig.key === 'description'" :class="{ 'bi-caret-down-fill': store.sortConfig.direction === 'desc', 'bi-caret-up-fill': store.sortConfig.direction === 'asc' }" class="bi ms-1"></i>
@@ -30,23 +30,22 @@
             <th>Bank</th>
             <th class="text-center">Marking</th>
             <th>Source</th>
-            <th class="text-center">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
              <tr v-if="store.isLoading">
-                 <td colspan="10" class="text-center py-12">
+                 <td colspan="9" class="text-center py-12">
                      <span class="spinner-border text-indigo-500 w-8 h-8" role="status"></span>
                  </td>
              </tr>
              <tr v-else-if="store.paginatedTransactions.length === 0">
-                 <td colspan="10" class="text-center py-12 text-gray-400">
+                 <td colspan="9" class="text-center py-12 text-gray-400">
                      <i class="bi bi-inbox text-3xl mb-2 block"></i>
                      No transactions found
                  </td>
              </tr>
-             <tr v-for="t in store.paginatedTransactions" :key="t.id" class="hover:bg-gray-50 transition-colors" :class="{ 'bg-indigo-50/50': store.selectedTxnIds.includes(t.id) }">
-                <td class="text-center">
+             <tr v-for="t in store.paginatedTransactions" :key="t.id" class="hover:bg-gray-50 transition-colors cursor-pointer" :class="{ 'bg-indigo-50/50': store.selectedTxnIds.includes(t.id) }" @click="$emit('view-details', t)">
+                <td class="text-center" @click.stop>
                     <input 
                         type="checkbox" 
                         class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
@@ -54,31 +53,22 @@
                         @change="store.toggleSelection(t.id)"
                     >
                 </td>
-                <td class="whitespace-nowrap">{{ formatDate(t.txn_date) }}</td>
-                <td class="min-w-[150px]">
-                    <select 
-                        class="text-xs border-transparent bg-transparent hover:border-gray-300 hover:bg-white rounded-md p-1 w-full focus:ring-indigo-500 transition-all"
-                        :value="t.company_id || ''"
-                        @change="store.assignCompany(t.id, $event.target.value || null)"
-                    >
-                        <option value="">-- No Company --</option>
-                        <option v-for="c in store.companies" :key="c.id" :value="c.id">
-                            {{ c.short_name }}
-                        </option>
-                    </select>
+                <td class="whitespace-nowrap text-xs">{{ formatDate(t.txn_date) }}</td>
+                <td class="whitespace-nowrap text-xs text-center font-medium text-gray-700" :title="t.company_name">
+                    {{ t.company_short_name || '-' }}
                 </td>
-                <td class="max-w-xs truncate" :title="t.description">{{ t.description }}</td>
-                <td class="text-right font-mono font-bold" :class="t.db_cr === 'CR' ? 'text-green-600' : 'text-red-500'">
+                <td class="text-xs break-words max-w-[200px] leading-tight" :title="t.description">{{ t.description }}</td>
+                <td class="text-right font-mono font-bold text-sm" :class="t.db_cr === 'CR' ? 'text-green-600' : 'text-red-500'">
                     {{ formatAmount(t.amount) }}
                 </td>
                 <td class="text-center">
-                    <span class="px-2 py-0.5 rounded-full text-xs font-bold"
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
                      :class="t.db_cr === 'CR' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
                      {{ t.db_cr }}
                    </span>
                 </td>
-                <td>{{ t.bank_code }}</td>
-                <td class="min-w-[180px]">
+                <td class="text-xs">{{ t.bank_code }}</td>
+                <td class="min-w-[150px]" @click.stop>
                     <select 
                         class="text-xs border-transparent bg-transparent hover:border-gray-300 hover:bg-white rounded-md p-1 w-full focus:ring-indigo-500 transition-all"
                         :value="t.mark_id || ''"
@@ -90,23 +80,27 @@
                         </option>
                     </select>
                 </td>
-                <td class="text-xs text-gray-400 truncate max-w-[100px]" :title="t.source_file">{{ t.source_file }}</td>
-                <td class="text-center">
-                    <button class="text-indigo-600 hover:text-indigo-900 transition-colors" 
-                        @click="$emit('view-details', t)"
-                        title="View Details"
-                    >
-                        <i class="bi bi-eye-fill"></i>
-                    </button>
-                    <button class="text-red-600 hover:text-red-900 ml-3 transition-colors" 
-                        @click="promptDelete(t)"
-                        title="Delete Transaction"
-                    >
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
-                </td>
+                <td class="text-[10px] text-gray-400 truncate max-w-[80px]" :title="t.source_file">{{ t.source_file }}</td>
              </tr>
         </tbody>
+        <tfoot v-if="!store.isLoading && store.filteredTransactions.length > 0" class="bg-gray-50/50 border-t-2 border-gray-100">
+            <tr class="font-mono text-xs">
+                <td colspan="4" class="py-2 text-right font-bold text-gray-500 uppercase tracking-tighter">Page Total (Net)</td>
+                <td class="text-right font-bold py-2" :class="store.pageTotal >= 0 ? 'text-green-600' : 'text-red-500'">
+                    {{ formatAmount(Math.abs(store.pageTotal)) }}
+                    <span class="text-[10px]">{{ store.pageTotal >= 0 ? 'CR' : 'DB' }}</span>
+                </td>
+                <td colspan="4"></td>
+            </tr>
+            <tr class="font-mono text-xs">
+                <td colspan="4" class="py-2 text-right font-bold text-gray-700 uppercase tracking-tighter">Total Based on Filter (Net)</td>
+                <td class="text-right font-black py-2 border-t border-gray-200" :class="store.filteredTotal >= 0 ? 'text-green-700' : 'text-red-600'">
+                    {{ formatAmount(Math.abs(store.filteredTotal)) }}
+                    <span class="text-[10px]">{{ store.filteredTotal >= 0 ? 'CR' : 'DB' }}</span>
+                </td>
+                <td colspan="4"></td>
+            </tr>
+        </tfoot>
       </table>
     </div>
 

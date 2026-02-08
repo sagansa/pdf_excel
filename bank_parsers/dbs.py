@@ -4,7 +4,14 @@ import re
 import os
 from datetime import datetime
 
-def parse_statement(pdf_path, password=None):
+# Define Month Map for DBS
+MONTH_MAP_DBS = {
+    'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'MEI': 5,
+    'JUN': 6, 'JUL': 7, 'AUG': 8, 'AGT': 8, 'SEP': 9, 'OCT': 10, 'OKT': 10,
+    'NOV': 11, 'DEC': 12, 'DES': 12
+}
+
+def parse_statement(pdf_path, password=None, target_year=None):
     conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     transactions = []
     header_found = False
@@ -43,13 +50,6 @@ def parse_statement(pdf_path, password=None):
                 
                 # Sort rows by y-position
                 sorted_rows = sorted(rows.items())
-                
-                # Define Month Map for DBS
-                MONTH_MAP_DBS = {
-                    'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'MEI': 5,
-                    'JUN': 6, 'JUL': 7, 'AUG': 8, 'AGT': 8, 'SEP': 9, 'OCT': 10, 'OKT': 10,
-                    'NOV': 11, 'DEC': 12, 'DES': 12
-                }
 
                 for y, row_words in sorted_rows:
                     # Sort words in row by x-position
@@ -169,9 +169,23 @@ def parse_statement(pdf_path, password=None):
         raise ValueError("No transaction data found in the PDF. Please ensure this is a valid DBS statement")
 
     full_text = '\n'.join([page.extract_text() or '' for page in pdf.pages])
+    
+    # Debug logging
+    with open('debug_dbs.log', 'w') as f:
+        f.write(f"Starting DBS parse - target_year: {target_year}\n")
+        f.write(f"Full text snippet (first 1000 chars): {full_text[:1000]}\n")
+    
     account_no = _extract_account_number(full_text)
     currency = _extract_currency(full_text) or 'IDR'
-    extracted_year = _extract_year(full_text) or datetime.now().year
+    
+    # Extract statement date (day, month, year)
+    st_day, st_month, st_year = _extract_statement_date(full_text)
+    extracted_year = target_year or st_year or datetime.now().year
+    
+    with open('debug_dbs.log', 'a') as f:
+        f.write(f"Extracted statement info: day={st_day}, month={st_month}, year={st_year}\n")
+        f.write(f"Final extracted_year: {extracted_year}\n")
+    
     bank_code = 'DBS'
     source_file = os.path.basename(pdf_path)
 
@@ -179,10 +193,6 @@ def parse_statement(pdf_path, password=None):
     current_year = extracted_year
     last_month = None  # Track last month for year rollover detection
     first_transaction = True  # Flag to check first transaction
-    
-    # Debug logging
-    with open('debug_dbs.log', 'w') as f:
-        f.write(f"Starting DBS parse - extracted_year: {extracted_year}\n")
     
     for entry in transactions:
         raw_date = entry.get('Transaction Date', '').strip()
@@ -195,25 +205,39 @@ def parse_statement(pdf_path, password=None):
             except:
                 pass
         
-        # Adjust starting year if first transaction is in Oct-Dec
-        # This means the statement period ended in those months of previous year
+        # Adjust starting year logic
+        # If the first transaction month is significantly ahead of the statement month, 
+        # it likely belongs to the previous year (e.g. Dec transaction in a Jan statement).
         if first_transaction and month_num is not None:
-            if month_num >= 10:  # Oct, Nov, Dec
-                current_year -= 1
-                with open('debug_dbs.log', 'a') as f:
-                    f.write(f"First transaction in month {month_num} (Oct-Dec), adjusting year to {current_year}\n")
+            if st_month is not None:
+                # If transaction month is greater than statement month, it's from previous year
+                if month_num > st_month:
+                    current_year -= 1
+                    with open('debug_dbs.log', 'a') as f:
+                        f.write(f"First txn month {month_num} > statement month {st_month}, adjusting year to {current_year}\n")
+            else:
+                # Fallback: only subtract if it's Oct-Dec AND we don't have a clear year info
+                # This is less reliable but keeps some safety if statement date is missed.
+                # HOWEVER, if target_year is provided, we should be careful.
+                if target_year is None and month_num >= 10:
+                    current_year -= 1
+                    with open('debug_dbs.log', 'a') as f:
+                        f.write(f"No statement month, but month {month_num} >= 10, adjusting year to {current_year}\n")
+            
             first_transaction = False
         
-        # Year rollover detection for DESCENDING order (newest first)
-        # Start with statement year, decrement when crossing year boundary
-        # Example: Jan 2025 → Jan 2025, then when we see Dec → Dec 2024
+        # Year rollover detection
         if last_month is not None and month_num is not None:
-            # Detect year boundary: month jumps from small (1-3) to large (10-12)
-            # This indicates we crossed from Jan/Feb/Mar to Dec/Nov/Oct of previous year
-            if month_num >= 10 and last_month <= 3:
-                # Crossed year boundary going backwards
+            # Detect year boundary: 
+            # 1. Going forward (Ascending): month jumps from large (10-12) to small (1-3)
+            if month_num <= 3 and last_month >= 10:
                 with open('debug_dbs.log', 'a') as f:
-                    f.write(f"Year rollover detected: last_month={last_month}, month_num={month_num}, decrementing year from {current_year} to {current_year-1}\n")
+                    f.write(f"Year rollover detected (ASCENDING): last_month={last_month}, month_num={month_num}, incrementing year from {current_year} to {current_year+1}\n")
+                current_year += 1
+            # 2. Going backward (Descending): month jumps from small (1-3) to large (10-12)
+            elif month_num >= 10 and last_month <= 3:
+                with open('debug_dbs.log', 'a') as f:
+                    f.write(f"Year rollover detected (DESCENDING): last_month={last_month}, month_num={month_num}, decrementing year from {current_year} to {current_year-1}\n")
                 current_year -= 1
         
         if month_num is not None:
@@ -264,14 +288,34 @@ def _extract_currency(text: str) -> str:
     if 'IDR' in text: return 'IDR'
     return 'IDR'
 
-def _extract_year(text: str) -> int | None:
-    match = re.search(r'Statement\s+Date\s*:\s*\d{1,2}\s+[A-Za-z]+\s+(\d{4})', text, re.IGNORECASE)
+def _extract_statement_date(text: str) -> tuple[int | None, int | None, int | None]:
+    """Extracts (day, month, year) from header text"""
+    # 1. Look for 'Statement Date : DD MMM YYYY'
+    match = re.search(r'Statement\s+Date\s*:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})', text, re.IGNORECASE)
     if match:
-        return int(match.group(1))
+        day = int(match.group(1))
+        m_str = match.group(2).upper()[:3]
+        year = int(match.group(3))
+        month = MONTH_MAP_DBS.get(m_str)
+        return day, month, year
+    
+    # 2. Look for numeric date patterns (MM/DD/YYYY or DD/MM/YYYY)
+    # DBS often has a date range at the top like 01/19/2025 to 02/04/2025
+    # We take the first full date as a hint for the "current" statement month/year
+    date_matches = re.finditer(r'(\d{2})/(\d{2})/(\d{4})', text)
+    for match in date_matches:
+        v1 = int(match.group(1))
+        v2 = int(match.group(2))
+        year = int(match.group(3))
+        # DBS is usually US format: MM/DD/YYYY
+        if 1 <= v1 <= 12 and 1 <= v2 <= 31:
+            month, day = v1, v2
+            return day, month, year
+    
+    # 3. Fallback for just year
     years = re.findall(r'(?:19|20)\d{2}', text)
-    if years:
-        return int(years[0])
-    return None
+    year = int(years[0]) if years else None
+    return None, None, year
 
 def _convert_dbs_date(raw: str, year: int) -> str:
     if not raw: return ''

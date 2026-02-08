@@ -9,12 +9,14 @@ export const useConverterStore = defineStore('converter', {
     error: null,
     successMessage: null,
     isPasswordProtected: false,
-    requiresPassword: false
+    requiresPassword: false,
+    pdfPassword: null
   }),
   
   actions: {
     setFile(file) {
       this.file = file;
+      this.pdfPassword = null;
       this.error = null;
       this.successMessage = null;
     },
@@ -26,7 +28,11 @@ export const useConverterStore = defineStore('converter', {
         const response = await converterApi.uploadFile(formData);
         return response.data;
       } catch (err) {
-        this.error = err.response?.data?.error || err.message;
+        const errorMsg = err.response?.data?.error || err.message || '';
+        if (err.response?.data?.require_password || errorMsg.toLowerCase().includes('password')) {
+            this.requiresPassword = true;
+        }
+        this.error = errorMsg;
         throw err;
       } finally {
         this.isLoading = false;
@@ -40,7 +46,7 @@ export const useConverterStore = defineStore('converter', {
             return response.data;
         } catch (err) {
             console.error(err);
-            return { param_protected: false };
+            return { password_protected: false };
         } finally {
             this.isLoading = false;
         }
@@ -56,7 +62,11 @@ export const useConverterStore = defineStore('converter', {
             this.successMessage = "Conversion & DB Sync successful!";
             return response.data;
         } catch (err) {
-            this.error = err.response?.data?.error || err.message;
+            const errorMsg = err.response?.data?.error || err.message || '';
+        if (err.response?.data?.require_password || errorMsg.toLowerCase().includes('password')) {
+            this.requiresPassword = true;
+        }
+        this.error = errorMsg;
             throw err;
         } finally {
             this.isLoading = false;

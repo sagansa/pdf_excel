@@ -32,8 +32,14 @@ export const historyApi = {
   getTransactions() {
     return api.get('/transactions');
   },
+  getUploadSummary() {
+    return api.get('/transactions/upload-summary');
+  },
   deleteTransaction(id) {
     return api.delete(`/transactions/${id}`);
+  },
+  deleteBySourceFile(source_file, bank_code, company_id) {
+    return api.post('/transactions/delete-by-source', { source_file, bank_code, company_id });
   },
   bulkDelete(ids) {
     return api.post('/transactions/bulk-delete', { transaction_ids: ids });
@@ -49,6 +55,9 @@ export const historyApi = {
   },
   bulkAssignCompany(ids, companyId) {
     return api.post('/transactions/bulk-assign-company', { transaction_ids: ids, company_id: companyId });
+  },
+  updateNotes(txnId, notes) {
+    return api.put(`/transactions/${txnId}/notes`, { notes });
   }
 };
 
@@ -69,7 +78,7 @@ export const companyApi = {
 
 export const marksApi = {
   getMarks() {
-    return api.get('/marks');
+      return api.get('/marks');
   },
   createMark(data) {
       return api.post('/marks', data);
@@ -82,5 +91,34 @@ export const marksApi = {
   },
   assignMark(txnId, markId) {
       return api.post(`/transactions/${txnId}/assign-mark`, { mark_id: markId });
+  }
+};
+
+export const filterApi = {
+  getFilters(viewName) {
+    return api.get(`/filters/${viewName}`);
+  },
+  saveFilters(viewName, filters) {
+    return api.post('/filters', { view_name: viewName, filters });
+  }
+};
+
+export const reportsApi = {
+  getIncomeStatement(startDate, endDate, companyId) {
+    const params = { start_date: startDate, end_date: endDate };
+    if (companyId) params.company_id = companyId;
+    return api.get('/reports/income-statement', { params });
+  },
+  getMonthlyRevenue(year, companyId) {
+    const params = { year };
+    if (companyId) params.company_id = companyId;
+    return api.get('/reports/monthly-revenue', { params });
+  },
+  getInventoryBalances(year, companyId) {
+    const params = { year, company_id: companyId };
+    return api.get('/inventory-balances', { params });
+  },
+  saveInventoryBalances(data) {
+    return api.post('/inventory-balances', data);
   }
 };
