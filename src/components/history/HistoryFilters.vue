@@ -72,19 +72,12 @@
     <!-- Mark Status -->
     <div class="space-y-1">
         <label class="label-base text-[10px]">Mark Status</label>
-        <select class="input-base !py-1.5 !text-xs"
-             :value="store.filters.markStatus"
-             @change="store.setFilter('markStatus', $event.target.value)"
-        >
-            <option value="">All Transactions</option>
-            <option value="marked">Marked Only</option>
-            <option value="unmarked">Unmarked Only</option>
-            <optgroup label="Specific Marks">
-                <option v-for="m in store.sortedMarks" :key="m.id" :value="m.id">
-                    {{ m.personal_use }}
-                </option>
-            </optgroup>
-        </select>
+        <MultiSelect 
+            :model-value="store.filters.markStatus"
+            :options="markOptions"
+            placeholder="All Marks"
+            @update:model-value="store.setFilter('markStatus', $event)"
+        />
     </div>
 
     <!-- Company -->
@@ -128,7 +121,25 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useHistoryStore } from '../../stores/history';
+import MultiSelect from '../ui/MultiSelect.vue';
 
 const store = useHistoryStore();
+
+const markOptions = computed(() => {
+    const options = [
+        { id: 'marked', label: 'Marked Only' },
+        { id: 'unmarked', label: 'Unmarked Only' }
+    ];
+    
+    store.sortedMarks.forEach(m => {
+        options.push({
+            id: m.id.toString(),
+            label: m.personal_use
+        });
+    });
+    
+    return options;
+});
 </script>
