@@ -7,6 +7,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from bank_parsers import bca, mandiri, dbs, bca_cc, mandiri_cc, bri, saqu, blu
 import pandas as pd
+import io
+import xml.etree.ElementTree as ET
 import pdfplumber
 from flask_cors import CORS
 import PyPDF2
@@ -461,21 +463,24 @@ def convert_pdf():
         if output_format not in {'excel', 'csv'}:
             output_format = 'excel'
 
+        is_preview = request.form.get('preview', 'false').lower() == 'true'
+        
         if is_pdf:
             file_content = file.read()
             file_hash = hashlib.md5(file_content).hexdigest()
             file.seek(0) # Reset file pointer for saving
             
-            # Check for existing file_hash in DB
-            engine, error_msg = get_db_engine()
-            if engine:
-                try:
-                    with engine.connect() as conn:
-                        existing = conn.execute(text("SELECT id FROM transactions WHERE file_hash = :hash LIMIT 1"), {"hash": file_hash}).fetchone()
-                        if existing:
-                            return {'error': 'This file has already been uploaded.'}, 409, {'Content-Type': 'application/json'}
-                except Exception as e:
-                    print(f"Hash check failed: {e}")
+            # Check for existing file_hash in DB (only if NOT a preview)
+            if not is_preview:
+                engine, error_msg = get_db_engine()
+                if engine:
+                    try:
+                        with engine.connect() as conn:
+                            existing = conn.execute(text("SELECT id FROM transactions WHERE file_hash = :hash LIMIT 1"), {"hash": file_hash}).fetchone()
+                            if existing:
+                                return {'error': 'This file has already been uploaded.'}, 409, {'Content-Type': 'application/json'}
+                    except Exception as e:
+                        print(f"Hash check failed: {e}")
         else: # CSV
             file_content = file.read()
             file_hash = hashlib.md5(file_content).hexdigest()
@@ -517,11 +522,11 @@ def convert_pdf():
             if bank_key == 'mandiri':
                 df = mandiri.parse_statement(pdf_path)
             elif bank_key == 'dbs':
-                df = dbs.parse_statement(pdf_path)
+                df = dbs.parse_statement(pdf_path, target_year=inferred_year)
             elif bank_key == 'ccbca':
                 df = bca_cc.parse_statement(pdf_path, inferred_year)
             elif bank_key == 'ccmandiri':
-                df = mandiri_cc.parse_statement(pdf_path)
+                df = mandiri_cc.parse_statement(pdf_path, password=password)
             elif bank_key == 'bri':
                 # BRI uses CSV format
                 df = bri.parse_statement(pdf_path)
@@ -648,7 +653,6 @@ def get_transactions():
                 LEFT JOIN marks m ON t.mark_id = m.id 
                 LEFT JOIN companies c ON t.company_id = c.id
                 ORDER BY t.txn_date DESC, t.created_at DESC
-                LIMIT 500
             """)
             result = conn.execute(query)
             transactions = []
@@ -665,6 +669,80 @@ def get_transactions():
     except Exception as e:
         return {'error': str(e)}, 500
 
+@app.route('/api/transactions/upload-summary', methods=['GET'])
+def get_upload_summary():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    
+    try:
+        with engine.connect() as conn:
+            query = text("""
+                SELECT t.source_file, 
+                       COUNT(*) as transaction_count, 
+                       MIN(t.txn_date) as start_date, 
+                       MAX(t.txn_date) as end_date,
+                       t.bank_code,
+                       c.name as company_name,
+                       t.company_id,
+                       SUM(CASE WHEN t.db_cr = 'DB' THEN t.amount ELSE 0 END) as total_debit,
+                       SUM(CASE WHEN t.db_cr = 'CR' THEN t.amount ELSE 0 END) as total_credit,
+                       MAX(t.created_at) as last_upload
+                FROM transactions t
+                LEFT JOIN companies c ON t.company_id = c.id
+                GROUP BY t.source_file, t.bank_code, t.company_id
+                ORDER BY last_upload DESC
+            """)
+            result = conn.execute(query)
+            summary = []
+            for row in result:
+                d = dict(row._mapping)
+                for key, value in d.items():
+                    if isinstance(value, datetime):
+                        d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                    elif isinstance(value, Decimal):
+                        d[key] = float(value)
+                summary.append(d)
+            return {'summary': summary}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/transactions/delete-by-source', methods=['POST'])
+def delete_by_source():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    
+    data = request.json
+    source_file = data.get('source_file')
+    bank_code = data.get('bank_code')
+    company_id = data.get('company_id')
+    
+    if not source_file:
+        return {'error': 'source_file is required'}, 400
+        
+    try:
+        with engine.begin() as conn:
+            # Build query dynamically based on whether bank_code/company_id are provided
+            # (Matches how they are grouped in the summary)
+            where_clauses = ["source_file = :source_file"]
+            params = {"source_file": source_file}
+            
+            if bank_code:
+                where_clauses.append("bank_code = :bank_code")
+                params["bank_code"] = bank_code
+            if company_id:
+                where_clauses.append("company_id = :company_id")
+                params["company_id"] = company_id
+            else:
+                where_clauses.append("company_id IS NULL")
+                
+            query = text(f"DELETE FROM transactions WHERE {' AND '.join(where_clauses)}")
+            result = conn.execute(query, params)
+            return {'message': f'Deleted {result.rowcount} transactions'}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
 @app.route('/api/marks', methods=['GET'])
 def get_marks():
     engine, error_msg = get_db_engine()
@@ -672,14 +750,37 @@ def get_marks():
         return {'error': error_msg}, 500
     try:
         with engine.connect() as conn:
-            result = conn.execute(text("SELECT * FROM marks ORDER BY created_at DESC"))
+            # 1. Fetch Marks
+            result = conn.execute(text("SELECT * FROM marks ORDER BY personal_use ASC"))
             marks = []
+            marks_dict = {}
             for row in result:
                 d = dict(row._mapping)
                 for key, value in d.items():
                     if isinstance(value, datetime):
                         d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                d['mappings'] = [] # Initialize mappings list
                 marks.append(d)
+                marks_dict[d['id']] = d
+
+            # 2. Fetch Mappings with COA info
+            mapping_query = text("""
+                SELECT mcm.mark_id, mcm.mapping_type, coa.code, coa.name
+                FROM mark_coa_mapping mcm
+                JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+            """)
+            mapping_result = conn.execute(mapping_query)
+            
+            for row in mapping_result:
+                m = dict(row._mapping)
+                mark_id = m['mark_id']
+                if mark_id in marks_dict:
+                    marks_dict[mark_id]['mappings'].append({
+                        'code': m['code'],
+                        'name': m['name'],
+                        'type': m['mapping_type']
+                    })
+
             return {'marks': marks}
     except Exception as e:
         return {'error': str(e)}, 500
@@ -977,6 +1078,940 @@ def manage_company(company_id):
                 return {'message': 'Company updated successfully'}
         except Exception as e:
             return {'error': str(e)}, 500
+
+# ============================================================================
+# CHART OF ACCOUNTS (COA) ENDPOINTS
+# ============================================================================
+
+@app.route('/api/coa', methods=['GET'])
+def get_chart_of_accounts():
+    """Get all Chart of Accounts entries"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT * FROM chart_of_accounts 
+                WHERE is_active = TRUE
+                ORDER BY code ASC
+            """))
+            coa_list = []
+            for row in result:
+                d = dict(row._mapping)
+                for key, value in d.items():
+                    if isinstance(value, datetime):
+                        d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                coa_list.append(d)
+            return {'coa': coa_list}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/coa', methods=['POST'])
+def create_coa():
+    """Create a new COA entry"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    try:
+        data = request.json
+        code = data.get('code')
+        name = data.get('name')
+        category = data.get('category')
+        
+        if not all([code, name, category]):
+            return {'error': 'Code, name, and category are required'}, 400
+        
+        if category not in ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']:
+            return {'error': 'Invalid category'}, 400
+        
+        coa_id = str(uuid.uuid4())
+        now = datetime.now()
+        
+        with engine.connect() as conn:
+            conn.execute(text("""
+                INSERT INTO chart_of_accounts 
+                (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at)
+                VALUES (:id, :code, :name, :category, :subcategory, :description, :is_active, :parent_id, :created_at, :updated_at)
+            """), {
+                'id': coa_id,
+                'code': code,
+                'name': name,
+                'category': category,
+                'subcategory': data.get('subcategory'),
+                'description': data.get('description'),
+                'is_active': data.get('is_active', True),
+                'parent_id': data.get('parent_id'),
+                'created_at': now,
+                'updated_at': now
+            })
+            conn.commit()
+            return {'message': 'COA created successfully', 'id': coa_id}, 201
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/coa/<coa_id>', methods=['PUT'])
+def update_coa(coa_id):
+    """Update a COA entry"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    try:
+        data = request.json
+        now = datetime.now()
+        
+        with engine.connect() as conn:
+            conn.execute(text("""
+                UPDATE chart_of_accounts 
+                SET code = :code, 
+                    name = :name, 
+                    category = :category,
+                    subcategory = :subcategory,
+                    description = :description,
+                    is_active = :is_active,
+                    parent_id = :parent_id,
+                    updated_at = :updated_at
+                WHERE id = :id
+            """), {
+                'id': coa_id,
+                'code': data.get('code'),
+                'name': data.get('name'),
+                'category': data.get('category'),
+                'subcategory': data.get('subcategory'),
+                'description': data.get('description'),
+                'is_active': data.get('is_active', True),
+                'parent_id': data.get('parent_id'),
+                'updated_at': now
+            })
+            conn.commit()
+            return {'message': 'COA updated successfully'}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/coa/<coa_id>', methods=['DELETE'])
+def delete_coa(coa_id):
+    """Delete a COA entry (soft delete by setting is_active=FALSE)"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    try:
+        with engine.connect() as conn:
+            # Check if used in mappings
+            usage = conn.execute(text("SELECT COUNT(*) FROM mark_coa_mapping WHERE coa_id = :id"), {'id': coa_id}).scalar()
+            if usage > 0:
+                # Soft delete instead of hard delete
+                conn.execute(text("UPDATE chart_of_accounts SET is_active = FALSE WHERE id = :id"), {'id': coa_id})
+                conn.commit()
+                return {'message': 'COA deactivated (still used in mappings)'}
+            
+            conn.execute(text("DELETE FROM chart_of_accounts WHERE id = :id"), {'id': coa_id})
+            conn.commit()
+            return {'message': 'COA deleted successfully'}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+# ============================================================================
+# MARK-COA MAPPING ENDPOINTS
+# ============================================================================
+
+@app.route('/api/marks/<mark_id>/coa-mappings', methods=['GET'])
+def get_mark_coa_mappings(mark_id):
+    """Get all COA mappings for a specific mark"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT mcm.*, coa.code, coa.name, coa.category
+                FROM mark_coa_mapping mcm
+                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+                WHERE mcm.mark_id = :mark_id
+                ORDER BY coa.code
+            """), {'mark_id': mark_id})
+            
+            mappings = []
+            for row in result:
+                d = dict(row._mapping)
+                for key, value in d.items():
+                    if isinstance(value, datetime):
+                        d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                mappings.append(d)
+            return {'mappings': mappings}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/marks/<mark_id>/coa-mappings', methods=['POST'])
+def create_mark_coa_mapping(mark_id):
+    """Create a new mark-COA mapping"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    try:
+        data = request.json
+        coa_id = data.get('coa_id')
+        mapping_type = data.get('mapping_type', 'DEBIT')
+        
+        if not coa_id:
+            return {'error': 'COA ID is required'}, 400
+        
+        if mapping_type not in ['DEBIT', 'CREDIT']:
+            return {'error': 'Invalid mapping type'}, 400
+        
+        mapping_id = str(uuid.uuid4())
+        now = datetime.now()
+        
+        with engine.connect() as conn:
+            conn.execute(text("""
+                INSERT INTO mark_coa_mapping 
+                (id, mark_id, coa_id, mapping_type, notes, created_at, updated_at)
+                VALUES (:id, :mark_id, :coa_id, :mapping_type, :notes, :created_at, :updated_at)
+            """), {
+                'id': mapping_id,
+                'mark_id': mark_id,
+                'coa_id': coa_id,
+                'mapping_type': mapping_type,
+                'notes': data.get('notes'),
+                'created_at': now,
+                'updated_at': now
+            })
+            conn.commit()
+            return {'message': 'Mapping created successfully', 'id': mapping_id}, 201
+    except Exception as e:
+        if 'Duplicate entry' in str(e):
+            return {'error': 'This mapping already exists'}, 409
+        return {'error': str(e)}, 500
+
+# Fix expense mappings MUST come before the dynamic <mapping_id> route
+@app.route('/api/mark-coa-mappings/fix-expense-mappings', methods=['POST'])
+def fix_expense_mappings():
+    """Auto-fix all EXPENSE mappings that are incorrectly set to CREDIT"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    
+    try:
+        with engine.begin() as conn:
+            # Find all mappings where:
+            # - COA category is EXPENSE (5xxx)
+            # - mapping_type is CREDIT (should be DEBIT)
+            query = text("""
+                SELECT mcm.id, mcm.mark_id, mcm.coa_id, mcm.mapping_type, 
+                       coa.code, coa.name, coa.category, m.personal_use
+                FROM mark_coa_mapping mcm
+                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+                INNER JOIN marks m ON mcm.mark_id = m.id
+                WHERE coa.category IN ('EXPENSE', 'COGS', 'OTHER_EXPENSE')
+                  AND mcm.mapping_type = 'CREDIT'
+            """)
+            
+            result = conn.execute(query)
+            incorrect_mappings = list(result)
+            
+            if not incorrect_mappings:
+                return {
+                    'message': 'No incorrect mappings found',
+                    'fixed_count': 0,
+                    'mappings': []
+                }
+            
+            # Update all incorrect mappings to DEBIT
+            update_query = text("""
+                UPDATE mark_coa_mapping
+                SET mapping_type = 'DEBIT'
+                WHERE id = :mapping_id
+            """)
+            
+            fixed_mappings = []
+            for mapping in incorrect_mappings:
+                conn.execute(update_query, {'mapping_id': mapping.id})
+                fixed_mappings.append({
+                    'id': mapping.id,
+                    'mark': mapping.personal_use,
+                    'coa_code': mapping.code,
+                    'coa_name': mapping.name,
+                    'old_type': 'CREDIT',
+                    'new_type': 'DEBIT'
+                })
+            
+            return {
+                'message': f'Successfully fixed {len(fixed_mappings)} expense mappings',
+                'fixed_count': len(fixed_mappings),
+                'mappings': fixed_mappings
+            }
+            
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/mark-coa-mappings/fix-revenue-mappings', methods=['POST'])
+def fix_revenue_mappings():
+    """Auto-fix all REVENUE mappings that are incorrectly set to DEBIT"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    
+    try:
+        with engine.begin() as conn:
+            # Find all mappings where:
+            # - COA category is REVENUE
+            # - mapping_type is DEBIT (should be CREDIT)
+            query = text("""
+                SELECT mcm.id, mcm.mark_id, mcm.coa_id, mcm.mapping_type, 
+                       coa.code, coa.name, coa.category, m.personal_use
+                FROM mark_coa_mapping mcm
+                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+                INNER JOIN marks m ON mcm.mark_id = m.id
+                WHERE coa.category IN ('REVENUE', 'OTHER_REVENUE')
+                  AND mcm.mapping_type = 'DEBIT'
+            """)
+            
+            result = conn.execute(query)
+            incorrect_mappings = list(result)
+            
+            if not incorrect_mappings:
+                return {
+                    'message': 'No incorrect mappings found',
+                    'fixed_count': 0,
+                    'mappings': []
+                }
+            
+            # Update all incorrect mappings to CREDIT
+            update_query = text("""
+                UPDATE mark_coa_mapping
+                SET mapping_type = 'CREDIT'
+                WHERE id = :mapping_id
+            """)
+            
+            fixed_mappings = []
+            for mapping in incorrect_mappings:
+                conn.execute(update_query, {'mapping_id': mapping.id})
+                fixed_mappings.append({
+                    'id': mapping.id,
+                    'mark': mapping.personal_use,
+                    'coa_code': mapping.code,
+                    'coa_name': mapping.name,
+                    'old_type': 'DEBIT',
+                    'new_type': 'CREDIT'
+                })
+            
+            return {
+                'message': f'Successfully fixed {len(fixed_mappings)} revenue mappings',
+                'fixed_count': len(fixed_mappings),
+                'mappings': fixed_mappings
+            }
+            
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/mark-coa-mappings/<mapping_id>', methods=['DELETE'])
+def delete_mark_coa_mapping(mapping_id):
+    """Delete a mark-COA mapping"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("DELETE FROM mark_coa_mapping WHERE id = :id"), {'id': mapping_id})
+            conn.commit()
+            return {'message': 'Mapping deleted successfully'}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+# ============================================================================
+# FINANCIAL REPORTS ENDPOINTS
+# ============================================================================
+
+@app.route('/api/reports/income-statement', methods=['GET'])
+def get_income_statement():
+    """Generate Income Statement (Laba Rugi)"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        company_id = request.args.get('company_id')
+        
+        if not start_date or not end_date:
+            return {'error': 'start_date and end_date are required'}, 400
+        
+        with engine.connect() as conn:
+            data = fetch_income_statement_data(conn, start_date, end_date, company_id)
+            data['period'] = {'start_date': start_date, 'end_date': end_date}
+            return data
+
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
+    """
+    Helper function to fetch income statement data.
+    Returns calculated values and lists of items.
+    """
+    query = text("""
+        SELECT 
+            coa.code,
+            coa.name,
+            coa.category,
+            coa.subcategory,
+            SUM(
+                CASE 
+                    WHEN t.db_cr = 'CR' AND mcm.mapping_type = 'CREDIT' THEN t.amount
+                    WHEN t.db_cr = 'CR' AND mcm.mapping_type = 'DEBIT' THEN -t.amount
+                    WHEN t.db_cr = 'DB' AND mcm.mapping_type = 'DEBIT' THEN t.amount
+                    WHEN t.db_cr = 'DB' AND mcm.mapping_type = 'CREDIT' THEN -t.amount
+                    ELSE 0
+                END
+            ) as total_amount
+        FROM transactions t
+        INNER JOIN marks m ON t.mark_id = m.id
+        INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        WHERE t.txn_date BETWEEN :start_date AND :end_date
+            AND coa.category IN ('REVENUE', 'EXPENSE')
+            AND (:company_id IS NULL OR t.company_id = :company_id)
+        GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory
+        ORDER BY coa.code
+    """)
+    
+    result = conn.execute(query, {
+        'start_date': start_date,
+        'end_date': end_date,
+        'company_id': company_id
+    })
+    
+    revenue = []
+    expenses = []
+    total_revenue = 0
+    total_expenses = 0
+    
+    for row in result:
+        d = dict(row._mapping)
+        amount = float(d['total_amount']) if d['total_amount'] else 0
+        
+        item = {
+            'code': d['code'],
+            'name': d['name'],
+            'subcategory': d['subcategory'],
+            'amount': amount,
+            'category': d['category'] 
+        }
+        
+        if d['category'] == 'REVENUE':
+            revenue.append(item)
+            total_revenue += amount
+        else:  # EXPENSE
+            expenses.append(item)
+            total_expenses += amount
+    
+    net_income = total_revenue - total_expenses
+    
+    # 2. Handle COGS (HPP) with Manual Inventory Adjustments
+    beginning_inv = 0
+    ending_inv = 0
+    
+    # We use start_date's year for the inventory balance
+    year = datetime.strptime(start_date, '%Y-%m-%d').year
+    
+    try:
+        inventory_query = text("""
+            SELECT beginning_inventory_amount, ending_inventory_amount
+            FROM inventory_balances
+            WHERE year = :year AND (:company_id IS NULL OR company_id = :company_id)
+            LIMIT 1
+        """)
+        inv_result = conn.execute(inventory_query, {'year': year, 'company_id': company_id}).fetchone()
+        if inv_result:
+            beginning_inv = float(inv_result[0] or 0)
+            ending_inv = float(inv_result[1] or 0)
+    except Exception as e:
+        app.logger.error(f"Failed to fetch inventory balances: {e}")
+
+    # Identify 'Purchases' and 'Other COGS' from expenses
+    # In CoreTax 2025, '5001' is 'Pembelian'
+    purchases = 0
+    other_cogs_items = []
+    
+    # Filter out direct COGS accounts from total_expenses for separate HPP calculation
+    # COGS accounts are in subcategory 'Cost of Goods Sold' (5xxx)
+    cogs_items = [e for e in expenses if e.get('subcategory') == 'Cost of Goods Sold']
+    
+    for item in cogs_items:
+        if item['code'] == '5001':
+            purchases += item['amount']
+        else:
+            other_cogs_items.append(item)
+    
+    total_other_cogs = sum(item['amount'] for item in other_cogs_items)
+    calculate_hpp = beginning_inv + purchases + total_other_cogs - ending_inv
+    
+    # Provide a specific breakdown for the UI
+    cogs_breakdown = {
+        'beginning_inventory': beginning_inv,
+        'purchases': purchases,
+        'other_cogs_items': other_cogs_items,
+        'total_other_cogs': total_other_cogs,
+        'ending_inventory': ending_inv,
+        'total_cogs': calculate_hpp,
+        'year': year
+    }
+
+    return {
+        'revenue': revenue,
+        'expenses': [e for e in expenses if e.get('subcategory') != 'Cost of Goods Sold'],
+        'total_revenue': total_revenue,
+        'total_expenses': total_expenses - sum(e['amount'] for e in cogs_items),
+        'cogs_breakdown': cogs_breakdown,
+        'net_income': total_revenue - (total_expenses - sum(e['amount'] for e in cogs_items)) - calculate_hpp
+    }
+
+def fetch_monthly_revenue_data(conn, year, company_id=None):
+    """
+    Fetch total revenue grouped by month for a specific year.
+    Used for Coretax summary.
+    """
+    query = text("""
+        SELECT 
+            MONTH(t.txn_date) as month_num,
+            SUM(
+                CASE 
+                    WHEN t.db_cr = 'CR' AND mcm.mapping_type = 'CREDIT' THEN t.amount
+                    WHEN t.db_cr = 'CR' AND mcm.mapping_type = 'DEBIT' THEN -t.amount
+                    WHEN t.db_cr = 'DB' AND mcm.mapping_type = 'DEBIT' THEN t.amount
+                    WHEN t.db_cr = 'DB' AND mcm.mapping_type = 'CREDIT' THEN -t.amount
+                    ELSE 0
+                END
+            ) as total_amount
+        FROM transactions t
+        INNER JOIN marks m ON t.mark_id = m.id
+        INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        WHERE YEAR(t.txn_date) = :year
+            AND coa.category = 'REVENUE'
+            AND (:company_id IS NULL OR t.company_id = :company_id)
+        GROUP BY MONTH(t.txn_date)
+        ORDER BY month_num
+    """)
+    
+    result = conn.execute(query, {
+        'year': year,
+        'company_id': company_id
+    })
+    
+    # Initialize all months with 0
+    monthly_data = {i: 0.0 for i in range(1, 13)}
+    
+    for row in result:
+        d = dict(row._mapping)
+        if d['month_num']:
+            monthly_data[int(d['month_num'])] = float(d['total_amount']) if d['total_amount'] else 0.0
+            
+    # Convert to list of objects for easier frontend consumption
+    return [
+        {'month': m, 'revenue': monthly_data[m]} 
+        for m in range(1, 13)
+    ]
+
+@app.route('/api/reports/monthly-revenue', methods=['GET'])
+def get_monthly_revenue():
+    """Get monthly revenue summary for a specific year"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+        
+    try:
+        year = request.args.get('year')
+        company_id = request.args.get('company_id')
+        
+        if not year:
+            year = datetime.now().year
+        else:
+            year = int(year)
+            
+        with engine.connect() as conn:
+            current_data = fetch_monthly_revenue_data(conn, year, company_id)
+            prev_data = fetch_monthly_revenue_data(conn, year - 1, company_id)
+            return {
+                'year': year, 
+                'data': current_data,
+                'prev_year_data': prev_data
+            }
+            
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/reports/export', methods=['POST'])
+def export_report():
+    """Export financial reports to Excel or XML (CoreTax)"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+        
+    try:
+        data = request.json
+        report_type = data.get('report_type')
+        export_format = data.get('format')
+        filters = data.get('filters', {})
+        
+        start_date = filters.get('start_date')
+        end_date = filters.get('end_date')
+        company_id = filters.get('company_id')
+        
+        if not start_date or not end_date:
+            return {'error': 'start_date and end_date are required'}, 400
+            
+        with engine.connect() as conn:
+            # 1. Fetch Data
+            if report_type == 'income-statement':
+                report_data = fetch_income_statement_data(conn, start_date, end_date, company_id)
+            else:
+                return {'error': 'Unsupported report type'}, 400
+                
+            # 2. Generate File
+            if export_format == 'excel':
+                # Create DataFrame
+                rows = []
+                
+                # Revenue Section
+                rows.append({'Code': '', 'Account': 'REVENUE', 'Subcategory': '', 'Amount': ''})
+                for item in report_data['revenue']:
+                    rows.append({
+                        'Code': item['code'], 
+                        'Account': item['name'], 
+                        'Subcategory': item['subcategory'], 
+                        'Amount': item['amount']
+                    })
+                rows.append({'Code': '', 'Account': 'Total Revenue', 'Subcategory': '', 'Amount': report_data['total_revenue']})
+                rows.append({}) # Empty row
+                
+                # Expenses Section
+                rows.append({'Code': '', 'Account': 'EXPENSES', 'Subcategory': '', 'Amount': ''})
+                for item in report_data['expenses']:
+                    rows.append({
+                        'Code': item['code'], 
+                        'Account': item['name'], 
+                        'Subcategory': item['subcategory'], 
+                        'Amount': item['amount']
+                    })
+                rows.append({'Code': '', 'Account': 'Total Expenses', 'Subcategory': '', 'Amount': report_data['total_expenses']})
+                rows.append({}) # Empty row
+                
+                # Net Income
+                rows.append({'Code': '', 'Account': 'NET INCOME', 'Subcategory': '', 'Amount': report_data['net_income']})
+                
+                df = pd.DataFrame(rows)
+                
+                # Save to buffer
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, sheet_name='Income Statement')
+                output.seek(0)
+                
+                filename = f"Income_Statement_{start_date}_{end_date}.xlsx"
+                return send_file(
+                    output,
+                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    as_attachment=True,
+                    download_name=filename
+                )
+                
+            elif export_format == 'xml':
+                # Generate CoreTax-like XML
+                root = ET.Element("FinancialReport")
+                
+                # Header
+                header = ET.SubElement(root, "Header")
+                ET.SubElement(header, "ReportType").text = "IncomeStatement"
+                ET.SubElement(header, "StartDate").text = start_date
+                ET.SubElement(header, "EndDate").text = end_date
+                ET.SubElement(header, "GeneratedAt").text = datetime.now().isoformat()
+                
+                # Accounts
+                accounts_elem = ET.SubElement(root, "Accounts")
+                
+                # Combine all items
+                all_items = report_data['revenue'] + report_data['expenses']
+                for item in all_items:
+                    acc_elem = ET.SubElement(accounts_elem, "Account")
+                    ET.SubElement(acc_elem, "Code").text = str(item['code'])
+                    ET.SubElement(acc_elem, "Name").text = str(item['name'])
+                    ET.SubElement(acc_elem, "Category").text = str(item['category'])
+                    ET.SubElement(acc_elem, "Amount").text = str(item['amount'])
+                
+                # Summary
+                summary = ET.SubElement(root, "Summary")
+                ET.SubElement(summary, "TotalRevenue").text = str(report_data['total_revenue'])
+                ET.SubElement(summary, "TotalExpenses").text = str(report_data['total_expenses'])
+                ET.SubElement(summary, "NetIncome").text = str(report_data['net_income'])
+                
+                # Convert to string
+                xml_str = ET.tostring(root, encoding='utf-8', method='xml')
+                output = io.BytesIO(xml_str)
+                
+                filename = f"CoreTax_IncomeStatement_{start_date}_{end_date}.xml"
+                return send_file(
+                    output,
+                    mimetype='application/xml',
+                    as_attachment=True,
+                    download_name=filename
+                )
+                
+            else:
+                return {'error': 'Unsupported format'}, 400
+                
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/reports/coa-detail', methods=['GET'])
+def get_coa_detail_report():
+    """Get detailed transaction list for a specific COA"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+    
+    try:
+        coa_id = request.args.get('coa_id')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        company_id = request.args.get('company_id')
+        
+        if not coa_id:
+            return {'error': 'coa_id is required'}, 400
+        
+        with engine.connect() as conn:
+            # Get COA info
+            coa_result = conn.execute(text("SELECT * FROM chart_of_accounts WHERE id = :id"), {'id': coa_id})
+            coa_row = coa_result.fetchone()
+            if not coa_row:
+                return {'error': 'COA not found'}, 404
+            
+            coa_info = dict(coa_row._mapping)
+            
+            # Get transactions
+            query = text("""
+                SELECT 
+                    t.id,
+                    t.txn_date,
+                    t.description,
+                    t.amount,
+                    t.db_cr,
+                    m.personal_use as mark_name,
+                    c.name as company_name,
+                    mcm.mapping_type
+                FROM transactions t
+                INNER JOIN marks m ON t.mark_id = m.id
+                INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+                LEFT JOIN companies c ON t.company_id = c.id
+                WHERE mcm.coa_id = :coa_id
+                  AND (:start_date IS NULL OR t.txn_date >= :start_date)
+                  AND (:end_date IS NULL OR t.txn_date <= :end_date)
+                  AND (:company_id IS NULL OR t.company_id = :company_id)
+                ORDER BY t.txn_date DESC
+            """)
+            
+            result = conn.execute(query, {
+                'coa_id': coa_id,
+                'start_date': start_date,
+                'end_date': end_date,
+                'company_id': company_id
+            })
+            
+            transactions = []
+            total = 0
+            
+            for row in result:
+                d = dict(row._mapping)
+                for key, value in d.items():
+                    if isinstance(value, datetime):
+                        d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                    elif isinstance(value, Decimal):
+                        d[key] = float(value)
+                
+                # Calculate effective amount based on mapping type
+                amount = float(d['amount'])
+                if d['db_cr'] == 'CR' and d['mapping_type'] == 'CREDIT':
+                    effective_amount = amount
+                elif d['db_cr'] == 'CR' and d['mapping_type'] == 'DEBIT':
+                    effective_amount = -amount
+                elif d['db_cr'] == 'DB' and d['mapping_type'] == 'DEBIT':
+                    effective_amount = amount
+                else:  # DB and CREDIT
+                    effective_amount = -amount
+                
+                d['effective_amount'] = effective_amount
+                total += effective_amount
+                transactions.append(d)
+            
+            return {
+                'coa': {
+                    'code': coa_info['code'],
+                    'name': coa_info['name'],
+                    'category': coa_info['category']
+                },
+                'transactions': transactions,
+                'total': total
+            }
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/inventory-balances', methods=['GET'])
+def get_inventory_balances():
+    """Retrieve inventory balances for a specific year and company"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+        
+    try:
+        year = request.args.get('year')
+        company_id = request.args.get('company_id')
+        
+        if not year or not company_id:
+            return {'error': 'year and company_id are required'}, 400
+            
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT * FROM inventory_balances WHERE year = :year AND company_id = :company"),
+                {'year': year, 'company': company_id}
+            )
+            row = result.fetchone()
+            if row:
+                d = dict(row._mapping)
+                # Convert Decimals to floats
+                for key, value in d.items():
+                    if isinstance(value, Decimal):
+                        d[key] = float(value)
+                    elif isinstance(value, datetime):
+                        d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                return {'balance': d}
+            return {'balance': {}}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/inventory-balances', methods=['POST'])
+def save_inventory_balances():
+    """Save or update inventory balances"""
+    data = request.json
+    company_id = data.get('company_id')
+    year = data.get('year')
+    
+    if not company_id or not year:
+        return {'error': 'company_id and year are required'}, 400
+        
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+        
+    try:
+        balance_id = str(uuid.uuid4())
+        with engine.begin() as conn:
+            # UPSERT logic for MySQL
+            conn.execute(
+                text("""
+                    INSERT INTO inventory_balances 
+                        (id, company_id, year, beginning_inventory_amount, beginning_inventory_qty, 
+                         ending_inventory_amount, ending_inventory_qty, is_manual) 
+                    VALUES 
+                        (:id, :company, :year, :beg_amt, :beg_qty, :end_amt, :end_qty, :is_manual)
+                    ON DUPLICATE KEY UPDATE 
+                        beginning_inventory_amount = VALUES(beginning_inventory_amount),
+                        beginning_inventory_qty = VALUES(beginning_inventory_qty),
+                        ending_inventory_amount = VALUES(ending_inventory_amount),
+                        ending_inventory_qty = VALUES(ending_inventory_qty),
+                        is_manual = VALUES(is_manual),
+                        updated_at = NOW()
+                """),
+                {
+                    'id': balance_id,
+                    'company': company_id,
+                    'year': year,
+                    'beg_amt': data.get('beginning_inventory_amount', 0),
+                    'beg_qty': data.get('beginning_inventory_qty', 0),
+                    'end_amt': data.get('ending_inventory_amount', 0),
+                    'end_qty': data.get('ending_inventory_qty', 0),
+                    'is_manual': data.get('is_manual', True)
+                }
+            )
+            return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/filters/<view_name>', methods=['GET'])
+def get_view_filters(view_name):
+    """Retrieve saved filters for a specific view"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+        
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT filters FROM user_filters WHERE view_name = :view"),
+                {'view': view_name}
+            )
+            row = result.fetchone()
+            if row:
+                # SQLAlchemy JSON column might return dict or string depending on driver/version
+                filters = row[0]
+                if isinstance(filters, str):
+                    import json
+                    filters = json.loads(filters)
+                return {'filters': filters}
+            return {'filters': {}}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/filters', methods=['POST'])
+def save_view_filters():
+    """Save filters for a specific view"""
+    data = request.json
+    view_name = data.get('view_name')
+    filters = data.get('filters')
+    
+    if not view_name or filters is None:
+        return {'error': 'view_name and filters are required'}, 400
+        
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+        
+    try:
+        import json
+        filters_json = json.dumps(filters)
+        with engine.connect() as conn:
+            # UPSERT logic for MySQL
+            conn.execute(
+                text("""
+                    INSERT INTO user_filters (view_name, filters) 
+                    VALUES (:view, :filters)
+                    ON DUPLICATE KEY UPDATE filters = :filters, updated_at = NOW()
+                """),
+                {'view': view_name, 'filters': filters_json}
+            )
+            conn.commit()
+            return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/transactions/<transaction_id>/notes', methods=['PUT'])
+def update_transaction_notes(transaction_id):
+    data = request.json
+    notes = data.get('notes')
+    
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return {'error': error_msg}, 500
+        
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text("UPDATE transactions SET notes = :notes, updated_at = NOW() WHERE id = :id"),
+                {'notes': notes, 'id': transaction_id}
+            )
+            conn.commit()
+            return {'success': True}
+    except Exception as e:
+        return {'error': str(e)}, 500
 
 if __name__ == '__main__':
     # Run migrations on startup

@@ -34,6 +34,11 @@
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">History & DB</span>
         </router-link>
 
+        <router-link to="/upload-summary" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Upload Summary' : ''">
+          <i class="bi bi-file-check-fill text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Upload Summary</span>
+        </router-link>
+
         <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
             <p class="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</p>
         </div>
@@ -49,6 +54,23 @@
         <router-link to="/marks" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Marks' : ''">
           <i class="bi bi-tags-fill text-lg flex-shrink-0"></i>
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Marks</span>
+        </router-link>
+
+        <router-link to="/chart-of-accounts" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Chart of Accounts' : ''">
+          <i class="bi bi-journal-text text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Chart of Accounts</span>
+        </router-link>
+
+        <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
+            <p class="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Reports</p>
+        </div>
+        <div class="pt-4 pb-2 flex justify-center" v-if="isSidebarCollapsed">
+            <i class="bi bi-three-dots text-gray-300"></i>
+        </div>
+
+        <router-link to="/reports" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Financial Reports' : ''">
+          <i class="bi bi-file-earmark-bar-graph text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Financial Reports</span>
         </router-link>
       </nav>
 
@@ -118,6 +140,7 @@ const pageTitle = computed(() => {
         case 'dashboard': return 'Dashboard Overview';
         case 'converter': return 'Bank Statement Converter';
         case 'history': return 'Transaction History';
+        case 'upload-summary': return 'Upload Summary';
         case 'companies': return 'Company Management';
         case 'marks': return 'Mark Management';
         default: return 'StatementX';

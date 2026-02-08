@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia';
-import { historyApi, companyApi, marksApi } from '../api';
+import { historyApi, companyApi, marksApi, filterApi } from '../api';
 
 export const useHistoryStore = defineStore('history', {
   state: () => ({
     allTransactions: [],
+    uploadSummary: [],
     companies: [],
     marks: [],
     isLoading: false,
@@ -56,8 +57,14 @@ export const useHistoryStore = defineStore('history', {
             if (company && t.company_id !== company) return false;
 
             // Mark Status
-            if (markStatus === 'marked' && !t.mark_id) return false;
-            if (markStatus === 'unmarked' && t.mark_id) return false;
+            if (markStatus === 'unmarked') {
+                if (t.mark_id) return false;
+            } else if (markStatus && markStatus !== 'marked') {
+                // If specific mark ID is selected
+                if (t.mark_id !== markStatus) return false;
+            } else if (markStatus === 'marked') {
+                if (!t.mark_id) return false;
+            }
 
             // Type Filter (DB/CR)
             if (dbCr && t.db_cr !== dbCr) return false;
@@ -123,6 +130,22 @@ export const useHistoryStore = defineStore('history', {
             const nameB = (b.personal_use || '').toLowerCase();
             return nameA.localeCompare(nameB);
         });
+    },
+
+    filteredTotal() {
+        if (!this.filteredTransactions) return 0;
+        return this.filteredTransactions.reduce((acc, t) => {
+            const amt = Number(t.amount) || 0;
+            return t.db_cr === 'CR' ? acc + amt : acc - amt;
+        }, 0);
+    },
+
+    pageTotal() {
+        if (!this.paginatedTransactions) return 0;
+        return this.paginatedTransactions.reduce((acc, t) => {
+            const amt = Number(t.amount) || 0;
+            return t.db_cr === 'CR' ? acc + amt : acc - amt;
+        }, 0);
     }
   },
 
@@ -130,6 +153,11 @@ export const useHistoryStore = defineStore('history', {
     async loadData() {
       this.isLoading = true;
       try {
+        // Load persistence filters first if not already loaded
+        if (!this.allTransactions.length) {
+            await this.loadFilters();
+        }
+
         const [txnRes, compRes, markRes] = await Promise.all([
             historyApi.getTransactions(),
             companyApi.getCompanies(),
@@ -147,9 +175,23 @@ export const useHistoryStore = defineStore('history', {
       }
     },
     
+    async fetchUploadSummary() {
+      this.isLoading = true;
+      try {
+        const res = await historyApi.getUploadSummary();
+        this.uploadSummary = res.data.summary || [];
+      } catch (err) {
+        this.error = "Failed to load upload summary";
+        console.error(err);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    
     setFilter(key, value) {
         this.filters[key] = value;
         this.currentPage = 1; // Reset page on filter change
+        this.saveFilters();
     },
 
     resetFilters() {
@@ -166,6 +208,27 @@ export const useHistoryStore = defineStore('history', {
             amountMax: null
         };
         this.currentPage = 1;
+        this.saveFilters();
+    },
+
+    async loadFilters() {
+        try {
+            const res = await filterApi.getFilters('history');
+            if (res.data.filters && Object.keys(res.data.filters).length > 0) {
+                this.filters = { ...this.filters, ...res.data.filters };
+            }
+        } catch (e) {
+            console.error("Failed to load history filters:", e);
+        }
+    },
+
+    async saveFilters() {
+        try {
+            // Simplified: Save on every significant change
+            await filterApi.saveFilters('history', this.filters);
+        } catch (e) {
+            console.error("Failed to save history filters:", e);
+        }
     },
 
     toggleSort(key) {
@@ -263,6 +326,21 @@ export const useHistoryStore = defineStore('history', {
         }
     },
 
+    async deleteBySourceFile(source_file, bank_code, company_id) {
+        this.isLoading = true;
+        try {
+            await historyApi.deleteBySourceFile(source_file, bank_code, company_id);
+            await this.fetchUploadSummary();
+            // Also reload all transactions to reflect deletion in history view
+            await this.loadData();
+        } catch (e) {
+            console.error(e);
+            throw e;
+        } finally {
+            this.isLoading = false;
+        }
+    },
+
     async deleteTransaction(id) {
         this.isLoading = true;
         try {
@@ -275,6 +353,17 @@ export const useHistoryStore = defineStore('history', {
             throw e;
         } finally {
             this.isLoading = false;
+        }
+    },
+
+    async updateNotes(id, notes) {
+        try {
+            await historyApi.updateNotes(id, notes);
+            const txn = this.allTransactions.find(t => t.id === id);
+            if (txn) txn.notes = notes;
+        } catch (e) {
+            console.error(e);
+            throw e;
         }
     }
   }

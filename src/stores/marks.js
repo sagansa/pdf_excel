@@ -11,9 +11,9 @@ export const useMarksStore = defineStore('marks', {
   getters: {
     sortedMarks(state) {
       return [...state.marks].sort((a, b) => {
-        const nameA = (a.personal_use || '').toLowerCase();
-        const nameB = (b.personal_use || '').toLowerCase();
-        return nameA.localeCompare(nameB);
+        const nameA = (a.personal_use || '').trim().toLowerCase();
+        const nameB = (b.personal_use || '').trim().toLowerCase();
+        return nameA.localeCompare(nameB, 'id');
       });
     }
   },

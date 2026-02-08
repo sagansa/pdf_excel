@@ -7,8 +7,9 @@ import pdfplumber
 # Month abbreviation mapping for date conversion
 MONTH_ABBR = {
     'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04',
-    'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08',
-    'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12'
+    'MAY': '05', 'MEI': '05', 'JUN': '06', 'JUL': '07', 
+    'AUG': '08', 'AGT': '08', 'SEP': '09', 'OCT': '10', 
+    'OKT': '10', 'NOV': '11', 'DEC': '12', 'DES': '12'
 }
 
 def convert_date_format(date_str):
@@ -37,7 +38,7 @@ def convert_date_format(date_str):
     except Exception:
         return date_str
 
-def parse_statement(pdf_path):
+def parse_statement(pdf_path, password=None):
     if not os.path.exists(pdf_path):
         raise ValueError("PDF file not found")
         
@@ -46,18 +47,9 @@ def parse_statement(pdf_path):
         
     transactions = []
     conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    current_transaction = None
-    header_found = False
-    
-    # Define header and footer markers
-    header_markers_en = ['Transaction Date', 'Posting Date', 'Description', 'amount (IDR))']
-    header_markers_id = ['Tanggal Transaksi', 'Tanggal Pembukuan', 'Keterangan', 'Jumlah']
-    header_found = False
-    footer_markers = []
-    skip_markers = ['SUB-TOTAL', 'TAGIHAN BULAN LALU', 'Description', 'amount (IDR)', 'Keterangan', 'Jumlah']
     
     try:
-        with pdfplumber.open(pdf_path) as pdf:
+        with pdfplumber.open(pdf_path, password=password) as pdf:
             if not pdf.pages:
                 raise ValueError("PDF file is empty or corrupted. Please ensure the file is a valid Mandiri credit card statement")
             
@@ -72,6 +64,20 @@ def parse_statement(pdf_path):
             except Exception as e:
                 raise ValueError(f"PDF file validation failed. The file may be corrupted: {str(e)}")
 
+            # Define header and footer markers
+            header_markers_en = ['Transaction Date', 'Posting Date', 'Description', 'Amount (IDR)']
+            header_markers_id = ['Tanggal Transaksi', 'Tanggal Pembukuan', 'Keterangan', 'Jumlah']
+            
+            skip_markers = [
+                'TAGIHAN BULAN LALU', 'Description', 'Amount (IDR)', 'Keterangan', 'Jumlah',
+                'SISA', 'TAGIHAN', 'CICILAN', 'KUALITAS', 'KREDIT', 'REMAINING', 'INSTALLMENT', 
+                'BATAS', 'PENARIKAN', 'TUNAI', 'LIVIN\'POIN', 'CASH', 'ADVANCE', 'LIMIT', 'LOAN', 'PERFORMANCE',
+                'LANCAR', 'PENAGIHAN', 'SUMMARY', 'TOTAL'
+            ]
+            
+            current_transaction = None
+            header_found = False
+            
             for page in pdf.pages:
                 # Extract text with position information
                 words = page.extract_words(
@@ -80,43 +86,35 @@ def parse_statement(pdf_path):
                     y_tolerance=3
                 )
                 
-                # Group words by y-position (rows)
+                # Group words by y-position (rows) with tolerance
                 rows = {}
                 for word in words:
-                    # Check for date pattern in the leftmost position (0 < x < 100)
-                    if 0 < word['x0'] < 100:
-                        text = word['text'].strip()
-                        # Check for DD/MM or DD-MMM-YY format
-                        if re.match(r'\d{1,2}[-/]\d{2}|\d{1,2}-[A-Za-z]{3}(-\d{2})?', text):
-                            header_found = True
-                            # Save current transaction before starting new section
-                            if current_transaction:
-                                current_transaction['created_at'] = conversion_timestamp
-                                transactions.append(current_transaction)
-                                current_transaction = None
+                    y = word['top']
+                    # Find existing row within 3px tolerance
+                    matched_y = None
+                    for existing_y in rows:
+                        if abs(y - existing_y) < 3:
+                            matched_y = existing_y
+                            break
                     
-                    # Skip sections with specific markers
-                    line_text = word['text'].upper()
-                    if any(marker.upper() in line_text for marker in skip_markers):
-                        if current_transaction:
-                            current_transaction['created_at'] = conversion_timestamp
-                            transactions.append(current_transaction)
-                            current_transaction = None
-                        continue
-                        
-                    y = round(word['top'])
-                    if y not in rows:
-                        rows[y] = []
-                    rows[y].append(word)
+                    if matched_y is not None:
+                        rows[matched_y].append(word)
+                    else:
+                        rows[y] = [word]
                 
                 # Sort rows by y-position
                 sorted_rows = sorted(rows.items())
+                page_finished = False
                 
                 for y, row_words in sorted_rows:
+                    if page_finished:
+                        break
+                        
                     # Sort words in row by x-position
                     row_words.sort(key=lambda w: w['x0'])
                     line = ' '.join(w['text'].lower() for w in row_words)
-                    
+                    line_upper = line.upper()
+
                     # Check for header row in both languages
                     if all(marker.lower() in line for marker in header_markers_en) or \
                        all(marker.lower() in line for marker in header_markers_id):
@@ -124,9 +122,24 @@ def parse_statement(pdf_path):
                         continue
                     
                     if not header_found:
-                        continue
+                         continue
                     
-                    # Process each word based on x-position
+                    # If we hit SUB-TOTAL, finalize current transaction and look for next header (for supplementary cards)
+                    if 'SUB-TOTAL' in line_upper:
+                        if current_transaction:
+                            current_transaction['created_at'] = conversion_timestamp
+                            transactions.append(current_transaction)
+                            current_transaction = None
+                        header_found = False
+                        continue
+
+                    # HARD STOP: If we hit real summary headers, this page's table is done
+                    # ONLY stop if we have found a header (avoid summary at top of page 1)
+                    if header_found and any(marker in line_upper for marker in ['TOTAL TAGIHAN', 'SISA TAGIHAN', 'KUALITAS KREDIT']):
+                        page_finished = True
+                        break
+
+                    # Process each row
                     transaction_date = ''
                     posting_date = ''
                     transaction_details = []
@@ -137,55 +150,48 @@ def parse_statement(pdf_path):
                         text = word['text']
                         x = word['x0']
                         
-                        # Transaction date (0 < x < 100)
-                        if 0 < x < 100:
-                            # Check for DD/MM, DD-MMM, and DD-MMM-YY formats
+                        # Normalize text for marker comparison
+                        clean_text = re.sub(r'[^a-zA-Z]', '', text).upper()
+                        
+                        # Check for footer keywords at the word level to skip noise
+                        if any(marker in clean_text for marker in skip_markers if len(marker) > 3):
+                             continue
+                        if clean_text in skip_markers:
+                             continue
+
+                        # Transaction date (0 < x < 105)
+                        if 0 < x < 105:
                             if re.match(r'\d{1,2}/\d{2}', text):
-                                # Ensure day is two digits for DD/MM format
                                 day, month = text.split('/')
                                 transaction_date = f"{day.zfill(2)}/{month}"
                             elif re.match(r'\d{1,2}-[A-Za-z]{3}(-\d{2})?', text):
-                                # Store the year if present for validation
-                                parts = text.split('-')
-                                if len(parts) > 2:
-                                    transaction_year = parts[2]
                                 transaction_date = convert_date_format(text)
+                            elif transaction_date: 
+                                pass
                         
-                        # Posting date (100 < x < 200)
-                        elif 100 < x < 200:
-                            # Check for DD/MM, DD-MMM, and DD-MMM-YY formats
+                        # Posting date (100 < x < 210)
+                        elif 100 < x < 210:
                             if re.match(r'\d{1,2}/\d{2}', text):
-                                # Ensure day is two digits for DD/MM format
                                 day, month = text.split('/')
                                 posting_date = f"{day.zfill(2)}/{month}"
                             elif re.match(r'\d{1,2}-[A-Za-z]{3}(-\d{2})?', text):
-                                # Store the year if present for validation
-                                parts = text.split('-')
-                                if len(parts) > 2:
-                                    posting_year = parts[2]
                                 posting_date = convert_date_format(text)
                         
-                        # Transaction details (200 < x < 500)
-                        elif 200 < x < 500:
-                            transaction_details.append(text)
-                        
-                        # Amount (500 < x < 625)
-                        elif 500 < x < 625:
-                            amount = text.strip()
-                        
-                        # DB/CR indicator (>= 625)
-                        elif x >= 625:
-                            if text.strip().upper() == 'CR':
+                        # Amount detection (usually after description, 400 < x < 630)
+                        elif x > 400:
+                            clean_val = text.strip()
+                            if clean_val.upper() == 'CR':
                                 db_cr = 'CR'
+                            elif re.match(r'^-?[\d.,]+$', clean_val):
+                                if not amount:
+                                    amount = clean_val
+                        
+                        # Everything else in between is details
+                        elif 150 < x < 550:
+                            transaction_details.append(text)
                     
-                    # Skip rows where both dates have same year but no transaction details
-                    skip_transaction = False
-                    if 'transaction_year' in locals() and 'posting_year' in locals():
-                        if transaction_year == posting_year and not transaction_details:
-                            skip_transaction = True
-                    
-                    # If we found a transaction date and it's not skipped, create a new transaction
-                    if transaction_date and not skip_transaction:
+                    # If we found a transaction date, start a new transaction
+                    if transaction_date:
                         if current_transaction:
                             current_transaction['created_at'] = conversion_timestamp
                             transactions.append(current_transaction)
@@ -198,21 +204,31 @@ def parse_statement(pdf_path):
                             'db_cr': db_cr,
                             'created_at': conversion_timestamp
                         }
-                    # If no date found and we have a current transaction, append details
+                    
+                    # If no date found and we have a current transaction, it's a continuation line
                     elif current_transaction and transaction_details:
                         current_details = current_transaction['transaction_details']
                         new_details = ' '.join(transaction_details)
                         current_transaction['transaction_details'] = f"{current_details} {new_details}".strip()
                         
-                        # Update amount if present in the continuation line
-                        if amount:
+                        if amount and not current_transaction['amount']:
                             current_transaction['amount'] = amount
+                        
+                        if db_cr == 'CR' and current_transaction['db_cr'] != 'CR':
+                            current_transaction['db_cr'] = 'CR'
                 
-                # Add the last transaction if exists
+                # Check for interest at the end of the page to finalize
                 if current_transaction:
-                    current_transaction['created_at'] = conversion_timestamp
-                    transactions.append(current_transaction)
-                    current_transaction = None
+                    details_upper = current_transaction['transaction_details'].upper()
+                    if 'INTEREST' in details_upper or 'BUNGA' in details_upper:
+                        current_transaction['created_at'] = conversion_timestamp
+                        transactions.append(current_transaction)
+                        current_transaction = None
+
+            # Add the very last transaction if exists after all pages
+            if current_transaction:
+                current_transaction['created_at'] = conversion_timestamp
+                transactions.append(current_transaction)
                     
     except Exception as e:
         raise ValueError(f"Error processing PDF: {str(e)}")
@@ -318,23 +334,37 @@ def _convert_mandiri_cc_date(raw: str, last_month: int | None, current_year: int
 from decimal import Decimal, InvalidOperation
 def _parse_decimal(value: str):
     if not value: return None
-    cleaned = value.replace('CR', '').replace('DB', '').replace(',', '').strip()
-    # Mandiri CC uses comma as thousands sep usually? Or dot?
-    # Original logic didn't specify. DBS uses comma. Mandiri (regular) uses dot for thousands, comma for decimal.
-    # Check original amount regex or patterns.
-    # Mandiri CC PDF usually: "500.000" -> 500000? Or "500,000.00"?
-    # If using pdfplumber raw text locally, Mandiri CC usually ID format.
-    # "1.000.000,00"
-    # But this parser might be simpler.
-    # Let's assume standard ID format if dots present.
+    # Remove non-numeric characters except dots, commas, and minus
+    cleaned = re.sub(r'[^0-9.,-]', '', value).strip()
+    if not cleaned: return None
+    
     try:
+        # If both dots and commas exist: 1.234.567,89 (ID) or 1,234,567.89 (US)
         if '.' in cleaned and ',' in cleaned:
-             cleaned = cleaned.replace('.', '').replace(',', '.')
-        elif ',' in cleaned: # "500,00" or "500,000"
-             if len(cleaned.split(',')[-1]) == 2: # Decimal
-                  cleaned = cleaned.replace('.', '').replace(',', '.') # Treat as ID
-             else:
-                  cleaned = cleaned.replace(',', '') # Treat as US
+            if cleaned.rfind(',') > cleaned.rfind('.'):
+                # ID format: 1.234,56
+                cleaned = cleaned.replace('.', '').replace(',', '.')
+            else:
+                # US format: 1,234.56
+                cleaned = cleaned.replace(',', '')
+        elif ',' in cleaned: 
+            # Only commas: 1,234,567 (US) or 1234,56 (ID decimal)
+            if len(cleaned.split(',')[-1]) == 2:
+                # 1234,56
+                cleaned = cleaned.replace(',', '.')
+            else:
+                # 1,234,567
+                cleaned = cleaned.replace(',', '')
+        elif '.' in cleaned:
+            # Only dots: 1.234.567 (ID) or 1234.56 (Standard)
+            # If the last part has exactly 2 digits, assume it's decimal point
+            parts = cleaned.split('.')
+            if len(parts[-1]) == 2:
+                # 1234.56
+                pass 
+            else:
+                # 1.234.567
+                cleaned = cleaned.replace('.', '')
         
         return float(cleaned)
     except:

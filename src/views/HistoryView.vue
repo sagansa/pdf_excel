@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl mx-auto space-y-6">
+  <div class="w-full px-6 space-y-6">
     <!-- Header -->
     <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
         <div>
@@ -110,7 +110,8 @@ const isBulkDeleteModalOpen = ref(false);
 const isBulkDeleting = ref(false);
 
 
-onMounted(() => {
+onMounted(async () => {
+    await store.loadFilters();
     store.loadData();
 });
 

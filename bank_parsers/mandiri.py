@@ -355,8 +355,33 @@ def _parse_decimal(value: str):
     cleaned = cleaned.lstrip('+-')
     if not cleaned:
         return None
-    cleaned = cleaned.replace('.', '').replace(',', '.')
+    
     try:
+        # If both dots and commas exist: 1.234.567,89 (ID) or 1,234,567.89 (US)
+        if '.' in cleaned and ',' in cleaned:
+            if cleaned.rfind(',') > cleaned.rfind('.'):
+                # ID format: 1.234,56
+                cleaned = cleaned.replace('.', '').replace(',', '.')
+            else:
+                # US format: 1,234.56
+                cleaned = cleaned.replace(',', '')
+        elif ',' in cleaned: 
+            # Only commas: 1,234,567 (US) or 1234,56 (ID decimal)
+            if len(cleaned.split(',')[-1]) == 2:
+                # 1234,56
+                cleaned = cleaned.replace(',', '.')
+            else:
+                # 1,234,567
+                cleaned = cleaned.replace(',', '')
+        elif '.' in cleaned:
+            # Only dots: 1.234.567 (ID) or 1234.56 (Standard)
+            if len(cleaned.split('.')[-1]) == 2:
+                # 1234.56
+                pass 
+            else:
+                # 1.234.567
+                cleaned = cleaned.replace('.', '')
+        
         dec = Decimal(cleaned)
     except InvalidOperation:
         return None

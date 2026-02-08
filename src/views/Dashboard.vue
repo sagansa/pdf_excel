@@ -12,6 +12,9 @@
       <div class="absolute -right-10 -bottom-20 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl"></div>
     </div>
 
+    <!-- Financial Summary -->
+    <FinancialSummaryWidget />
+
     <!-- Quick Actions Grid -->
     <h3 class="text-lg font-bold text-gray-800 px-1">Quick Access</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -65,4 +68,5 @@
 </template>
 
 <script setup>
+import FinancialSummaryWidget from '../components/dashboard/FinancialSummaryWidget.vue';
 </script>

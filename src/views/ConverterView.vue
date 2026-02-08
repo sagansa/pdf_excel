@@ -87,6 +87,14 @@
         @confirm="handleConfirmSave"
     />
 
+    <PasswordModal 
+        :isOpen="converterStore.requiresPassword"
+        :isLoading="converterStore.isLoading"
+        :error="converterStore.error"
+        @close="converterStore.requiresPassword = false"
+        @submit="handlePasswordSubmit"
+    />
+
   </div>
 </template>
 
@@ -96,6 +104,7 @@ import { useConverterStore } from '../stores/converter';
 import { useCompanyStore } from '../stores/companies';
 import FileDropZone from '../components/converter/FileDropZone.vue';
 import PreviewModal from '../components/converter/PreviewModal.vue';
+import PasswordModal from '../components/converter/PasswordModal.vue';
 
 
 const converterStore = useConverterStore();
@@ -140,22 +149,52 @@ const handleSubmit = async () => {
         return;
     }
     
-    // Construct FormData
+    // Check for password protection first
+    const checkFd = new FormData();
+    checkFd.append('pdf_file', converterStore.file);
+    
+    try {
+        const checkResult = await converterStore.checkPassword(checkFd);
+        if (checkResult.password_protected) {
+            converterStore.requiresPassword = true;
+            return;
+        }
+    } catch (e) {
+        console.error("Failed to check password protection", e);
+    }
+
+    // Direct upload if no password or check failed (backend will catch it anyway)
+    await executeUpload();
+};
+
+const handlePasswordSubmit = async (password) => {
+    await executeUpload(password);
+};
+
+const executeUpload = async (password = null) => {
+    if (password) {
+        converterStore.pdfPassword = password;
+    }
+    
     const fd = new FormData();
     fd.append('pdf_file', converterStore.file);
     fd.append('bank_type', formData.bankType);
     fd.append('statement_year', formData.statementYear);
     fd.append('company_id', formData.companyId);
     fd.append('preview', 'true');
+    if (converterStore.pdfPassword) {
+        fd.append('password', converterStore.pdfPassword);
+    }
     
     try {
         const result = await converterStore.uploadFile(fd);
         previewTransactions.value = result.data || [];
         showPreview.value = true;
+        converterStore.requiresPassword = false;
     } catch (e) {
         // Error handled in store
     }
-};
+}
 
 const handleConfirmSave = async () => {
     const fd = new FormData();
@@ -163,11 +202,13 @@ const handleConfirmSave = async () => {
     fd.append('bank_type', formData.bankType);
     fd.append('statement_year', formData.statementYear);
     fd.append('company_id', formData.companyId);
+    if (converterStore.pdfPassword) {
+        fd.append('password', converterStore.pdfPassword);
+    }
     
     try {
         await converterStore.confirmSave(fd);
         showPreview.value = false;
-        // Optional: Reset form or show success message
     } catch (e) {
         // Error handled in store
     }

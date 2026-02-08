@@ -79,6 +79,11 @@
             <option value="">All Transactions</option>
             <option value="marked">Marked Only</option>
             <option value="unmarked">Unmarked Only</option>
+            <optgroup label="Specific Marks">
+                <option v-for="m in store.sortedMarks" :key="m.id" :value="m.id">
+                    {{ m.personal_use }}
+                </option>
+            </optgroup>
         </select>
     </div>
 
