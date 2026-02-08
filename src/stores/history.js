@@ -17,7 +17,7 @@ export const useHistoryStore = defineStore('history', {
         dateEnd: '',
         bank: '',
         company: '',
-        markStatus: '', // 'marked', 'unmarked', or ''
+        markStatus: [], // Array of mark IDs, 'marked', 'unmarked'
         search: '',
         dbCr: '', // 'DB', 'CR', or ''
         amountMin: null,
@@ -42,7 +42,7 @@ export const useHistoryStore = defineStore('history', {
        const { year, dateStart, dateEnd, bank, company, markStatus, search, dbCr, amountMin, amountMax } = state.filters;
        const searchLower = (search || '').toLowerCase();
 
-       result = result.filter(t => {
+        result = result.filter(t => {
             const txnDate = t.txn_date ? t.txn_date.split(' ')[0] : '';
             const txnYear = txnDate ? txnDate.split('-')[0] : '';
 
@@ -56,14 +56,26 @@ export const useHistoryStore = defineStore('history', {
             // Note: company filter value checks ID
             if (company && t.company_id !== company) return false;
 
-            // Mark Status
-            if (markStatus === 'unmarked') {
-                if (t.mark_id) return false;
-            } else if (markStatus && markStatus !== 'marked') {
-                // If specific mark ID is selected
-                if (t.mark_id !== markStatus) return false;
-            } else if (markStatus === 'marked') {
-                if (!t.mark_id) return false;
+            // Mark Status (multi-select)
+            if (markStatus && markStatus.length > 0) {
+                const hasUnmarked = markStatus.includes('unmarked');
+                const hasMarked = markStatus.includes('marked');
+                const specificMarks = markStatus.filter(m => m !== 'marked' && m !== 'unmarked');
+                
+                let matches = false;
+                
+                // Check if transaction matches any selected mark criteria
+                if (hasUnmarked && !t.mark_id) {
+                    matches = true;
+                }
+                if (hasMarked && t.mark_id) {
+                    matches = true;
+                }
+                if (specificMarks.length > 0 && t.mark_id && specificMarks.includes(t.mark_id)) {
+                    matches = true;
+                }
+                
+                if (!matches) return false;
             }
 
             // Type Filter (DB/CR)
@@ -201,7 +213,7 @@ export const useHistoryStore = defineStore('history', {
             dateEnd: '',
             bank: '',
             company: '',
-            markStatus: '',
+            markStatus: [],
             search: '',
             dbCr: '',
             amountMin: null,
