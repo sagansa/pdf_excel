@@ -12,7 +12,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- 1. ASSETS (ASET)
 
 -- 1.1 Current Assets (Aset Lancar)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
 (UUID(), '1101', 'Kas dan Setara Kas', 'ASSET', 'Current Assets', 'Cash and Cash Equivalents', TRUE, NOW(), NOW()),
 (UUID(), '1122', 'Piutang Usaha - Pihak Ketiga', 'ASSET', 'Current Assets', 'Trade Receivables - Third Parties', TRUE, NOW(), NOW()),
 (UUID(), '1123', 'Piutang Usaha - Hubungan Istimewa', 'ASSET', 'Current Assets', 'Trade Receivables - Related Parties', TRUE, NOW(), NOW()),
@@ -29,7 +29,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 (UUID(), '1499', 'Aset lancar lainnya', 'ASSET', 'Current Assets', 'Other Current Assets', TRUE, NOW(), NOW());
 
 -- 1.2 Non-Current Assets (Aset Tidak Lancar)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
 (UUID(), '1501', 'Piutang Jangka Panjang', 'ASSET', 'Non-Current Assets', 'Long-term Receivables', TRUE, NOW(), NOW()),
 (UUID(), '1520', 'Properti Investasi', 'ASSET', 'Non-Current Assets', 'Investment Properties', TRUE, NOW(), NOW()),
 (UUID(), '1523', 'Tanah dan Bangunan', 'ASSET', 'Non-Current Assets', 'Land and Buildings', TRUE, NOW(), NOW()),
@@ -51,7 +51,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 -- 2. LIABILITIES (KEWAJIBAN)
 
 -- 2.1 Current Liabilities (Liabilitas Jangka Pendek)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
 (UUID(), '2102', 'Utang Usaha - Pihak Ketiga', 'LIABILITY', 'Current Liabilities', 'Trade Payables - Third Parties', TRUE, NOW(), NOW()),
 (UUID(), '2103', 'Utang Usaha - Hubungan Istimewa', 'LIABILITY', 'Current Liabilities', 'Trade Payables - Related Parties', TRUE, NOW(), NOW()),
 (UUID(), '2111', 'Utang Bunga', 'LIABILITY', 'Current Liabilities', 'Interest Payable', TRUE, NOW(), NOW()),
@@ -66,7 +66,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 (UUID(), '2228', 'Liabilitas Jangka Pendek Lainnya', 'LIABILITY', 'Current Liabilities', 'Other Current Liabilities', TRUE, NOW(), NOW());
 
 -- 2.2 Non-Current Liabilities (Liabilitas Jangka Panjang)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
 (UUID(), '2301', 'Utang Bank Jangka Panjang', 'LIABILITY', 'Non-Current Liabilities', 'Long-term Bank Loans', TRUE, NOW(), NOW()),
 (UUID(), '2303', 'Utang Jangka Panjang - Pihak Ketiga', 'LIABILITY', 'Non-Current Liabilities', 'Long-term Debt - Third Parties', TRUE, NOW(), NOW()),
 (UUID(), '2304', 'Utang Jangka Panjang - Hubungan Istimewa', 'LIABILITY', 'Non-Current Liabilities', 'Long-term Debt - Related Parties', TRUE, NOW(), NOW()),
@@ -76,7 +76,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 (UUID(), '2998', 'Liabilitas Jangka Panjang Lainnya', 'LIABILITY', 'Non-Current Liabilities', 'Other Long-term Liabilities', TRUE, NOW(), NOW());
 
 -- 3. EQUITY (EKUITAS)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
 (UUID(), '3102', 'Modal Saham', 'EQUITY', 'Equity', 'Share Capital', TRUE, NOW(), NOW()),
 (UUID(), '3120', 'Tambahan Modal Disetor', 'EQUITY', 'Equity', 'Additional Paid-in Capital', TRUE, NOW(), NOW()),
 (UUID(), '3200', 'Laba Ditahan', 'EQUITY', 'Equity', 'Retained Earnings', TRUE, NOW(), NOW()),
@@ -88,7 +88,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 -- ==========================================
 
 -- 4. REVENUE (PENDAPATAN)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
 (UUID(), '4002', 'Penjualan Domestik', 'REVENUE', 'Operating Revenue', 'Domestic Sales', TRUE, NOW(), NOW()),
 (UUID(), '4003', 'Penjualan Ekspor', 'REVENUE', 'Operating Revenue', 'Export Sales', TRUE, NOW(), NOW()),
 (UUID(), '4004', 'Penjualan Bruto', 'REVENUE', 'Operating Revenue', 'Gross Sales', TRUE, NOW(), NOW()),
@@ -104,7 +104,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 -- 5. EXPENSES (BEBAN)
 
 -- 5.1 COGS (HPP)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
 (UUID(), '5001', 'Pembelian', 'EXPENSE', 'Cost of Goods Sold', 'Purchases', TRUE, NOW(), NOW()),
 (UUID(), '5003', 'Beban Pengangkutan', 'EXPENSE', 'Cost of Goods Sold', 'Freight In', TRUE, NOW(), NOW()),
 (UUID(), '5007', 'Beban Operasional Lainnya', 'EXPENSE', 'Cost of Goods Sold', 'Other COGS Expenses', TRUE, NOW(), NOW()),
@@ -112,7 +112,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 (UUID(), '5009', 'Persediaan - Akhir', 'EXPENSE', 'Cost of Goods Sold', 'Ending Inventory (Contra)', TRUE, NOW(), NOW());
 
 -- 5.2 Operating Expenses (Beban Usaha)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
 (UUID(), '5313', 'Beban Transportasi', 'EXPENSE', 'Operating Expenses', 'Transport Expense', TRUE, NOW(), NOW()),
 (UUID(), '5314', 'Beban Penyusutan dan Amortisasi', 'EXPENSE', 'Operating Expenses', 'Depreciation & Amortization', TRUE, NOW(), NOW()),
 (UUID(), '5315', 'Beban Sewa', 'EXPENSE', 'Operating Expenses', 'Rent Expense', TRUE, NOW(), NOW()),

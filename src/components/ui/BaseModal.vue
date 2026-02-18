@@ -11,10 +11,17 @@
 
       <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-      <!-- Modal Panel -->
-      <div 
-        class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full"
-      >
+       <!-- Modal Panel -->
+       <div 
+         :class="[
+           'inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:w-full',
+           size === 'sm' ? 'sm:max-w-sm' : '',
+           size === 'md' ? 'sm:max-w-md' : '',
+           size === 'lg' ? 'sm:max-w-lg' : '',
+           size === 'xl' ? 'sm:max-w-7xl' : '',
+           !size || size === '2xl' ? 'sm:max-w-5xl' : ''
+         ]"
+       >
         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
            <h3 class="text-lg font-bold text-gray-900"><slot name="title"></slot></h3>
            <button @click="close" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -36,7 +43,12 @@
 
 <script setup>
 defineProps({
-  isOpen: Boolean
+  isOpen: Boolean,
+  size: {
+    type: String,
+    default: '2xl',
+    validator: (value) => ['sm', 'md', 'lg', 'xl', '2xl'].includes(value)
+  }
 });
 
 const emit = defineEmits(['close']);

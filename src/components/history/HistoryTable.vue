@@ -26,24 +26,25 @@
                 Amount
                 <i v-if="store.sortConfig.key === 'amount'" :class="{ 'bi-caret-down-fill': store.sortConfig.direction === 'desc', 'bi-caret-up-fill': store.sortConfig.direction === 'asc' }" class="bi ms-1"></i>
             </th>
-            <th class="text-center">Type</th>
-            <th>Bank</th>
-            <th class="text-center">Marking</th>
-            <th>Source</th>
+             <th class="text-center">Type</th>
+             <th>Bank</th>
+             <th>COA</th>
+             <th class="text-center">Marking</th>
+             <th>Source</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-             <tr v-if="store.isLoading">
-                 <td colspan="9" class="text-center py-12">
-                     <span class="spinner-border text-indigo-500 w-8 h-8" role="status"></span>
-                 </td>
-             </tr>
-             <tr v-else-if="store.paginatedTransactions.length === 0">
-                 <td colspan="9" class="text-center py-12 text-gray-400">
-                     <i class="bi bi-inbox text-3xl mb-2 block"></i>
-                     No transactions found
-                 </td>
-             </tr>
+              <tr v-if="store.isLoading">
+                  <td colspan="10" class="text-center py-12">
+                      <span class="spinner-border text-indigo-500 w-8 h-8" role="status"></span>
+                  </td>
+              </tr>
+              <tr v-else-if="store.paginatedTransactions.length === 0">
+                  <td colspan="10" class="text-center py-12 text-gray-400">
+                      <i class="bi bi-inbox text-3xl mb-2 block"></i>
+                      No transactions found
+                  </td>
+              </tr>
              <tr v-for="t in store.paginatedTransactions" :key="t.id" class="hover:bg-gray-50 transition-colors cursor-pointer" :class="{ 'bg-indigo-50/50': store.selectedTxnIds.includes(t.id) }" @click="$emit('view-details', t)">
                 <td class="text-center" @click.stop>
                     <input 
@@ -61,40 +62,89 @@
                 <td class="text-right font-mono font-bold text-sm" :class="t.db_cr === 'CR' ? 'text-green-600' : 'text-red-500'">
                     {{ formatAmount(t.amount) }}
                 </td>
-                <td class="text-center">
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                     :class="t.db_cr === 'CR' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
-                     {{ t.db_cr }}
-                   </span>
-                </td>
-                <td class="text-xs">{{ t.bank_code }}</td>
-                <td class="min-w-[150px]" @click.stop>
-                    <select 
-                        class="text-xs border-transparent bg-transparent hover:border-gray-300 hover:bg-white rounded-md p-1 w-full focus:ring-indigo-500 transition-all"
-                        :value="t.mark_id || ''"
-                        @change="store.assignMark(t.id, $event.target.value || null)"
-                    >
-                        <option value="">-- Unmarked --</option>
-                        <option v-for="m in store.sortedMarks" :key="m.id" :value="m.id">
-                            {{ m.internal_report || m.personal_use || 'Marked' }}
-                        </option>
-                    </select>
-                </td>
+                 <td class="text-center">
+                     <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                      :class="t.db_cr === 'CR' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                      {{ t.db_cr }}
+                    </span>
+                 </td>
+                 <td class="text-xs">{{ t.bank_code }}</td>
+                 <td class="text-xs truncate max-w-[180px]" :title="coaDisplayText(t)">
+                      {{ coaDisplayText(t) }}
+                      <span v-if="t.coas && t.coas.length > 1" class="ml-1 bg-indigo-100 text-indigo-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{{ t.coas.length - 1 }}</span>
+                  </td>
+                  <td class="min-w-[150px]" @click.stop>
+                      <div class="flex items-center gap-2">
+                          <select
+                              v-if="!t.is_split"
+                              class="text-xs border-transparent bg-transparent hover:border-gray-300 hover:bg-white rounded-md p-1 w-full focus:ring-indigo-500 transition-all flex-1"
+                              :value="t.mark_id || ''"
+                              @change="store.assignMark(t.id, $event.target.value || null)"
+                          >
+                              <option value="">-- Unmarked --</option>
+                              <option v-for="m in store.sortedMarks" :key="m.id" :value="m.id">
+                                  {{ m.internal_report || m.personal_use || 'Marked' }}
+                              </option>
+                          </select>
+                          <div v-else class="text-[10px] text-indigo-700 font-bold px-2 py-1 bg-indigo-50 rounded-md flex-1 flex items-center gap-1.5 border border-indigo-100">
+                             <i class="bi bi-stack"></i>
+                             Mixed Marks
+                          </div>
+                           <button
+                               @click.stop="$emit('split-transaction', t)"
+                               class="p-1 transition-all transform active:scale-90"
+                               :class="t.is_split ? 'text-indigo-600 hover:text-indigo-800' : 'text-gray-300 hover:text-indigo-600'"
+                               :title="t.is_split ? 'Transaction is split into multiple parts' : 'Split this transaction'"
+                           >
+                               <i class="bi bi-diagram-3-fill text-sm"></i>
+                           </button>
+                      </div>
+                  </td>
                 <td class="text-[10px] text-gray-400 truncate max-w-[80px]" :title="t.source_file">{{ t.source_file }}</td>
              </tr>
         </tbody>
         <tfoot v-if="!store.isLoading && store.filteredTransactions.length > 0" class="bg-gray-50/50 border-t-2 border-gray-100">
+            <!-- Page Totals -->
             <tr class="font-mono text-xs">
-                <td colspan="4" class="py-2 text-right font-bold text-gray-500 uppercase tracking-tighter">Page Total (Net)</td>
-                <td class="text-right font-bold py-2" :class="store.pageTotal >= 0 ? 'text-green-600' : 'text-red-500'">
+                <td colspan="5" class="py-1 text-right font-bold text-gray-500 uppercase tracking-tighter">Page Debit (DB)</td>
+                <td class="text-right font-bold py-1 text-red-500">
+                    {{ formatAmount(store.pageDebitTotal) }}
+                </td>
+                <td colspan="4"></td>
+            </tr>
+            <tr class="font-mono text-xs">
+                <td colspan="5" class="py-1 text-right font-bold text-gray-500 uppercase tracking-tighter">Page Credit (CR)</td>
+                <td class="text-right font-bold py-1 text-green-600">
+                    {{ formatAmount(store.pageCreditTotal) }}
+                </td>
+                <td colspan="4"></td>
+            </tr>
+            <tr class="font-mono text-xs">
+                <td colspan="5" class="py-2 text-right font-bold text-gray-700 uppercase tracking-tighter">Page Net Total</td>
+                <td class="text-right font-bold py-2 border-t border-gray-200" :class="store.pageTotal >= 0 ? 'text-green-700' : 'text-red-600'">
                     {{ formatAmount(Math.abs(store.pageTotal)) }}
                     <span class="text-[10px]">{{ store.pageTotal >= 0 ? 'CR' : 'DB' }}</span>
                 </td>
                 <td colspan="4"></td>
             </tr>
+            <!-- Filtered Totals -->
             <tr class="font-mono text-xs">
-                <td colspan="4" class="py-2 text-right font-bold text-gray-700 uppercase tracking-tighter">Total Based on Filter (Net)</td>
-                <td class="text-right font-black py-2 border-t border-gray-200" :class="store.filteredTotal >= 0 ? 'text-green-700' : 'text-red-600'">
+                <td colspan="5" class="py-1 text-right font-bold text-gray-500 uppercase tracking-tighter">Total Debit (DB)</td>
+                <td class="text-right font-black py-1 text-red-600">
+                    {{ formatAmount(store.filteredDebitTotal) }}
+                </td>
+                <td colspan="4"></td>
+            </tr>
+            <tr class="font-mono text-xs">
+                <td colspan="5" class="py-1 text-right font-bold text-gray-500 uppercase tracking-tighter">Total Credit (CR)</td>
+                <td class="text-right font-black py-1 text-green-700">
+                    {{ formatAmount(store.filteredCreditTotal) }}
+                </td>
+                <td colspan="4"></td>
+            </tr>
+            <tr class="font-mono text-xs">
+                <td colspan="5" class="py-2 text-right font-black text-gray-900 uppercase tracking-tighter">Total Net</td>
+                <td class="text-right font-black py-2 border-t border-gray-300" :class="store.filteredTotal >= 0 ? 'text-green-800' : 'text-red-700'">
                     {{ formatAmount(Math.abs(store.filteredTotal)) }}
                     <span class="text-[10px]">{{ store.filteredTotal >= 0 ? 'CR' : 'DB' }}</span>
                 </td>
@@ -192,7 +242,7 @@ import { useHistoryStore } from '../../stores/history';
 import ConfirmModal from '../ui/ConfirmModal.vue';
 
 const store = useHistoryStore();
-const emit = defineEmits(['view-details']);
+const emit = defineEmits(['view-details', 'split-transaction']);
 
 watch(() => store.paginatedTransactions, (newVal) => {
     console.log('HistoryTable: paginatedTransactions updated', newVal.length);
@@ -285,5 +335,16 @@ const formatAmount = (val) => {
     if (val === undefined || val === null) return "0";
     const num = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val;
     return new Intl.NumberFormat('id-ID').format(num || 0);
+};
+
+const coaDisplayText = (txn) => {
+    if (!txn.coas || txn.coas.length === 0) {
+        return '';
+    }
+    const firstCoa = txn.coas[0];
+    if (txn.coas.length === 1) {
+        return `${firstCoa.code} - ${firstCoa.name}`;
+    }
+    return `${firstCoa.code} - ${firstCoa.name} ...`;
 };
 </script>

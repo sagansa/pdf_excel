@@ -2,7 +2,7 @@
 -- This follows basic Indonesian accounting standards (PSAK)
 
 -- ASSETS (1-xxxx)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 -- Current Assets
 (UUID(), '1-0000', 'ASET LANCAR', 'ASSET', 'Current Assets', 'Aset yang dapat dikonversi menjadi kas dalam waktu 1 tahun', TRUE, NULL, NOW(), NOW()),
 (UUID(), '1-1000', 'Kas', 'ASSET', 'Current Assets', 'Uang tunai di tangan', TRUE, NULL, NOW(), NOW()),
@@ -20,7 +20,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 (UUID(), '1-2500', 'Akumulasi Penyusutan', 'ASSET', 'Fixed Assets', 'Akumulasi penyusutan aset tetap', TRUE, NULL, NOW(), NOW());
 
 -- LIABILITIES (2-xxxx)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 -- Current Liabilities
 (UUID(), '2-0000', 'KEWAJIBAN LANCAR', 'LIABILITY', 'Current Liabilities', 'Kewajiban jangka pendek (< 1 tahun)', TRUE, NULL, NOW(), NOW()),
 (UUID(), '2-1000', 'Utang Usaha', 'LIABILITY', 'Current Liabilities', 'Utang kepada pemasok', TRUE, NULL, NOW(), NOW()),
@@ -33,21 +33,21 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 (UUID(), '2-2100', 'Utang Bank Jangka Panjang', 'LIABILITY', 'Long-term Liabilities', 'Pinjaman bank jatuh tempo > 1 tahun', TRUE, NULL, NOW(), NOW());
 
 -- EQUITY (3-xxxx)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '3-0000', 'EKUITAS', 'EQUITY', 'Equity', 'Modal pemilik perusahaan', TRUE, NULL, NOW(), NOW()),
 (UUID(), '3-1000', 'Modal', 'EQUITY', 'Capital', 'Modal disetor pemilik', TRUE, NULL, NOW(), NOW()),
 (UUID(), '3-2000', 'Laba Ditahan', 'EQUITY', 'Retained Earnings', 'Akumulasi laba yang tidak dibagikan', TRUE, NULL, NOW(), NOW()),
 (UUID(), '3-3000', 'Prive', 'EQUITY', 'Drawings', 'Pengambilan pribadi pemilik', TRUE, NULL, NOW(), NOW());
 
 -- REVENUE (4-xxxx)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '4-0000', 'PENDAPATAN', 'REVENUE', 'Revenue', 'Pendapatan dari aktivitas usaha', TRUE, NULL, NOW(), NOW()),
 (UUID(), '4-1000', 'Pendapatan Usaha', 'REVENUE', 'Operating Revenue', 'Pendapatan dari penjualan produk/jasa', TRUE, NULL, NOW(), NOW()),
 (UUID(), '4-2000', 'Pendapatan Lain-lain', 'REVENUE', 'Other Revenue', 'Pendapatan di luar usaha utama', TRUE, NULL, NOW(), NOW()),
 (UUID(), '4-2100', 'Pendapatan Bunga', 'REVENUE', 'Other Revenue', 'Bunga dari deposito atau investasi', TRUE, NULL, NOW(), NOW());
 
 -- EXPENSES (5-xxxx)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '5-0000', 'BEBAN', 'EXPENSE', 'Expenses', 'Beban operasional perusahaan', TRUE, NULL, NOW(), NOW()),
 (UUID(), '5-1000', 'Beban Gaji', 'EXPENSE', 'Operating Expense', 'Gaji dan tunjangan karyawan', TRUE, NULL, NOW(), NOW()),
 (UUID(), '5-1100', 'Beban Sewa', 'EXPENSE', 'Operating Expense', 'Sewa kantor atau tempat usaha', TRUE, NULL, NOW(), NOW()),

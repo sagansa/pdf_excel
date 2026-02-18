@@ -71,23 +71,14 @@
               Monthly Revenue
             </button>
             <button
-              @click="activeTab = 'inventory'"
+              @click="activeTab = 'balance-sheet'"
               class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
-              :class="activeTab === 'inventory'
+              :class="activeTab === 'balance-sheet'
                 ? 'border-indigo-600 text-indigo-600' 
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
             >
-              <i class="bi bi-box-seam mr-2"></i>
-              Inventory Adjustments
-            </button>
-            <button
-              @click="activeTab = 'balance-sheet'"
-              disabled
-              class="px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 cursor-not-allowed"
-            >
               <i class="bi bi-file-earmark-spreadsheet mr-2"></i>
               Balance Sheet
-              <span class="ml-2 text-xs bg-gray-100 px-2 py-0.5 rounded">Coming Soon</span>
             </button>
             <button
               @click="activeTab = 'cash-flow'"
@@ -104,7 +95,6 @@
 
       <!-- Filters -->
       <ReportFilters
-        v-if="activeTab === 'income-statement'"
         v-model="store.filters"
         :companies="companies"
         :is-loading="store.isLoading"
@@ -122,30 +112,41 @@
       <!-- Loading and Content Area -->
       <div class="mt-6 relative min-h-[400px]">
         <!-- Global Loading Overlay (Subtle) -->
-        <div v-if="store.isLoading && activeTab === 'income-statement'" class="absolute inset-0 bg-white/50 backdrop-blur-sm z-20 flex flex-col items-center justify-center rounded-lg border border-gray-200">
+        <div v-if="store.isLoading" class="absolute inset-0 bg-white/50 backdrop-blur-sm z-20 flex flex-col items-center justify-center rounded-lg border border-gray-200">
           <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-          <p class="text-sm text-gray-500 mt-4">Generating report...</p>
+          <p class="text-sm text-gray-500 mt-4">Generating all reports...</p>
         </div>
 
         <!-- Report Content -->
-        <div :class="{ 'opacity-50 pointer-events-none': store.isLoading && activeTab === 'income-statement' }">
+        <div :class="{ 'opacity-50 pointer-events-none': store.isLoading }">
           <IncomeStatement
             v-if="activeTab === 'income-statement'"
+            :key="`is-${refreshKey}`"
             :data="store.incomeStatement"
+            @view-coa="openCoaDetail"
           />
           <MonthlyRevenue
             v-if="activeTab === 'monthly-revenue'"
+            :key="`mr-${refreshKey}`"
             :company-id="store.filters.companyId"
           />
-          <InventoryAdjustments
-            v-if="activeTab === 'inventory'"
-            :company-id="store.filters.companyId"
-            :year="store.filters.year"
-            @saved="generateReport"
+          <BalanceSheet
+            v-if="activeTab === 'balance-sheet'"
+            :key="`bs-${refreshKey}`"
+            :data="store.balanceSheet"
+            @view-coa="openCoaDetail"
           />
         </div>
       </div>
     </div>
+
+    <!-- COA Detail Modal -->
+    <COADetailModal
+      :isOpen="showCoaModal"
+      :coaData="selectedCoa"
+      :filters="store.filters"
+      @close="showCoaModal = false"
+    />
   </div>
 </template>
 
@@ -156,12 +157,22 @@ import { useCompanyStore } from '../stores/companies';
 import ReportFilters from '../components/reports/ReportFilters.vue';
 import IncomeStatement from '../components/reports/IncomeStatement.vue';
 import MonthlyRevenue from '../components/reports/MonthlyRevenue.vue';
-import InventoryAdjustments from '../components/reports/InventoryAdjustments.vue';
+import BalanceSheet from '../components/reports/BalanceSheet.vue';
+import COADetailModal from '../components/reports/COADetailModal.vue';
 
 const store = useReportsStore();
 const companyStore = useCompanyStore();
 
 const activeTab = ref('income-statement');
+const refreshKey = ref(0);
+const showCoaModal = ref(false);
+const selectedCoa = ref(null);
+
+  const openCoaDetail = (coaItem) => {
+    if (!coaItem || !coaItem.code) return;
+    selectedCoa.value = { ...coaItem };
+    showCoaModal.value = true;
+  };
 
 // Add watcher for persistence
 watch(() => store.filters, () => {
@@ -171,21 +182,19 @@ watch(() => store.filters, () => {
 const companies = ref([]);
 
 const generateReport = async () => {
-  if (!store.filters.startDate || !store.filters.endDate) {
-    alert('Please select start and end dates');
+  // Global validation
+  if (!store.filters.startDate || !store.filters.endDate || !store.filters.asOfDate) {
+    alert('Please ensure all required filter dates are selected (Period Range and As Of Date)');
     return;
   }
 
   try {
-    if (activeTab.value === 'income-statement') {
-      await store.fetchIncomeStatement(
-        store.filters.startDate,
-        store.filters.endDate,
-        store.filters.companyId
-      );
-    }
+    // Generate all reports at once
+    await store.fetchAllReports();
+    // Increment refreshKey to force-refresh components
+    refreshKey.value++;
   } catch (error) {
-    console.error('Failed to generate report:', error);
+    console.error('Failed to generate all reports:', error);
   }
 };
 

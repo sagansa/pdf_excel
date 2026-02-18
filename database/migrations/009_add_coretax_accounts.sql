@@ -2,13 +2,13 @@
 
 -- REVENUE DEDUCTIONS (Contra-Revenue)
 -- User should map these with mapping_type = 'DEBIT' to reduce total revenue
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
-(UUID(), '4011', 'Retur Penjualan', 'REVENUE', 'Sales Deductions', 'Pengembalian barang dari pelanggan (Contra Revenue)', TRUE, NULL, NOW(), NOW()),
-(UUID(), '4012', 'Potongan Penjualan', 'REVENUE', 'Sales Deductions', 'Diskon atau potongan harga penjualan (Contra Revenue)', TRUE, NULL, NOW(), NOW()),
-(UUID(), '4013', 'Penyesuaian Penjualan', 'REVENUE', 'Sales Deductions', 'Penyesuaian harga jual (Contra Revenue)', TRUE, NULL, NOW(), NOW());
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+('4011-uuid', '4011', 'Retur Penjualan', 'REVENUE', 'Sales Deductions', 'Pengembalian barang dari pelanggan (Contra Revenue)', TRUE, NULL, NOW(), NOW()),
+('4012-uuid', '4012', 'Potongan Penjualan', 'REVENUE', 'Sales Deductions', 'Diskon atau potongan harga penjualan (Contra Revenue)', TRUE, NULL, NOW(), NOW()),
+('4013-uuid', '4013', 'Penyesuaian Penjualan', 'REVENUE', 'Sales Deductions', 'Penyesuaian harga jual (Contra Revenue)', TRUE, NULL, NOW(), NOW());
 
 -- COST OF GOODS SOLD (HPP) - Categorized as EXPENSE for now as simplistic model
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '5001', 'Pembelian', 'EXPENSE', 'Cost of Goods Sold', 'Pembelian barang dagang', TRUE, NULL, NOW(), NOW()),
 (UUID(), '5003', 'Beban Pengangkutan', 'EXPENSE', 'Cost of Goods Sold', 'Biaya angkut pembelian', TRUE, NULL, NOW(), NOW()),
 (UUID(), '5007', 'Beban Operasional Lainnya', 'EXPENSE', 'Cost of Goods Sold', 'Biaya terkait HPP lainnya', TRUE, NULL, NOW(), NOW()),
@@ -16,7 +16,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 (UUID(), '5009', 'Persediaan - Akhir', 'EXPENSE', 'Cost of Goods Sold', 'Nilai persediaan akhir periode (Contra Expense)', TRUE, NULL, NOW(), NOW());
 
 -- OPERATING EXPENSES (Beban Usaha) - Specific CoreTax Codes
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '5313', 'Beban Transportasi', 'EXPENSE', 'Operating Expenses', 'Biaya transportasi dinas', TRUE, NULL, NOW(), NOW()),
 (UUID(), '5314', 'Beban Penyusutan dan Amortisasi', 'EXPENSE', 'Operating Expenses', 'Penyusutan aset tetap dan amortisasi', TRUE, NULL, NOW(), NOW()),
 (UUID(), '5315', 'Beban Sewa', 'EXPENSE', 'Operating Expenses', 'Sewa gedung/kantor', TRUE, NULL, NOW(), NOW()),

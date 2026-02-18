@@ -94,6 +94,17 @@
         </select>
     </div>
 
+    <!-- COA Filter -->
+    <div class="space-y-1">
+        <label class="label-base text-[10px]">COA</label>
+        <MultiSelect
+            :model-value="store.filters.coaIds"
+            :options="store.coaOptions"
+            placeholder="All Accounts"
+            @update:model-value="store.setFilter('coaIds', $event)"
+        />
+    </div>
+
     <!-- Search -->
     <div class="space-y-1">
       <label class="label-base text-[10px]">Search</label>
@@ -130,7 +141,8 @@ const store = useHistoryStore();
 const markOptions = computed(() => {
     const options = [
         { id: 'marked', label: 'Marked Only' },
-        { id: 'unmarked', label: 'Unmarked Only' }
+        { id: 'unmarked', label: 'Unmarked Only' },
+        { id: 'separator-1', type: 'separator' }
     ];
     
     store.sortedMarks.forEach(m => {

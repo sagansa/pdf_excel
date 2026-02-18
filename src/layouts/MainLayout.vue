@@ -72,6 +72,18 @@
           <i class="bi bi-file-earmark-bar-graph text-lg flex-shrink-0"></i>
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Financial Reports</span>
         </router-link>
+
+        <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
+            <p class="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Configuration</p>
+        </div>
+        <div class="pt-4 pb-2 flex justify-center" v-if="isSidebarCollapsed">
+            <i class="bi bi-three-dots text-gray-300"></i>
+        </div>
+
+        <router-link to="/settings" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Settings' : ''">
+          <i class="bi bi-gear text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Settings</span>
+        </router-link>
       </nav>
 
       <div class="p-4 border-t border-gray-100 overflow-hidden">
@@ -143,6 +155,9 @@ const pageTitle = computed(() => {
         case 'upload-summary': return 'Upload Summary';
         case 'companies': return 'Company Management';
         case 'marks': return 'Mark Management';
+        case 'chart-of-accounts': return 'Chart of Accounts';
+        case 'reports': return 'Financial Reports';
+        case 'settings': return 'System Settings';
         default: return 'StatementX';
     }
 });
