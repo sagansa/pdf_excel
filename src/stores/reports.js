@@ -9,6 +9,7 @@ const api = axios.create({
 export const useReportsStore = defineStore('reports', {
   state: () => ({
     incomeStatement: null,
+    balanceSheet: null,
     coaDetail: null,
     monthlyRevenue: null,
     monthlyRevenuePrevYear: null,
@@ -19,6 +20,7 @@ export const useReportsStore = defineStore('reports', {
       year: new Date().getFullYear().toString(),
       startDate: '',
       endDate: '',
+      asOfDate: '',
       companyId: null
     }
   }),
@@ -150,6 +152,42 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
+    async fetchBalanceSheet(asOfDate, companyId = null) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        const response = await reportsApi.getBalanceSheet(asOfDate, companyId);
+        this.balanceSheet = response.data;
+        return response.data;
+      } catch (err) {
+        this.error = err.response?.data?.error || 'Failed to fetch balance sheet';
+        console.error(err);
+        throw new Error(this.error);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async fetchAllReports() {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        // Parallel fetch for all core reports
+        await Promise.all([
+          this.fetchIncomeStatement(this.filters.startDate, this.filters.endDate, this.filters.companyId),
+          this.fetchBalanceSheet(this.filters.asOfDate, this.filters.companyId),
+          this.fetchMonthlyRevenue(this.filters.year, this.filters.companyId)
+        ]);
+        return true;
+      } catch (err) {
+        console.error("Error fetching all reports:", err);
+        // Error state is already set by individual fetchers
+        return false;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     async exportReport(reportType, format, filters) {
       this.isLoading = true;
       this.error = null;
@@ -232,6 +270,157 @@ export const useReportsStore = defineStore('reports', {
         return true;
       } catch (e) {
         console.error("Failed to save inventory balances:", e);
+        throw e;
+      }
+    },
+
+    // Amortization Items Management
+    async fetchAmortizationItems(year, companyId) {
+      try {
+        const res = await reportsApi.getAmortizationItems(year, companyId);
+        return {
+          items: res.data.items || [],
+          totalAmount: res.data.total_amount || 0,
+          calculated_total: res.data.calculated_total || 0,
+          settings: res.data.settings || {}
+        };
+      } catch (e) {
+        console.error("Failed to fetch amortization items:", e);
+        return { items: [], totalAmount: 0, calculated_total: 0, settings: {} };
+      }
+    },
+
+    async createAmortizationItem(data) {
+      try {
+        await reportsApi.createAmortizationItem(data);
+        return true;
+      } catch (e) {
+        console.error("Failed to create amortization item:", e);
+        throw e;
+      }
+    },
+
+    async updateAmortizationItem(itemId, data) {
+      try {
+        await reportsApi.updateAmortizationItem(itemId, data);
+        return true;
+      } catch (e) {
+        console.error("Failed to update amortization item:", e);
+        throw e;
+      }
+    },
+
+    async deleteAmortizationItem(itemId) {
+      try {
+        await reportsApi.deleteAmortizationItem(itemId);
+        return true;
+      } catch (e) {
+        console.error("Failed to delete amortization item:", e);
+        throw e;
+      }
+    },
+
+    // Amortization Settings
+    async fetchAmortizationSettings(companyId) {
+      try {
+        const res = await reportsApi.getAmortizationSettings(companyId);
+        return res.data.settings || {};
+      } catch (e) {
+        console.error("Failed to fetch amortization settings:", e);
+        return {};
+      }
+    },
+
+    async saveAmortizationSettings(data) {
+      try {
+        await reportsApi.saveAmortizationSettings(data);
+        return true;
+      } catch (e) {
+        console.error("Failed to save amortization settings:", e);
+        throw e;
+      }
+    },
+
+    async fetchAmortizationCoaCodes(companyId) {
+      try {
+        const res = await reportsApi.getAmortizationCoaCodes(companyId);
+        return {
+          coaCodes: res.data.coa_codes || ['5314'],
+          coaDetails: res.data.coa_details || []
+        };
+      } catch (e) {
+        console.error("Failed to fetch amortization COA codes:", e);
+        return { coaCodes: ['5314'], coaDetails: [] };
+      }
+    },
+
+    // Prepaid Expenses Actions
+    async fetchPrepaidExpenses(companyId, asOfDate) {
+      try {
+        const res = await reportsApi.getPrepaidExpenses(companyId, asOfDate);
+        return res.data.items || [];
+      } catch (e) {
+        console.error("Failed to fetch prepaid expenses:", e);
+        return [];
+      }
+    },
+
+    async addPrepaidExpense(data) {
+      try {
+        await reportsApi.addPrepaidExpense(data);
+        return true;
+      } catch (e) {
+        console.error("Failed to add prepaid expense:", e);
+        throw e;
+      }
+    },
+
+    async updatePrepaidExpense(itemId, data) {
+      try {
+        await reportsApi.updatePrepaidExpense(itemId, data);
+        return true;
+      } catch (e) {
+        console.error("Failed to update prepaid expense:", e);
+        throw e;
+      }
+    },
+
+    async deletePrepaidExpense(itemId) {
+      try {
+        await reportsApi.deletePrepaidExpense(itemId);
+        return true;
+      } catch (e) {
+        console.error("Failed to delete prepaid expense:", e);
+        throw e;
+      }
+    },
+    
+    async fetchPrepaidLinkableTransactions(companyId, currentTransactionId = null) {
+      try {
+        const res = await reportsApi.getPrepaidLinkableTransactions(companyId, currentTransactionId);
+        return res.data.transactions || [];
+      } catch (e) {
+        console.error("Failed to fetch linkable transactions:", e);
+        return [];
+      }
+    },
+
+    async fetchPrepaidJournalEntries(itemId) {
+      try {
+        const res = await reportsApi.getPrepaidJournalEntries(itemId);
+        return res.data.journals || [];
+      } catch (e) {
+        console.error("Failed to fetch journal entries:", e);
+        return [];
+      }
+    },
+
+    async postPrepaidJournal(itemId) {
+      try {
+        await reportsApi.postPrepaidJournal(itemId);
+        return true;
+      } catch (e) {
+        console.error("Failed to post prepaid journal:", e);
         throw e;
       }
     }

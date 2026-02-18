@@ -58,6 +58,28 @@ export const historyApi = {
   },
   updateNotes(txnId, notes) {
     return api.put(`/transactions/${txnId}/notes`, { notes });
+  },
+  getSplits(txnId) {
+    return api.get(`/transactions/${txnId}/splits`);
+  },
+  saveSplits(txnId, splits) {
+    return api.post(`/transactions/${txnId}/splits`, { splits });
+  },
+  importTransactions(file, bankCode, companyId) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('bank_code', bankCode || 'MANUAL');
+    if (companyId) formData.append('company_id', companyId);
+    return api.post('/transactions/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  exportTransactions(format, filters = {}) {
+    return api.post('/transactions/export', { format, ...filters }, {
+      responseType: 'blob'
+    });
   }
 };
 
@@ -94,6 +116,12 @@ export const marksApi = {
   }
 };
 
+export const coaApi = {
+  getCoa() {
+    return api.get('/coa');
+  }
+};
+
 export const filterApi = {
   getFilters(viewName) {
     return api.get(`/filters/${viewName}`);
@@ -114,11 +142,149 @@ export const reportsApi = {
     if (companyId) params.company_id = companyId;
     return api.get('/reports/monthly-revenue', { params });
   },
+  getBalanceSheet(asOfDate, companyId) {
+    const params = { as_of_date: asOfDate };
+    if (companyId) params.company_id = companyId;
+    return api.get('/reports/balance-sheet', { params });
+  },
   getInventoryBalances(year, companyId) {
     const params = { year, company_id: companyId };
     return api.get('/inventory-balances', { params });
   },
   saveInventoryBalances(data) {
     return api.post('/inventory-balances', data);
+  },
+  // Amortization Items
+  getAmortizationItems(year, companyId) {
+    const params = { year, company_id: companyId };
+    return api.get('/amortization-items', { params });
+  },
+  createAmortizationItem(data) {
+    return api.post('/amortization-items', data);
+  },
+  updateAmortizationItem(itemId, data) {
+    return api.put(`/amortization-items/${itemId}`, data);
+  },
+  deleteAmortizationItem(itemId) {
+    return api.delete(`/amortization-items/${itemId}`);
+  },
+  
+  // Amortization Settings
+  getAmortizationSettings(companyId) {
+    const params = companyId ? { company_id: companyId } : {};
+    return api.get('/amortization-settings', { params });
+  },
+  saveAmortizationSettings(data) {
+    return api.post('/amortization-settings', data);
+  },
+  getAmortizationCoaCodes(companyId) {
+    const params = companyId ? { company_id: companyId } : {};
+    return api.get('/amortization-coa-codes', { params });
+  },
+  
+  getCoaDetail(params) {
+    return api.get('/reports/coa-detail', { params });
+  },
+
+  // Prepaid Expenses
+  getPrepaidExpenses(companyId, asOfDate) {
+    const params = { company_id: companyId, as_of_date: asOfDate };
+    return api.get('/reports/prepaid-expenses', { params });
+  },
+  addPrepaidExpense(data) {
+    return api.post('/reports/prepaid-expenses', data);
+  },
+  updatePrepaidExpense(itemId, data) {
+    return api.put(`/reports/prepaid-expenses/${itemId}`, data);
+  },
+  deletePrepaidExpense(itemId) {
+    return api.delete(`/reports/prepaid-expenses/${itemId}`);
+  },
+  getPrepaidLinkableTransactions(company_id, current_transaction_id = null) {
+    const params = { company_id };
+    if (current_transaction_id) params.current_transaction_id = current_transaction_id;
+    return api.get('/reports/prepaid-linkable-transactions', { params });
+  },
+  getPrepaidJournalEntries(itemId) {
+    return api.get(`/reports/prepaid-journal-entries/${itemId}`);
+  },
+  postPrepaidJournal(itemId) {
+    return api.post(`/reports/prepaid-expenses/${itemId}/post-journal`);
+  }
+};
+
+// Rental Location Management API
+export const rentalApi = {
+  // Locations
+  getLocations(companyId) {
+    const params = companyId ? { company_id: companyId } : {};
+    return api.get('/rental-locations', { params });
+  },
+  createLocation(data) {
+    return api.post('/rental-locations', data);
+  },
+  updateLocation(locationId, data) {
+    return api.put(`/rental-locations/${locationId}`, data);
+  },
+  deleteLocation(locationId) {
+    return api.delete(`/rental-locations/${locationId}`);
+  },
+
+  // Stores
+  getStores(companyId) {
+    const params = companyId ? { company_id: companyId } : {};
+    return api.get('/stores', { params });
+  },
+  createStore(data) {
+    return api.post('/stores', data);
+  },
+  updateStore(storeId, data) {
+    return api.put(`/stores/${storeId}`, data);
+  },
+  deleteStore(storeId) {
+    return api.delete(`/stores/${storeId}`);
+  },
+
+  // Contracts
+  getContracts(companyId, status = null) {
+    const params = { company_id: companyId };
+    if (status) params.status = status;
+    return api.get('/rental-contracts', { params });
+  },
+  getExpiringContracts(companyId, days = 30) {
+    const params = { company_id: companyId, days };
+    return api.get('/rental-contracts/expiring', { params });
+  },
+  createContract(data) {
+    return api.post('/rental-contracts', data);
+  },
+  updateContract(contractId, data) {
+    return api.put(`/rental-contracts/${contractId}`, data);
+  },
+  deleteContract(contractId) {
+    return api.delete(`/rental-contracts/${contractId}`);
+  },
+
+  // Contract-Transaction Linking
+  getContractTransactions(contractId) {
+    return api.get(`/rental-contracts/${contractId}/transactions`);
+  },
+  linkTransaction(contractId, transactionId) {
+    return api.post(`/rental-contracts/${contractId}/link-transaction`, { transaction_id: transactionId });
+  },
+  unlinkTransaction(contractId, transactionId) {
+    return api.delete(`/rental-contracts/${contractId}/unlink-transaction/${transactionId}`);
+  },
+  
+  // Linkable Transactions
+  getLinkableTransactions(companyId, currentContractId = null) {
+    const params = { company_id: companyId };
+    if (currentContractId) params.current_contract_id = currentContractId;
+    return api.get('/rental-contracts/linkable-transactions', { params });
+  },
+  
+  // Journal Generation
+  generateJournals(contractId, companyId) {
+    return api.post(`/rental-contracts/${contractId}/generate-journals`, { company_id: companyId });
   }
 };

@@ -9,9 +9,7 @@ CREATE TABLE IF NOT EXISTS inventory_balances (
     beginning_inventory_qty DECIMAL(15,2) DEFAULT 0.00,
     ending_inventory_amount DECIMAL(15,2) DEFAULT 0.00,
     ending_inventory_qty DECIMAL(15,2) DEFAULT 0.00,
-    is_manual BOOLEAN DEFAULT TRUE,
+    base_value DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY (company_id, year),
-    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

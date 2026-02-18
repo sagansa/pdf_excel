@@ -3,7 +3,7 @@
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <h3 class="text-sm font-semibold text-gray-700 mb-3">Report Filters</h3>
       
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
         <!-- Year Selection -->
         <div>
           <label class="block text-xs font-medium text-gray-700 mb-1">
@@ -21,7 +21,7 @@
         <!-- Start Date -->
         <div>
           <label class="block text-xs font-medium text-gray-700 mb-1">
-            Start Date <span class="text-red-500">*</span>
+            Period: Start <span class="text-red-500">*</span>
           </label>
           <input
             :value="modelValue.startDate"
@@ -35,11 +35,25 @@
         <!-- End Date -->
         <div>
           <label class="block text-xs font-medium text-gray-700 mb-1">
-            End Date <span class="text-red-500">*</span>
+            Period: End <span class="text-red-500">*</span>
           </label>
           <input
             :value="modelValue.endDate"
             @input="updateFilter('endDate', $event.target.value)"
+            type="date"
+            required
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+
+        <!-- As Of Date (for Balance Sheet) -->
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">
+            As of Date <span class="text-red-500">*</span>
+          </label>
+          <input
+            :value="modelValue.asOfDate"
+            @input="updateFilter('asOfDate', $event.target.value)"
             type="date"
             required
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -107,7 +121,7 @@ const emit = defineEmits(['update:modelValue', 'generate']);
 const availableYears = [2024, 2025, 2026];
 
 const isValid = computed(() => {
-  return props.modelValue.startDate && props.modelValue.endDate;
+  return props.modelValue.startDate && props.modelValue.endDate && props.modelValue.asOfDate;
 });
 
 const updateFilter = (key, value) => {
@@ -120,12 +134,14 @@ const updateFilter = (key, value) => {
 const handleYearChange = (year) => {
   const startDate = `${year}-01-01`;
   const endDate = `${year}-12-31`;
+  const asOfDate = `${year}-12-31`;
   
   emit('update:modelValue', {
     ...props.modelValue,
     year: year,
     startDate: startDate,
-    endDate: endDate
+    endDate: endDate,
+    asOfDate: asOfDate
   });
 };
 </script>

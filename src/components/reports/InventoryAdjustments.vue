@@ -3,8 +3,9 @@
     <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
       <div>
         <h3 class="text-lg font-bold text-slate-800">Manual Inventory Adjustments</h3>
-        <p class="text-xs text-slate-500 mt-0.5">Adjust beginning and ending inventory for {{ year }}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Adjust beginning and ending inventory</p>
       </div>
+
       <div v-if="isSaving" class="flex items-center gap-2 text-indigo-600">
         <div class="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
         <span class="text-xs font-medium">Saving...</span>
@@ -97,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useReportsStore } from '../../stores/reports';
 
 const props = defineProps({
@@ -111,9 +112,18 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['saved']);
+const emit = defineEmits(['saved', 'update:year']);
 const store = useReportsStore();
 const isSaving = ref(false);
+
+const availableYears = computed(() => {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = currentYear - 2; i <= currentYear + 1; i++) {
+    years.push(i);
+  }
+  return years;
+});
 
 const form = ref({
   beginning_inventory_amount: 0,

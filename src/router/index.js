@@ -7,6 +7,7 @@ import MarksView from '../views/MarksView.vue'
 import ChartOfAccountsView from '../views/ChartOfAccountsView.vue'
 import ReportsView from '../views/ReportsView.vue'
 import UploadSummaryView from '../views/UploadSummaryView.vue'
+import SettingsView from '../views/SettingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,6 +51,11 @@ const router = createRouter({
       path: '/upload-summary',
       name: 'upload-summary',
       component: UploadSummaryView
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: SettingsView
     }
     // Add other routes here later
   ]

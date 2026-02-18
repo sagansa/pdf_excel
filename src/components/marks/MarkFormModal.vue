@@ -16,6 +16,23 @@
         <textarea v-model="form.tax_report" rows="2" class="input-base" placeholder="e.g. Tax Deductible Donation"></textarea>
       </div>
 
+      <div class="flex items-center gap-2 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+        <input
+          type="checkbox"
+          id="is_asset"
+          v-model="form.is_asset"
+          class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-5 w-5"
+        />
+        <div class="flex-1">
+          <label for="is_asset" class="text-sm font-semibold text-gray-900 cursor-pointer">
+            Adalah Aset (Untuk Amortisasi)
+          </label>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Centang jika mark ini merepresentasikan pembelian aset yang akan diamortisasi
+          </p>
+        </div>
+      </div>
+
       <div v-if="error" class="text-sm text-red-600 bg-red-50 p-2 rounded">
           {{ error }}
       </div>
@@ -55,7 +72,8 @@ const error = ref(null);
 const form = reactive({
     internal_report: '',
     personal_use: '',
-    tax_report: ''
+    tax_report: '',
+    is_asset: false
 });
 
 watch(() => props.markToEdit, (newVal) => {
@@ -64,11 +82,13 @@ watch(() => props.markToEdit, (newVal) => {
         form.internal_report = newVal.internal_report || '';
         form.personal_use = newVal.personal_use || '';
         form.tax_report = newVal.tax_report || '';
+        form.is_asset = newVal.is_asset || false;
     } else {
         isEdit.value = false;
         form.internal_report = '';
         form.personal_use = '';
         form.tax_report = '';
+        form.is_asset = false;
     }
 }, { immediate: true });
 

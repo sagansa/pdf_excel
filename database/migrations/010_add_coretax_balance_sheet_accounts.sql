@@ -3,7 +3,7 @@
 -- ASSETS (ASET)
 
 -- Current Assets (Aset Lancar)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '1101', 'Kas dan Setara Kas', 'ASSET', 'Current Assets', 'Cash and Cash Equivalents', TRUE, NULL, NOW(), NOW()),
 (UUID(), '1122', 'Piutang Usaha - Pihak Ketiga', 'ASSET', 'Current Assets', 'Trade Receivables - Third Parties', TRUE, NULL, NOW(), NOW()),
 (UUID(), '1123', 'Piutang Usaha - Hubungan Istimewa', 'ASSET', 'Current Assets', 'Trade Receivables - Related Parties', TRUE, NULL, NOW(), NOW()),
@@ -20,7 +20,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 (UUID(), '1499', 'Aset lancar lainnya', 'ASSET', 'Current Assets', 'Other Current Assets', TRUE, NULL, NOW(), NOW());
 
 -- Non-Current Assets (Aset Tidak Lancar)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '1501', 'Piutang Jangka Panjang', 'ASSET', 'Non-Current Assets', 'Long-term Receivables', TRUE, NULL, NOW(), NOW()),
 (UUID(), '1520', 'Properti Investasi', 'ASSET', 'Non-Current Assets', 'Investment Properties', TRUE, NULL, NOW(), NOW()),
 (UUID(), '1523', 'Tanah dan Bangunan', 'ASSET', 'Non-Current Assets', 'Land and Buildings', TRUE, NULL, NOW(), NOW()),
@@ -43,7 +43,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 -- LIABILITIES (KEWAJIBAN)
 
 -- Current Liabilities (Liabilitas Jangka Pendek)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '2102', 'Utang Usaha - Pihak Ketiga', 'LIABILITY', 'Current Liabilities', 'Trade Payables - Third Parties', TRUE, NULL, NOW(), NOW()),
 (UUID(), '2103', 'Utang Usaha - Hubungan Istimewa', 'LIABILITY', 'Current Liabilities', 'Trade Payables - Related Parties', TRUE, NULL, NOW(), NOW()),
 (UUID(), '2111', 'Utang Bunga', 'LIABILITY', 'Current Liabilities', 'Interest Payable', TRUE, NULL, NOW(), NOW()),
@@ -58,7 +58,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 (UUID(), '2228', 'Liabilitas Jangka Pendek Lainnya', 'LIABILITY', 'Current Liabilities', 'Other Current Liabilities', TRUE, NULL, NOW(), NOW());
 
 -- Non-Current Liabilities (Liabilitas Jangka Panjang)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '2301', 'Utang Bank Jangka Panjang', 'LIABILITY', 'Non-Current Liabilities', 'Long-term Bank Loans', TRUE, NULL, NOW(), NOW()),
 (UUID(), '2303', 'Utang Jangka Panjang - Pihak Ketiga', 'LIABILITY', 'Non-Current Liabilities', 'Long-term Debt - Third Parties', TRUE, NULL, NOW(), NOW()),
 (UUID(), '2304', 'Utang Jangka Panjang - Hubungan Istimewa', 'LIABILITY', 'Non-Current Liabilities', 'Long-term Debt - Related Parties', TRUE, NULL, NOW(), NOW()),
@@ -69,7 +69,7 @@ INSERT INTO chart_of_accounts (id, code, name, category, subcategory, descriptio
 
 
 -- EQUITY (EKUITAS)
-INSERT INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
+INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, parent_id, created_at, updated_at) VALUES
 (UUID(), '3102', 'Modal Saham', 'EQUITY', 'Equity', 'Share Capital', TRUE, NULL, NOW(), NOW()),
 (UUID(), '3120', 'Tambahan Modal Disetor', 'EQUITY', 'Equity', 'Additional Paid-in Capital', TRUE, NULL, NOW(), NOW()),
 (UUID(), '3200', 'Laba Ditahan', 'EQUITY', 'Equity', 'Retained Earnings', TRUE, NULL, NOW(), NOW()),

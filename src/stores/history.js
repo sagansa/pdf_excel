@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { historyApi, companyApi, marksApi, filterApi } from '../api';
+import { historyApi, companyApi, marksApi, filterApi, coaApi } from '../api';
 
 export const useHistoryStore = defineStore('history', {
   state: () => ({
@@ -7,17 +7,20 @@ export const useHistoryStore = defineStore('history', {
     uploadSummary: [],
     companies: [],
     marks: [],
+    coaList: [],
     isLoading: false,
     error: null,
-    
+
     // Filters
     filters: {
         year: '',
         dateStart: '',
         dateEnd: '',
+        asOfDate: '', // Added for PrepaidExpenses component
         bank: '',
         company: '',
         markStatus: [], // Array of mark IDs, 'marked', 'unmarked'
+        coaIds: [], // Array of COA IDs
         search: '',
         dbCr: '', // 'DB', 'CR', or ''
         amountMin: null,
@@ -39,7 +42,7 @@ export const useHistoryStore = defineStore('history', {
     // Derived state: Filtered transactions
     filteredTransactions(state) {
        let result = [...state.allTransactions];
-       const { year, dateStart, dateEnd, bank, company, markStatus, search, dbCr, amountMin, amountMax } = state.filters;
+        const { year, dateStart, dateEnd, bank, company, markStatus, coaIds, search, dbCr, amountMin, amountMax } = state.filters;
        const searchLower = (search || '').toLowerCase();
 
         result = result.filter(t => {
@@ -61,9 +64,9 @@ export const useHistoryStore = defineStore('history', {
                 const hasUnmarked = markStatus.includes('unmarked');
                 const hasMarked = markStatus.includes('marked');
                 const specificMarks = markStatus.filter(m => m !== 'marked' && m !== 'unmarked');
-                
+
                 let matches = false;
-                
+
                 // Check if transaction matches any selected mark criteria
                 if (hasUnmarked && !t.mark_id) {
                     matches = true;
@@ -74,8 +77,13 @@ export const useHistoryStore = defineStore('history', {
                 if (specificMarks.length > 0 && t.mark_id && specificMarks.includes(t.mark_id)) {
                     matches = true;
                 }
-                
+
                 if (!matches) return false;
+            }
+
+            // COA Filter (multi-select)
+            if (coaIds && coaIds.length > 0) {
+                if (!t.coa_id || !coaIds.includes(t.coa_id)) return false;
             }
 
             // Type Filter (DB/CR)
@@ -144,6 +152,34 @@ export const useHistoryStore = defineStore('history', {
         });
     },
 
+    coaOptions(state) {
+        const categoryOrder = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
+        const options = [];
+
+        categoryOrder.forEach((category, index) => {
+            const coas = state.coaList.filter(coa => coa.category === category);
+            if (coas.length > 0) {
+                // Add separator before each category except the first
+                if (index > 0 && options.length > 0) {
+                    options.push({
+                        id: `separator-${category}`,
+                        type: 'separator',
+                        category: category
+                    });
+                }
+                coas.forEach(coa => {
+                    options.push({
+                        id: coa.id,
+                        label: `${coa.code} - ${coa.name}`,
+                        category: category
+                    });
+                });
+            }
+        });
+
+        return options;
+    },
+
     filteredTotal() {
         if (!this.filteredTransactions) return 0;
         return this.filteredTransactions.reduce((acc, t) => {
@@ -152,11 +188,43 @@ export const useHistoryStore = defineStore('history', {
         }, 0);
     },
 
+    filteredDebitTotal() {
+        if (!this.filteredTransactions) return 0;
+        return this.filteredTransactions.reduce((acc, t) => {
+            const amt = Number(t.amount) || 0;
+            return t.db_cr === 'DB' ? acc + amt : acc;
+        }, 0);
+    },
+
+    filteredCreditTotal() {
+        if (!this.filteredTransactions) return 0;
+        return this.filteredTransactions.reduce((acc, t) => {
+            const amt = Number(t.amount) || 0;
+            return t.db_cr === 'CR' ? acc + amt : acc;
+        }, 0);
+    },
+
     pageTotal() {
         if (!this.paginatedTransactions) return 0;
         return this.paginatedTransactions.reduce((acc, t) => {
             const amt = Number(t.amount) || 0;
             return t.db_cr === 'CR' ? acc + amt : acc - amt;
+        }, 0);
+    },
+
+    pageDebitTotal() {
+        if (!this.paginatedTransactions) return 0;
+        return this.paginatedTransactions.reduce((acc, t) => {
+            const amt = Number(t.amount) || 0;
+            return t.db_cr === 'DB' ? acc + amt : acc;
+        }, 0);
+    },
+
+    pageCreditTotal() {
+        if (!this.paginatedTransactions) return 0;
+        return this.paginatedTransactions.reduce((acc, t) => {
+            const amt = Number(t.amount) || 0;
+            return t.db_cr === 'CR' ? acc + amt : acc;
         }, 0);
     }
   },
@@ -170,15 +238,17 @@ export const useHistoryStore = defineStore('history', {
             await this.loadFilters();
         }
 
-        const [txnRes, compRes, markRes] = await Promise.all([
+        const [txnRes, compRes, markRes, coaRes] = await Promise.all([
             historyApi.getTransactions(),
             companyApi.getCompanies(),
-            marksApi.getMarks()
+            marksApi.getMarks(),
+            coaApi.getCoa()
         ]);
-        
+
         this.allTransactions = txnRes.data.transactions || [];
         this.companies = compRes.data.companies || [];
         this.marks = markRes.data.marks || [];
+        this.coaList = coaRes.data.coa || [];
       } catch (err) {
         this.error = "Failed to load data";
         console.error(err);
@@ -211,11 +281,13 @@ export const useHistoryStore = defineStore('history', {
             year: '',
             dateStart: '',
             dateEnd: '',
+            asOfDate: '',
             bank: '',
             company: '',
             markStatus: [],
+            coaIds: [],
             search: '',
-            dbCr: '',
+            dbCr: '', // 'DB', 'CR', or ''
             amountMin: null,
             amountMax: null
         };
@@ -368,14 +440,83 @@ export const useHistoryStore = defineStore('history', {
         }
     },
 
-    async updateNotes(id, notes) {
+      async exportTransactions(format) {
+        this.isLoading = true;
         try {
-            await historyApi.updateNotes(id, notes);
-            const txn = this.allTransactions.find(t => t.id === id);
-            if (txn) txn.notes = notes;
+            // Prepare filters
+            const params = {
+                bank: this.filters.bank,
+                company_id: this.filters.company,
+                search: this.filters.search
+            };
+
+            // Handle dates
+            if (this.filters.dateStart) params.start_date = this.filters.dateStart;
+            if (this.filters.dateEnd) params.end_date = this.filters.dateEnd;
+
+            // If year is selected but specific dates aren't, use year boundaries
+            if (this.filters.year) {
+                if (!params.start_date) params.start_date = `${this.filters.year}-01-01`;
+                if (!params.end_date) params.end_date = `${this.filters.year}-12-31`;
+            }
+
+            const response = await historyApi.exportTransactions(format, params);
+            const blob = new Blob([response.data], { type: response.headers.get('content-type') });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const extension = format === 'excel' ? 'xlsx' : 'csv';
+            const date = new Date().toISOString().split('T')[0];
+            link.download = `transactions_export_${date}.${extension}`;
+            link.click();
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Failed to export transactions:', e);
+            throw e;
+        } finally {
+            this.isLoading = false;
+        }
+    },
+
+    async fetchSplits(id) {
+        try {
+            const res = await historyApi.getSplits(id);
+            return res.data.splits || [];
         } catch (e) {
             console.error(e);
             throw e;
+        }
+    },
+
+    async saveSplits(id, splits) {
+        this.isLoading = true;
+        try {
+            const res = await historyApi.saveSplits(id, splits);
+            const txn = this.allTransactions.find(t => t.id === id);
+            if (txn) {
+                txn.is_split = splits.length > 0;
+            }
+            await this.loadData();
+            return res.data;
+        } catch (e) {
+            console.error(e);
+            throw e;
+        } finally {
+            this.isLoading = false;
+        }
+    },
+
+    async importTransactions(file, bankCode, companyId) {
+        this.isLoading = true;
+        try {
+            const res = await historyApi.importTransactions(file, bankCode, companyId);
+            await this.loadData();
+            return res.data;
+        } catch (e) {
+            console.error('Failed to import transactions:', e);
+            throw e;
+        } finally {
+            this.isLoading = false;
         }
     }
   }

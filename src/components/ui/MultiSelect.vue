@@ -23,7 +23,7 @@
         leave-to-class="opacity-0"
       >
         <ListboxOptions
-          class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white py-1 text-xs shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+          class="absolute z-10 mt-1 max-h-60 min-w-[250px] overflow-auto rounded-xl bg-white py-1 text-xs shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
         >
           <!-- Search Input -->
           <div class="px-3 py-2 border-b border-gray-100 sticky top-0 bg-white z-20">
@@ -70,6 +70,11 @@
             v-slot="{ active, selected }"
           >
             <li
+              v-if="option.type === 'separator'"
+              class="border-t border-gray-200 my-1 mx-2"
+            ></li>
+            <li
+              v-else
               :class="[
                 active ? 'bg-indigo-50 text-indigo-900' : 'text-gray-900',
                 'relative cursor-default select-none py-2 pl-8 pr-4'
@@ -78,7 +83,7 @@
               <span
                 :class="[
                   selected ? 'font-semibold' : 'font-normal',
-                  'block truncate'
+                  'block'
                 ]"
               >
                 {{ option.label }}
@@ -137,9 +142,48 @@ const selectedValues = computed({
 
 const filteredOptions = computed(() => {
   if (query.value === '') return props.options;
-  return props.options.filter((opt) =>
-    opt.label.toLowerCase().includes(query.value.toLowerCase())
-  );
+
+  const searchLower = query.value.toLowerCase();
+  const result = [];
+  const filteredRegularOptions = [];
+
+  // First, filter all regular (non-separator) options
+  for (const option of props.options) {
+    if (option.type === 'separator') continue;
+    if (option.label.toLowerCase().includes(searchLower)) {
+      filteredRegularOptions.push(option);
+    }
+  }
+
+  // If no filtered options, return empty
+  if (filteredRegularOptions.length === 0) return [];
+
+  // Now rebuild the structure with separators
+  let lastCategory = null;
+
+  for (const option of props.options) {
+    if (option.type === 'separator') {
+      // Skip separator for now, will add later
+      continue;
+    }
+
+    if (option.label.toLowerCase().includes(searchLower)) {
+      // Add separator if category changed and it's not the first option
+      if (option.category && option.category !== lastCategory) {
+        if (lastCategory !== null) {
+          result.push({
+            id: `separator-${option.category}`,
+            type: 'separator',
+            category: option.category
+          });
+        }
+        lastCategory = option.category;
+      }
+      result.push(option);
+    }
+  }
+
+  return result;
 });
 
 const selectedLabel = computed(() => {
@@ -152,7 +196,7 @@ const selectedLabel = computed(() => {
 });
 
 const selectAll = () => {
-    const allIds = props.options.map(o => o.id);
+    const allIds = props.options.filter(o => o.type !== 'separator').map(o => o.id);
     emit('update:modelValue', allIds);
 };
 

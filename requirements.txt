@@ -10,3 +10,4 @@ gunicorn>=22.0.0
 pycryptodome>=3.19.0
 sqlalchemy
 pymysql
+python-dotenv>=1.0.0
