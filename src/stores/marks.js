@@ -59,7 +59,8 @@ export const useMarksStore = defineStore('marks', {
       this.isLoading = true;
       try {
         await marksApi.deleteMark(id);
-        this.marks = this.marks.filter(m => m.id !== id);
+        // Immediately refresh to ensure we get the latest data from server
+        await this.fetchMarks();
       } catch (err) {
         throw err;
       } finally {

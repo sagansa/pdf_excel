@@ -145,11 +145,23 @@ export const useHistoryStore = defineStore('history', {
     },
 
     sortedMarks(state) {
-        return [...state.marks].sort((a, b) => {
+        const marks = [...state.marks].sort((a, b) => {
             const nameA = (a.personal_use || '').toLowerCase();
             const nameB = (b.personal_use || '').toLowerCase();
             return nameA.localeCompare(nameB);
         });
+        
+        console.log('HistoryStore: sortedMarks computed, count:', marks.length);
+        
+        // Look for Laptop mark specifically
+        const laptopMark = marks.find(m => m.id === '670f93c5-b940-4a06-a556-7c0f92a5cb86');
+        if (laptopMark) {
+            console.log('HistoryStore: Found Laptop mark in sortedMarks:', laptopMark);
+        } else {
+            console.warn('HistoryStore: Laptop mark NOT found in sortedMarks');
+        }
+        
+        return marks;
     },
 
     coaOptions(state) {
@@ -245,7 +257,38 @@ export const useHistoryStore = defineStore('history', {
             coaApi.getCoa()
         ]);
 
-        this.allTransactions = txnRes.data.transactions || [];
+        let transactions = txnRes.data.transactions || [];
+        
+        // Debug: Check if parent_id is present in any transaction
+        const sampleWithParent = transactions.find(t => t.parent_id);
+        console.log('HistoryStore: Sample transaction with parent_id:', sampleWithParent ? {id: sampleWithParent.id, parent_id: sampleWithParent.parent_id} : 'None found');
+        
+        // Mark transactions that have splits
+        console.log('HistoryStore: Checking for split transactions...');
+        
+        // Get all parent IDs of split transactions
+        const parentIds = new Set();
+        for (const txn of transactions) {
+          if (txn.parent_id) {
+            parentIds.add(txn.parent_id);
+          }
+        }
+        
+        console.log('HistoryStore: Found', parentIds.size, 'unique parent IDs');
+        
+        // Mark transactions that have children
+        for (const txn of transactions) {
+          txn.is_split = parentIds.has(txn.id);
+        }
+        
+        // Debug: Check a few transactions that should be marked as split
+        const splitTxns = transactions.filter(t => t.is_split);
+        console.log('HistoryStore: Marked', splitTxns.length, 'transactions as having splits');
+        if (splitTxns.length > 0) {
+            console.log('HistoryStore: Sample split transactions:', splitTxns.slice(0, 3).map(t => ({id: t.id, is_split: t.is_split, description: t.description?.substring(0, 50)})));
+        }
+
+        this.allTransactions = transactions;
         this.companies = compRes.data.companies || [];
         this.marks = markRes.data.marks || [];
         this.coaList = coaRes.data.coa || [];
@@ -481,6 +524,7 @@ export const useHistoryStore = defineStore('history', {
     async fetchSplits(id) {
         try {
             const res = await historyApi.getSplits(id);
+            console.log('HistoryStore: fetchSplits response:', res.data);
             return res.data.splits || [];
         } catch (e) {
             console.error(e);
@@ -491,15 +535,21 @@ export const useHistoryStore = defineStore('history', {
     async saveSplits(id, splits) {
         this.isLoading = true;
         try {
+            console.log('HistoryStore: saveSplits called with id:', id, 'splits:', splits);
             const res = await historyApi.saveSplits(id, splits);
+            console.log('HistoryStore: saveSplits response:', res.data);
+            
+            // Mark the transaction as split without reloading all data
             const txn = this.allTransactions.find(t => t.id === id);
             if (txn) {
                 txn.is_split = splits.length > 0;
+                console.log('HistoryStore: marked transaction as split:', txn.is_split);
             }
-            await this.loadData();
+            
+            // Don't reload all data - just mark as split
             return res.data;
         } catch (e) {
-            console.error(e);
+            console.error('HistoryStore: saveSplits error:', e);
             throw e;
         } finally {
             this.isLoading = false;

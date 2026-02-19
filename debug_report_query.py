@@ -1,4 +1,6 @@
-from server import get_db_engine
+import sys
+sys.path.append('backend')
+from db.session import get_db_engine
 from sqlalchemy import text
 from datetime import datetime
 

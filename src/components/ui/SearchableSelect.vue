@@ -8,6 +8,7 @@
       <div class="relative w-full cursor-default overflow-hidden rounded-lg bg-gray-50/50 border border-gray-200 text-left focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-opacity-50 transition-all">
         <ComboboxInput
           class="w-full border-none py-2 pl-3 pr-14 text-xs leading-5 text-gray-900 focus:ring-0 bg-transparent outline-none"
+          :class="{ 'text-orange-500 italic': isMissingMark(selectedValue) }"
           :displayValue="(val) => getLabel(val)"
           @change="query = $event.target.value"
           :placeholder="placeholder"
@@ -107,7 +108,18 @@ const selectedValue = computed({
 
 const getLabel = (id) => {
   const opt = props.options.find(o => o.id === id);
-  return opt ? opt.label : '';
+  if (opt) return opt.label;
+  
+  // Fallback: show ID with prefix if mark not found in options
+  if (id) {
+    return `[Missing Mark] ${id.substring(0, 8)}...`;
+  }
+  
+  return '';
+};
+
+const isMissingMark = (id) => {
+  return id && !props.options.find(o => o.id === id);
 };
 
 const filteredOptions = computed(() => {

@@ -131,17 +131,28 @@ export const useReportsStore = defineStore('reports', {
       this.isLoading = true;
       this.error = null;
       try {
+        console.log('ReportsStore: fetchMonthlyRevenue called with year:', year, 'companyId:', companyId);
+        
+        // Ensure year is a valid number
+        const parsedYear = parseInt(year);
+        if (isNaN(parsedYear)) {
+          console.error('ReportsStore: Invalid year provided:', year);
+          return { data: [], prev_year_data: [], year: parsedYear };
+        }
+        
         const params = new URLSearchParams({
-          year: year
+          year: parsedYear.toString()
         });
         
         if (companyId) {
           params.append('company_id', companyId);
         }
 
-        const response = await reportsApi.getMonthlyRevenue(year, companyId);
+        const response = await reportsApi.getMonthlyRevenue(parsedYear.toString(), companyId);
+        console.log('ReportsStore: fetchMonthlyRevenue response:', response.data);
         this.monthlyRevenue = response.data.data;
         this.monthlyRevenuePrevYear = response.data.prev_year_data;
+        console.log('ReportsStore: monthlyRevenue set to:', this.monthlyRevenue);
         return response.data;
       } catch (err) {
         this.error = err.response?.data?.error || 'Failed to fetch monthly revenue';
@@ -402,6 +413,21 @@ export const useReportsStore = defineStore('reports', {
       } catch (e) {
         console.error("Failed to fetch linkable transactions:", e);
         return [];
+      }
+    },
+
+    async saveFilters() {
+      try {
+        const filtersToSave = {
+          ...this.filters,
+          savedAt: new Date().toISOString()
+        };
+        await filterApi.saveFilters('reports', filtersToSave);
+        console.log('Filters saved:', filtersToSave);
+        return true;
+      } catch (e) {
+        console.error("Failed to save filters:", e);
+        throw e;
       }
     },
 

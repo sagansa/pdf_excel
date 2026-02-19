@@ -10,7 +10,7 @@
             Year
           </label>
           <select
-            :value="modelValue.year"
+            :value="modelValue.year || new Date().getFullYear()"
             @change="handleYearChange($event.target.value)"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
@@ -118,7 +118,17 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'generate']);
 
-const availableYears = [2024, 2025, 2026];
+const availableYears = computed(() => {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  
+  // Include current year and previous year
+  years.push(currentYear - 1);
+  years.push(currentYear);
+  years.push(currentYear + 1);
+  
+  return years.sort((a, b) => a - b);
+});
 
 const isValid = computed(() => {
   return props.modelValue.startDate && props.modelValue.endDate && props.modelValue.asOfDate;
@@ -132,16 +142,20 @@ const updateFilter = (key, value) => {
 };
 
 const handleYearChange = (year) => {
+  console.log('ReportFilters: handleYearChange called with year:', year);
   const startDate = `${year}-01-01`;
   const endDate = `${year}-12-31`;
   const asOfDate = `${year}-12-31`;
   
-  emit('update:modelValue', {
+  const newFilters = {
     ...props.modelValue,
     year: year,
     startDate: startDate,
     endDate: endDate,
     asOfDate: asOfDate
-  });
+  };
+  
+  console.log('ReportFilters: Emitting new filters:', newFilters);
+  emit('update:modelValue', newFilters);
 };
 </script>
