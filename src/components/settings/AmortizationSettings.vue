@@ -230,8 +230,140 @@
                 <span class="text-sm font-medium text-slate-700">{{
                   mark.personal_use
                 }}</span>
-              </div>
+      </div>
+    </div>
+
+    <!-- Fiscal Correction COA Configuration -->
+    <div
+      class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+    >
+      <div class="bg-orange-50 border-b border-orange-100 px-6 py-4">
+        <h3 class="text-lg font-bold text-orange-900">
+          Koreksi Fiskal Akhir Tahun
+        </h3>
+        <p class="text-xs text-orange-600 mt-0.5">
+          Pilih COA untuk posting koreksi fiskal (selisih komersial vs fiskal)
+        </p>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">
+            Pilih COA Koreksi Fiskal
+          </label>
+          <select
+            v-model="markSettings.fiscal_correction_coa_codes"
+            multiple
+            class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+            @change="saveMarkSettings"
+          >
+            <option v-for="coa in availableCoa" :key="coa.id" :value="coa.code">
+              {{ coa.code }} - {{ coa.name }}
+            </option>
+          </select>
+          <p class="text-xs text-slate-500 mt-2">
+            Pilih COA untuk koreksi fiskal akhir tahun.
+            Kalkulasi otomatis akan ditambahkan ke laporan Income Statement.
+          </p>
+        </div>
+
+        <div
+          v-if="markSettings.fiscal_correction_coa_codes && markSettings.fiscal_correction_coa_codes.length > 0"
+          class="bg-orange-50 border border-orange-200 rounded-lg p-4"
+        >
+          <div class="text-sm font-medium text-orange-900 mb-2">
+            COA Terpilih:
+          </div>
+          <div class="space-y-1">
+            <div
+              v-for="code in markSettings.fiscal_correction_coa_codes"
+              :key="code"
+              class="flex items-center justify-between text-sm text-orange-700"
+            >
+              <span>{{ code }}</span>
             </div>
+          </div>
+        </div>
+
+        <div
+          class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex gap-3"
+        >
+          <i class="bi bi-info-circle text-yellow-600 mt-0.5"></i>
+          <div class="text-xs text-yellow-700">
+            <p class="font-bold mb-1">Keterangan:</p>
+            <p>
+              Koreksi fiskal akan dihitung sebagai selisih antara amortisasi komersial
+              dan fiskal (Pasal 9). Nilai ini akan ditambahkan ke beban dan
+              dikenakan pajak sesuai tarif PPh Badan (default 22%).
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Amortization Expense COA Configuration -->
+    <div
+      class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+    >
+      <div class="bg-slate-50 border-b border-slate-200 px-6 py-4">
+        <h3 class="text-lg font-bold text-slate-800">
+          COA Beban Amortisasi
+        </h3>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Tentukan akun COA mana di Income Statement yang akan menerima nilai
+          amortisasi yang dihitung
+        </p>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">
+            Pilih COA Beban Amortisasi
+          </label>
+          <select
+            v-model="markSettings.amortization_expense_coa_codes"
+            multiple
+            class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+            @change="saveMarkSettings"
+          >
+            <option v-for="coa in availableCoa" :key="coa.id" :value="coa.code">
+              {{ coa.code }} - {{ coa.name }}
+            </option>
+          </select>
+          <p class="text-xs text-slate-500 mt-2">
+            Pilih satu atau lebih COA untuk memposting nilai amortisasi.
+            Nilai amortisasi akan di-posting ke COA pertama yang dipilih.
+          </p>
+        </div>
+
+        <div
+          v-if="markSettings.amortization_expense_coa_codes && markSettings.amortization_expense_coa_codes.length > 0"
+          class="bg-indigo-50 border border-indigo-200 rounded-lg p-4"
+        >
+          <div class="text-sm font-medium text-indigo-900 mb-2">
+            COA Terpilih:
+          </div>
+          <div class="space-y-1">
+            <div
+              v-for="code in markSettings.amortization_expense_coa_codes"
+              :key="code"
+              class="flex items-center justify-between text-sm text-indigo-700"
+            >
+              <span>{{ code }}</span>
+              <span class="font-bold text-indigo-900">
+                {{
+                  code === markSettings.amortization_expense_coa_codes[0] ? 'Utama' : ''
+                }}
+              </span>
+            </div>
+          </div>
+          <p class="text-xs text-indigo-600 mt-2">
+            <i class="bi bi-info-circle mr-1"></i>
+            Nilai amortisasi akan di-posting ke COA "Utama"
+          </p>
+        </div>
+      </div>
+    </div>
           </div>
 
           <div
@@ -397,8 +529,108 @@
           </button>
         </div>
       </div>
+      </div>
     </div>
-  </div>
+
+    <!-- Accumulated Depreciation COA Configuration -->
+    <div
+      class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+    >
+      <div class="bg-purple-50 border-b border-purple-100 px-6 py-4">
+        <h3 class="text-lg font-bold text-purple-900">
+          Mapping COA Akumulasi Penyusutan
+        </h3>
+        <p class="text-xs text-purple-600 mt-0.5">
+          Tentukan akun akumulasi penyusutan/amortisasi untuk setiap tipe aset
+        </p>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+          <!-- Building -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">
+              Building (Bangunan) <span class="text-xs text-purple-600">- 1524</span>
+            </label>
+            <select
+              v-model="markSettings.accumulated_depreciation_coa_codes.Building"
+              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
+              @change="saveMarkSettings"
+            >
+              <option value="">Pilih COA...</option>
+              <option v-for="coa in availableAssetCoa" :key="coa.id" :value="coa.code">
+                {{ coa.code }} - {{ coa.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Tangible -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">
+              Tangible (Harta Berwujud) <span class="text-xs text-purple-600">- 1530</span>
+            </label>
+            <select
+              v-model="markSettings.accumulated_depreciation_coa_codes.Tangible"
+              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
+              @change="saveMarkSettings"
+            >
+              <option value="">Pilih COA...</option>
+              <option v-for="coa in availableAssetCoa" :key="coa.id" :value="coa.code">
+                {{ coa.code }} - {{ coa.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- LandRights -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">
+              LandRights (Hak Guna) <span class="text-xs text-purple-600">- 1534</span>
+            </label>
+            <select
+              v-model="markSettings.accumulated_depreciation_coa_codes.LandRights"
+              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
+              @change="saveMarkSettings"
+            >
+              <option value="">Pilih COA...</option>
+              <option v-for="coa in availableAssetCoa" :key="coa.id" :value="coa.code">
+                {{ coa.code }} - {{ coa.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Intangible -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">
+              Intangible (Tidak Berwujud) <span class="text-xs text-purple-600">- 1601</span>
+            </label>
+            <select
+              v-model="markSettings.accumulated_depreciation_coa_codes.Intangible"
+              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
+              @change="saveMarkSettings"
+            >
+              <option value="">Pilih COA...</option>
+              <option v-for="coa in availableAssetCoa" :key="coa.id" :value="coa.code">
+                {{ coa.code }} - {{ coa.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div
+          class="bg-purple-50 border border-purple-200 rounded-lg p-4 flex gap-3"
+        >
+          <i class="bi bi-info-circle text-purple-600 mt-0.5"></i>
+          <div class="text-xs text-purple-700">
+            <p class="font-bold mb-1">Penting:</p>
+            <p>
+              Mapping ini menentukan akun akumulasi penyusutan yang akan digunakan
+              di neraca. Nilai amortisasi akan diposting ke akun beban (5314)
+              di laporan laba rugi dan ke akun akumulasi penyusutan sesuai tipe aset di neraca.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
 </template>
 
 <script setup>
@@ -431,8 +663,18 @@ const markSettings = ref({
   ],
   default_asset_useful_life: "5",
   default_amortization_rate: "20.00",
+  amortization_expense_coa_codes: ["5314"],
+  fiscal_correction_coa_codes: [],
+  accumulated_depreciation_coa_codes: {
+    Building: "1524",
+    Tangible: "1530",
+    LandRights: "1534",
+    Intangible: "1601"
+  }
 });
 const availableMarks = ref([]);
+const availableCoa = ref([]);
+const availableAssetCoa = ref([]);
 
 const groupForm = ref({
   asset_type: "Tangible",
@@ -477,6 +719,9 @@ const fetchData = async () => {
 
   // Fetch mark-based settings
   await fetchMarkSettings();
+
+  // Fetch available COA
+  await fetchAvailableCoa();
 };
 
 const fetchAssetGroups = async () => {
@@ -556,6 +801,24 @@ const fetchMarkSettings = async () => {
     availableMarks.value = data.available_marks || [];
   } catch (err) {
     console.error("Failed to fetch mark settings:", err);
+  }
+};
+
+const fetchAvailableCoa = async () => {
+  try {
+    const { useCoaStore } = await import('../../stores/coa');
+    const coaStore = useCoaStore();
+    await coaStore.fetchCoa();
+    // Filter for expense category only
+    availableCoa.value = coaStore.coaList.filter(c =>
+      c.category === 'EXPENSE' && c.is_active !== false
+    );
+    // Filter for asset accounts (for accumulated depreciation)
+    availableAssetCoa.value = coaStore.coaList.filter(c =>
+      c.category === 'ASSET' && c.is_active !== false
+    );
+  } catch (err) {
+    console.error("Failed to fetch COA:", err);
   }
 };
 

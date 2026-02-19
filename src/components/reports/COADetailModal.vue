@@ -362,13 +362,23 @@ const fetchTransactions = async () => {
   try {
     const params = { coa_id: props.coaData.id };
 
-    if (props.filters.startDate && props.filters.endDate) {
-      params.start_date = props.filters.startDate;
-      params.end_date = props.filters.endDate;
-    }
-    if (props.filters.asOfDate) {
+    // For balance sheet accounts, prioritize as_of_date logic
+    const isBalanceSheetAccount = props.coaData.category && ['ASSET', 'LIABILITY', 'EQUITY'].includes(props.coaData.category);
+    
+    if (isBalanceSheetAccount && props.filters.asOfDate) {
+      // For balance sheet accounts, use as_of_date logic
       params.as_of_date = props.filters.asOfDate;
+    } else {
+      // For income statement accounts or fallback, use date range logic
+      if (props.filters.startDate && props.filters.endDate) {
+        params.start_date = props.filters.startDate;
+        params.end_date = props.filters.endDate;
+      }
+      if (props.filters.asOfDate) {
+        params.as_of_date = props.filters.asOfDate;
+      }
     }
+    
     if (props.filters.companyId) {
       params.company_id = props.filters.companyId;
     }

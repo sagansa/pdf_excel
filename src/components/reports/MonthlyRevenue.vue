@@ -3,10 +3,10 @@
     <!-- Header Summary (Simplified) -->
     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-slate-800">Monthly Revenue Summary ({{ year }})</h3>
+        <h3 class="text-lg font-semibold text-slate-800">Monthly Revenue Summary ({{ store.filters.year || year }})</h3>
         <p class="text-xs text-slate-500">Historical comparison and growth</p>
       </div>
-      
+
       <!-- Summary Cards -->
       <div v-if="isLoading" class="py-12 text-center">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -14,8 +14,8 @@
       </div>
 
       <div v-else class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <div 
-          v-for="item in processedMonthlyData" 
+        <div
+          v-for="item in processedMonthlyData"
           :key="item.month"
           class="p-4 rounded-xl border transition-all hover:shadow-md"
           :class="item.revenue > 0 ? 'bg-white border-slate-200' : 'bg-slate-50/50 border-slate-100'"
@@ -28,14 +28,14 @@
             <span class="text-2xl font-bold" :class="item.revenue > 0 ? 'text-slate-800' : 'text-slate-300'">
               {{ formatCurrency(item.revenue) }}
             </span>
-            
+
             <!-- Comparison Info -->
             <div class="mt-2 flex items-center justify-between border-t border-slate-100 pt-2" v-if="item.revenue > 0 || item.prevRevenue > 0">
               <div class="flex flex-col">
                 <span class="text-[9px] text-slate-400 uppercase font-semibold">Prev Year</span>
                 <span class="text-xs font-medium text-slate-500">{{ formatCurrency(item.prevRevenue) }}</span>
               </div>
-              <div 
+              <div
                 v-if="item.growth !== null"
                 class="text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5"
                 :class="item.growth >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'"
@@ -93,6 +93,15 @@ const props = defineProps({
   }
 });
 
+// Watch for props changes
+watch(() => props.year, (newYear, oldYear) => {
+  console.log('MonthlyRevenue: props.year changed from', oldYear, 'to', newYear);
+}, { immediate: true });
+
+watch(() => props.companyId, (newCompanyId, oldCompanyId) => {
+  console.log('MonthlyRevenue: props.companyId changed from', oldCompanyId, 'to', newCompanyId);
+}, { immediate: true });
+
 const isLoading = ref(false);
 
 const getMonthName = (monthNum) => {
@@ -107,15 +116,22 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
-const monthlyData = computed(() => store.monthlyRevenue || []);
-const monthlyPrevData = computed(() => store.monthlyRevenuePrevYear || []);
+const monthlyData = computed(() => {
+  console.log('MonthlyRevenue: computed monthlyData called, store.monthlyRevenue:', store.monthlyRevenue);
+  return store.monthlyRevenue || [];
+});
+const monthlyPrevData = computed(() => {
+  console.log('MonthlyRevenue: computed monthlyPrevData called, store.monthlyRevenuePrevYear:', store.monthlyRevenuePrevYear);
+  return store.monthlyRevenuePrevYear || [];
+});
 
 const processedMonthlyData = computed(() => {
+  console.log('MonthlyRevenue: processedMonthlyData computed, monthlyData.value:', monthlyData.value);
   return monthlyData.value.map((item, index) => {
     const prevItem = monthlyPrevData.value[index] || { revenue: 0 };
     const revenue = item.revenue || 0;
     const prevRevenue = prevItem.revenue || 0;
-    
+
     let growth = null;
     if (prevRevenue > 0) {
       growth = ((revenue - prevRevenue) / prevRevenue) * 100;
@@ -130,7 +146,10 @@ const processedMonthlyData = computed(() => {
 });
 
 const totalAnnualRevenue = computed(() => {
-  return monthlyData.value.reduce((sum, item) => sum + item.revenue, 0);
+  console.log('MonthlyRevenue: totalAnnualRevenue computed, monthlyData.value:', monthlyData.value);
+  const total = monthlyData.value.reduce((sum, item) => sum + item.revenue, 0);
+  console.log('MonthlyRevenue: totalAnnualRevenue calculated:', total);
+  return total;
 });
 
 const totalPrevAnnualRevenue = computed(() => {
@@ -143,10 +162,16 @@ const annualGrowth = computed(() => {
 });
 
 const fetchData = async () => {
-  if (!props.year) return;
+  // Use store.filters.year instead of props.year to ensure synchronization
+  const yearToFetch = store.filters.year || props.year;
+
+  if (!yearToFetch) return;
   isLoading.value = true;
+  console.log('MonthlyRevenue: Fetching data with year:', yearToFetch, 'companyId:', props.companyId);
+  console.log('MonthlyRevenue: store.filters.year:', store.filters.year, 'props.year:', props.year);
   try {
-    await store.fetchMonthlyRevenue(props.year, props.companyId);
+    await store.fetchMonthlyRevenue(yearToFetch, props.companyId);
+    console.log('MonthlyRevenue: After fetch, store.monthlyRevenue:', store.monthlyRevenue);
   } catch (error) {
     console.error('Failed to fetch monthly revenue:', error);
   } finally {
@@ -155,8 +180,9 @@ const fetchData = async () => {
 };
 
 watch(() => [props.companyId, props.year], () => {
+  console.log('MonthlyRevenue: props changed - year:', props.year, 'companyId:', props.companyId);
   fetchData();
-}, { deep: true });
+}, { deep: true, immediate: true });
 
 onMounted(() => {
   fetchData();

@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import text
+import uuid
 from backend.db.session import get_db_engine
 
 transaction_bp = Blueprint('transaction_bp', __name__)
@@ -516,5 +517,103 @@ def delete_mark_coa_mapping(mapping_id):
             conn.execute(text("DELETE FROM mark_coa_mapping WHERE id = :id"), {'id': mapping_id})
             conn.commit()
             return jsonify({'message': 'Mapping deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@transaction_bp.route('/api/transactions/<txn_id>/splits', methods=['GET'])
+def get_transaction_splits(txn_id):
+    """Get splits for a specific transaction"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+    
+    try:
+        with engine.connect() as conn:
+            # Get main transaction
+            main_query = text("""
+                SELECT id, description, amount, db_cr, txn_date, mark_id, company_id, notes
+                FROM transactions 
+                WHERE id = :txn_id
+            """)
+            main_result = conn.execute(main_query, {'txn_id': txn_id}).fetchone()
+            
+            if not main_result:
+                return jsonify({'error': 'Transaction not found'}), 404
+            
+            # Get split transactions
+            splits_query = text("""
+                SELECT id, description, amount, db_cr, txn_date, mark_id, notes
+                FROM transactions 
+                WHERE parent_id = :txn_id
+                ORDER BY txn_date
+            """)
+            splits_result = conn.execute(splits_query, {'txn_id': txn_id}).fetchall()
+            
+            main_transaction = dict(main_result._mapping)
+            split_transactions = [dict(row._mapping) for row in splits_result]
+            
+            # Format amounts
+            if main_transaction.get('amount'):
+                main_transaction['amount'] = float(main_transaction['amount'])
+            for split in split_transactions:
+                if split.get('amount'):
+                    split['amount'] = float(split['amount'])
+            
+            return jsonify({
+                'main_transaction': main_transaction,
+                'splits': split_transactions,
+                'total_split_amount': sum(split.get('amount', 0) for split in split_transactions)
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@transaction_bp.route('/api/transactions/<txn_id>/splits', methods=['POST'])
+def save_transaction_splits(txn_id):
+    """Save splits for a specific transaction"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+    
+    try:
+        data = request.json
+        splits = data.get('splits', [])
+        
+        with engine.connect() as conn:
+            # Delete existing splits
+            conn.execute(text("DELETE FROM transactions WHERE parent_id = :txn_id"), {'txn_id': txn_id})
+            
+            # Insert new splits
+            for split in splits:
+                split_query = text("""
+                    INSERT INTO transactions (
+                        id, parent_id, description, amount, db_cr, txn_date, 
+                        mark_id, notes, company_id, created_at, updated_at
+                    ) VALUES (
+                        :id, :parent_id, :description, :amount, :db_cr, :txn_date,
+                        :mark_id, :notes, :company_id, NOW(), NOW()
+                    )
+                """)
+                
+                # Get parent transaction details
+                parent_query = text("SELECT company_id, txn_date, mark_id FROM transactions WHERE id = :txn_id")
+                parent_result = conn.execute(parent_query, {'txn_id': txn_id}).fetchone()
+                
+                if parent_result:
+                    parent_data = dict(parent_result._mapping)
+                    
+                    conn.execute(split_query, {
+                        'id': str(uuid.uuid4()),
+                        'parent_id': txn_id,
+                        'description': split.get('description', ''),
+                        'amount': split.get('amount', 0),
+                        'db_cr': split.get('db_cr', 'DB'),
+                        'txn_date': parent_data.get('txn_date'),
+                        'mark_id': split.get('mark_id'),  # BUG FIX: Use split mark_id, not parent mark_id
+                        'notes': split.get('notes', ''),
+                        'company_id': parent_data.get('company_id')
+                    })
+            
+            conn.commit()
+            return jsonify({'message': 'Splits saved successfully', 'splits_count': len(splits)})
     except Exception as e:
         return jsonify({'error': str(e)}), 500

@@ -154,6 +154,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { useReportsStore } from '../stores/reports';
 import { useCompanyStore } from '../stores/companies';
+import { useCoaStore } from '../stores/coa';
 import ReportFilters from '../components/reports/ReportFilters.vue';
 import IncomeStatement from '../components/reports/IncomeStatement.vue';
 import MonthlyRevenue from '../components/reports/MonthlyRevenue.vue';
@@ -162,22 +163,46 @@ import COADetailModal from '../components/reports/COADetailModal.vue';
 
 const store = useReportsStore();
 const companyStore = useCompanyStore();
+const coaStore = useCoaStore();
 
 const activeTab = ref('income-statement');
 const refreshKey = ref(0);
 const showCoaModal = ref(false);
 const selectedCoa = ref(null);
 
-  const openCoaDetail = (coaItem) => {
+  const openCoaDetail = async (coaItem) => {
     if (!coaItem || !coaItem.code) return;
-    selectedCoa.value = { ...coaItem };
-    showCoaModal.value = true;
+
+    try {
+      await coaStore.fetchCoa();
+      const coaList = coaStore.coaList || [];
+      const coaRecord = coaList.find(c => c.code === coaItem.code);
+
+      if (coaRecord) {
+        selectedCoa.value = { ...coaItem, id: coaRecord.id };
+        showCoaModal.value = true;
+      } else {
+        console.warn(`COA with code ${coaItem.code} not found in COA list`);
+        selectedCoa.value = { ...coaItem };
+        showCoaModal.value = true;
+      }
+    } catch (error) {
+      console.error('Failed to fetch COA details:', error);
+      selectedCoa.value = { ...coaItem };
+      showCoaModal.value = true;
+    }
   };
 
 // Add watcher for persistence
-watch(() => store.filters, () => {
+watch(() => store.filters, (newFilters) => {
+  console.log('ReportsView: Filters changed:', newFilters);
   store.saveFilters();
 }, { deep: true });
+
+// Also watch specific year changes
+watch(() => store.filters.year, (newYear) => {
+  console.log('ReportsView: Year changed to:', newYear);
+}, { immediate: true });
 
 const companies = ref([]);
 
@@ -187,6 +212,13 @@ const generateReport = async () => {
     alert('Please ensure all required filter dates are selected (Period Range and As Of Date)');
     return;
   }
+
+  console.log('ReportsView: generateReport called with filters:', {
+    year: store.filters.year,
+    startDate: store.filters.startDate,
+    endDate: store.filters.endDate,
+    asOfDate: store.filters.asOfDate
+  });
 
   try {
     // Generate all reports at once
@@ -219,22 +251,35 @@ const handleExport = async (format) => {
 };
 
 onMounted(async () => {
+  console.log('ReportsView: onMounted started');
+  
   // Load companies first
   await companyStore.fetchCompanies();
   companies.value = companyStore.companies;
 
   // Load persistence filters
   await store.loadFilters();
+  console.log('ReportsView: After loadFilters, current filters:', store.filters);
   
-  // Set default dates if empty
+  // Set default year to current year if not set
+  if (!store.filters.year) {
+      const currentYear = new Date().getFullYear();
+      store.filters.year = currentYear.toString();
+      console.log('ReportsView: Setting default year to:', currentYear);
+  }
+  
+  // Set default dates if empty (use current year)
   if (!store.filters.startDate) {
-      const date = new Date();
-      date.setDate(1);
-      store.filters.startDate = date.toISOString().split('T')[0];
+      const currentYear = new Date().getFullYear();
+      store.filters.startDate = `${currentYear}-01-01`;
+      console.log('ReportsView: Setting default startDate to:', store.filters.startDate);
   }
   if (!store.filters.endDate) {
-      store.filters.endDate = new Date().toISOString().split('T')[0];
+      store.filters.endDate = `${new Date().getFullYear()}-12-31`;
+      console.log('ReportsView: Setting default endDate to:', store.filters.endDate);
   }
+  
+  console.log('ReportsView: Final filters before generate:', store.filters);
   
   // Auto-generate report with filters
   await generateReport();

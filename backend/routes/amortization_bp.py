@@ -326,20 +326,18 @@ def get_amortization_items():
                 manual_total_amort += annual_amortization
             
             # Prepare mark condition for transactions
-            mark_condition = "1=0" # Default to false if no marks/groups
             query_params = {'company_id': company_id, 'year': year}
             
-            if use_mark_based:
-                if asset_marks:
-                    # Filter by mark names and also include manually assigned groups
-                    mark_condition = "(m.personal_use IN :asset_marks OR t.amortization_asset_group_id IS NOT NULL)"
-                    query_params['asset_marks'] = asset_marks
-                else:
-                    # Only include manually assigned groups if no marks selected
-                    mark_condition = "t.amortization_asset_group_id IS NOT NULL"
+            # Always include transactions with COA code 5314 (Beban Penyusutan dan Amortisasi)
+            # OR transactions that are marked as amortizable
+            # OR transactions with assigned asset groups
+            if use_mark_based and asset_marks:
+                # Always include 5314, AND include amortizable transactions with matching marks
+                mark_condition = "coa.code = '5314' OR (t.is_amortizable = TRUE AND m.personal_use IN :asset_marks) OR t.amortization_asset_group_id IS NOT NULL"
+                query_params['asset_marks'] = asset_marks
             else:
-                # Fallback to is_amortizable if mark-based is off
-                mark_condition = "t.is_amortizable = TRUE"
+                # Include all amortizable transactions
+                mark_condition = "coa.code = '5314' OR t.is_amortizable = TRUE OR t.amortization_asset_group_id IS NOT NULL"
             
             txn_query = text(f"""
                 SELECT 
@@ -347,8 +345,11 @@ def get_amortization_items():
                     t.amount as acquisition_cost, t.amortization_asset_group_id as asset_group_id,
                     t.amortization_start_date, t.use_half_rate, t.amortization_notes as notes,
                     ag.group_name, ag.tarif_rate, ag.useful_life_years, ag.asset_type,
-                    m.personal_use as mark_name
+                    m.personal_use as mark_name,
+                    coa.code as coa_code, coa.name as coa_name
                 FROM transactions t
+                INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
+                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
                 LEFT JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
                 LEFT JOIN marks m ON t.mark_id = m.id
                 WHERE ({mark_condition})
@@ -734,7 +735,15 @@ def get_amortization_settings():
                 'use_mark_based_amortization': False,
                 'amortization_asset_marks': [],
                 'default_asset_useful_life': 5,
-                'default_amortization_rate': 20.0
+                'default_amortization_rate': 20.0,
+                'amortization_expense_coa_codes': ['5314'],
+                'fiscal_correction_coa_codes': [],
+                'accumulated_depreciation_coa_codes': {
+                    'Building': '1524',
+                    'Tangible': '1530',
+                    'LandRights': '1534',
+                    'Intangible': '1601'
+                }
             }
             
             for row in result:
@@ -787,8 +796,16 @@ def save_amortization_settings():
         settings_to_save = [
             ('use_mark_based_amortization', str(data.get('use_mark_based_amortization', False)).lower(), 'boolean'),
             ('amortization_asset_marks', json.dumps(data.get('amortization_asset_marks', [])), 'json'),
-            ('default_asset_useful_life', str(data.get('default_asset_useful_life', 5)), 'number'),
-            ('default_amortization_rate', str(data.get('default_amortization_rate', 20.0)), 'number')
+            ('default_asset_useful_life', str(data.get('default_asset_useful_life',5)), 'number'),
+            ('default_amortization_rate', str(data.get('default_amortization_rate', 20.0)), 'number'),
+            ('amortization_expense_coa_codes', json.dumps(data.get('amortization_expense_coa_codes', ['5314'])), 'json'),
+            ('fiscal_correction_coa_codes', json.dumps(data.get('fiscal_correction_coa_codes', [])), 'json'),
+            ('accumulated_depreciation_coa_codes', json.dumps(data.get('accumulated_depreciation_coa_codes', {
+                'Building': '1524',
+                'Tangible': '1530',
+                'LandRights': '1534',
+                'Intangible': '1601'
+            })), 'json')
         ]
         
         with engine.begin() as conn:

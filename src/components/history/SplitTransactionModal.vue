@@ -94,12 +94,22 @@
                  <!-- Main Row: Mark + Amount -->
                  <div class="flex items-center gap-2">
                     <div class="flex-1 min-w-0">
-                       <SearchableSelect
-                         v-model="split.mark_id"
-                         :options="markOptions"
-                         placeholder="Select mark..."
-                         class="text-xs"
-                       />
+                       <div class="space-y-2">
+  <!-- Standard Select for Testing -->
+  <select 
+    v-model="split.mark_id" 
+    class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none"
+  >
+    <option value="">Select mark...</option>
+    <option 
+      v-for="opt in markOptions" 
+      :key="opt.id" 
+      :value="opt.id"
+    >
+      {{ opt.label }}
+    </option>
+   </select>
+</div>
                     </div>
                     <div class="w-28 relative">
                        <input
@@ -187,10 +197,27 @@ const splits = ref([]);
 const sortedMarks = computed(() => store.sortedMarks);
 
 const markOptions = computed(() => {
-  return sortedMarks.value.map(m => ({
+  if (!sortedMarks.value || sortedMarks.value.length === 0) {
+    console.log('SplitTransactionModal: No marks available yet');
+    return [];
+  }
+  
+  console.log('SplitTransactionModal: markOptions computed, sortedMarks count:', sortedMarks.value.length);
+  const options = sortedMarks.value.map(m => ({
     id: m.id,
     label: m.internal_report || m.personal_use || 'Unnamed Mark'
   }));
+  
+  // Check if any split mark is missing from options
+  const splitMarkIds = new Set(splits.value.filter(s => s.mark_id).map(s => s.mark_id));
+  const availableMarkIds = new Set(sortedMarks.value.map(m => m.id));
+  const missingMarkIds = [...splitMarkIds].filter(id => !availableMarkIds.has(id));
+  
+  if (missingMarkIds.length > 0) {
+    console.warn('SplitTransactionModal: Some split marks not found in marks:', missingMarkIds);
+  }
+  
+  return options;
 });
 
 const transactionAmount = computed(() => {
@@ -213,21 +240,46 @@ const remainingAmount = computed(() => {
 
 const hasValidationError = computed(() => {
   if (splits.value.length === 0) return false;
-  return Math.abs(remainingAmount.value) > 0.01 || splits.value.some(s => !s.mark_id || s.amount === null || s.amount === undefined);
+  
+  // Debug validation
+  console.log('SplitTransactionModal: hasValidationError check:');
+  console.log('  remainingAmount:', remainingAmount.value);
+  console.log('  Math.abs(remainingAmount) > 0.01:', Math.abs(remainingAmount.value) > 0.01);
+  
+  const amountErrors = splits.value.map(s => !s.amount || s.amount === null || s.amount === undefined);
+  console.log('  amount errors:', amountErrors);
+  console.log('  some amount errors:', splits.value.some(s => !s.amount || s.amount === null || s.amount === undefined));
+  
+  const markErrors = splits.value.map(s => !s.mark_id);
+  console.log('  mark errors:', markErrors);
+  console.log('  some mark errors:', splits.value.some(s => !s.mark_id));
+  
+  console.log('  splits:', splits.value.map(s => ({mark_id: s.mark_id, amount: s.amount})));
+  
+  const remainingError = Math.abs(remainingAmount.value) > 0.01;
+  const amountError = splits.value.some(s => s.amount === null || s.amount === undefined || s.amount === '');
+  const markError = splits.value.some(s => !s.mark_id || s.mark_id === '' || s.mark_id === null || s.mark_id === undefined);
+  
+  console.log('  Final validation:', {remainingError, amountError, markError});
+  
+  return remainingError || amountError || markError;
 });
 
 const validationMessage = computed(() => {
-  if (remainingAmount.value > 0.01 && splits.value.length > 0) {
+  const remainingError = Math.abs(remainingAmount.value) > 0.01;
+  const amountError = splits.value.some(s => s.amount === null || s.amount === undefined || s.amount === '');
+  const markError = splits.value.some(s => !s.mark_id || s.mark_id === '' || s.mark_id === null || s.mark_id === undefined);
+  
+  if (remainingError) {
     return `Remaining: ${formatAmount(Math.abs(remainingAmount.value))} must be allocated`;
   } else if (remainingAmount.value < -0.01) {
     return `Over-allocated by: ${formatAmount(Math.abs(remainingAmount.value))}`;
-  } else {
-    const missingMark = splits.value.find(s => !s.mark_id);
-    if (missingMark) return 'All splits must have a mark selected';
-    const missingAmount = splits.value.find(s => s.amount === null || s.amount === undefined);
-    if (missingAmount) return 'All splits must have an amount';
-    return '';
+  } else if (markError) {
+    return 'All splits must have a mark selected';
+  } else if (amountError) {
+    return 'All splits must have an amount';
   }
+  return '';
 });
 
 const formatDate = (dateStr) => {
@@ -285,27 +337,89 @@ const onClose = () => {
 const loadExistingSplits = async () => {
   if (!props.transaction) return;
   
+  console.log('SplitTransactionModal: Loading splits for transaction:', props.transaction.id);
+  
   try {
     const existingSplits = await store.fetchSplits(props.transaction.id);
+    console.log('SplitTransactionModal: Loaded splits:', existingSplits);
+    
     if (existingSplits.length > 0) {
-      splits.value = existingSplits.map(s => ({
-        mark_id: s.mark_id,
-        amount: s.amount,
-        notes: s.notes || ''
-      }));
+      splits.value = existingSplits.map((s, index) => {
+        const mapped = {
+          mark_id: s.mark_id,
+          amount: s.amount,
+          notes: s.notes || ''
+        };
+        console.log(`SplitTransactionModal: Mapped split ${index}:`, mapped, 'from:', s);
+        return mapped;
+      });
+      console.log('SplitTransactionModal: Final mapped splits:', splits.value);
     } else {
       splits.value = [];
+      console.log('SplitTransactionModal: No existing splits found');
     }
   } catch (e) {
-    console.error('Failed to load splits:', e);
+    console.error('SplitTransactionModal: Failed to load splits:', e);
   }
 };
 
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen && props.transaction) {
+    // Ensure marks are loaded before loading splits
+    console.log('SplitTransactionModal: Modal opening, marks count:', sortedMarks.value.length);
+    
+    if (sortedMarks.value.length === 0) {
+      console.warn('SplitTransactionModal: No marks loaded yet, this might cause mark display issues');
+    }
+    
+    console.log('SplitTransactionModal: Before loadExistingSplits');
     loadExistingSplits();
+    
+    // Check validation state after loading
+    setTimeout(() => {
+      console.log('SplitTransactionModal: After loadExistingSplits - hasValidationError:', hasValidationError.value);
+      console.log('SplitTransactionModal: After loadExistingSplits - validationMessage:', validationMessage.value);
+    }, 100);
   } else if (!isOpen) {
     splits.value = [];
   }
 });
+
+watch(() => splits.value, (newSplits) => {
+  console.log('SplitTransactionModal: splits changed:', newSplits);
+  console.log('SplitTransactionModal: split mark_ids:', newSplits.map(s => s.mark_id));
+  console.log('SplitTransactionModal: markOptions count:', markOptions.value.length);
+}, { deep: true });
+
+watch(() => markOptions.value, (newOptions) => {
+  console.log('SplitTransactionModal: markOptions changed, count:', newOptions.length);
+  if (splits.value.length > 0) {
+    console.log('SplitTransactionModal: checking split marks against new options:');
+    splits.value.forEach((split, i) => {
+      const found = newOptions.find(m => m.id === split.mark_id);
+      console.log(`  Split ${i+1}: mark_id=${split.mark_id}, found=${Boolean(found)}, label=${found ? found.label : 'NOT FOUND'}`);
+    });
+  }
+}, { deep: true, immediate: true });
+
+// Additional debug for mark options
+watch(() => markOptions.value, (newOptions) => {
+  console.log('SplitTransactionModal: markOptions changed:', newOptions);
+  if (newOptions.length > 0) {
+    console.log('SplitTransactionModal: Sample markOptions:', newOptions.slice(0, 3));
+  }
+}, { immediate: true });
+
+// Debug for specific mark search
+watch(() => sortedMarks.value, (newMarks) => {
+  console.log('SplitTransactionModal: sortedMarks changed, count:', newMarks.length);
+  
+  // Look for Laptop mark specifically
+  const laptopMark = newMarks.find(m => m.id === '670f93c5-b940-4a06-a556-7c0f92a5cb86');
+  if (laptopMark) {
+    console.log('SplitTransactionModal: Found Laptop mark:', laptopMark);
+  } else {
+    console.warn('SplitTransactionModal: Laptop mark NOT found in sortedMarks');
+  }
+}, { immediate: true });
 </script>

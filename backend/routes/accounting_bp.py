@@ -150,8 +150,42 @@ def get_coa_detail_report():
     
     try:
         coa_id = request.args.get('coa_id')
-        start_date = request.args.get('start_date') or f"{datetime.now().year}-01-01"
-        end_date = request.args.get('end_date') or datetime.now().strftime('%Y-%m-%d')
+        as_of_date = request.args.get('as_of_date')
+        
+        # Determine date range based on account category - need to get COA info first
+        temp_coa_id = request.args.get('coa_id')
+        if not temp_coa_id:
+            with engine.connect() as conn:
+                first_coa = conn.execute(text("SELECT id FROM chart_of_accounts WHERE is_active = TRUE LIMIT 1")).fetchone()
+                if not first_coa:
+                    return jsonify({'error': 'coa_id is required'}), 400
+                temp_coa_id = first_coa[0]
+        
+        with engine.connect() as conn:
+            coa_result = conn.execute(text("SELECT * FROM chart_of_accounts WHERE id = :id"), {'id': temp_coa_id})
+            coa_row = coa_result.fetchone()
+            if not coa_row:
+                return jsonify({'error': 'COA not found'}), 404
+            
+            coa_info = dict(coa_row._mapping)
+            coa_category = coa_info.get('category', '')
+
+        coa_id = temp_coa_id
+        
+        if as_of_date:
+            if coa_category in ('ASSET', 'LIABILITY', 'EQUITY'):
+                # For balance sheet accounts: from beginning of time to as_of_date
+                start_date = None
+                end_date = as_of_date
+            else:
+                # For income statement accounts: from beginning of the as_of_date year to as_of_date
+                as_of_year = datetime.strptime(as_of_date, '%Y-%m-%d').year
+                start_date = f"{as_of_year}-01-01"
+                end_date = as_of_date
+        else:
+            start_date = request.args.get('start_date') or f"{datetime.now().year}-01-01"
+            end_date = request.args.get('end_date') or datetime.now().strftime('%Y-%m-%d')
+        
         company_id = request.args.get('company_id')
         
         if not coa_id:
@@ -168,7 +202,8 @@ def get_coa_detail_report():
                 return jsonify({'error': 'COA not found'}), 404
             
             coa_info = dict(coa_row._mapping)
-            
+            coa_category = coa_info.get('category', '')
+
             query = text("""
                 SELECT 
                     t.id, t.txn_date, t.description, t.amount, t.db_cr,
@@ -183,14 +218,14 @@ def get_coa_detail_report():
                   AND (:company_id IS NULL OR t.company_id = :company_id)
                 ORDER BY t.txn_date DESC
             """)
-            
+
             result = conn.execute(query, {
                 'coa_id': coa_id,
                 'start_date': start_date,
                 'end_date': end_date,
                 'company_id': company_id
             })
-            
+
             transactions = []
             total = 0
             for row in result:
@@ -200,14 +235,27 @@ def get_coa_detail_report():
                         d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
                     elif isinstance(value, Decimal):
                         d[key] = float(value)
-                
+
                 amount = float(d['amount'])
-                if (d['db_cr'] == 'CR' and d['mapping_type'] == 'CREDIT') or \
-                   (d['db_cr'] == 'DB' and d['mapping_type'] == 'DEBIT'):
-                    effective_amount = amount
-                else: 
-                    effective_amount = -amount
-                
+
+                # For Balance Sheet accounts (ASSET, LIABILITY, EQUITY):
+                # - DEBIT mapping = positive (increases balance)
+                # - CREDIT mapping = negative (decreases balance)
+                # For Income Statement accounts (REVENUE, EXPENSE):
+                # - Use DB/CR + mapping_type logic
+                if coa_category in ('ASSET', 'LIABILITY', 'EQUITY'):
+                    if d['mapping_type'] == 'DEBIT':
+                        effective_amount = amount
+                    else:  # CREDIT
+                        effective_amount = -amount
+                else:
+                    # Income Statement logic
+                    if (d['db_cr'] == 'CR' and d['mapping_type'] == 'CREDIT') or \
+                       (d['db_cr'] == 'DB' and d['mapping_type'] == 'DEBIT'):
+                        effective_amount = amount
+                    else:
+                        effective_amount = -amount
+
                 d['effective_amount'] = effective_amount
                 total += effective_amount
                 transactions.append(d)
