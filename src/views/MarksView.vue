@@ -46,20 +46,21 @@
                </th>
                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tax Report</th>
                <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aset?</th>
+               <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Jasa?</th>
                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">COA Mappings</th>
                <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
              </tr>
            </thead>
            <tbody class="bg-white divide-y divide-gray-100">
               <tr v-if="store.isLoading">
-                  <td colspan="5" class="text-center py-8">
+                  <td colspan="7" class="text-center py-8">
                       <span class="spinner-border text-indigo-500 w-6 h-6" role="status"></span>
                   </td>
               </tr>
               <tr v-else-if="store.marks.length === 0">
-                  <td colspan="5" class="text-center py-8 text-gray-400">No marks found</td>
+                  <td colspan="7" class="text-center py-8 text-gray-400">No marks found</td>
               </tr>
-              <tr v-for="m in store.sortedMarks" :key="m.id" :class="{'bg-indigo-50/30': m.is_asset}" class="hover:bg-gray-50">
+              <tr v-for="m in store.sortedMarks" :key="m.id" :class="{'bg-indigo-50/30': m.is_asset || m.is_service}" class="hover:bg-gray-50">
                  <td class="px-6 py-4 text-sm text-gray-900">{{ m.internal_report }}</td>
                  <td class="px-6 py-4 text-sm text-gray-500">
                    <span :class="{'font-semibold text-indigo-700': m.is_asset}">{{ m.personal_use }}</span>
@@ -69,6 +70,16 @@
                    <span v-if="m.is_asset" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                      <i class="bi bi-check-circle-fill mr-1"></i>
                      Aset
+                   </span>
+                   <span v-else class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                     <i class="bi bi-dash-circle mr-1"></i>
+                     Bukan
+                   </span>
+                 </td>
+                 <td class="px-6 py-4 text-center">
+                   <span v-if="m.is_service" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                     <i class="bi bi-check-circle-fill mr-1"></i>
+                     Jasa
                    </span>
                    <span v-else class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                      <i class="bi bi-dash-circle mr-1"></i>
@@ -119,7 +130,7 @@
         :isOpen="showModal" 
         :markToEdit="selectedMark"
         @close="showModal = false"
-        @saved="showModal = false"
+        @saved="handleMarkSaved"
     />
 
     <CoaMappingModal
@@ -169,8 +180,12 @@ const openAddModal = () => {
     showModal.value = true;
 };
 
-const openEditModal = (mark) => {
-    selectedMark.value = mark;
+const openEditModal = async (mark) => {
+    // First refresh the marks data to ensure we have the latest from database
+    await store.fetchMarks();
+    // Then get the fresh mark data from the refreshed store
+    const freshMark = store.marks.find(m => m.id === mark.id);
+    selectedMark.value = freshMark;
     showModal.value = true;
 };
 
@@ -183,6 +198,13 @@ const handleMappingUpdated = async () => {
     // Refresh marks to show new mappings
     await store.fetchMarks();
     console.log('Mapping updated successfully');
+};
+
+const handleMarkSaved = async () => {
+    // Refresh marks to show updated data
+    await store.fetchMarks();
+    showModal.value = false;
+    console.log('Mark saved successfully');
 };
 
 const deleteMark = async (id) => {

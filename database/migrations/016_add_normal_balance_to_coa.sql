@@ -18,4 +18,5 @@ DEALLOCATE PREPARE stmt;
 -- Update existing accounts based on category
 UPDATE chart_of_accounts SET normal_balance = 'DEBIT' WHERE category IN ('ASSET', 'EXPENSE', 'COGS', 'OTHER_EXPENSE');
 UPDATE chart_of_accounts SET normal_balance = 'CREDIT' WHERE category IN ('LIABILITY', 'EQUITY', 'REVENUE', 'OTHER_REVENUE');
-UPDATE chart_of_accounts SET normal_balance = 'DEBIT' WHERE code IN ('4011', '4002');
+UPDATE chart_of_accounts SET normal_balance = 'DEBIT' WHERE code = '4011'; -- Retur Penjualan (Contra-Revenue)
+UPDATE chart_of_accounts SET normal_balance = 'CREDIT' WHERE code = '4002'; -- Penjualan Domestik (Revenue)

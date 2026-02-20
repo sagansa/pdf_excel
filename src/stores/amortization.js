@@ -231,6 +231,78 @@ export const useAmortizationStore = defineStore('amortization', {
       } catch (err) {
         throw new Error(err.response?.data?.error || 'Failed to update mark');
       }
+    },
+
+    // Amortization Items (Mark-based)
+    async fetchAmortizationEligibleMarks(companyId) {
+      try {
+        const response = await api.get('/marks/amortization-eligible', {
+          params: { company_id: companyId }
+        });
+        return response.data;
+      } catch (err) {
+        console.error("Failed to fetch amortization eligible marks:", err);
+        return { marks: [] };
+      }
+    },
+
+    async fetchAmortizationItems(companyId, year) {
+      try {
+        const response = await api.get('/amortization-items', {
+          params: { company_id: companyId, year }
+        });
+        return response.data;
+      } catch (err) {
+        throw new Error(err.response?.data?.error || 'Failed to fetch amortization items');
+      }
+    },
+
+    async createAmortizationItem(data) {
+      try {
+        const response = await api.post('/amortization-items', data);
+        return response.data;
+      } catch (err) {
+        throw new Error(err.response?.data?.error || 'Failed to create amortization item');
+      }
+    },
+
+    async updateAmortizationItem(itemId, data) {
+      try {
+        const response = await api.put(`/amortization-items/${itemId}`, data);
+        return response.data;
+      } catch (err) {
+        throw new Error(err.response?.data?.error || 'Failed to update amortization item');
+      }
+    },
+
+    async deleteAmortizationItem(itemId) {
+      try {
+        await api.delete(`/amortization-items/${itemId}`);
+        return { success: true };
+      } catch (err) {
+        throw new Error(err.response?.data?.error || 'Failed to delete amortization item');
+      }
+    },
+
+    async fetchAmortizationEligibleMarks(companyId) {
+      try {
+        const response = await api.get('/marks/amortization-eligible', {
+          params: { company_id: companyId }
+        });
+        return response.data;
+      } catch (err) {
+        console.error("Failed to fetch amortization eligible marks:", err);
+        return { marks: [] };
+      }
+    },
+
+    async generateAmortizationJournals(data) {
+      try {
+        const response = await api.post('/amortization-items/generate-journal', data);
+        return response.data;
+      } catch (err) {
+        throw new Error(err.response?.data?.error || 'Failed to generate amortization journals');
+      }
     }
   }
 });

@@ -98,6 +98,7 @@ INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, des
 (UUID(), '4013', 'Penyesuaian Penjualan', 'REVENUE', 'Sales Deductions', 'Sales Adjustments', TRUE, NOW(), NOW()),
 -- Other Revenue
 (UUID(), '4501', 'Keuntungan Selisih Kurs', 'REVENUE', 'Non-Operating Revenue', 'Check CoreTax for category', TRUE, NOW(), NOW()),
+(UUID(), '4503', 'Keuntungan Penjualan Aset selain Persediaan', 'REVENUE', 'Non-Operating Revenue', 'Gain on Sale of Non-Inventory Assets', TRUE, NOW(), NOW()),
 (UUID(), '4511', 'Pendapatan Bunga', 'REVENUE', 'Non-Operating Revenue', 'Interest Income', TRUE, NOW(), NOW()),
 (UUID(), '4599', 'Pendapatan Non Usaha Lainnya', 'REVENUE', 'Non-Operating Revenue', 'Other Income', TRUE, NOW(), NOW());
 
@@ -113,6 +114,8 @@ INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, des
 
 -- 5.2 Operating Expenses (Beban Usaha)
 INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, description, is_active, created_at, updated_at) VALUES
+(UUID(), '5311', 'Gaji, Tunjangan, Bonus, Honorarium, THR, dsb', 'EXPENSE', 'Operating Expenses', 'Salary, Allowances, Bonuses, Honorariums, THR, etc.', TRUE, NOW(), NOW()),
+(UUID(), '5312', 'Beban Imbalan Kerja Lainnya', 'EXPENSE', 'Operating Expenses', 'Other Employee Benefits Expense', TRUE, NOW(), NOW()),
 (UUID(), '5313', 'Beban Transportasi', 'EXPENSE', 'Operating Expenses', 'Transport Expense', TRUE, NOW(), NOW()),
 (UUID(), '5314', 'Beban Penyusutan dan Amortisasi', 'EXPENSE', 'Operating Expenses', 'Depreciation & Amortization', TRUE, NOW(), NOW()),
 (UUID(), '5315', 'Beban Sewa', 'EXPENSE', 'Operating Expenses', 'Rent Expense', TRUE, NOW(), NOW()),
@@ -123,4 +126,8 @@ INSERT IGNORE INTO chart_of_accounts (id, code, name, category, subcategory, des
 (UUID(), '5320', 'Beban Pemasaran atau Promosi', 'EXPENSE', 'Operating Expenses', 'Marketing Expense', TRUE, NOW(), NOW()),
 (UUID(), '5321', 'Beban Entertainment', 'EXPENSE', 'Operating Expenses', 'Entertainment Expense', TRUE, NOW(), NOW()),
 (UUID(), '5322', 'Beban Umum dan Administrasi', 'EXPENSE', 'Operating Expenses', 'G&A Expense', TRUE, NOW(), NOW()),
-(UUID(), '5399', 'Beban usaha lainnya', 'EXPENSE', 'Operating Expenses', 'Other Operating Expenses', TRUE, NOW(), NOW());
+(UUID(), '5399', 'Beban usaha lainnya', 'EXPENSE', 'Operating Expenses', 'Other Operating Expenses', TRUE, NOW(), NOW()),
+(UUID(), '5405', 'Kerugian Penjualan Aset selain Persediaan', 'EXPENSE', 'Operating Expenses', 'Loss on Sale of Non-Inventory Assets', TRUE, NOW(), NOW()),
+(UUID(), '5409', 'Sumbangan', 'EXPENSE', 'Operating Expenses', 'Donation Expense', TRUE, NOW(), NOW()),
+(UUID(), '5421', 'Kerugian Selisih Kurs', 'EXPENSE', 'Operating Expenses', 'Loss on Foreign Exchange', TRUE, NOW(), NOW()),
+(UUID(), '5499', 'Beban Non Usaha Lainnya', 'EXPENSE', 'Operating Expenses', 'Other Non-Operating Expenses', TRUE, NOW(), NOW());

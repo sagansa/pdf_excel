@@ -60,6 +60,41 @@
           </div>
         </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Metode Perhitungan</label>
+            <select
+              v-model="form.calculation_method"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="BRUTO">Bruto</option>
+              <option value="NETTO">Netto (Gross-up)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tarif PPh 4(2) (%)</label>
+            <input
+              v-model.number="form.pph42_rate"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Bayar PPh 4(2)</label>
+            <select
+              v-model="form.pph42_payment_timing"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="same_period">Periode yang sama</option>
+              <option value="next_period">Periode berikutnya</option>
+              <option value="next_year">Tahun berikutnya</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Transaction Selection -->
         <div class="md:col-span-2 space-y-3">
           <div class="flex items-center justify-between">
@@ -137,15 +172,40 @@
               </div>
             </div>
             <div class="text-2xl font-bold text-indigo-900">
-              {{ formatCurrency(calculatedTotal) }}
+              {{ formatCurrency(baseSelectedAmount) }}
             </div>
           </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <div class="text-xs font-bold text-gray-500 uppercase mb-3">Ringkasan Otomatis Rent & PPh 4(2)</div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div>
+              <div class="text-gray-500 text-xs">Dasar Pembayaran</div>
+              <div class="font-semibold text-gray-900">{{ formatCurrency(baseSelectedAmount) }}</div>
+            </div>
+            <div>
+              <div class="text-gray-500 text-xs">Nilai Bruto</div>
+              <div class="font-semibold text-indigo-700">{{ formatCurrency(calculatedBrutoAmount) }}</div>
+            </div>
+            <div>
+              <div class="text-gray-500 text-xs">Nilai Netto</div>
+              <div class="font-semibold text-gray-900">{{ formatCurrency(calculatedNetAmount) }}</div>
+            </div>
+            <div>
+              <div class="text-gray-500 text-xs">PPh 4(2)</div>
+              <div class="font-semibold text-amber-700">{{ formatCurrency(calculatedTaxAmount) }}</div>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">
+            Nilai bruto digunakan sebagai dasar perhitungan jurnal kontrak sewa.
+          </p>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Total Amount *</label>
           <input
-            :value="formatCurrency(calculatedTotal || 0)"
+            :value="formatCurrency(calculatedBrutoAmount || 0)"
             type="text"
             readonly
             disabled
@@ -240,6 +300,9 @@ const form = ref({
   start_date: '',
   end_date: '',
   total_amount: 0,
+  calculation_method: 'BRUTO',
+  pph42_rate: 10,
+  pph42_payment_timing: 'same_period',
   payment_schedule: 'monthly',
   status: 'active',
   notes: ''
@@ -248,7 +311,12 @@ const form = ref({
 watch(() => props.contract, (newContract) => {
   if (newContract && newContract.id) {
     editMode.value = true;
-    form.value = { ...newContract };
+    form.value = {
+      ...newContract,
+      calculation_method: (newContract.calculation_method || 'BRUTO').toUpperCase(),
+      pph42_rate: Number(newContract.pph42_rate ?? 10),
+      pph42_payment_timing: newContract.pph42_payment_timing || 'same_period'
+    };
   } else {
     editMode.value = false;
     if (!props.isOpen) {
@@ -260,6 +328,9 @@ watch(() => props.contract, (newContract) => {
 watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
     await Promise.all([loadStores(), loadLocations(), loadLinkableTransactions()]);
+    if (props.contract?.id) {
+      await loadExistingLinkedTransactions(props.contract.id);
+    }
     if (!props.contract) {
       resetForm();
     }
@@ -274,7 +345,7 @@ watch(() => props.isOpen, async (isOpen) => {
 // Auto-update total amount when transactions are selected
 watch(selectedTransactions, () => {
   // Always sync form.total_amount with calculated total
-  form.value.total_amount = calculatedTotal.value;
+  form.value.total_amount = calculatedBrutoAmount.value;
 }, { deep: true });
 
 const loadStores = async () => {
@@ -308,6 +379,18 @@ const loadLinkableTransactions = async () => {
   }
 };
 
+const loadExistingLinkedTransactions = async (contractId) => {
+  if (!contractId) return;
+  try {
+    const response = await rentalApi.getContractTransactions(contractId);
+    const existing = response.data.transactions || [];
+    selectedTransactions.value = existing.map(txn => txn.id).filter(Boolean);
+  } catch (error) {
+    console.error('Failed to load existing linked transactions:', error);
+    selectedTransactions.value = [];
+  }
+};
+
 const refreshTransactions = () => {
   loadLinkableTransactions();
 };
@@ -326,11 +409,41 @@ const filteredTransactions = computed(() => {
   );
 });
 
-const calculatedTotal = computed(() => {
+const baseSelectedAmount = computed(() => {
   return selectedTransactions.value.reduce((total, txnId) => {
     const txn = linkableTransactions.value.find(t => t.id === txnId);
-    return total + (txn ? parseFloat(txn.amount) : 0);
+    return total + (txn ? Math.abs(parseFloat(txn.amount || 0)) : 0);
   }, 0);
+});
+
+const safeTaxRate = computed(() => {
+  const raw = Number(form.value.pph42_rate ?? 10);
+  if (Number.isNaN(raw)) return 10;
+  return Math.min(Math.max(raw, 0), 100);
+});
+
+const calculatedBrutoAmount = computed(() => {
+  const base = baseSelectedAmount.value;
+  if (!base) return 0;
+  if ((form.value.calculation_method || 'BRUTO').toUpperCase() === 'NETTO') {
+    const divisor = 1 - (safeTaxRate.value / 100);
+    if (divisor <= 0) return 0;
+    return base / divisor;
+  }
+  return base;
+});
+
+const calculatedNetAmount = computed(() => {
+  const bruto = calculatedBrutoAmount.value;
+  if (!bruto) return 0;
+  if ((form.value.calculation_method || 'BRUTO').toUpperCase() === 'NETTO') {
+    return baseSelectedAmount.value;
+  }
+  return bruto * (1 - (safeTaxRate.value / 100));
+});
+
+const calculatedTaxAmount = computed(() => {
+  return Math.max(0, calculatedBrutoAmount.value - calculatedNetAmount.value);
 });
 
 const formatCurrency = (amount) => {
@@ -355,6 +468,9 @@ const resetForm = () => {
     start_date: '',
     end_date: '',
     total_amount: 0,
+    calculation_method: 'BRUTO',
+    pph42_rate: 10,
+    pph42_payment_timing: 'same_period',
     payment_schedule: 'monthly',
     status: 'active',
     notes: ''
@@ -367,6 +483,7 @@ const handleSubmit = async () => {
     const data = {
       ...form.value,
       company_id: props.companyId,
+      total_amount: calculatedBrutoAmount.value,
       linked_transaction_ids: selectedTransactions.value
     };
 
@@ -376,12 +493,11 @@ const handleSubmit = async () => {
     });
 
     let contractId;
-    let prepaidInfo = null;
     if (editMode.value) {
       await rentalApi.updateContract(props.contract.id, data);
       contractId = props.contract.id;
       
-      // For edit mode, re-link transactions to trigger prepaid update
+      // Ensure selected links are applied (idempotent on backend side)
       if (selectedTransactions.value.length > 0) {
         for (const txnId of selectedTransactions.value) {
           try {
@@ -394,14 +510,6 @@ const handleSubmit = async () => {
     } else {
       const response = await rentalApi.createContract(data);
       contractId = response.data.id;
-      prepaidInfo = response.data;
-    }
-
-    // Show info about prepaid expense creation
-    if (prepaidInfo?.prepaid_auto_created) {
-      alert(`Prepaid expense entry created successfully! Total: ${formatCurrency(prepaidInfo.total_amount || 0)}`);
-    } else if (selectedTransactions.value.length > 0 && !prepaidInfo?.prepaid_expense_id) {
-      console.warn('Contract created but prepaid expense was not created. Check server logs.');
     }
 
     emit('saved');

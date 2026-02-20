@@ -258,7 +258,12 @@
                   <tr v-if="data.equity.items.length === 0">
                     <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm">No equity entries</td>
                   </tr>
-                  <tr v-for="item in data.equity.items" :key="item.id" class="hover:bg-gray-50 group cursor-pointer" @click="openCoaDetail(item)">
+                  <tr
+                    v-for="item in data.equity.items"
+                    :key="item.id"
+                    :class="item.is_computed ? 'bg-green-50/40' : 'hover:bg-gray-50 group cursor-pointer'"
+                    @click="openCoaDetail(item)"
+                  >
                     <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">{{ item.code }}</td>
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-green-700">
@@ -273,6 +278,7 @@
                         </button>
                         <button
                           @click.stop="openCoaDetail(item)"
+                          v-if="!item.is_computed"
                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
                           title="View transactions"
                         >
@@ -320,6 +326,7 @@ const hasData = computed(() => props.data !== null);
 const copiedAmount = ref(null);
 
 const openCoaDetail = (item) => {
+  if (!item || item.is_computed) return;
   emit('view-coa', item);
 };
 

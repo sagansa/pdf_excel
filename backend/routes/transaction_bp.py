@@ -1,12 +1,86 @@
 import uuid
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
-from sqlalchemy import text
-import uuid
+from sqlalchemy import text, bindparam
 from backend.db.session import get_db_engine
 
 transaction_bp = Blueprint('transaction_bp', __name__)
+VALID_SERVICE_CALCULATION_METHODS = {'BRUTO', 'NETTO'}
+VALID_SERVICE_TAX_PAYMENT_TIMINGS = {'same_period', 'next_period', 'next_year'}
+
+
+def _table_columns(conn, table_name):
+    if conn.dialect.name == 'sqlite':
+        rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+        return {str(row[1]) for row in rows}
+
+    rows = conn.execute(text("""
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = :table_name
+    """), {'table_name': table_name}).fetchall()
+    return {str(row[0]) for row in rows}
+
+
+def _parse_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {'1', 'true', 'yes', 'y', 'on'}
+    return False
+
+
+def _normalize_npwp(value):
+    digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
+    if not digits:
+        return None
+    return digits if len(digits) == 15 else None
+
+
+def _normalize_service_calculation_method(value):
+    method = str(value or 'BRUTO').strip().upper()
+    if method not in VALID_SERVICE_CALCULATION_METHODS:
+        return 'BRUTO'
+    return method
+
+
+def _normalize_service_tax_payment_timing(value):
+    raw = str(value or 'same_period').strip().lower()
+    alias_map = {
+        'same_month': 'same_period',
+        'same_year': 'same_period',
+        'next_month': 'next_period',
+    }
+    normalized = alias_map.get(raw, raw)
+    if normalized not in VALID_SERVICE_TAX_PAYMENT_TIMINGS:
+        return 'same_period'
+    return normalized
+
+
+def _normalize_iso_date(value):
+    if value in (None, ''):
+        return None
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, str):
+        try:
+            return datetime.strptime(value[:10], '%Y-%m-%d').date().isoformat()
+        except ValueError:
+            return None
+    return None
+
+
+def _split_parent_exclusion_clause(conn, alias='t'):
+    txn_columns = _table_columns(conn, 'transactions')
+    if 'parent_id' not in txn_columns:
+        return ''
+    return f" AND NOT EXISTS (SELECT 1 FROM transactions t_child WHERE t_child.parent_id = {alias}.id)"
 
 @transaction_bp.route('/api/transactions', methods=['GET'])
 def get_transactions():
@@ -117,6 +191,7 @@ def get_marks():
         return jsonify({'error': error_msg}), 500
     try:
         with engine.connect() as conn:
+            mark_columns = _table_columns(conn, 'marks')
             result = conn.execute(text("SELECT * FROM marks ORDER BY personal_use ASC"))
             marks = []
             marks_dict = {}
@@ -125,6 +200,13 @@ def get_marks():
                 for key, value in d.items():
                     if isinstance(value, datetime):
                         d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                # Keep response contract stable across DB schema versions.
+                if 'is_asset' not in d:
+                    d['is_asset'] = False
+                if 'is_service' not in d:
+                    d['is_service'] = False
+                d['is_asset'] = _parse_bool(d.get('is_asset'))
+                d['is_service'] = _parse_bool(d.get('is_service'))
                 d['mappings'] = []
                 marks.append(d)
                 marks_dict[d['id']] = d
@@ -156,25 +238,31 @@ def create_mark():
     if engine is None:
         return jsonify({'error': error_msg}), 500
     try:
-        data = request.json
+        data = request.json or {}
         now = datetime.now()
         mark_id = str(uuid.uuid4())
-        new_row = {
-            'id': mark_id,
-            'internal_report': data.get('internal_report', ''),
-            'personal_use': data.get('personal_use', ''),
-            'tax_report': data.get('tax_report', ''),
-            'created_at': now,
-            'updated_at': now
-        }
-        with engine.connect() as conn:
-            query = text("""
-                INSERT INTO marks (id, internal_report, personal_use, tax_report, created_at, updated_at)
-                VALUES (:id, :internal_report, :personal_use, :tax_report, :created_at, :updated_at)
-            """)
-            conn.execute(query, new_row)
-            conn.commit()
-            return jsonify({'message': 'Mark created successfully', 'id': mark_id}), 201
+        with engine.begin() as conn:
+            mark_columns = _table_columns(conn, 'marks')
+            if 'is_service' not in mark_columns:
+                return jsonify({'error': 'Kolom is_service belum tersedia. Jalankan migrasi terbaru.'}), 400
+            new_row = {
+                'id': mark_id,
+                'internal_report': data.get('internal_report', ''),
+                'personal_use': data.get('personal_use', ''),
+                'tax_report': data.get('tax_report', ''),
+                'is_asset': _parse_bool(data.get('is_asset', False)),
+                'is_service': _parse_bool(data.get('is_service', False)),
+                'created_at': now,
+                'updated_at': now
+            }
+            insert_columns = [column for column in new_row.keys() if column in mark_columns]
+            columns_sql = ', '.join(insert_columns)
+            values_sql = ', '.join(f":{column}" for column in insert_columns)
+            conn.execute(text(f"""
+                INSERT INTO marks ({columns_sql})
+                VALUES ({values_sql})
+            """), new_row)
+        return jsonify({'message': 'Mark created successfully', 'id': mark_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -191,20 +279,44 @@ def update_or_delete_mark(mark_id):
                 conn.commit()
                 return jsonify({'message': 'Mark deleted successfully'})
         
-        data = request.json
-        internal = data.get('internal_report')
-        personal = data.get('personal_use')
-        tax = data.get('tax_report')
-        
-        with engine.connect() as conn:
-            query = text("""
-                UPDATE marks 
-                SET internal_report = :internal, personal_use = :personal, tax_report = :tax 
+        data = request.json or {}
+        with engine.begin() as conn:
+            mark_columns = _table_columns(conn, 'marks')
+            if 'is_service' in data and 'is_service' not in mark_columns:
+                return jsonify({'error': 'Kolom is_service belum tersedia. Jalankan migrasi terbaru.'}), 400
+
+            field_map = {
+                'internal_report': 'internal_report',
+                'personal_use': 'personal_use',
+                'tax_report': 'tax_report',
+                'is_asset': 'is_asset',
+                'is_service': 'is_service'
+            }
+
+            params = {'id': mark_id, 'updated_at': datetime.now()}
+            set_fields = []
+
+            for payload_key, column_name in field_map.items():
+                if payload_key in data and column_name in mark_columns:
+                    if payload_key in {'is_asset', 'is_service'}:
+                        params[payload_key] = _parse_bool(data.get(payload_key))
+                    else:
+                        params[payload_key] = data.get(payload_key)
+                    set_fields.append(f"{column_name} = :{payload_key}")
+
+            if 'updated_at' in mark_columns:
+                set_fields.append("updated_at = :updated_at")
+
+            if not set_fields:
+                return jsonify({'error': 'No valid fields to update'}), 400
+
+            query = text(f"""
+                UPDATE marks
+                SET {', '.join(set_fields)}
                 WHERE id = :id
             """)
-            conn.execute(query, {'id': mark_id, 'internal': internal, 'personal': personal, 'tax': tax})
-            conn.commit()
-            return jsonify({'message': 'Mark updated successfully'})
+            conn.execute(query, params)
+        return jsonify({'message': 'Mark updated successfully'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -217,11 +329,310 @@ def assign_mark_transaction(txn_id):
         data = request.json
         mark_id = data.get('mark_id')
         now = datetime.now()
-        with engine.connect() as conn:
+        with engine.begin() as conn:
+            txn_columns = _table_columns(conn, 'transactions')
+            if mark_id and 'parent_id' in txn_columns:
+                has_children = conn.execute(text("""
+                    SELECT 1
+                    FROM transactions
+                    WHERE parent_id = :txn_id
+                    LIMIT 1
+                """), {'txn_id': txn_id}).fetchone()
+                if has_children:
+                    return jsonify({
+                        'error': 'Transaksi ini sudah memiliki multi mark (split). Ubah mark pada split, bukan parent.'
+                    }), 400
+
             query = text("UPDATE transactions SET mark_id = :mark_id, updated_at = :updated_at WHERE id = :id")
             conn.execute(query, {'id': txn_id, 'mark_id': mark_id, 'updated_at': now})
-            conn.commit()
             return jsonify({'message': 'Transaction marked successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/service-marks', methods=['GET'])
+def get_service_marks():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    company_id = request.args.get('company_id')
+    year = request.args.get('year')
+    year_int = None
+    if year not in (None, ''):
+        try:
+            year_int = int(year)
+        except ValueError:
+            return jsonify({'error': 'year must be numeric'}), 400
+
+    try:
+        with engine.connect() as conn:
+            mark_columns = _table_columns(conn, 'marks')
+            service_expr = "COALESCE(m.is_service, FALSE)" if 'is_service' in mark_columns else "FALSE"
+            asset_expr = "COALESCE(m.is_asset, FALSE)" if 'is_asset' in mark_columns else "FALSE"
+            split_exclusion = _split_parent_exclusion_clause(conn, 't')
+
+            if conn.dialect.name == 'sqlite':
+                year_filter = "(:year_str IS NULL OR strftime('%Y', t.txn_date) = :year_str)"
+                params = {
+                    'company_id': company_id,
+                    'year_str': str(year_int) if year_int is not None else None
+                }
+            else:
+                year_filter = "(:year IS NULL OR YEAR(t.txn_date) = :year)"
+                params = {
+                    'company_id': company_id,
+                    'year': year_int
+                }
+
+            query = text(f"""
+                SELECT
+                    m.id,
+                    m.internal_report,
+                    m.personal_use,
+                    m.tax_report,
+                    {asset_expr} AS is_asset,
+                    {service_expr} AS is_service,
+                    COUNT(t.id) AS transaction_count
+                FROM marks m
+                LEFT JOIN transactions t
+                    ON t.mark_id = m.id
+                   AND (:company_id IS NULL OR t.company_id = :company_id)
+                   AND {year_filter}
+                   {split_exclusion}
+                GROUP BY m.id, m.internal_report, m.personal_use, m.tax_report
+                ORDER BY m.personal_use ASC
+            """)
+            result = conn.execute(query, params)
+
+            marks = []
+            for row in result:
+                d = dict(row._mapping)
+                d['is_asset'] = _parse_bool(d.get('is_asset'))
+                d['is_service'] = _parse_bool(d.get('is_service'))
+                d['transaction_count'] = int(d.get('transaction_count') or 0)
+                marks.append(d)
+
+        return jsonify({'marks': marks})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/service-marks/<mark_id>', methods=['PUT'])
+def update_service_mark(mark_id):
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    data = request.json or {}
+    is_service = _parse_bool(data.get('is_service', False))
+
+    try:
+        with engine.begin() as conn:
+            mark_columns = _table_columns(conn, 'marks')
+            if 'is_service' not in mark_columns:
+                return jsonify({'error': 'is_service column is not available. Run latest migration.'}), 400
+
+            params = {
+                'id': mark_id,
+                'is_service': is_service,
+                'updated_at': datetime.now()
+            }
+            if 'updated_at' in mark_columns:
+                conn.execute(text("""
+                    UPDATE marks
+                    SET is_service = :is_service,
+                        updated_at = :updated_at
+                    WHERE id = :id
+                """), params)
+            else:
+                conn.execute(text("""
+                    UPDATE marks
+                    SET is_service = :is_service
+                    WHERE id = :id
+                """), params)
+
+        return jsonify({'message': 'Service mark updated successfully', 'is_service': is_service})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/service-transactions', methods=['GET'])
+def get_service_transactions():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    company_id = request.args.get('company_id')
+    search = (request.args.get('search') or '').strip().lower()
+    year = request.args.get('year')
+    year_int = None
+    if year not in (None, ''):
+        try:
+            year_int = int(year)
+        except ValueError:
+            return jsonify({'error': 'year must be numeric'}), 400
+
+    try:
+        with engine.connect() as conn:
+            mark_columns = _table_columns(conn, 'marks')
+            txn_columns = _table_columns(conn, 'transactions')
+            split_exclusion = _split_parent_exclusion_clause(conn, 't')
+
+            if 'is_service' not in mark_columns:
+                return jsonify({'transactions': [], 'message': 'No service mark configuration yet'})
+
+            npwp_expr = "t.service_npwp" if 'service_npwp' in txn_columns else "NULL"
+            method_expr = "COALESCE(t.service_calculation_method, 'BRUTO')" if 'service_calculation_method' in txn_columns else "'BRUTO'"
+            timing_expr = "COALESCE(t.service_tax_payment_timing, 'same_period')" if 'service_tax_payment_timing' in txn_columns else "'same_period'"
+            payment_date_expr = "t.service_tax_payment_date" if 'service_tax_payment_date' in txn_columns else "NULL"
+            if conn.dialect.name == 'sqlite':
+                year_filter = "(:year_str IS NULL OR strftime('%Y', t.txn_date) = :year_str)"
+                params = {
+                    'company_id': company_id,
+                    'search': f"%{search}%" if search else None,
+                    'year_str': str(year_int) if year_int is not None else None
+                }
+            else:
+                year_filter = "(:year IS NULL OR YEAR(t.txn_date) = :year)"
+                params = {
+                    'company_id': company_id,
+                    'search': f"%{search}%" if search else None,
+                    'year': year_int
+                }
+
+            query = text(f"""
+                SELECT
+                    t.id,
+                    t.txn_date,
+                    t.description,
+                    t.amount,
+                    t.db_cr,
+                    t.company_id,
+                    t.mark_id,
+                    {npwp_expr} AS service_npwp,
+                    {method_expr} AS service_calculation_method,
+                    {timing_expr} AS service_tax_payment_timing,
+                    {payment_date_expr} AS service_tax_payment_date,
+                    m.personal_use,
+                    m.internal_report,
+                    c.name AS company_name
+                FROM transactions t
+                INNER JOIN marks m ON t.mark_id = m.id
+                LEFT JOIN companies c ON t.company_id = c.id
+                WHERE COALESCE(m.is_service, 0) = 1
+                  AND (:company_id IS NULL OR t.company_id = :company_id)
+                  AND {year_filter}
+                  {split_exclusion}
+                  AND (
+                      :search IS NULL
+                      OR LOWER(COALESCE(t.description, '')) LIKE :search
+                      OR LOWER(COALESCE(m.personal_use, '')) LIKE :search
+                      OR LOWER(COALESCE(m.internal_report, '')) LIKE :search
+                  )
+                ORDER BY t.txn_date DESC, t.created_at DESC
+            """)
+            result = conn.execute(query, params)
+
+            transactions = []
+            for row in result:
+                d = dict(row._mapping)
+                for key, value in d.items():
+                    if isinstance(value, datetime):
+                        d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                    elif isinstance(value, date):
+                        d[key] = value.isoformat()
+                    elif isinstance(value, Decimal):
+                        d[key] = float(value)
+                d['has_npwp'] = bool(_normalize_npwp(d.get('service_npwp')))
+                d['service_calculation_method'] = _normalize_service_calculation_method(d.get('service_calculation_method'))
+                d['service_tax_payment_timing'] = _normalize_service_tax_payment_timing(d.get('service_tax_payment_timing'))
+                d['service_tax_payment_date'] = _normalize_iso_date(d.get('service_tax_payment_date'))
+                rate = 2.0 if d['has_npwp'] else 4.0
+                amount_base = abs(float(d.get('amount') or 0.0))
+                if d['service_calculation_method'] == 'NETTO':
+                    divisor = max(0.000001, 1.0 - (rate / 100.0))
+                    bruto = amount_base / divisor
+                    netto = amount_base
+                    tax = max(0.0, bruto - netto)
+                else:
+                    bruto = amount_base
+                    tax = bruto * (rate / 100.0)
+                    netto = max(0.0, bruto - tax)
+                d['service_tax_rate'] = rate
+                d['service_amount_bruto'] = bruto
+                d['service_amount_netto'] = netto
+                d['service_amount_tax'] = tax
+                transactions.append(d)
+
+        return jsonify({'transactions': transactions})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/service-transactions/<txn_id>/npwp', methods=['PUT'])
+def update_service_transaction_tax_config(txn_id):
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    data = request.json or {}
+    has_npwp = _parse_bool(data.get('has_npwp', False))
+    npwp_raw = data.get('npwp')
+    npwp_normalized = _normalize_npwp(npwp_raw) if has_npwp else None
+    has_calculation_method = 'calculation_method' in data
+    has_tax_payment_timing = 'tax_payment_timing' in data
+    has_tax_payment_date = 'tax_payment_date' in data
+    calculation_method = _normalize_service_calculation_method(data.get('calculation_method')) if has_calculation_method else None
+    tax_payment_timing = _normalize_service_tax_payment_timing(data.get('tax_payment_timing')) if has_tax_payment_timing else None
+    tax_payment_date = _normalize_iso_date(data.get('tax_payment_date')) if has_tax_payment_date else None
+
+    if has_npwp and not npwp_normalized:
+        return jsonify({'error': 'NPWP wajib 15 digit angka jika status NPWP = ada'}), 400
+    if has_tax_payment_date and data.get('tax_payment_date') not in (None, '') and not tax_payment_date:
+        return jsonify({'error': 'tax_payment_date harus format YYYY-MM-DD'}), 400
+
+    try:
+        with engine.begin() as conn:
+            txn_columns = _table_columns(conn, 'transactions')
+            if 'service_npwp' not in txn_columns:
+                return jsonify({'error': 'service_npwp column is not available. Run latest migration.'}), 400
+
+            params = {
+                'id': txn_id,
+                'service_npwp': npwp_normalized,
+                'updated_at': datetime.now()
+            }
+            set_fields = ['service_npwp = :service_npwp']
+            if has_calculation_method and 'service_calculation_method' in txn_columns:
+                params['service_calculation_method'] = calculation_method
+                set_fields.append('service_calculation_method = :service_calculation_method')
+            if has_tax_payment_timing and 'service_tax_payment_timing' in txn_columns:
+                params['service_tax_payment_timing'] = tax_payment_timing
+                set_fields.append('service_tax_payment_timing = :service_tax_payment_timing')
+            if has_tax_payment_date and 'service_tax_payment_date' in txn_columns:
+                params['service_tax_payment_date'] = tax_payment_date
+                set_fields.append('service_tax_payment_date = :service_tax_payment_date')
+            if 'updated_at' in txn_columns:
+                set_fields.append('updated_at = :updated_at')
+            update_sql = ",\n                        ".join(set_fields)
+            conn.execute(text(f"""
+                UPDATE transactions
+                SET {update_sql}
+                WHERE id = :id
+            """), params)
+
+        rate = 2.0 if bool(npwp_normalized) else 4.0
+
+        return jsonify({
+            'message': 'Konfigurasi pajak jasa updated successfully',
+            'service_npwp': npwp_normalized,
+            'has_npwp': bool(npwp_normalized),
+            'service_calculation_method': calculation_method,
+            'service_tax_payment_timing': tax_payment_timing,
+            'service_tax_payment_date': tax_payment_date,
+            'service_tax_rate': rate
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -256,11 +667,45 @@ def bulk_mark_transactions():
             return jsonify({'error': 'No transaction IDs provided'}), 400
             
         now = datetime.now()
-        with engine.connect() as conn:
-            query = text("UPDATE transactions SET mark_id = :mark_id, updated_at = :updated_at WHERE id IN :ids")
-            conn.execute(query, {'ids': txn_ids, 'mark_id': mark_id, 'updated_at': now})
-            conn.commit()
-            return jsonify({'message': f'{len(txn_ids)} transactions updated successfully'})
+        with engine.begin() as conn:
+            txn_columns = _table_columns(conn, 'transactions')
+            blocked_ids = []
+            updatable_ids = list(txn_ids)
+
+            # If applying a mark (not unmark), protect parent transactions with split children.
+            if mark_id and 'parent_id' in txn_columns:
+                blocked_query = text("""
+                    SELECT t.id
+                    FROM transactions t
+                    WHERE t.id IN :ids
+                      AND EXISTS (
+                        SELECT 1
+                        FROM transactions c
+                        WHERE c.parent_id = t.id
+                      )
+                """).bindparams(bindparam('ids', expanding=True))
+                blocked_rows = conn.execute(blocked_query, {'ids': updatable_ids}).fetchall()
+                blocked_ids = [str(row.id) for row in blocked_rows]
+                blocked_set = set(blocked_ids)
+                updatable_ids = [txn_id for txn_id in updatable_ids if str(txn_id) not in blocked_set]
+
+            if updatable_ids:
+                update_query = text("""
+                    UPDATE transactions
+                    SET mark_id = :mark_id, updated_at = :updated_at
+                    WHERE id IN :ids
+                """).bindparams(bindparam('ids', expanding=True))
+                conn.execute(update_query, {
+                    'ids': updatable_ids,
+                    'mark_id': mark_id,
+                    'updated_at': now
+                })
+
+            return jsonify({
+                'message': f'{len(updatable_ids)} transactions updated successfully',
+                'updated_count': len(updatable_ids),
+                'skipped_split_parent_ids': blocked_ids
+            })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -575,45 +1020,71 @@ def save_transaction_splits(txn_id):
         return jsonify({'error': error_msg}), 500
     
     try:
-        data = request.json
+        data = request.json or {}
         splits = data.get('splits', [])
-        
-        with engine.connect() as conn:
-            # Delete existing splits
+
+        with engine.begin() as conn:
+            txn_columns = _table_columns(conn, 'transactions')
+            if 'parent_id' not in txn_columns:
+                return jsonify({'error': 'Split feature unavailable: transactions.parent_id column is missing'}), 400
+
+            parent_result = conn.execute(text("""
+                SELECT company_id, txn_date, mark_id, db_cr
+                FROM transactions
+                WHERE id = :txn_id
+                LIMIT 1
+            """), {'txn_id': txn_id}).fetchone()
+            if not parent_result:
+                return jsonify({'error': 'Transaction not found'}), 404
+
+            parent_data = dict(parent_result._mapping)
+
+            # Remove previous split children.
             conn.execute(text("DELETE FROM transactions WHERE parent_id = :txn_id"), {'txn_id': txn_id})
-            
-            # Insert new splits
+
+            # IMPORTANT: when multi-mark (splits) is used, parent single mark must be ignored.
+            # We clear parent mark to prevent double counting in reports.
+            if len(splits) > 0 and 'mark_id' in txn_columns:
+                if 'updated_at' in txn_columns:
+                    conn.execute(text("""
+                        UPDATE transactions
+                        SET mark_id = NULL, updated_at = :updated_at
+                        WHERE id = :txn_id
+                    """), {'txn_id': txn_id, 'updated_at': datetime.now()})
+                else:
+                    conn.execute(text("""
+                        UPDATE transactions
+                        SET mark_id = NULL
+                        WHERE id = :txn_id
+                    """), {'txn_id': txn_id})
+
+            insert_sql = text("""
+                INSERT INTO transactions (
+                    id, parent_id, description, amount, db_cr, txn_date,
+                    mark_id, notes, company_id, created_at, updated_at
+                ) VALUES (
+                    :id, :parent_id, :description, :amount, :db_cr, :txn_date,
+                    :mark_id, :notes, :company_id, :created_at, :updated_at
+                )
+            """)
+
+            now = datetime.now()
             for split in splits:
-                split_query = text("""
-                    INSERT INTO transactions (
-                        id, parent_id, description, amount, db_cr, txn_date, 
-                        mark_id, notes, company_id, created_at, updated_at
-                    ) VALUES (
-                        :id, :parent_id, :description, :amount, :db_cr, :txn_date,
-                        :mark_id, :notes, :company_id, NOW(), NOW()
-                    )
-                """)
-                
-                # Get parent transaction details
-                parent_query = text("SELECT company_id, txn_date, mark_id FROM transactions WHERE id = :txn_id")
-                parent_result = conn.execute(parent_query, {'txn_id': txn_id}).fetchone()
-                
-                if parent_result:
-                    parent_data = dict(parent_result._mapping)
-                    
-                    conn.execute(split_query, {
-                        'id': str(uuid.uuid4()),
-                        'parent_id': txn_id,
-                        'description': split.get('description', ''),
-                        'amount': split.get('amount', 0),
-                        'db_cr': split.get('db_cr', 'DB'),
-                        'txn_date': parent_data.get('txn_date'),
-                        'mark_id': split.get('mark_id'),  # BUG FIX: Use split mark_id, not parent mark_id
-                        'notes': split.get('notes', ''),
-                        'company_id': parent_data.get('company_id')
-                    })
-            
-            conn.commit()
+                conn.execute(insert_sql, {
+                    'id': str(uuid.uuid4()),
+                    'parent_id': txn_id,
+                    'description': split.get('description', ''),
+                    'amount': split.get('amount', 0),
+                    # Keep DB/CR consistent with parent unless explicitly provided.
+                    'db_cr': split.get('db_cr') or parent_data.get('db_cr') or 'DB',
+                    'txn_date': parent_data.get('txn_date'),
+                    'mark_id': split.get('mark_id'),
+                    'notes': split.get('notes', ''),
+                    'company_id': parent_data.get('company_id'),
+                    'created_at': now,
+                    'updated_at': now
+                })
+
             return jsonify({'message': 'Splits saved successfully', 'splits_count': len(splits)})
     except Exception as e:
         return jsonify({'error': str(e)}), 500

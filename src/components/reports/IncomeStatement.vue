@@ -205,11 +205,11 @@
            <!-- Inventory Summary Cards -->
            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-               <p class="text-xs font-medium text-blue-600 uppercase mb-1">Beginning Inventory</p>
+               <p class="text-xs font-medium text-blue-600 uppercase mb-1">Beginning Inventory - 5008</p>
                <p class="text-lg font-bold text-blue-900">{{ formatCurrency(data.cogs_breakdown.beginning_inventory) }}</p>
              </div>
              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-               <p class="text-xs font-medium text-blue-600 uppercase mb-1">- Ending Inventory</p>
+               <p class="text-xs font-medium text-blue-600 uppercase mb-1">- Ending Inventory - 5009</p>
                <p class="text-lg font-bold text-blue-900">{{ formatCurrency(data.cogs_breakdown.ending_inventory) }}</p>
              </div>
              <div class="bg-blue-100 border border-blue-200 rounded-lg p-4">

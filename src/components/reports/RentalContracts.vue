@@ -286,27 +286,6 @@
             </div>
           </div>
 
-          <!-- Prepaid Expense Link -->
-          <div v-if="selectedContract.prepaid_expense_id" class="mt-6 pt-6 border-t border-gray-200">
-            <div class="bg-green-50 rounded-lg p-4 border border-green-200">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h4 class="text-sm font-semibold text-green-900">
-                    <i class="bi bi-link-45deg mr-1"></i>
-                    Prepaid Expense Entry
-                  </h4>
-                  <p class="text-xs text-green-700 mt-1">This contract has an associated prepaid expense entry</p>
-                </div>
-                <button
-                  @click="viewPrepaidEntry(selectedContract.prepaid_expense_id)"
-                  class="px-4 py-2 text-sm font-medium text-green-700 bg-white border border-green-300 rounded hover:bg-green-50"
-                >
-                  <i class="bi bi-eye mr-2"></i>
-                  View Prepaid Entry
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -365,8 +344,6 @@ const props = defineProps({
     required: true
   }
 });
-
-const emit = defineEmits(['navigate-to-prepaid']);
 
 const contracts = ref([]);
 const locations = ref([]);
@@ -543,8 +520,4 @@ const generateJournals = async () => {
   }
 };
 
-const viewPrepaidEntry = (prepaidId) => {
-  showDetailsModal.value = false;
-  emit('navigate-to-prepaid', prepaidId);
-};
 </script>
