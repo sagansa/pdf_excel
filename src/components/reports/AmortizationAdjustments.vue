@@ -260,6 +260,14 @@
             <i class="bi bi-plus-lg"></i>
             Add Entry
           </button>
+          <button
+            @click="generateJournalEntries"
+            :disabled="!companyId || manualItems.length === 0"
+            class="bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
+          >
+            <i class="bi bi-journal-text"></i>
+            Generate Journals
+          </button>
         </div>
       </div>
 
@@ -565,22 +573,25 @@
         </div>
 
         <div class="p-6 space-y-4">
-          <!-- COA Selection -->
+          <!-- Asset Mark Selection -->
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1">
-              COA Account <span class="text-red-500">*</span>
+              Asset Mark <span class="text-red-500">*</span>
             </label>
             <select
-              v-model="form.coa_id"
+              v-model="form.mark_id"
               class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
             >
-              <option value="">Select COA</option>
+              <option value="">Select Asset Mark</option>
               <option
-                v-for="coa in availableCoas"
-                :key="coa.id"
-                :value="coa.id"
+                v-for="mark in availableMarks"
+                :key="mark.id"
+                :value="mark.id"
               >
-                {{ coa.code }} - {{ coa.name }}
+                {{ mark.personal_use }}
+                <span v-if="mark.asset_type" class="text-gray-500">
+                  ({{ mark.asset_type }})
+                </span>
               </option>
             </select>
           </div>
@@ -814,11 +825,10 @@
 
           <div>
             <label class="block text-xs font-semibold text-gray-500 mb-1"
-              >COA Account</label
+              >Asset Mark</label
             >
             <p class="text-sm text-gray-900">
-              {{ selectedTransaction.coa_code }} -
-              {{ selectedTransaction.coa_name || "-" }}
+              {{ selectedTransaction.mark_name || selectedTransaction.coa_name || "-" }}
             </p>
           </div>
 
@@ -933,6 +943,8 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useReportsStore } from "../../stores/reports";
 import { useCoaStore } from "../../stores/coa";
 import { useAmortizationStore } from "../../stores/amortization";
+import { useMarksStore } from "../../stores/marks";
+import { reportsApi, marksApi } from "../../api/index";
 import axios from "axios";
 
 const props = defineProps({
@@ -949,6 +961,7 @@ const props = defineProps({
 const emit = defineEmits(["saved"]);
 const store = useReportsStore();
 const coaStore = useCoaStore();
+const marksStore = useMarksStore();
 const amortizationStore = useAmortizationStore();
 
 // State
@@ -957,7 +970,7 @@ const totalAmount = ref(0);
 const calculatedTotal = ref(0);
 const manualTotal = ref(0);
 const settings = ref({});
-const availableCoas = ref([]);
+const availableMarks = ref([]);
 const assetGroups = ref([]);
 const showTransactionDetailModal = ref(false);
 const selectedTransaction = ref(null);
@@ -1058,7 +1071,7 @@ const isSaving = ref(false);
 const isDeleting = ref(false);
 
 const form = ref({
-  coa_id: "",
+  mark_id: "",
   description: "",
   amount: 0,
   notes: "",
@@ -1068,7 +1081,7 @@ const form = ref({
 });
 
 const isFormValid = computed(() => {
-  return form.value.coa_id && form.value.description && form.value.amount > 0;
+  return form.value.mark_id && form.value.description && form.value.amount > 0;
 });
 
 // Methods
@@ -1097,32 +1110,43 @@ const fetchData = async () => {
     manualTotal.value = 0;
   }
 
-  // Fetch available COAs for dropdown
-  await fetchAvailableCoas();
+  // Fetch available marks for dropdown
+  console.log('🎯 About to call fetchAvailableMarks...');
+  await fetchAvailableMarks();
+  console.log('✅ fetchAvailableMarks completed');
 };
 
-const fetchAvailableCoas = async () => {
+const fetchAvailableMarks = async () => {
+  console.log('🚀 fetchAvailableMarks called!');
+  console.log('🏢 Company ID:', props.companyId);
+  
   try {
-    const data = await store.fetchAmortizationCoaCodes(props.companyId);
-    availableCoas.value = data.coaDetails || [];
-
-    // Fallback if no specific details found
-    if (availableCoas.value.length === 0) {
-      await coaStore.fetchCoa();
-      availableCoas.value = coaStore.coaList.filter(
-        (coa) => coa.category === "EXPENSE" || coa.code?.startsWith("5"),
-      );
+    // Fetch marks that have asset-related COA mappings
+    console.log('📡 Calling marks API...');
+    const response = await reportsApi.getAmortizationEligibleMarks(props.companyId);
+    console.log('📦 API Response:', response);
+    
+    // Extract marks from response.data
+    availableMarks.value = response.data.marks || [];
+    console.log('📦 Response data:', response.data);
+    console.log('✅ Available marks loaded:', availableMarks.value.length);
+    
+    if (availableMarks.value.length > 0) {
+      console.log('🎯 Marks sample:', availableMarks.value.slice(0, 3));
+    } else {
+      console.log('❌ No marks found in response');
     }
-  } catch (e) {
-    console.error("Failed to fetch available Amortization COAs:", e);
-    availableCoas.value = [];
+  } catch (error) {
+    console.error('💥 Failed to fetch available marks:', error);
+    console.error('📋 Error details:', error.response?.data || error.message);
+    availableMarks.value = [];
   }
 };
 
 const openAddModal = () => {
   editingItem.value = null;
   form.value = {
-    coa_id: "",
+    mark_id: "",
     description: "",
     amount: 0,
     notes: "",
@@ -1166,7 +1190,7 @@ const editItem = (item) => {
 
   // Ensure proper data type conversions
   form.value = {
-    coa_id: item.coa_id || "",
+    mark_id: item.mark_id || "",
     description: item.description || "",
     amount: item.amount || 0,
     notes: item.notes || "",
@@ -1192,7 +1216,7 @@ const saveItem = async () => {
     if (editingItem.value) {
       // Update existing
       await store.updateAmortizationItem(editingItem.value.id, {
-        coa_id: form.value.coa_id,
+        mark_id: form.value.mark_id,
         description: form.value.description,
         amount: form.value.amount,
         notes: form.value.notes,
@@ -1205,7 +1229,7 @@ const saveItem = async () => {
       await store.createAmortizationItem({
         company_id: props.companyId,
         year: parseInt(props.year),
-        coa_id: form.value.coa_id,
+        mark_id: form.value.mark_id,
         description: form.value.description,
         amount: form.value.amount,
         notes: form.value.notes,
@@ -1244,6 +1268,33 @@ const deleteItem = async () => {
     console.error("Failed to delete item:", err);
   } finally {
     isDeleting.value = false;
+  }
+};
+
+const generateJournalEntries = async () => {
+  try {
+    isSaving.value = true;
+    
+    const result = await reportsApi.generateAmortizationJournals({
+      company_id: props.companyId,
+      year: parseInt(props.year)
+    });
+    
+    // Show success message
+    if (result.journal_count > 0) {
+      alert(`✅ Success! Generated ${result.journal_count} journal entries for ${result.items_processed} manual amortization items.\n\nDebit entries (COA 5314): ${result.journal_count}\nCredit entries (COA 1530/1601): ${result.journal_count}\n\nJournals have been created in the balance sheet.`);
+    } else {
+      alert('ℹ️ No journal entries to generate. All manual amortization items already have journals.');
+    }
+    
+    // Refresh data to show updated balance sheet
+    await fetchData();
+    
+  } catch (err) {
+    console.error("Failed to generate journal entries:", err);
+    alert(`❌ Failed to generate journal entries: ${err.message || err}`);
+  } finally {
+    isSaving.value = false;
   }
 };
 

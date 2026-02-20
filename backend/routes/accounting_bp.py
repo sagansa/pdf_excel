@@ -15,6 +15,27 @@ from backend.services.report_service import (
 
 accounting_bp = Blueprint('accounting_bp', __name__)
 
+
+def _table_columns(conn, table_name):
+    if conn.dialect.name == 'sqlite':
+        rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+        return {str(row[1]) for row in rows}
+
+    rows = conn.execute(text("""
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = :table_name
+    """), {'table_name': table_name}).fetchall()
+    return {str(row[0]) for row in rows}
+
+
+def _split_parent_exclusion_clause(conn, alias='t'):
+    txn_columns = _table_columns(conn, 'transactions')
+    if 'parent_id' not in txn_columns:
+        return ''
+    return f" AND NOT EXISTS (SELECT 1 FROM transactions t_child WHERE t_child.parent_id = {alias}.id)"
+
 @accounting_bp.route('/api/coa', methods=['GET'])
 def get_chart_of_accounts():
     """Get all Chart of Accounts entries"""
@@ -203,8 +224,9 @@ def get_coa_detail_report():
             
             coa_info = dict(coa_row._mapping)
             coa_category = coa_info.get('category', '')
+            split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
 
-            query = text("""
+            query = text(f"""
                 SELECT 
                     t.id, t.txn_date, t.description, t.amount, t.db_cr,
                     m.personal_use as mark_name, c.name as company_name, mcm.mapping_type
@@ -216,6 +238,7 @@ def get_coa_detail_report():
                   AND (:start_date IS NULL OR t.txn_date >= :start_date)
                   AND (:end_date IS NULL OR t.txn_date <= :end_date)
                   AND (:company_id IS NULL OR t.company_id = :company_id)
+                  {split_exclusion_clause}
                 ORDER BY t.txn_date DESC
             """)
 
@@ -302,49 +325,15 @@ def get_inventory_balances():
 
 @accounting_bp.route('/api/reports/prepaid-expenses', methods=['GET'])
 def get_prepaid_expenses():
-    company_id = request.args.get('company_id')
-    engine, _ = get_db_engine()
-    with engine.connect() as conn:
-        query = text("""
-            SELECT p.*, coa.code as asset_coa_code, coa.name as asset_coa_name,
-                   e_coa.code as expense_coa_code, e_coa.name as expense_coa_name
-            FROM prepaid_expenses p
-            LEFT JOIN chart_of_accounts coa ON p.prepaid_coa_id = coa.id
-            LEFT JOIN chart_of_accounts e_coa ON p.expense_coa_id = e_coa.id
-            WHERE (:company_id IS NULL OR p.company_id = :company_id)
-            ORDER BY p.start_date DESC
-        """)
-        result = conn.execute(query, {'company_id': company_id})
-        items = [dict(row._mapping) for row in result]
-        for item in items:
-            for key, val in item.items():
-                if isinstance(val, (datetime, date)):
-                    item[key] = val.isoformat()
-                elif isinstance(val, Decimal):
-                    item[key] = float(val)
-    return jsonify({'items': items})
+    return jsonify({
+        'items': [],
+        'message': 'Prepaid Rent & Amortization feature has been retired'
+    })
 
 @accounting_bp.route('/api/reports/prepaid-linkable-transactions', methods=['GET'])
 @accounting_bp.route('/api/reports/prepaid-eligible-transactions', methods=['GET'])
 def get_prepaid_linkable_transactions():
-    company_id = request.args.get('company_id')
-    engine, _ = get_db_engine()
-    with engine.connect() as conn:
-        query = text("""
-            SELECT t.* FROM transactions t
-            LEFT JOIN prepaid_expenses p ON t.id = p.transaction_id
-            WHERE (t.company_id = :company_id OR :company_id IS NULL)
-            AND t.rental_contract_id IS NULL
-            AND p.id IS NULL
-            AND (LOWER(t.description) LIKE '%%sewa%%' OR LOWER(t.description) LIKE '%%rent%%' OR LOWER(t.description) LIKE '%%kontrak%%')
-            ORDER BY t.txn_date DESC
-        """)
-        result = conn.execute(query, {'company_id': company_id})
-        transactions = [dict(row._mapping) for row in result]
-        for t in transactions:
-            for key, val in t.items():
-                if isinstance(val, (datetime, date)):
-                    t[key] = val.isoformat()
-                elif isinstance(val, Decimal):
-                    t[key] = float(val)
-    return jsonify({'transactions': transactions})
+    return jsonify({
+        'transactions': [],
+        'message': 'Prepaid Rent & Amortization feature has been retired'
+    })

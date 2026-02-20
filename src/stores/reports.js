@@ -365,57 +365,6 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
-    // Prepaid Expenses Actions
-    async fetchPrepaidExpenses(companyId, asOfDate) {
-      try {
-        const res = await reportsApi.getPrepaidExpenses(companyId, asOfDate);
-        return res.data.items || [];
-      } catch (e) {
-        console.error("Failed to fetch prepaid expenses:", e);
-        return [];
-      }
-    },
-
-    async addPrepaidExpense(data) {
-      try {
-        await reportsApi.addPrepaidExpense(data);
-        return true;
-      } catch (e) {
-        console.error("Failed to add prepaid expense:", e);
-        throw e;
-      }
-    },
-
-    async updatePrepaidExpense(itemId, data) {
-      try {
-        await reportsApi.updatePrepaidExpense(itemId, data);
-        return true;
-      } catch (e) {
-        console.error("Failed to update prepaid expense:", e);
-        throw e;
-      }
-    },
-
-    async deletePrepaidExpense(itemId) {
-      try {
-        await reportsApi.deletePrepaidExpense(itemId);
-        return true;
-      } catch (e) {
-        console.error("Failed to delete prepaid expense:", e);
-        throw e;
-      }
-    },
-    
-    async fetchPrepaidLinkableTransactions(companyId, currentTransactionId = null) {
-      try {
-        const res = await reportsApi.getPrepaidLinkableTransactions(companyId, currentTransactionId);
-        return res.data.transactions || [];
-      } catch (e) {
-        console.error("Failed to fetch linkable transactions:", e);
-        return [];
-      }
-    },
-
     async saveFilters() {
       try {
         const filtersToSave = {
@@ -427,26 +376,6 @@ export const useReportsStore = defineStore('reports', {
         return true;
       } catch (e) {
         console.error("Failed to save filters:", e);
-        throw e;
-      }
-    },
-
-    async fetchPrepaidJournalEntries(itemId) {
-      try {
-        const res = await reportsApi.getPrepaidJournalEntries(itemId);
-        return res.data.journals || [];
-      } catch (e) {
-        console.error("Failed to fetch journal entries:", e);
-        return [];
-      }
-    },
-
-    async postPrepaidJournal(itemId) {
-      try {
-        await reportsApi.postPrepaidJournal(itemId);
-        return true;
-      } catch (e) {
-        console.error("Failed to post prepaid journal:", e);
         throw e;
       }
     }

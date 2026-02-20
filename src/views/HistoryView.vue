@@ -141,14 +141,6 @@
                     class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 />
             </div>
-            <div v-if="activeTab === 'rent'" class="w-40">
-                <label class="block text-xs font-semibold text-gray-500 mb-1">As Of Date</label>
-                <input
-                    v-model="reportStore.filters.asOfDate"
-                    type="date"
-                    class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                />
-            </div>
         </div>
       </div>
 
@@ -170,12 +162,12 @@
         />
       </div>
 
-      <!-- 4. Rent & Prepaid Tab -->
-      <div v-if="activeTab === 'rent'">
-        <PrepaidExpenses 
-          :key="`prepaid-${reportStore.filters.companyId}`"
-          :filters="reportStore.filters" 
-          @navigate-to-contract="navigateToContract"
+      <!-- 4. Service Tax Handling Tab -->
+      <div v-if="activeTab === 'services'">
+        <ServiceTaxHandling
+          :key="`service-${reportStore.filters.companyId}-${reportStore.filters.year}`"
+          :company-id="reportStore.filters.companyId"
+          :year="reportStore.filters.year"
         />
       </div>
 
@@ -184,7 +176,6 @@
         <RentalContracts 
           :key="`rental-${reportStore.filters.companyId}`"
           :companyId="reportStore.filters.companyId" 
-          @navigate-to-prepaid="navigateToPrepaid"
         />
       </div>
     </div>
@@ -247,8 +238,8 @@ import api from '../api';
 // Components relocated from Reports
 import InventoryAdjustments from '../components/reports/InventoryAdjustments.vue';
 import AmortizationAdjustments from '../components/reports/AmortizationAdjustments.vue';
-import PrepaidExpenses from '../components/reports/PrepaidExpenses.vue';
 import RentalContracts from '../components/reports/RentalContracts.vue';
+import ServiceTaxHandling from '../components/history/ServiceTaxHandling.vue';
 
 const store = useHistoryStore();
 const reportStore = useReportsStore();
@@ -258,7 +249,7 @@ const tabs = [
   { id: 'transactions', name: 'Transactions', icon: 'bi bi-database-fill' },
   { id: 'inventory', name: 'Inventory', icon: 'bi bi-box-seam' },
   { id: 'amortization', name: 'Amortization', icon: 'bi bi-calendar-check' },
-  { id: 'rent', name: 'Rent & Prepaid', icon: 'bi bi-house-door' },
+  { id: 'services', name: 'Service Tax', icon: 'bi bi-receipt-cutoff' },
   { id: 'rental', name: 'Rental Contracts', icon: 'bi bi-file-earmark-text' }
 ];
 
@@ -358,11 +349,4 @@ const handleExport = async (format) => {
     }
 };
 
-const navigateToPrepaid = (prepaidId) => {
-    activeTab.value = 'rent';
-};
-
-const navigateToContract = (contractId) => {
-    activeTab.value = 'rental';
-};
 </script>

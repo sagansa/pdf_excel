@@ -7,11 +7,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/convert_pdf': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:5004',
         changeOrigin: true
       },
       '/check_password': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:5004',
         changeOrigin: true
       },
       '/api': {

@@ -80,6 +80,38 @@ export const historyApi = {
     return api.post('/transactions/export', { format, ...filters }, {
       responseType: 'blob'
     });
+  },
+  getServiceMarks(companyId, year) {
+    const params = {};
+    if (companyId) params.company_id = companyId;
+    if (year) params.year = year;
+    return api.get('/service-marks', { params });
+  },
+  updateServiceMark(markId, isService) {
+    return api.put(`/service-marks/${markId}`, { is_service: isService });
+  },
+  getServiceTransactions(companyId, year, search = '') {
+    const params = {};
+    if (companyId) params.company_id = companyId;
+    if (year) params.year = year;
+    if (search) params.search = search;
+    return api.get('/service-transactions', { params });
+  },
+  updateServiceTransactionTax(txnId, payload = {}) {
+    const body = {
+      has_npwp: Boolean(payload.has_npwp),
+      npwp: payload.npwp || null
+    };
+    if (payload.calculation_method !== undefined) body.calculation_method = payload.calculation_method;
+    if (payload.tax_payment_timing !== undefined) body.tax_payment_timing = payload.tax_payment_timing;
+    if (payload.tax_payment_date !== undefined) body.tax_payment_date = payload.tax_payment_date;
+    return api.put(`/service-transactions/${txnId}/npwp`, body);
+  },
+  updateServiceTransactionNpwp(txnId, hasNpwp, npwp) {
+    return api.put(`/service-transactions/${txnId}/npwp`, {
+      has_npwp: hasNpwp,
+      npwp
+    });
   }
 };
 
@@ -168,6 +200,15 @@ export const reportsApi = {
   deleteAmortizationItem(itemId) {
     return api.delete(`/amortization-items/${itemId}`);
   },
+  generateAmortizationJournals(data) {
+    return api.post('/amortization-items/generate-journal', data);
+  },
+  
+  // Asset Marks (for mark-based amortization)
+  getAmortizationEligibleMarks(companyId) {
+    const params = { company_id: companyId };
+    return api.get('/marks/amortization-eligible', { params });
+  },
   
   // Amortization Settings
   getAmortizationSettings(companyId) {
@@ -184,32 +225,6 @@ export const reportsApi = {
   
   getCoaDetail(params) {
     return api.get('/reports/coa-detail', { params });
-  },
-
-  // Prepaid Expenses
-  getPrepaidExpenses(companyId, asOfDate) {
-    const params = { company_id: companyId, as_of_date: asOfDate };
-    return api.get('/reports/prepaid-expenses', { params });
-  },
-  addPrepaidExpense(data) {
-    return api.post('/reports/prepaid-expenses', data);
-  },
-  updatePrepaidExpense(itemId, data) {
-    return api.put(`/reports/prepaid-expenses/${itemId}`, data);
-  },
-  deletePrepaidExpense(itemId) {
-    return api.delete(`/reports/prepaid-expenses/${itemId}`);
-  },
-  getPrepaidLinkableTransactions(company_id, current_transaction_id = null) {
-    const params = { company_id };
-    if (current_transaction_id) params.current_transaction_id = current_transaction_id;
-    return api.get('/reports/prepaid-linkable-transactions', { params });
-  },
-  getPrepaidJournalEntries(itemId) {
-    return api.get(`/reports/prepaid-journal-entries/${itemId}`);
-  },
-  postPrepaidJournal(itemId) {
-    return api.post(`/reports/prepaid-expenses/${itemId}/post-journal`);
   }
 };
 

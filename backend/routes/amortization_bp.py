@@ -1,5 +1,6 @@
 import uuid
 import json
+import uuid
 from flask import Blueprint, request, jsonify, current_app as app
 from datetime import datetime, date
 from sqlalchemy import text
@@ -186,14 +187,17 @@ def get_amortization_items():
 
             items_query = text("""
                 SELECT 
-                    ai.id, ai.company_id, ai.year, ai.coa_id,
-                    coa.code as coa_code, coa.name as coa_name,
+                    ai.id, ai.company_id, ai.year, 
+                    COALESCE(ai.mark_id, ai.coa_id) as mark_id,
+                    COALESCE(m.personal_use, coa.name) as mark_name,
+                    ai.coa_id, coa.code as coa_code, coa.name as coa_name,
                     ai.description, ai.amount, ai.amortization_date,
                     ai.asset_group_id, ai.use_half_rate, ai.notes, ai.is_manual,
                     ai.created_at, ai.updated_at,
                     ag.group_name, ag.tarif_rate, ag.useful_life_years, ag.asset_type
                 FROM amortization_items ai
                 LEFT JOIN chart_of_accounts coa ON ai.coa_id = coa.id
+                LEFT JOIN marks m ON ai.mark_id = m.id
                 LEFT JOIN amortization_asset_groups ag ON ai.asset_group_id = ag.id
                 WHERE ai.company_id = :company_id
                 ORDER BY ai.amortization_date DESC, ai.created_at DESC
@@ -328,19 +332,13 @@ def get_amortization_items():
             # Prepare mark condition for transactions
             query_params = {'company_id': company_id, 'year': year}
             
-            # Always include transactions with COA code 5314 (Beban Penyusutan dan Amortisasi)
-            # OR transactions that are marked as amortizable
-            # OR transactions with assigned asset groups
-            if use_mark_based and asset_marks:
-                # Always include 5314, AND include amortizable transactions with matching marks
-                mark_condition = "coa.code = '5314' OR (t.is_amortizable = TRUE AND m.personal_use IN :asset_marks) OR t.amortization_asset_group_id IS NOT NULL"
-                query_params['asset_marks'] = asset_marks
-            else:
-                # Include all amortizable transactions
-                mark_condition = "coa.code = '5314' OR t.is_amortizable = TRUE OR t.amortization_asset_group_id IS NOT NULL"
+            # Query transactions - use separate approach to avoid duplication
+            # We'll query transactions with COA 5314 first, then add other types separately
+            query_params = {'company_id': company_id, 'year': year}
             
-            txn_query = text(f"""
-                SELECT 
+            # Query 1: Transactions with COA 5314 (fixed join)
+            txn_5314_query = text("""
+                SELECT DISTINCT
                     t.id as asset_id, t.txn_date, t.description,
                     t.amount as acquisition_cost, t.amortization_asset_group_id as asset_group_id,
                     t.amortization_start_date, t.use_half_rate, t.amortization_notes as notes,
@@ -348,15 +346,17 @@ def get_amortization_items():
                     m.personal_use as mark_name,
                     coa.code as coa_code, coa.name as coa_name
                 FROM transactions t
+                INNER JOIN marks m ON t.mark_id = m.id
                 INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
                 INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
                 LEFT JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
-                LEFT JOIN marks m ON t.mark_id = m.id
-                WHERE ({mark_condition})
+                WHERE coa.code = '5314'
                 AND (t.company_id = :company_id OR :company_id IS NULL)
                 AND YEAR(t.txn_date) <= :year
                 ORDER BY t.txn_date DESC
             """)
+            
+            txn_query = txn_5314_query
             
             txn_result = conn.execute(txn_query, query_params)
             
@@ -572,107 +572,15 @@ def get_amortization_items():
         app.logger.error(f"Failed to fetch amortization items: {e}")
         return jsonify({'error': str(e)}), 500
 
-@amortization_bp.route('/api/amortization-items', methods=['POST'])
-def create_amortization_item():
-    """Create a new amortization item"""
-    data = request.json
-    engine, error_msg = get_db_engine()
-    if engine is None:
-        return jsonify({'error': error_msg}), 500
-    
-    try:
-        item_id = str(uuid.uuid4())
-        with engine.connect() as conn:
-            conn.execute(
-                text("""
-                    INSERT INTO amortization_items 
-                    (id, company_id, year, coa_id, description, amount,
-                     amortization_date, asset_group_id, use_half_rate,
-                     notes, is_manual)
-                    VALUES 
-                    (:id, :company_id, :year, :coa_id, :description, :amount,
-                     :amortization_date, :asset_group_id, :use_half_rate,
-                     :notes, :is_manual)
-                """),
-                {
-                    'id': item_id,
-                    'company_id': data.get('company_id'),
-                    'year': data.get('year'),
-                    'coa_id': data.get('coa_id'),
-                    'description': data.get('description'),
-                    'amount': data.get('amount'),
-                    'amortization_date': data.get('amortization_date'),
-                    'asset_group_id': data.get('asset_group_id'),
-                    'use_half_rate': data.get('use_half_rate', False),
-                    'notes': data.get('notes'),
-                    'is_manual': data.get('is_manual', True)
-                }
-            )
-            conn.commit()
-            data['id'] = item_id
-            return jsonify(data), 201
-    except Exception as e:
-        app.logger.error(f"Failed to create amortization item: {e}")
-        return jsonify({'error': str(e)}), 500
+# OLD COA-BASED FUNCTION - REMOVED
+# @amortization_bp.route('/api/amortization-items', methods=['POST'])
+# def create_amortization_item():
+#     # This function has been replaced with mark-based version below
 
-@amortization_bp.route('/api/amortization-items/<item_id>', methods=['PUT'])
-def update_amortization_item(item_id):
-    """Update an amortization item"""
-    data = request.json
-    engine, error_msg = get_db_engine()
-    if engine is None:
-        return jsonify({'error': error_msg}), 500
-    
-    try:
-        with engine.connect() as conn:
-            conn.execute(
-                text("""
-                    UPDATE amortization_items 
-                    SET coa_id = :coa_id,
-                        description = :description,
-                        amount = :amount,
-                        amortization_date = :amortization_date,
-                        asset_group_id = :asset_group_id,
-                        use_half_rate = :use_half_rate,
-                        notes = :notes,
-                        updated_at = NOW()
-                    WHERE id = :id
-                """),
-                {
-                    'id': item_id,
-                    'coa_id': data.get('coa_id'),
-                    'description': data.get('description'),
-                    'amount': data.get('amount'),
-                    'amortization_date': data.get('amortization_date'),
-                    'asset_group_id': data.get('asset_group_id'),
-                    'use_half_rate': data.get('use_half_rate'),
-                    'notes': data.get('notes')
-                }
-            )
-            conn.commit()
-            return jsonify({'success': True})
-    except Exception as e:
-        app.logger.error(f"Failed to update amortization item: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@amortization_bp.route('/api/amortization-items/<item_id>', methods=['DELETE'])
-def delete_amortization_item(item_id):
-    """Delete an amortization item"""
-    engine, error_msg = get_db_engine()
-    if engine is None:
-        return jsonify({'error': error_msg}), 500
-    
-    try:
-        with engine.connect() as conn:
-            conn.execute(
-                text("DELETE FROM amortization_items WHERE id = :id"),
-                {'id': item_id}
-            )
-            conn.commit()
-            return jsonify({'success': True})
-    except Exception as e:
-        app.logger.error(f"Failed to delete amortization item: {e}")
-        return jsonify({'error': str(e)}), 500
+# OLD DELETE FUNCTION - REMOVED TO FIX DUPLICATE
+# @amortization_bp.route('/api/amortization-items/<item_id>', methods=['DELETE'])
+# def delete_amortization_item(item_id):
+#     # This function has been replaced with the one below
 
 @amortization_bp.route('/api/amortization-coa-codes', methods=['GET'])
 def get_amortization_coa_codes():
@@ -989,4 +897,327 @@ def get_mark_amortization_config(mark_id):
                 return jsonify(None)
     except Exception as e:
         app.logger.error(f"Failed to fetch mark amortization config: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@amortization_bp.route('/api/amortization-items/generate-journal', methods=['POST'])
+def generate_manual_amortization_journal():
+    """Generate journal entries for manual amortization items using mark-based approach"""
+    data = request.json
+    company_id = data.get('company_id')
+    year = data.get('year')
+    
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+    
+    try:
+        with engine.connect() as conn:
+            # Get manual amortization items for the year
+            manual_query = text("""
+                SELECT ai.*, m.personal_use as mark_name,
+                       ag.group_name, ag.tarif_rate, ag.asset_type
+                FROM amortization_items ai
+                LEFT JOIN marks m ON ai.mark_id = m.id
+                LEFT JOIN amortization_asset_groups ag ON ai.asset_group_id = ag.id
+                WHERE ai.company_id = :company_id
+                AND ai.year = :year
+                AND ai.is_manual = TRUE
+            """)
+            
+            manual_result = conn.execute(manual_query, {
+                'company_id': company_id,
+                'year': year
+            })
+            
+            # Check if journal entries already exist for this year
+            existing_query = text("""
+                SELECT COUNT(*) as count
+                FROM transactions t
+                INNER JOIN marks m ON t.mark_id = m.id
+                WHERE m.personal_use LIKE 'Manual Amortization-%'
+                AND t.company_id = :company_id
+                AND YEAR(t.txn_date) = :year
+            """)
+            
+            existing_result = conn.execute(existing_query, {
+                'company_id': company_id,
+                'year': year
+            }).fetchone()
+            
+            if existing_result and existing_result.count > 0:
+                return jsonify({
+                    'message': 'Journal entries already exist for manual amortization items',
+                    'existing_count': existing_result.count
+                }), 400
+            
+            # Get COA IDs for accumulated depreciation
+            accumulated_coa_codes = {
+                'Tangible': '1530',  # Akumulasi Penyusutan - Aset Tetap Lainnya
+                'Intangible': '1601',  # Akumulasi Amortisasi - Aset Tak Berwujud
+                'Building': '1524',  # Akumulasi Penyusutan - Bangunan
+                'LandRights': '1534'  # Akumulasi Penyusutan - Hak Guna
+            }
+            
+            # Get COA IDs
+            coa_ids = {}
+            expense_coa_id = conn.execute(text("""
+                SELECT id FROM chart_of_accounts WHERE code = '5314'
+            """)).fetchone()[0]
+            
+            for asset_type, coa_code in accumulated_coa_codes.items():
+                coa_result = conn.execute(text("""
+                    SELECT id FROM chart_of_accounts WHERE code = :code
+                """), {'code': coa_code}).fetchone()
+                if coa_result:
+                    coa_ids[asset_type] = coa_result[0]
+            
+            # Generate journal entries for each manual item
+            journal_count = 0
+            for row in manual_result:
+                d = dict(row._mapping)
+                amount = float(d['amount'])
+                asset_type = d.get('asset_type', 'Tangible')
+                
+                # Create debit mark for expense (5314)
+                debit_mark_id = str(uuid.uuid4())
+                debit_mark_name = f"Manual Amortization-Debit-{d['id'][:8]}"
+                
+                conn.execute(text("""
+                    INSERT INTO marks (id, personal_use, internal_report, tax_report, created_at, updated_at)
+                    VALUES (:id, :name, 1, 1, NOW(), NOW())
+                """), {
+                    'id': debit_mark_id,
+                    'name': debit_mark_name
+                })
+                
+                # Create credit mark for accumulated depreciation
+                credit_mark_id = str(uuid.uuid4())
+                credit_mark_name = f"Manual Amortization-Credit-{d['id'][:8]}"
+                
+                conn.execute(text("""
+                    INSERT INTO marks (id, personal_use, internal_report, tax_report, created_at, updated_at)
+                    VALUES (:id, :name, 1, 1, NOW(), NOW())
+                """), {
+                    'id': credit_mark_id,
+                    'name': credit_mark_name
+                })
+                
+                # Create COA mappings
+                conn.execute(text("""
+                    INSERT INTO mark_coa_mapping (id, mark_id, coa_id, mapping_type, created_at, updated_at)
+                    VALUES (:id, :mark_id, :coa_id, 'DEBIT', NOW(), NOW())
+                """), {
+                    'id': str(uuid.uuid4()),
+                    'mark_id': debit_mark_id,
+                    'coa_id': expense_coa_id
+                })
+                
+                # Credit mapping to accumulated depreciation
+                if asset_type in coa_ids:
+                    conn.execute(text("""
+                        INSERT INTO mark_coa_mapping (id, mark_id, coa_id, mapping_type, created_at, updated_at)
+                        VALUES (:id, :mark_id, :coa_id, 'CREDIT', NOW(), NOW())
+                    """), {
+                        'id': str(uuid.uuid4()),
+                        'mark_id': credit_mark_id,
+                        'coa_id': coa_ids[asset_type]
+                    })
+                
+                # Create transactions
+                txn_date = d.get('amortization_date', f'{year}-12-31')
+                description = f"Manual Amortization - {d['description']}"
+                
+                # Debit transaction (expense)
+                debit_txn_id = str(uuid.uuid4())
+                conn.execute(text("""
+                    INSERT INTO transactions (id, txn_date, description, amount, db_cr, mark_id, 
+                                     company_id, created_at, updated_at, source_file)
+                    VALUES (:id, :date, :desc, :amount, 'DB', :mark_id, 
+                            :company_id, NOW(), NOW(), :source)
+                """), {
+                    'id': debit_txn_id,
+                    'date': txn_date,
+                    'desc': description,
+                    'amount': amount,
+                    'mark_id': debit_mark_id,
+                    'company_id': company_id,
+                    'source': 'manual_amortization_journal'
+                })
+                
+                # Credit transaction (accumulated depreciation)
+                if asset_type in coa_ids:
+                    credit_txn_id = str(uuid.uuid4())
+                    conn.execute(text("""
+                        INSERT INTO transactions (id, txn_date, description, amount, db_cr, mark_id, 
+                                         company_id, created_at, updated_at, source_file)
+                        VALUES (:id, :date, :desc, :amount, 'CR', :mark_id, 
+                                :company_id, NOW(), NOW(), :source)
+                    """), {
+                        'id': credit_txn_id,
+                        'date': txn_date,
+                        'desc': description,
+                        'amount': amount,
+                        'mark_id': credit_mark_id,
+                        'company_id': company_id,
+                        'source': 'manual_amortization_journal'
+                    })
+                
+                journal_count += 1
+            
+            conn.commit()
+            
+            return jsonify({
+                'message': f'Successfully generated {journal_count} journal entries',
+                'journal_count': journal_count,
+                'items_processed': len(manual_result.fetchall())
+            }), 201
+            
+    except Exception as e:
+        app.logger.error(f"Failed to generate manual amortization journal: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@amortization_bp.route('/api/marks/amortization-eligible', methods=['GET'])
+def get_amortization_eligible_marks():
+    """Get marks that are eligible for amortization (have asset-related COA mappings)"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+    
+    try:
+        with engine.connect() as conn:
+            # Get marks that have asset-related COA mappings and are marked as assets
+            query = text("""
+                SELECT DISTINCT m.id, m.personal_use,
+                       COALESCE(am.asset_type, 'Tangible') as asset_type
+                FROM marks m
+                INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+                LEFT JOIN mark_amortization_mappings am ON m.id = am.mark_id
+                WHERE (coa.code LIKE '1%' OR coa.code LIKE '15%' OR coa.code LIKE '16%')
+                  AND m.is_asset = 1
+                ORDER BY m.personal_use
+            """)
+            
+            result = conn.execute(query)
+            marks = []
+            for row in result:
+                d = dict(row._mapping)
+                marks.append({
+                    'id': d['id'],
+                    'personal_use': d['personal_use'],
+                    'asset_type': d['asset_type']
+                })
+            
+            return jsonify({
+                'marks': marks
+            }), 201
+            
+    except Exception as e:
+        app.logger.error(f"Failed to fetch amortization eligible marks: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@amortization_bp.route('/api/amortization-items', methods=['POST'])
+def create_amortization_item():
+    """Create a new amortization item"""
+    data = request.json
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+    
+    try:
+        with engine.connect() as conn:
+            item_id = str(uuid.uuid4())
+            
+            # Create the amortization item
+            conn.execute(
+                text("""
+                    INSERT INTO amortization_items (
+                        id, company_id, year, mark_id, description, amount,
+                        amortization_date, asset_group_id, use_half_rate, notes,
+                        is_manual, created_at, updated_at
+                    ) VALUES (
+                        :id, :company_id, :year, :mark_id, :description, :amount,
+                        :amortization_date, :asset_group_id, :use_half_rate, :notes,
+                        :is_manual, NOW(), NOW()
+                    )
+                """),
+                {
+                    'id': item_id,
+                    'company_id': data.get('company_id'),
+                    'year': data.get('year'),
+                    'mark_id': data.get('mark_id'),
+                    'description': data.get('description'),
+                    'amount': data.get('amount'),
+                    'amortization_date': data.get('amortization_date'),
+                    'asset_group_id': data.get('asset_group_id'),
+                    'use_half_rate': data.get('use_half_rate', False),
+                    'notes': data.get('notes'),
+                    'is_manual': data.get('is_manual', True)
+                }
+            )
+            conn.commit()
+            data['id'] = item_id
+            return jsonify(data), 201
+    except Exception as e:
+        app.logger.error(f"Failed to create amortization item: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@amortization_bp.route('/api/amortization-items/<item_id>', methods=['PUT'])
+def update_amortization_item(item_id):
+    """Update an amortization item"""
+    data = request.json
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+    
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text("""
+                    UPDATE amortization_items 
+                    SET mark_id = :mark_id,
+                        description = :description,
+                        amount = :amount,
+                        amortization_date = :amortization_date,
+                        asset_group_id = :asset_group_id,
+                        use_half_rate = :use_half_rate,
+                        notes = :notes,
+                        updated_at = NOW()
+                    WHERE id = :id
+                """),
+                {
+                    'id': item_id,
+                    'mark_id': data.get('mark_id'),
+                    'description': data.get('description'),
+                    'amount': data.get('amount'),
+                    'amortization_date': data.get('amortization_date'),
+                    'asset_group_id': data.get('asset_group_id'),
+                    'use_half_rate': data.get('use_half_rate'),
+                    'notes': data.get('notes')
+                }
+            )
+            conn.commit()
+            return jsonify({'id': item_id, **data})
+    except Exception as e:
+        app.logger.error(f"Failed to update amortization item: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@amortization_bp.route('/api/amortization-items/<item_id>', methods=['DELETE'])
+def delete_amortization_item(item_id):
+    """Delete an amortization item"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+    
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("DELETE FROM amortization_items WHERE id = :id"), {'id': item_id})
+            conn.commit()
+            return jsonify({'success': True})
+    except Exception as e:
+        app.logger.error(f"Failed to delete amortization item: {e}")
         return jsonify({'error': str(e)}), 500

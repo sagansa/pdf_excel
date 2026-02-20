@@ -33,6 +33,23 @@
         </div>
       </div>
 
+      <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+        <input
+          type="checkbox"
+          id="is_service"
+          v-model="form.is_service"
+          class="rounded border-gray-300 text-amber-600 focus:ring-amber-500 h-5 w-5"
+        />
+        <div class="flex-1">
+          <label for="is_service" class="text-sm font-semibold text-gray-900 cursor-pointer">
+            Adalah Jasa (Objek Pengelolaan NPWP)
+          </label>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Centang jika mark ini termasuk transaksi jasa (misal handling, trucking, SSM)
+          </p>
+        </div>
+      </div>
+
       <div v-if="error" class="text-sm text-red-600 bg-red-50 p-2 rounded">
           {{ error }}
       </div>
@@ -73,24 +90,47 @@ const form = reactive({
     internal_report: '',
     personal_use: '',
     tax_report: '',
-    is_asset: false
+    is_asset: false,
+    is_service: false
 });
 
 watch(() => props.markToEdit, (newVal) => {
+    console.log('MarkFormModal: markToEdit changed:', newVal);
     if (newVal) {
         isEdit.value = true;
+        // Create a fresh copy of the data to avoid reactivity issues
         form.internal_report = newVal.internal_report || '';
         form.personal_use = newVal.personal_use || '';
         form.tax_report = newVal.tax_report || '';
-        form.is_asset = newVal.is_asset || false;
+        // Handle both integer (0/1) and boolean values for is_asset
+        form.is_asset = Boolean(newVal.is_asset === 1 || newVal.is_asset === true);
+        form.is_service = Boolean(newVal.is_service === 1 || newVal.is_service === true);
+        console.log('MarkFormModal: Form populated:', form);
     } else {
         isEdit.value = false;
         form.internal_report = '';
         form.personal_use = '';
         form.tax_report = '';
         form.is_asset = false;
+        form.is_service = false;
+        console.log('MarkFormModal: Form reset to empty');
     }
 }, { immediate: true });
+
+// Also watch for modal opening to ensure data is fresh
+watch(() => props.isOpen, (isOpen) => {
+    console.log('MarkFormModal: isOpen changed:', isOpen);
+    if (isOpen && props.markToEdit) {
+        // When modal opens with data, ensure form is properly populated
+        const mark = props.markToEdit;
+        form.internal_report = mark.internal_report || '';
+        form.personal_use = mark.personal_use || '';
+        form.tax_report = mark.tax_report || '';
+        form.is_asset = Boolean(mark.is_asset === 1 || mark.is_asset === true);
+        form.is_service = Boolean(mark.is_service === 1 || mark.is_service === true);
+        console.log('MarkFormModal: Form refreshed on modal open:', form);
+    }
+});
 
 const close = () => {
     error.value = null;
@@ -102,15 +142,27 @@ const handleSubmit = async () => {
     error.value = null;
 
     try {
+        // Create a copy of form data and ensure is_asset is properly converted
+        const formData = {
+            ...form,
+            is_asset: Boolean(form.is_asset),
+            is_service: Boolean(form.is_service)
+        };
+        
+        // Debug logging to see what data is being sent
+        console.log('Submitting form data:', formData);
+        console.log('is_asset value:', formData.is_asset, typeof formData.is_asset);
+        
         if (isEdit.value) {
-            await store.updateMark(props.markToEdit.id, form);
+            await store.updateMark(props.markToEdit.id, formData);
         } else {
-            await store.createMark(form);
+            await store.createMark(formData);
         }
         emit('saved');
         close();
     } catch (err) {
         error.value = err.response?.data?.error || err.message;
+        console.error('Error submitting form:', err);
     } finally {
         loading.value = false;
     }
