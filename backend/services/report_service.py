@@ -1,7 +1,10 @@
 import logging
 import json
+import os
+import re
 from datetime import datetime, date
 from sqlalchemy import text
+from backend.db.session import get_sagansa_engine
 
 logger = logging.getLogger(__name__)
 RENT_EXPENSE_CODES = {'5315', '5105'}
@@ -47,6 +50,53 @@ def _split_parent_exclusion_clause(conn, alias='t'):
     if 'parent_id' not in txn_columns:
         return ''
     return f" AND NOT EXISTS (SELECT 1 FROM transactions t_child WHERE t_child.parent_id = {alias}.id)"
+
+
+def _safe_identifier(value, fallback):
+    raw = str(value or fallback).strip()
+    if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', raw):
+        return fallback
+    return raw
+
+
+def _fetch_sagansa_user_map():
+    engine, error_msg = get_sagansa_engine()
+    if engine is None:
+        logger.warning(f"Failed to connect to Sagansa DB for payroll summary: {error_msg}")
+        return {}
+
+    user_table = _safe_identifier(os.environ.get('SAGANSA_USER_TABLE'), 'users')
+    user_id_col = _safe_identifier(os.environ.get('SAGANSA_USER_ID_COLUMN'), 'id')
+    user_name_col = _safe_identifier(os.environ.get('SAGANSA_USER_NAME_COLUMN'), 'name')
+    user_active_col = _safe_identifier(os.environ.get('SAGANSA_USER_ACTIVE_COLUMN'), '')
+
+    where_active_sql = f"WHERE COALESCE(`{user_active_col}`, 1) = 1" if user_active_col else ''
+    query = text(f"""
+        SELECT
+            CAST(`{user_id_col}` AS CHAR) AS id,
+            CAST(`{user_name_col}` AS CHAR) AS name
+        FROM `{user_table}`
+        {where_active_sql}
+        ORDER BY `{user_name_col}` ASC
+        LIMIT 5000
+    """)
+
+    user_map = {}
+    try:
+        with engine.connect() as conn:
+            for row in conn.execute(query):
+                user_id = str(row.id or '').strip()
+                if not user_id:
+                    continue
+                user_map[user_id] = {
+                    'id': user_id,
+                    'name': str(row.name or '').strip() or user_id
+                }
+    except Exception as e:
+        logger.warning(f"Failed to fetch Sagansa users for payroll summary: {e}")
+        return {}
+
+    return user_map
 
 def _is_current_asset(subcategory, code):
     normalized = (subcategory or '').strip().lower()
@@ -1158,3 +1208,317 @@ def fetch_monthly_revenue_data(conn, year, company_id=None):
         {'month': m, 'revenue': monthly_data[m]} 
         for m in range(1, 13)
     ]
+
+
+def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=None):
+    """
+    Fetch payroll summary grouped by month -> employee -> salary component(mark).
+    Respects report period and company filter.
+    """
+    mark_columns = _table_columns(conn, 'marks')
+    if 'is_salary_component' not in mark_columns:
+        return {
+            'period': {'start_date': start_date, 'end_date': end_date},
+            'months': [],
+            'summary': {
+                'total_amount': 0.0,
+                'total_transactions': 0,
+                'employee_count': 0,
+                'month_count': 0
+            },
+            'message': 'Kolom is_salary_component belum tersedia. Jalankan migrasi terbaru.'
+        }
+
+    txn_columns = _table_columns(conn, 'transactions')
+    split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    user_col_expr = "t.sagansa_user_id" if 'sagansa_user_id' in txn_columns else "NULL"
+    if conn.dialect.name == 'sqlite':
+        month_key_expr = "strftime('%Y-%m', t.txn_date)"
+    else:
+        month_key_expr = "DATE_FORMAT(t.txn_date, '%Y-%m')"
+
+    query = text(f"""
+        SELECT
+            {month_key_expr} AS month_key,
+            {user_col_expr} AS sagansa_user_id,
+            COALESCE(m.personal_use, m.internal_report, m.tax_report, '(Unnamed Salary Component)') AS mark_name,
+            COUNT(t.id) AS transaction_count,
+            COALESCE(SUM(ABS(t.amount)), 0) AS total_amount
+        FROM transactions t
+        INNER JOIN marks m ON t.mark_id = m.id
+        WHERE COALESCE(m.is_salary_component, 0) = 1
+          AND t.txn_date BETWEEN :start_date AND :end_date
+          AND (:company_id IS NULL OR t.company_id = :company_id)
+          {split_exclusion_clause}
+        GROUP BY
+            {month_key_expr},
+            {user_col_expr},
+            COALESCE(m.personal_use, m.internal_report, m.tax_report, '(Unnamed Salary Component)')
+        ORDER BY
+            {month_key_expr} ASC,
+            {user_col_expr} ASC
+    """)
+
+    user_map = _fetch_sagansa_user_map()
+    month_groups = {}
+    employee_set = set()
+    total_amount = 0.0
+    total_transactions = 0
+
+    rows = conn.execute(query, {
+        'start_date': start_date,
+        'end_date': end_date,
+        'company_id': company_id
+    })
+
+    for row in rows:
+        month_key = str(row.month_key or '').strip()
+        if not month_key:
+            continue
+
+        user_id = str(row.sagansa_user_id or '').strip() or None
+        user_name = user_map.get(user_id, {}).get('name') if user_id else None
+        if user_id:
+            employee_set.add(user_id)
+
+        mark_name = str(row.mark_name or '').strip() or '(Unnamed Salary Component)'
+        tx_count = int(row.transaction_count or 0)
+        amount = _to_float(row.total_amount, 0.0)
+
+        if month_key not in month_groups:
+            try:
+                month_label = datetime.strptime(f"{month_key}-01", '%Y-%m-%d').strftime('%B %Y')
+            except Exception:
+                month_label = month_key
+            month_groups[month_key] = {
+                'month_key': month_key,
+                'month_label': month_label,
+                'transaction_count': 0,
+                'total_amount': 0.0,
+                'rows': []
+            }
+
+        month_groups[month_key]['rows'].append({
+            'sagansa_user_id': user_id,
+            'sagansa_user_name': user_name or user_id or 'Unassigned',
+            'mark_name': mark_name,
+            'transaction_count': tx_count,
+            'total_amount': amount
+        })
+        month_groups[month_key]['transaction_count'] += tx_count
+        month_groups[month_key]['total_amount'] += amount
+        total_transactions += tx_count
+        total_amount += amount
+
+    # Ensure each month in requested period exists in output, even without transactions.
+    start_obj = _parse_date(start_date)
+    end_obj = _parse_date(end_date)
+    if start_obj and end_obj and end_obj >= start_obj:
+        cursor = start_obj.replace(day=1)
+        limit = end_obj.replace(day=1)
+        while cursor <= limit:
+            month_key = cursor.strftime('%Y-%m')
+            if month_key not in month_groups:
+                month_groups[month_key] = {
+                    'month_key': month_key,
+                    'month_label': cursor.strftime('%B %Y'),
+                    'transaction_count': 0,
+                    'total_amount': 0.0,
+                    'rows': []
+                }
+            if cursor.month == 12:
+                cursor = cursor.replace(year=cursor.year + 1, month=1, day=1)
+            else:
+                cursor = cursor.replace(month=cursor.month + 1, day=1)
+
+    months = []
+    for month_key in sorted(month_groups.keys()):
+        group = month_groups[month_key]
+        group['rows'] = sorted(
+            group['rows'],
+            key=lambda item: (item.get('sagansa_user_name') or '', item.get('mark_name') or '')
+        )
+        group['total_amount'] = round(_to_float(group['total_amount'], 0.0), 2)
+        months.append(group)
+
+    return {
+        'period': {'start_date': start_date, 'end_date': end_date},
+        'months': months,
+        'summary': {
+            'total_amount': round(_to_float(total_amount, 0.0), 2),
+            'total_transactions': int(total_transactions),
+            'employee_count': len(employee_set),
+            'month_count': len(months)
+        }
+    }
+
+
+def fetch_cash_flow_data(conn, start_date, end_date, company_id=None):
+    """
+    Fetch cash flow report using direct method from transaction cash movements.
+    Classification heuristic:
+      - operating: revenue/expense mappings
+      - investing: non-current asset mappings
+      - financing: liability/equity mappings
+      - unclassified: no mapping signal
+    """
+    split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    section_names = {
+        'operating': 'Operating Activities',
+        'investing': 'Investing Activities',
+        'financing': 'Financing Activities',
+        'unclassified': 'Unclassified'
+    }
+    ordered_sections = ['operating', 'investing', 'financing', 'unclassified']
+
+    transactions_query = text(f"""
+        SELECT
+            t.id,
+            t.txn_date,
+            t.description,
+            t.amount,
+            t.db_cr,
+            t.company_id,
+            c.name AS company_name,
+            m.personal_use,
+            m.internal_report,
+            MAX(CASE WHEN coa.category IN ('REVENUE', 'EXPENSE') THEN 1 ELSE 0 END) AS operating_flag,
+            MAX(CASE WHEN coa.category = 'ASSET'
+                      AND NOT (
+                        coa.code LIKE '11%%'
+                        OR coa.code LIKE '12%%'
+                        OR coa.code LIKE '13%%'
+                        OR coa.code LIKE '14%%'
+                      )
+                     THEN 1 ELSE 0 END) AS investing_flag,
+            MAX(CASE WHEN coa.category IN ('LIABILITY', 'EQUITY') THEN 1 ELSE 0 END) AS financing_flag
+        FROM transactions t
+        LEFT JOIN companies c ON t.company_id = c.id
+        LEFT JOIN marks m ON t.mark_id = m.id
+        LEFT JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        LEFT JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        WHERE t.txn_date BETWEEN :start_date AND :end_date
+          AND (:company_id IS NULL OR t.company_id = :company_id)
+          {split_exclusion_clause}
+        GROUP BY
+            t.id, t.txn_date, t.description, t.amount, t.db_cr,
+            t.company_id, c.name, m.personal_use, m.internal_report
+        ORDER BY t.txn_date ASC, t.id ASC
+    """)
+
+    rows = conn.execute(transactions_query, {
+        'start_date': start_date,
+        'end_date': end_date,
+        'company_id': company_id
+    })
+
+    sections = {
+        key: {
+            'name': section_names[key],
+            'inflow_total': 0.0,
+            'outflow_total': 0.0,
+            'net_cash': 0.0,
+            'count': 0,
+            'items': []
+        }
+        for key in ordered_sections
+    }
+
+    for row in rows:
+        amount = abs(_to_float(row.amount, 0.0))
+        db_cr = str(row.db_cr or '').upper().strip()
+        signed_amount = amount if db_cr == 'DB' else (-amount if db_cr == 'CR' else 0.0)
+        inflow = signed_amount if signed_amount > 0 else 0.0
+        outflow = abs(signed_amount) if signed_amount < 0 else 0.0
+
+        if int(row.investing_flag or 0) == 1:
+            section_key = 'investing'
+        elif int(row.financing_flag or 0) == 1:
+            section_key = 'financing'
+        elif int(row.operating_flag or 0) == 1:
+            section_key = 'operating'
+        else:
+            section_key = 'unclassified'
+
+        section = sections[section_key]
+        section['inflow_total'] += inflow
+        section['outflow_total'] += outflow
+        section['count'] += 1
+        section['items'].append({
+            'id': str(row.id),
+            'txn_date': row.txn_date.isoformat() if isinstance(row.txn_date, (datetime, date)) else str(row.txn_date or ''),
+            'description': row.description,
+            'amount': amount,
+            'db_cr': db_cr,
+            'signed_amount': signed_amount,
+            'company_id': row.company_id,
+            'company_name': row.company_name,
+            'mark_name': row.personal_use or row.internal_report
+        })
+
+    for key in ordered_sections:
+        section = sections[key]
+        section['net_cash'] = section['inflow_total'] - section['outflow_total']
+        section['inflow_total'] = round(section['inflow_total'], 2)
+        section['outflow_total'] = round(section['outflow_total'], 2)
+        section['net_cash'] = round(section['net_cash'], 2)
+
+    opening_query = text(f"""
+        SELECT
+            COALESCE(SUM(
+                CASE
+                    WHEN t.db_cr = 'DB' THEN t.amount
+                    WHEN t.db_cr = 'CR' THEN -t.amount
+                    ELSE 0
+                END
+            ), 0) AS opening_cash
+        FROM transactions t
+        WHERE t.txn_date < :start_date
+          AND (:company_id IS NULL OR t.company_id = :company_id)
+          {split_exclusion_clause}
+    """)
+    opening_row = conn.execute(opening_query, {'start_date': start_date, 'company_id': company_id}).fetchone()
+    opening_cash = _to_float(opening_row.opening_cash if opening_row else 0.0, 0.0)
+
+    closing_query = text(f"""
+        SELECT
+            COALESCE(SUM(
+                CASE
+                    WHEN t.db_cr = 'DB' THEN t.amount
+                    WHEN t.db_cr = 'CR' THEN -t.amount
+                    ELSE 0
+                END
+            ), 0) AS closing_cash
+        FROM transactions t
+        WHERE t.txn_date <= :end_date
+          AND (:company_id IS NULL OR t.company_id = :company_id)
+          {split_exclusion_clause}
+    """)
+    closing_row = conn.execute(closing_query, {'end_date': end_date, 'company_id': company_id}).fetchone()
+    closing_cash = _to_float(closing_row.closing_cash if closing_row else 0.0, 0.0)
+
+    operating_net = sections['operating']['net_cash']
+    investing_net = sections['investing']['net_cash']
+    financing_net = sections['financing']['net_cash']
+    unclassified_net = sections['unclassified']['net_cash']
+    net_change_by_sections = operating_net + investing_net + financing_net + unclassified_net
+    net_change_by_balance = closing_cash - opening_cash
+
+    return {
+        'period': {
+            'start_date': start_date,
+            'end_date': end_date
+        },
+        'sections': sections,
+        'section_order': ordered_sections,
+        'summary': {
+            'opening_cash': round(opening_cash, 2),
+            'operating_net': round(operating_net, 2),
+            'investing_net': round(investing_net, 2),
+            'financing_net': round(financing_net, 2),
+            'unclassified_net': round(unclassified_net, 2),
+            'net_change': round(net_change_by_sections, 2),
+            'closing_cash': round(closing_cash, 2),
+            'reconciliation_difference': round(net_change_by_balance - net_change_by_sections, 2)
+        }
+    }

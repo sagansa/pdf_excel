@@ -29,6 +29,16 @@
               Amortization
             </button>
             <button
+              @click="activeTab = 'payroll'"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
+              :class="activeTab === 'payroll'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+            >
+              <i class="bi bi-people mr-2"></i>
+              Payroll Employee
+            </button>
+            <button
               @click="activeTab = 'general'"
               disabled
               class="px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 cursor-not-allowed"
@@ -42,7 +52,7 @@
       </div>
 
       <!-- Company Selector -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div v-if="activeTab === 'amortization'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <label class="block text-sm font-semibold text-gray-700 mb-2">Select Company</label>
         <div class="flex gap-4">
           <select 
@@ -58,13 +68,16 @@
       </div>
 
       <!-- Settings Content -->
-      <div v-if="selectedCompanyId">
+      <div v-if="activeTab === 'payroll'">
+        <PayrollEmployeeSettings />
+      </div>
+      <div v-else-if="selectedCompanyId">
         <AmortizationSettings 
           v-if="activeTab === 'amortization'"
           :company-id="selectedCompanyId"
         />
       </div>
-      <div v-else class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+      <div v-else-if="activeTab === 'amortization'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
         <i class="bi bi-building text-6xl text-gray-300"></i>
         <p class="text-gray-500 mt-4 text-lg font-medium">No Company Selected</p>
         <p class="text-gray-400 text-sm mt-2">Please select a company to configure settings</p>
@@ -77,6 +90,7 @@
 import { ref, onMounted } from 'vue';
 import { useCompanyStore } from '../stores/companies';
 import AmortizationSettings from '../components/settings/AmortizationSettings.vue';
+import PayrollEmployeeSettings from '../components/settings/PayrollEmployeeSettings.vue';
 
 const companyStore = useCompanyStore();
 

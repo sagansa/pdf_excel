@@ -178,6 +178,15 @@
           :companyId="reportStore.filters.companyId" 
         />
       </div>
+
+      <!-- 6. Payroll Tab -->
+      <div v-if="activeTab === 'payroll'">
+        <PayrollSalaryHandling
+          :key="`payroll-${reportStore.filters.companyId}-${reportStore.filters.year}`"
+          :company-id="reportStore.filters.companyId"
+          :year="reportStore.filters.year"
+        />
+      </div>
     </div>
 
     <!-- Modals -->
@@ -240,6 +249,7 @@ import InventoryAdjustments from '../components/reports/InventoryAdjustments.vue
 import AmortizationAdjustments from '../components/reports/AmortizationAdjustments.vue';
 import RentalContracts from '../components/reports/RentalContracts.vue';
 import ServiceTaxHandling from '../components/history/ServiceTaxHandling.vue';
+import PayrollSalaryHandling from '../components/history/PayrollSalaryHandling.vue';
 
 const store = useHistoryStore();
 const reportStore = useReportsStore();
@@ -250,7 +260,8 @@ const tabs = [
   { id: 'inventory', name: 'Inventory', icon: 'bi bi-box-seam' },
   { id: 'amortization', name: 'Amortization', icon: 'bi bi-calendar-check' },
   { id: 'services', name: 'Service Tax', icon: 'bi bi-receipt-cutoff' },
-  { id: 'rental', name: 'Rental Contracts', icon: 'bi bi-file-earmark-text' }
+  { id: 'rental', name: 'Rental Contracts', icon: 'bi bi-file-earmark-text' },
+  { id: 'payroll', name: 'Payroll', icon: 'bi bi-people' }
 ];
 
 const showDetails = ref(false);

@@ -10,6 +10,8 @@ export const useReportsStore = defineStore('reports', {
   state: () => ({
     incomeStatement: null,
     balanceSheet: null,
+    cashFlow: null,
+    payrollSalarySummary: null,
     coaDetail: null,
     monthlyRevenue: null,
     monthlyRevenuePrevYear: null,
@@ -179,6 +181,38 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
+    async fetchCashFlow(startDate, endDate, companyId = null) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        const response = await reportsApi.getCashFlow(startDate, endDate, companyId);
+        this.cashFlow = response.data;
+        return response.data;
+      } catch (err) {
+        this.error = err.response?.data?.error || 'Failed to fetch cash flow';
+        console.error(err);
+        throw new Error(this.error);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async fetchPayrollSalarySummary(startDate, endDate, companyId = null) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        const response = await reportsApi.getPayrollSalarySummary(startDate, endDate, companyId);
+        this.payrollSalarySummary = response.data;
+        return response.data;
+      } catch (err) {
+        this.error = err.response?.data?.error || 'Failed to fetch payroll salary summary';
+        console.error(err);
+        throw new Error(this.error);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     async fetchAllReports() {
       this.isLoading = true;
       this.error = null;
@@ -187,7 +221,9 @@ export const useReportsStore = defineStore('reports', {
         await Promise.all([
           this.fetchIncomeStatement(this.filters.startDate, this.filters.endDate, this.filters.companyId),
           this.fetchBalanceSheet(this.filters.asOfDate, this.filters.companyId),
-          this.fetchMonthlyRevenue(this.filters.year, this.filters.companyId)
+          this.fetchMonthlyRevenue(this.filters.year, this.filters.companyId),
+          this.fetchCashFlow(this.filters.startDate, this.filters.endDate, this.filters.companyId),
+          this.fetchPayrollSalarySummary(this.filters.startDate, this.filters.endDate, this.filters.companyId)
         ]);
         return true;
       } catch (err) {
@@ -242,6 +278,8 @@ export const useReportsStore = defineStore('reports', {
 
     clearReports() {
       this.incomeStatement = null;
+      this.cashFlow = null;
+      this.payrollSalarySummary = null;
       this.coaDetail = null;
       this.error = null;
     },

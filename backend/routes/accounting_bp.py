@@ -10,7 +10,9 @@ from backend.db.session import get_db_engine
 from backend.services.report_service import (
     fetch_balance_sheet_data,
     fetch_income_statement_data,
-    fetch_monthly_revenue_data
+    fetch_monthly_revenue_data,
+    fetch_cash_flow_data,
+    fetch_payroll_salary_summary_data
 )
 
 accounting_bp = Blueprint('accounting_bp', __name__)
@@ -160,6 +162,46 @@ def get_monthly_revenue():
                 'data': current_data,
                 'prev_year_data': prev_data
             })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@accounting_bp.route('/api/reports/cash-flow', methods=['GET'])
+def get_cash_flow():
+    """Generate Cash Flow statement"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    try:
+        now = datetime.now()
+        start_date = request.args.get('start_date') or f"{now.year}-01-01"
+        end_date = request.args.get('end_date') or now.strftime('%Y-%m-%d')
+        company_id = request.args.get('company_id')
+
+        with engine.connect() as conn:
+            data = fetch_cash_flow_data(conn, start_date, end_date, company_id)
+            return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@accounting_bp.route('/api/reports/payroll-salary-summary', methods=['GET'])
+def get_payroll_salary_summary():
+    """Generate payroll salary summary grouped by month, employee, and mark."""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    try:
+        now = datetime.now()
+        start_date = request.args.get('start_date') or f"{now.year}-01-01"
+        end_date = request.args.get('end_date') or now.strftime('%Y-%m-%d')
+        company_id = request.args.get('company_id')
+
+        with engine.connect() as conn:
+            data = fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id)
+            return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

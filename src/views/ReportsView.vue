@@ -82,12 +82,23 @@
             </button>
             <button
               @click="activeTab = 'cash-flow'"
-              disabled
-              class="px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 cursor-not-allowed"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
+              :class="activeTab === 'cash-flow'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
             >
               <i class="bi bi-cash-stack mr-2"></i>
               Cash Flow
-              <span class="ml-2 text-xs bg-gray-100 px-2 py-0.5 rounded">Coming Soon</span>
+            </button>
+            <button
+              @click="activeTab = 'payroll-summary'"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
+              :class="activeTab === 'payroll-summary'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+            >
+              <i class="bi bi-people mr-2"></i>
+              Payroll Summary
             </button>
           </nav>
         </div>
@@ -136,6 +147,16 @@
             :data="store.balanceSheet"
             @view-coa="openCoaDetail"
           />
+          <CashFlow
+            v-if="activeTab === 'cash-flow'"
+            :key="`cf-${refreshKey}`"
+            :data="store.cashFlow"
+          />
+          <PayrollSalarySummary
+            v-if="activeTab === 'payroll-summary'"
+            :key="`ps-${refreshKey}`"
+            :data="store.payrollSalarySummary"
+          />
         </div>
       </div>
     </div>
@@ -159,6 +180,8 @@ import ReportFilters from '../components/reports/ReportFilters.vue';
 import IncomeStatement from '../components/reports/IncomeStatement.vue';
 import MonthlyRevenue from '../components/reports/MonthlyRevenue.vue';
 import BalanceSheet from '../components/reports/BalanceSheet.vue';
+import CashFlow from '../components/reports/CashFlow.vue';
+import PayrollSalarySummary from '../components/reports/PayrollSalarySummary.vue';
 import COADetailModal from '../components/reports/COADetailModal.vue';
 
 const store = useReportsStore();

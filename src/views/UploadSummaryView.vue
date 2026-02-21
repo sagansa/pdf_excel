@@ -13,7 +13,7 @@
           
           <select v-model="filterBank" class="text-xs border-0 focus:ring-0 bg-transparent py-0 pr-8">
             <option value="">All Banks</option>
-            <option v-for="bank in availableBanks" :key="bank" :value="bank">{{ bank.replace('_CC', '') }}</option>
+            <option v-for="bank in availableBanks" :key="bank" :value="bank">{{ formatBankCode(bank) }}</option>
           </select>
           
           <div class="h-4 w-px bg-gray-200 mx-1"></div>
@@ -51,7 +51,7 @@
                   <i v-else class="bi bi-hash text-gray-300 opacity-0 group-hover:opacity-100"></i>
                 </div>
               </th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Bank / Company</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Bank</th>
               <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Txns</th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Period</th>
               <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Totals</th>
@@ -79,7 +79,7 @@
                 {{ store.uploadSummary.length === 0 ? 'No upload history found' : 'No matches found for active filters' }}
               </td>
             </tr>
-            <tr v-for="item in filteredAndSortedSummary" :key="item.source_file + item.bank_code + item.company_id" class="hover:bg-gray-50 transition-colors">
+            <tr v-for="item in filteredAndSortedSummary" :key="item.source_file + item.bank_code" class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
                   <i class="bi bi-file-earmark-pdf text-red-500 text-lg"></i>
@@ -90,8 +90,7 @@
               </td>
               <td class="px-6 py-4 text-xs font-medium uppercase">
                 <div class="flex flex-col gap-1">
-                  <span class="text-gray-900 border-b border-gray-100 pb-0.5">{{ item.bank_code.replace('_CC', ' Credit Card') }}</span>
-                  <span class="text-gray-500">{{ item.company_name || 'No Company' }}</span>
+                  <span class="text-gray-900 border-b border-gray-100 pb-0.5">{{ formatBankCode(item.bank_code) }}</span>
                 </div>
               </td>
               <td class="px-6 py-4 text-center">
@@ -167,7 +166,11 @@ onMounted(() => {
 
 // Available filter options
 const availableBanks = computed(() => {
-  const banks = new Set(store.uploadSummary.map(item => item.bank_code));
+  const banks = new Set(
+    store.uploadSummary
+      .map(item => item.bank_code)
+      .filter(bank => bank !== null && bank !== undefined && String(bank).trim() !== '')
+  );
   return Array.from(banks).sort();
 });
 
@@ -240,7 +243,7 @@ const confirmDelete = async () => {
   
   try {
     const item = itemToDelete.value;
-    await store.deleteBySourceFile(item.source_file, item.bank_code, item.company_id);
+    await store.deleteBySourceFile(item.source_file, item.bank_code);
     closeDeleteModal();
   } catch (err) {
     alert('Failed to delete transactions: ' + (err.response?.data?.error || err.message));
@@ -260,5 +263,11 @@ const formatDateTime = (dateTimeStr) => {
 
 const formatAmount = (amount) => {
   return new Intl.NumberFormat('id-ID').format(amount);
+};
+
+const formatBankCode = (bankCode) => {
+  const value = (bankCode || '').toString();
+  if (!value) return 'Unknown Bank';
+  return value.replace('_CC', ' Credit Card');
 };
 </script>

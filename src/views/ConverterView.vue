@@ -176,11 +176,12 @@ const executeUpload = async (password = null) => {
         converterStore.pdfPassword = password;
     }
     
+    const normalizedCompanyId = (formData.companyId || '').toString().trim();
     const fd = new FormData();
     fd.append('pdf_file', converterStore.file);
     fd.append('bank_type', formData.bankType);
     fd.append('statement_year', formData.statementYear);
-    fd.append('company_id', formData.companyId);
+    fd.append('company_id', normalizedCompanyId);
     fd.append('preview', 'true');
     if (converterStore.pdfPassword) {
         fd.append('password', converterStore.pdfPassword);
@@ -197,11 +198,12 @@ const executeUpload = async (password = null) => {
 }
 
 const handleConfirmSave = async () => {
+    const normalizedCompanyId = (formData.companyId || '').toString().trim();
     const fd = new FormData();
     fd.append('pdf_file', converterStore.file);
     fd.append('bank_type', formData.bankType);
     fd.append('statement_year', formData.statementYear);
-    fd.append('company_id', formData.companyId);
+    fd.append('company_id', normalizedCompanyId);
     if (converterStore.pdfPassword) {
         fd.append('password', converterStore.pdfPassword);
     }
