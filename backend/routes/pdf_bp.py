@@ -1,6 +1,7 @@
 import os
 import hashlib
 import uuid
+import re
 from flask import Blueprint, request, jsonify, send_file, current_app as app
 from werkzeug.utils import secure_filename
 import pandas as pd
@@ -24,6 +25,21 @@ except (ImportError, AttributeError):
             pass
 
 pdf_bp = Blueprint('pdf_bp', __name__)
+
+
+def _normalize_company_id(value):
+    if value is None:
+        return None
+    candidate = str(value).strip()
+    if not candidate or candidate.lower() in {'none', 'null'}:
+        return None
+    match = re.search(
+        r'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})',
+        candidate
+    )
+    if match:
+        return match.group(1)
+    return None
 
 @pdf_bp.route('/')
 def index():
@@ -97,9 +113,7 @@ def convert_pdf():
         file.seek(0)
 
         bank_type = request.form.get('bank_type', 'bca')
-        company_id = request.form.get('company_id')
-        if not company_id or company_id == 'none':
-            company_id = None
+        company_id = _normalize_company_id(request.form.get('company_id'))
         
         filename = secure_filename(file.filename)
         original_pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -245,6 +259,9 @@ def convert_pdf():
             db_success, db_error = save_transactions_to_db(df, bank_code_for_db, original_name, file_hash)
             if not db_success:
                 app.logger.error(f"Database upload failed: {db_error}")
+                return jsonify({
+                    'error': f'Failed to save transactions to database: {db_error}'
+                }), 500
             
             return send_file(output_path, as_attachment=True, download_name=f'{base_name}{file_extension}', mimetype=mimetype)
             

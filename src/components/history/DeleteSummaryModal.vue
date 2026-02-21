@@ -25,12 +25,9 @@
           </div>
           <div class="flex justify-between text-[11px]">
             <span class="text-gray-400">Bank:</span>
-            <span class="text-gray-900 font-medium font-mono uppercase">{{ item?.bank_code?.replace('_CC', '') }}</span>
+            <span class="text-gray-900 font-medium font-mono uppercase">{{ formatBankCode(item?.bank_code) }}</span>
           </div>
-          <div class="flex justify-between text-[11px]">
-            <span class="text-gray-400">Company:</span>
-            <span class="text-gray-900 font-medium">{{ item?.company_name || 'No Company' }}</span>
-          </div>
+          <div class="text-[10px] text-gray-500">Deletion scope: all companies in this file/bank group.</div>
           <div class="flex justify-between text-[11px] pt-1 border-t border-gray-100">
             <span class="text-gray-400">Transactions:</span>
             <span class="text-indigo-600 font-bold">{{ item?.transaction_count }}</span>
@@ -72,4 +69,10 @@ defineProps({
 });
 
 defineEmits(['close', 'confirm']);
+
+const formatBankCode = (bankCode) => {
+  const value = (bankCode || '').toString();
+  if (!value) return 'UNKNOWN BANK';
+  return value.replace('_CC', ' CREDIT CARD');
+};
 </script>

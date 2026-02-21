@@ -453,7 +453,7 @@ export const useHistoryStore = defineStore('history', {
         }
     },
 
-    async deleteBySourceFile(source_file, bank_code, company_id) {
+    async deleteBySourceFile(source_file, bank_code, company_id = undefined) {
         this.isLoading = true;
         try {
             await historyApi.deleteBySourceFile(source_file, bank_code, company_id);

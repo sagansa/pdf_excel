@@ -39,7 +39,9 @@ export const historyApi = {
     return api.delete(`/transactions/${id}`);
   },
   deleteBySourceFile(source_file, bank_code, company_id) {
-    return api.post('/transactions/delete-by-source', { source_file, bank_code, company_id });
+    const payload = { source_file, bank_code };
+    if (company_id !== undefined) payload.company_id = company_id;
+    return api.post('/transactions/delete-by-source', payload);
   },
   bulkDelete(ids) {
     return api.post('/transactions/bulk-delete', { transaction_ids: ids });
@@ -112,6 +114,56 @@ export const historyApi = {
       has_npwp: hasNpwp,
       npwp
     });
+  },
+  getPayrollUsers(search = '', employeesOnly = false) {
+    const params = {};
+    if (search) params.search = search;
+    if (employeesOnly) params.employees_only = 1;
+    return api.get('/payroll/users', { params });
+  },
+  async setPayrollUserEmployee(userId, isEmployee) {
+    const encodedUserId = encodeURIComponent(userId);
+    const payload = { is_employee: Boolean(isEmployee) };
+    try {
+      return await api.put(`/payroll/users/${encodedUserId}/employee`, payload);
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status === 404 || status === 405) {
+        try {
+          return await api.put(`/payroll/users/${encodedUserId}/employee/`, payload);
+        } catch (retryError) {
+          throw retryError;
+        }
+      }
+      throw error;
+    }
+  },
+  getPayrollTransactions(companyId, year, month, search = '', userId = '') {
+    const params = {};
+    if (companyId) params.company_id = companyId;
+    if (year) params.year = year;
+    if (month) params.month = month;
+    if (search) params.search = search;
+    if (userId) params.user_id = userId;
+    return api.get('/payroll/transactions', { params });
+  },
+  assignPayrollUser(txnId, sagansaUserId = null) {
+    return api.put(`/payroll/transactions/${txnId}/assign-user`, {
+      sagansa_user_id: sagansaUserId
+    });
+  },
+  bulkAssignPayrollUser(txnIds, sagansaUserId = null) {
+    return api.put('/payroll/transactions/bulk-assign-user', {
+      transaction_ids: txnIds,
+      sagansa_user_id: sagansaUserId
+    });
+  },
+  getPayrollMonthlySummary(companyId, year, month) {
+    const params = {};
+    if (companyId) params.company_id = companyId;
+    if (year) params.year = year;
+    if (month) params.month = month;
+    return api.get('/payroll/monthly-summary', { params });
   }
 };
 
@@ -178,6 +230,16 @@ export const reportsApi = {
     const params = { as_of_date: asOfDate };
     if (companyId) params.company_id = companyId;
     return api.get('/reports/balance-sheet', { params });
+  },
+  getCashFlow(startDate, endDate, companyId) {
+    const params = { start_date: startDate, end_date: endDate };
+    if (companyId) params.company_id = companyId;
+    return api.get('/reports/cash-flow', { params });
+  },
+  getPayrollSalarySummary(startDate, endDate, companyId) {
+    const params = { start_date: startDate, end_date: endDate };
+    if (companyId) params.company_id = companyId;
+    return api.get('/reports/payroll-salary-summary', { params });
   },
   getInventoryBalances(year, companyId) {
     const params = { year, company_id: companyId };

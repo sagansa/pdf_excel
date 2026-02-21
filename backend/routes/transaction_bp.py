@@ -1,9 +1,11 @@
 import uuid
+import os
+import re
 from flask import Blueprint, request, jsonify
 from datetime import datetime, date
 from decimal import Decimal
 from sqlalchemy import text, bindparam
-from backend.db.session import get_db_engine
+from backend.db.session import get_db_engine, get_sagansa_engine
 
 transaction_bp = Blueprint('transaction_bp', __name__)
 VALID_SERVICE_CALCULATION_METHODS = {'BRUTO', 'NETTO'}
@@ -82,6 +84,197 @@ def _split_parent_exclusion_clause(conn, alias='t'):
         return ''
     return f" AND NOT EXISTS (SELECT 1 FROM transactions t_child WHERE t_child.parent_id = {alias}.id)"
 
+
+def _safe_identifier(value, fallback):
+    raw = str(value or fallback).strip()
+    if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', raw):
+        return fallback
+    return raw
+
+
+def _get_sagansa_users(search=None):
+    """
+    Fetch user master data from Sagansa DB.
+    Table/column names are configurable via env:
+      SAGANSA_USER_TABLE, SAGANSA_USER_ID_COLUMN, SAGANSA_USER_NAME_COLUMN, SAGANSA_USER_ACTIVE_COLUMN
+    """
+    engine, error_msg = get_sagansa_engine()
+    if engine is None:
+        raise RuntimeError(error_msg or 'Sagansa DB is not configured')
+
+    user_table = _safe_identifier(os.environ.get('SAGANSA_USER_TABLE'), 'users')
+    user_id_col = _safe_identifier(os.environ.get('SAGANSA_USER_ID_COLUMN'), 'id')
+    user_name_col = _safe_identifier(os.environ.get('SAGANSA_USER_NAME_COLUMN'), 'name')
+    user_active_col = _safe_identifier(os.environ.get('SAGANSA_USER_ACTIVE_COLUMN'), '')
+
+    where_clauses = []
+    params = {}
+    if search:
+        where_clauses.append(f"LOWER(COALESCE(CAST(`{user_name_col}` AS CHAR), '')) LIKE :search")
+        params['search'] = f"%{str(search).strip().lower()}%"
+
+    if user_active_col:
+        where_clauses.append(f"COALESCE(`{user_active_col}`, 1) = 1")
+
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+    query = text(f"""
+        SELECT
+            CAST(`{user_id_col}` AS CHAR) AS id,
+            CAST(`{user_name_col}` AS CHAR) AS name
+        FROM `{user_table}`
+        {where_sql}
+        ORDER BY `{user_name_col}` ASC
+        LIMIT 1000
+    """)
+
+    users = []
+    with engine.connect() as conn:
+        result = conn.execute(query, params)
+        for row in result:
+            user_id = str(row.id or '').strip()
+            user_name = str(row.name or '').strip()
+            if not user_id:
+                continue
+            users.append({
+                'id': user_id,
+                'name': user_name or user_id
+            })
+    return users
+
+
+def _get_sagansa_user_map():
+    try:
+        users = _get_sagansa_users()
+    except Exception:
+        return {}
+    return {str(user.get('id')): user for user in users}
+
+
+def _sagansa_user_exists(user_id):
+    engine, error_msg = get_sagansa_engine()
+    if engine is None:
+        raise RuntimeError(error_msg or 'Sagansa DB is not configured')
+
+    user_table = _safe_identifier(os.environ.get('SAGANSA_USER_TABLE'), 'users')
+    user_id_col = _safe_identifier(os.environ.get('SAGANSA_USER_ID_COLUMN'), 'id')
+    user_active_col = _safe_identifier(os.environ.get('SAGANSA_USER_ACTIVE_COLUMN'), '')
+
+    where_active_sql = f"AND COALESCE(`{user_active_col}`, 1) = 1" if user_active_col else ''
+    query = text(f"""
+        SELECT 1
+        FROM `{user_table}`
+        WHERE CAST(`{user_id_col}` AS CHAR) = :user_id
+        {where_active_sql}
+        LIMIT 1
+    """)
+
+    with engine.connect() as conn:
+        row = conn.execute(query, {'user_id': str(user_id)}).fetchone()
+        return bool(row)
+
+
+def _ensure_payroll_employee_flags_table(conn):
+    if conn.dialect.name == 'sqlite':
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS payroll_employee_flags (
+                sagansa_user_id TEXT PRIMARY KEY,
+                is_employee INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+    else:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS payroll_employee_flags (
+                sagansa_user_id VARCHAR(128) PRIMARY KEY,
+                is_employee BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        """))
+
+
+def _get_payroll_employee_ids(conn):
+    _ensure_payroll_employee_flags_table(conn)
+    rows = conn.execute(text("""
+        SELECT CAST(sagansa_user_id AS CHAR) AS sagansa_user_id
+        FROM payroll_employee_flags
+        WHERE COALESCE(is_employee, 0) = 1
+    """)).fetchall()
+    return {str(row.sagansa_user_id or '').strip() for row in rows if str(row.sagansa_user_id or '').strip()}
+
+
+def _is_payroll_employee(conn, user_id):
+    normalized_user_id = str(user_id or '').strip()
+    if not normalized_user_id:
+        return False
+    _ensure_payroll_employee_flags_table(conn)
+    row = conn.execute(text("""
+        SELECT COALESCE(is_employee, 0) AS is_employee
+        FROM payroll_employee_flags
+        WHERE CAST(sagansa_user_id AS CHAR) = :user_id
+        LIMIT 1
+    """), {'user_id': normalized_user_id}).fetchone()
+    if not row:
+        return False
+    return _parse_bool(row.is_employee)
+
+
+def _set_payroll_employee_flag(conn, user_id, is_employee):
+    normalized_user_id = str(user_id or '').strip()
+    if not normalized_user_id:
+        raise ValueError('user_id is required')
+
+    _ensure_payroll_employee_flags_table(conn)
+    if not is_employee:
+        conn.execute(text("""
+            DELETE FROM payroll_employee_flags
+            WHERE CAST(sagansa_user_id AS CHAR) = :user_id
+        """), {'user_id': normalized_user_id})
+        return
+
+    now = datetime.now()
+    if conn.dialect.name == 'sqlite':
+        conn.execute(text("""
+            INSERT INTO payroll_employee_flags (sagansa_user_id, is_employee, created_at, updated_at)
+            VALUES (:user_id, 1, :now, :now)
+            ON CONFLICT(sagansa_user_id) DO UPDATE SET
+                is_employee = 1,
+                updated_at = :now
+        """), {'user_id': normalized_user_id, 'now': now})
+    else:
+        conn.execute(text("""
+            INSERT INTO payroll_employee_flags (sagansa_user_id, is_employee, created_at, updated_at)
+            VALUES (:user_id, TRUE, :now, :now)
+            ON DUPLICATE KEY UPDATE
+                is_employee = VALUES(is_employee),
+                updated_at = VALUES(updated_at)
+        """), {'user_id': normalized_user_id, 'now': now})
+
+
+def _normalize_year(value):
+    if value in (None, ''):
+        return datetime.now().year
+    try:
+        year = int(value)
+    except (TypeError, ValueError):
+        return None
+    if year < 1900 or year > 3000:
+        return None
+    return year
+
+
+def _normalize_month(value):
+    if value in (None, ''):
+        return None
+    try:
+        month = int(value)
+    except (TypeError, ValueError):
+        return None
+    if month < 1 or month > 12:
+        return None
+    return month
+
 @transaction_bp.route('/api/transactions', methods=['GET'])
 def get_transactions():
     engine, error_msg = get_db_engine()
@@ -126,14 +319,12 @@ def get_upload_summary():
                        MIN(t.txn_date) as start_date, 
                        MAX(t.txn_date) as end_date,
                        t.bank_code,
-                       c.name as company_name,
-                       t.company_id,
+                       COUNT(DISTINCT t.company_id) as company_count,
                        SUM(CASE WHEN t.db_cr = 'DB' THEN t.amount ELSE 0 END) as total_debit,
                        SUM(CASE WHEN t.db_cr = 'CR' THEN t.amount ELSE 0 END) as total_credit,
                        MAX(t.created_at) as last_upload
                 FROM transactions t
-                LEFT JOIN companies c ON t.company_id = c.id
-                GROUP BY t.source_file, t.bank_code, t.company_id
+                GROUP BY t.source_file, t.bank_code
                 ORDER BY last_upload DESC
             """)
             result = conn.execute(query)
@@ -156,7 +347,7 @@ def delete_by_source():
     if engine is None:
         return jsonify({'error': error_msg}), 500
     
-    data = request.json
+    data = request.json or {}
     source_file = data.get('source_file')
     bank_code = data.get('bank_code')
     company_id = data.get('company_id')
@@ -175,8 +366,6 @@ def delete_by_source():
             if company_id:
                 where_clauses.append("company_id = :company_id")
                 params["company_id"] = company_id
-            else:
-                where_clauses.append("company_id IS NULL")
                 
             query = text(f"DELETE FROM transactions WHERE {' AND '.join(where_clauses)}")
             result = conn.execute(query, params)
@@ -205,8 +394,11 @@ def get_marks():
                     d['is_asset'] = False
                 if 'is_service' not in d:
                     d['is_service'] = False
+                if 'is_salary_component' not in d:
+                    d['is_salary_component'] = False
                 d['is_asset'] = _parse_bool(d.get('is_asset'))
                 d['is_service'] = _parse_bool(d.get('is_service'))
+                d['is_salary_component'] = _parse_bool(d.get('is_salary_component'))
                 d['mappings'] = []
                 marks.append(d)
                 marks_dict[d['id']] = d
@@ -252,6 +444,7 @@ def create_mark():
                 'tax_report': data.get('tax_report', ''),
                 'is_asset': _parse_bool(data.get('is_asset', False)),
                 'is_service': _parse_bool(data.get('is_service', False)),
+                'is_salary_component': _parse_bool(data.get('is_salary_component', False)),
                 'created_at': now,
                 'updated_at': now
             }
@@ -284,13 +477,16 @@ def update_or_delete_mark(mark_id):
             mark_columns = _table_columns(conn, 'marks')
             if 'is_service' in data and 'is_service' not in mark_columns:
                 return jsonify({'error': 'Kolom is_service belum tersedia. Jalankan migrasi terbaru.'}), 400
+            if 'is_salary_component' in data and 'is_salary_component' not in mark_columns:
+                return jsonify({'error': 'Kolom is_salary_component belum tersedia. Jalankan migrasi terbaru.'}), 400
 
             field_map = {
                 'internal_report': 'internal_report',
                 'personal_use': 'personal_use',
                 'tax_report': 'tax_report',
                 'is_asset': 'is_asset',
-                'is_service': 'is_service'
+                'is_service': 'is_service',
+                'is_salary_component': 'is_salary_component'
             }
 
             params = {'id': mark_id, 'updated_at': datetime.now()}
@@ -298,7 +494,7 @@ def update_or_delete_mark(mark_id):
 
             for payload_key, column_name in field_map.items():
                 if payload_key in data and column_name in mark_columns:
-                    if payload_key in {'is_asset', 'is_service'}:
+                    if payload_key in {'is_asset', 'is_service', 'is_salary_component'}:
                         params[payload_key] = _parse_bool(data.get(payload_key))
                     else:
                         params[payload_key] = data.get(payload_key)
@@ -635,6 +831,427 @@ def update_service_transaction_tax_config(txn_id):
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/payroll/users', methods=['GET'])
+def get_payroll_users():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    search = (request.args.get('search') or '').strip()
+    employees_only = _parse_bool(request.args.get('employees_only', False))
+    try:
+        users = _get_sagansa_users(search=search or None)
+        with engine.connect() as conn:
+            employee_user_ids = _get_payroll_employee_ids(conn)
+        for user in users:
+            user['is_employee'] = user.get('id') in employee_user_ids
+        if employees_only:
+            users = [user for user in users if user.get('is_employee')]
+        return jsonify({'users': users})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/payroll/users/<user_id>/employee', methods=['PUT', 'POST', 'PATCH'])
+@transaction_bp.route('/api/payroll/users/<user_id>/employee/', methods=['PUT', 'POST', 'PATCH'])
+def update_payroll_user_employee_status(user_id):
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    normalized_user_id = str(user_id or '').strip()
+    if not normalized_user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+
+    payload = request.json or {}
+    is_employee = _parse_bool(payload.get('is_employee', False))
+
+    try:
+        if not _sagansa_user_exists(normalized_user_id):
+            return jsonify({'error': f'User Sagansa tidak ditemukan atau tidak aktif: {normalized_user_id}'}), 400
+
+        with engine.begin() as conn:
+            _set_payroll_employee_flag(conn, normalized_user_id, is_employee)
+
+        user_map = _get_sagansa_user_map()
+        return jsonify({
+            'message': 'Employee status updated successfully',
+            'user': {
+                'id': normalized_user_id,
+                'name': (user_map.get(normalized_user_id, {}).get('name') or normalized_user_id),
+                'is_employee': is_employee
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/payroll/transactions', methods=['GET'])
+def get_payroll_transactions():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    company_id = request.args.get('company_id')
+    year = _normalize_year(request.args.get('year'))
+    month = _normalize_month(request.args.get('month'))
+    search = (request.args.get('search') or '').strip().lower()
+    user_id = (request.args.get('user_id') or '').strip()
+
+    if year is None:
+        return jsonify({'error': 'year must be numeric (1900-3000)'}), 400
+    if request.args.get('month') not in (None, '') and month is None:
+        return jsonify({'error': 'month must be numeric (1-12)'}), 400
+
+    try:
+        with engine.connect() as conn:
+            mark_columns = _table_columns(conn, 'marks')
+            txn_columns = _table_columns(conn, 'transactions')
+            split_exclusion = _split_parent_exclusion_clause(conn, 't')
+
+            if 'is_salary_component' not in mark_columns:
+                return jsonify({
+                    'transactions': [],
+                    'summary': {
+                        'total_transactions': 0,
+                        'assigned_transactions': 0,
+                        'total_amount': 0.0
+                    },
+                    'message': 'Kolom is_salary_component belum tersedia. Jalankan migrasi terbaru.'
+                })
+
+            user_col_expr = "t.sagansa_user_id" if 'sagansa_user_id' in txn_columns else "NULL"
+            if conn.dialect.name == 'sqlite':
+                year_filter = "strftime('%Y', t.txn_date) = :year_str"
+                month_filter = "AND strftime('%m', t.txn_date) = :month_str" if month else ""
+                params = {
+                    'company_id': company_id,
+                    'year_str': f"{year:04d}",
+                    'month_str': f"{month:02d}" if month else None,
+                    'search': f"%{search}%" if search else None,
+                    'user_id': user_id or None
+                }
+            else:
+                year_filter = "YEAR(t.txn_date) = :year"
+                month_filter = "AND MONTH(t.txn_date) = :month" if month else ""
+                params = {
+                    'company_id': company_id,
+                    'year': year,
+                    'month': month,
+                    'search': f"%{search}%" if search else None,
+                    'user_id': user_id or None
+                }
+
+            user_filter = "AND (:user_id IS NULL OR COALESCE(CAST(t.sagansa_user_id AS CHAR), '') = :user_id)" if 'sagansa_user_id' in txn_columns else ""
+
+            query = text(f"""
+                SELECT
+                    t.id,
+                    t.txn_date,
+                    t.description,
+                    t.amount,
+                    t.db_cr,
+                    t.company_id,
+                    m.id AS mark_id,
+                    m.personal_use,
+                    m.internal_report,
+                    m.tax_report,
+                    {user_col_expr} AS sagansa_user_id,
+                    c.name AS company_name
+                FROM transactions t
+                INNER JOIN marks m ON t.mark_id = m.id
+                LEFT JOIN companies c ON t.company_id = c.id
+                WHERE COALESCE(m.is_salary_component, 0) = 1
+                  AND (:company_id IS NULL OR t.company_id = :company_id)
+                  AND {year_filter}
+                  {month_filter}
+                  {user_filter}
+                  {split_exclusion}
+                  AND (
+                      :search IS NULL
+                      OR LOWER(COALESCE(t.description, '')) LIKE :search
+                      OR LOWER(COALESCE(m.personal_use, '')) LIKE :search
+                      OR LOWER(COALESCE(m.internal_report, '')) LIKE :search
+                      OR LOWER(COALESCE(m.tax_report, '')) LIKE :search
+                  )
+                ORDER BY t.txn_date DESC, t.created_at DESC
+            """)
+            rows = conn.execute(query, params)
+
+            user_map = _get_sagansa_user_map()
+            employee_user_ids = _get_payroll_employee_ids(conn)
+            transactions = []
+            total_amount = 0.0
+            assigned_count = 0
+            for row in rows:
+                d = dict(row._mapping)
+                for key, value in d.items():
+                    if isinstance(value, datetime):
+                        d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                    elif isinstance(value, date):
+                        d[key] = value.isoformat()
+                    elif isinstance(value, Decimal):
+                        d[key] = float(value)
+
+                amount_abs = abs(float(d.get('amount') or 0.0))
+                total_amount += amount_abs
+                d['amount'] = amount_abs
+                component_name = d.get('personal_use') or d.get('internal_report') or d.get('tax_report') or '(Unnamed Salary Component)'
+                d['component_name'] = component_name
+                current_user_id = str(d.get('sagansa_user_id') or '').strip() or None
+                d['sagansa_user_id'] = current_user_id
+                d['sagansa_user_name'] = (user_map.get(current_user_id, {}).get('name') or current_user_id) if current_user_id else None
+                d['is_employee'] = bool(current_user_id and current_user_id in employee_user_ids)
+                if current_user_id:
+                    assigned_count += 1
+                transactions.append(d)
+
+        return jsonify({
+            'transactions': transactions,
+            'summary': {
+                'total_transactions': len(transactions),
+                'assigned_transactions': assigned_count,
+                'total_amount': total_amount
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/payroll/transactions/<txn_id>/assign-user', methods=['PUT'])
+def assign_payroll_user(txn_id):
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    payload = request.json or {}
+    user_id_raw = payload.get('sagansa_user_id')
+    user_id = str(user_id_raw).strip() if user_id_raw not in (None, '') else None
+
+    try:
+        with engine.begin() as conn:
+            txn_columns = _table_columns(conn, 'transactions')
+            if 'sagansa_user_id' not in txn_columns:
+                return jsonify({'error': 'Kolom sagansa_user_id belum tersedia. Jalankan migrasi terbaru.'}), 400
+
+            if user_id and not _sagansa_user_exists(user_id):
+                return jsonify({'error': f'User Sagansa tidak ditemukan atau tidak aktif: {user_id}'}), 400
+            if user_id and not _is_payroll_employee(conn, user_id):
+                return jsonify({'error': f'User Sagansa belum ditandai sebagai employee: {user_id}'}), 400
+
+            conn.execute(text("""
+                UPDATE transactions
+                SET sagansa_user_id = :sagansa_user_id,
+                    updated_at = :updated_at
+                WHERE id = :txn_id
+            """), {
+                'sagansa_user_id': user_id,
+                'updated_at': datetime.now(),
+                'txn_id': txn_id
+            })
+
+        user_map = _get_sagansa_user_map() if user_id else {}
+        return jsonify({
+            'message': 'Payroll user assigned successfully',
+            'txn_id': txn_id,
+            'sagansa_user_id': user_id,
+            'sagansa_user_name': (user_map.get(user_id, {}).get('name') or user_id) if user_id else None
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/payroll/transactions/bulk-assign-user', methods=['PUT', 'POST'])
+def bulk_assign_payroll_user():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    payload = request.json or {}
+    txn_ids_raw = payload.get('transaction_ids') or []
+    user_id_raw = payload.get('sagansa_user_id')
+    user_id = str(user_id_raw).strip() if user_id_raw not in (None, '') else None
+
+    if not isinstance(txn_ids_raw, list):
+        return jsonify({'error': 'transaction_ids must be an array'}), 400
+
+    txn_ids = []
+    seen = set()
+    for raw_id in txn_ids_raw:
+        normalized = str(raw_id or '').strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        txn_ids.append(normalized)
+
+    if not txn_ids:
+        return jsonify({'error': 'No transaction IDs provided'}), 400
+
+    try:
+        with engine.begin() as conn:
+            txn_columns = _table_columns(conn, 'transactions')
+            if 'sagansa_user_id' not in txn_columns:
+                return jsonify({'error': 'Kolom sagansa_user_id belum tersedia. Jalankan migrasi terbaru.'}), 400
+
+            if user_id and not _sagansa_user_exists(user_id):
+                return jsonify({'error': f'User Sagansa tidak ditemukan atau tidak aktif: {user_id}'}), 400
+            if user_id and not _is_payroll_employee(conn, user_id):
+                return jsonify({'error': f'User Sagansa belum ditandai sebagai employee: {user_id}'}), 400
+
+            update_query = text("""
+                UPDATE transactions
+                SET sagansa_user_id = :sagansa_user_id,
+                    updated_at = :updated_at
+                WHERE id IN :ids
+            """).bindparams(bindparam('ids', expanding=True))
+            result = conn.execute(update_query, {
+                'sagansa_user_id': user_id,
+                'updated_at': datetime.now(),
+                'ids': txn_ids
+            })
+
+        user_map = _get_sagansa_user_map() if user_id else {}
+        return jsonify({
+            'message': 'Payroll users assigned successfully',
+            'updated_count': int(result.rowcount or 0),
+            'sagansa_user_id': user_id,
+            'sagansa_user_name': (user_map.get(user_id, {}).get('name') or user_id) if user_id else None
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/payroll/monthly-summary', methods=['GET'])
+def get_payroll_monthly_summary():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    company_id = request.args.get('company_id')
+    year = _normalize_year(request.args.get('year'))
+    month = _normalize_month(request.args.get('month'))
+
+    if year is None:
+        return jsonify({'error': 'year must be numeric (1900-3000)'}), 400
+    if month is None:
+        return jsonify({'error': 'month is required and must be numeric (1-12)'}), 400
+
+    try:
+        with engine.connect() as conn:
+            mark_columns = _table_columns(conn, 'marks')
+            txn_columns = _table_columns(conn, 'transactions')
+            split_exclusion = _split_parent_exclusion_clause(conn, 't')
+
+            if 'is_salary_component' not in mark_columns:
+                return jsonify({
+                    'rows': [],
+                    'summary': {
+                        'year': year,
+                        'month': month,
+                        'employee_count': 0,
+                        'total_transactions': 0,
+                        'total_salary_amount': 0.0
+                    },
+                    'message': 'Kolom is_salary_component belum tersedia. Jalankan migrasi terbaru.'
+                })
+
+            user_col_expr = "t.sagansa_user_id" if 'sagansa_user_id' in txn_columns else "NULL"
+            if conn.dialect.name == 'sqlite':
+                period_clause = "strftime('%Y', t.txn_date) = :year_str AND strftime('%m', t.txn_date) = :month_str"
+                params = {
+                    'company_id': company_id,
+                    'year_str': f"{year:04d}",
+                    'month_str': f"{month:02d}"
+                }
+            else:
+                period_clause = "YEAR(t.txn_date) = :year AND MONTH(t.txn_date) = :month"
+                params = {
+                    'company_id': company_id,
+                    'year': year,
+                    'month': month
+                }
+
+            query = text(f"""
+                SELECT
+                    t.id,
+                    t.amount,
+                    {user_col_expr} AS sagansa_user_id,
+                    m.personal_use,
+                    m.internal_report,
+                    m.tax_report
+                FROM transactions t
+                INNER JOIN marks m ON t.mark_id = m.id
+                WHERE COALESCE(m.is_salary_component, 0) = 1
+                  AND {period_clause}
+                  AND (:company_id IS NULL OR t.company_id = :company_id)
+                  {split_exclusion}
+            """)
+            result = conn.execute(query, params)
+
+            user_map = _get_sagansa_user_map()
+            grouped = {}
+            component_totals = {}
+            total_transactions = 0
+            total_salary_amount = 0.0
+
+            for row in result:
+                total_transactions += 1
+                amount = abs(float(row.amount or 0.0))
+                total_salary_amount += amount
+
+                user_id = str(row.sagansa_user_id or '').strip() or None
+                group_key = user_id or '__unassigned__'
+                if group_key not in grouped:
+                    grouped[group_key] = {
+                        'sagansa_user_id': user_id,
+                        'sagansa_user_name': (user_map.get(user_id, {}).get('name') or user_id) if user_id else 'Unassigned',
+                        'total_amount': 0.0,
+                        'transaction_count': 0,
+                        'components': {}
+                    }
+
+                component_name = row.personal_use or row.internal_report or row.tax_report or '(Unnamed Salary Component)'
+                grouped[group_key]['total_amount'] += amount
+                grouped[group_key]['transaction_count'] += 1
+                grouped[group_key]['components'][component_name] = grouped[group_key]['components'].get(component_name, 0.0) + amount
+                component_totals[component_name] = component_totals.get(component_name, 0.0) + amount
+
+            rows = []
+            for _, user_row in grouped.items():
+                components = [
+                    {'component_name': name, 'amount': value}
+                    for name, value in sorted(user_row['components'].items(), key=lambda item: item[1], reverse=True)
+                ]
+                rows.append({
+                    'sagansa_user_id': user_row['sagansa_user_id'],
+                    'sagansa_user_name': user_row['sagansa_user_name'],
+                    'total_amount': user_row['total_amount'],
+                    'transaction_count': user_row['transaction_count'],
+                    'components': components
+                })
+
+            rows.sort(key=lambda item: item.get('total_amount', 0), reverse=True)
+            component_totals_rows = [
+                {'component_name': name, 'amount': value}
+                for name, value in sorted(component_totals.items(), key=lambda item: item[1], reverse=True)
+            ]
+
+        return jsonify({
+            'rows': rows,
+            'component_totals': component_totals_rows,
+            'summary': {
+                'year': year,
+                'month': month,
+                'employee_count': len(rows),
+                'total_transactions': total_transactions,
+                'total_salary_amount': total_salary_amount
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @transaction_bp.route('/api/transactions/<txn_id>/assign-company', methods=['POST'])
 def assign_company_transaction(txn_id):

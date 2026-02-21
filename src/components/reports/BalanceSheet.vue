@@ -63,7 +63,7 @@
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-blue-700">
                       <div class="flex items-center justify-end gap-2">
-                        <span>{{ formatCurrency(item.amount) }}</span>
+                        <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
                           @click.stop="copyToClipboard(item.amount)"
                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity"
@@ -109,7 +109,7 @@
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-indigo-700">
                       <div class="flex items-center justify-end gap-2">
-                        <span>{{ formatCurrency(item.amount) }}</span>
+                        <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
                           @click.stop="copyToClipboard(item.amount)"
                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
@@ -171,7 +171,7 @@
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-orange-700">
                       <div class="flex items-center justify-end gap-2">
-                        <span>{{ formatCurrency(item.amount) }}</span>
+                        <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
                           @click.stop="copyToClipboard(item.amount)"
                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-orange-600 transition-opacity"
@@ -217,7 +217,7 @@
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-red-700">
                       <div class="flex items-center justify-end gap-2">
-                        <span>{{ formatCurrency(item.amount) }}</span>
+                        <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
                           @click.stop="copyToClipboard(item.amount)"
                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition-opacity"
@@ -268,7 +268,7 @@
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-green-700">
                       <div class="flex items-center justify-end gap-2">
-                        <span>{{ formatCurrency(item.amount) }}</span>
+                        <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
                           @click.stop="copyToClipboard(item.amount)"
                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-green-600 transition-opacity"
