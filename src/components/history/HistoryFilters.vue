@@ -1,7 +1,8 @@
 <template>
-  <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 items-end">
+  <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-12 gap-3 items-end">
     <!-- Year -->
-    <div class="space-y-1">
+    <div class="space-y-1 xl:col-span-1">
       <label class="label-base text-[10px]">Year</label>
       <select 
         class="input-base !py-1.5 !text-xs" 
@@ -13,8 +14,30 @@
       </select>
     </div>
 
+    <!-- Date Start -->
+    <div class="space-y-1 xl:col-span-2">
+      <label class="label-base text-[10px]">Start Date</label>
+      <input
+        type="date"
+        class="input-base !py-1.5 !text-xs"
+        :value="store.filters.dateStart"
+        @input="store.setFilter('dateStart', $event.target.value)"
+      >
+    </div>
+
+    <!-- Date End -->
+    <div class="space-y-1 xl:col-span-2">
+      <label class="label-base text-[10px]">End Date</label>
+      <input
+        type="date"
+        class="input-base !py-1.5 !text-xs"
+        :value="store.filters.dateEnd"
+        @input="store.setFilter('dateEnd', $event.target.value)"
+      >
+    </div>
+
     <!-- Bank -->
-    <div class="space-y-1">
+    <div class="space-y-1 xl:col-span-1">
         <label class="label-base text-[10px]">Bank</label>
         <select class="input-base !py-1.5 !text-xs"
              :value="store.filters.bank"
@@ -33,7 +56,7 @@
     </div>
 
     <!-- Type -->
-    <div class="space-y-1">
+    <div class="space-y-1 xl:col-span-1">
         <label class="label-base text-[10px]">Type</label>
         <select class="input-base !py-1.5 !text-xs"
              :value="store.filters.dbCr"
@@ -46,7 +69,7 @@
     </div>
 
     <!-- Min Amount -->
-    <div class="space-y-1">
+    <div class="space-y-1 xl:col-span-1">
         <label class="label-base text-[10px]">Min Amount</label>
         <input 
             type="number" 
@@ -58,7 +81,7 @@
     </div>
 
     <!-- Max Amount -->
-    <div class="space-y-1">
+    <div class="space-y-1 xl:col-span-1">
         <label class="label-base text-[10px]">Max Amount</label>
         <input 
             type="number" 
@@ -70,7 +93,7 @@
     </div>
 
     <!-- Mark Status -->
-    <div class="space-y-1">
+    <div class="space-y-1 xl:col-span-2">
         <label class="label-base text-[10px]">Mark Status</label>
         <MultiSelect 
             :model-value="store.filters.markStatus"
@@ -81,7 +104,7 @@
     </div>
 
     <!-- Company -->
-    <div class="space-y-1">
+    <div class="space-y-1 xl:col-span-2">
         <label class="label-base text-[10px]">Company</label>
         <select class="input-base !py-1.5 !text-xs"
              :value="store.filters.company"
@@ -95,7 +118,7 @@
     </div>
 
     <!-- COA Filter -->
-    <div class="space-y-1">
+    <div class="space-y-1 xl:col-span-2">
         <label class="label-base text-[10px]">COA</label>
         <MultiSelect
             :model-value="store.filters.coaIds"
@@ -106,7 +129,7 @@
     </div>
 
     <!-- Search -->
-    <div class="space-y-1">
+    <div class="space-y-1 xl:col-span-2">
       <label class="label-base text-[10px]">Search</label>
       <div class="relative">
         <span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400">
@@ -123,10 +146,11 @@
     </div>
     
     <!-- Reset -->
-    <div class="flex items-end">
+    <div class="flex items-end xl:col-span-1">
       <button class="w-full btn-secondary !py-2 !text-xs" @click="store.resetFilters">
         <i class="bi bi-x-circle me-1"></i> Reset
       </button>
+    </div>
     </div>
   </div>
 </template>

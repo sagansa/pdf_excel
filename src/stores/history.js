@@ -1,6 +1,26 @@
 import { defineStore } from 'pinia';
 import { historyApi, companyApi, marksApi, filterApi, coaApi } from '../api';
 
+const normalizeDbCr = (value) => {
+    const raw = String(value || '').trim().toUpperCase();
+    if (!raw) return '';
+
+    if (raw === 'CR' || raw === 'CREDIT' || raw === 'KREDIT' || raw === 'K') {
+        return 'CR';
+    }
+    if (raw === 'DB' || raw === 'DEBIT' || raw === 'D' || raw === 'DE') {
+        return 'DB';
+    }
+    if (raw.startsWith('CR') || raw.includes('CREDIT') || raw.startsWith('K')) {
+        return 'CR';
+    }
+    if (raw.startsWith('DB') || raw.startsWith('DE') || raw.includes('DEBIT')) {
+        return 'DB';
+    }
+
+    return '';
+};
+
 export const useHistoryStore = defineStore('history', {
   state: () => ({
     allTransactions: [],
@@ -44,6 +64,7 @@ export const useHistoryStore = defineStore('history', {
        let result = [...state.allTransactions];
         const { year, dateStart, dateEnd, bank, company, markStatus, coaIds, search, dbCr, amountMin, amountMax } = state.filters;
        const searchLower = (search || '').toLowerCase();
+       const selectedDbCr = normalizeDbCr(dbCr);
 
         result = result.filter(t => {
             const txnDate = t.txn_date ? t.txn_date.split(' ')[0] : '';
@@ -63,19 +84,34 @@ export const useHistoryStore = defineStore('history', {
             if (markStatus && markStatus.length > 0) {
                 const hasUnmarked = markStatus.includes('unmarked');
                 const hasMarked = markStatus.includes('marked');
-                const specificMarks = markStatus.filter(m => m !== 'marked' && m !== 'unmarked');
+                const specificMarks = markStatus
+                    .filter(m => m !== 'marked' && m !== 'unmarked')
+                    .map(m => String(m));
+
+                const txnMarkId = t.mark_id ? String(t.mark_id) : '';
+                // Keep filter behavior identical to table renderer (HistoryTable uses v-if="!t.is_split")
+                const isMixedMark = Boolean(t.is_split);
+                const isUnmarkedTxn = !txnMarkId && !isMixedMark;
+                const isMarkedTxn = Boolean(txnMarkId) || isMixedMark;
 
                 let matches = false;
 
-                // Check if transaction matches any selected mark criteria
-                if (hasUnmarked && !t.mark_id) {
-                    matches = true;
-                }
-                if (hasMarked && t.mark_id) {
-                    matches = true;
-                }
-                if (specificMarks.length > 0 && t.mark_id && specificMarks.includes(t.mark_id)) {
-                    matches = true;
+                // Exclusive modes should still continue evaluating other filters (search, amount, etc).
+                if (hasUnmarked && !hasMarked && specificMarks.length === 0) {
+                    matches = isUnmarkedTxn;
+                } else if (hasMarked && !hasUnmarked && specificMarks.length === 0) {
+                    matches = isMarkedTxn;
+                } else {
+                    // Check if transaction matches any selected mark criteria
+                    if (hasUnmarked && isUnmarkedTxn) {
+                        matches = true;
+                    }
+                    if (hasMarked && isMarkedTxn) {
+                        matches = true;
+                    }
+                    if (specificMarks.length > 0 && txnMarkId && specificMarks.includes(txnMarkId)) {
+                        matches = true;
+                    }
                 }
 
                 if (!matches) return false;
@@ -87,7 +123,10 @@ export const useHistoryStore = defineStore('history', {
             }
 
             // Type Filter (DB/CR)
-            if (dbCr && t.db_cr !== dbCr) return false;
+            if (selectedDbCr) {
+                const txnDbCr = normalizeDbCr(t.db_cr);
+                if (txnDbCr !== selectedDbCr) return false;
+            }
 
             // Amount Filter
             if ((amountMin !== null && amountMin !== '') || (amountMax !== null && amountMax !== '')) {
@@ -196,7 +235,7 @@ export const useHistoryStore = defineStore('history', {
         if (!this.filteredTransactions) return 0;
         return this.filteredTransactions.reduce((acc, t) => {
             const amt = Number(t.amount) || 0;
-            return t.db_cr === 'CR' ? acc + amt : acc - amt;
+            return normalizeDbCr(t.db_cr) === 'CR' ? acc + amt : acc - amt;
         }, 0);
     },
 
@@ -204,7 +243,7 @@ export const useHistoryStore = defineStore('history', {
         if (!this.filteredTransactions) return 0;
         return this.filteredTransactions.reduce((acc, t) => {
             const amt = Number(t.amount) || 0;
-            return t.db_cr === 'DB' ? acc + amt : acc;
+            return normalizeDbCr(t.db_cr) === 'DB' ? acc + amt : acc;
         }, 0);
     },
 
@@ -212,7 +251,7 @@ export const useHistoryStore = defineStore('history', {
         if (!this.filteredTransactions) return 0;
         return this.filteredTransactions.reduce((acc, t) => {
             const amt = Number(t.amount) || 0;
-            return t.db_cr === 'CR' ? acc + amt : acc;
+            return normalizeDbCr(t.db_cr) === 'CR' ? acc + amt : acc;
         }, 0);
     },
 
@@ -220,7 +259,7 @@ export const useHistoryStore = defineStore('history', {
         if (!this.paginatedTransactions) return 0;
         return this.paginatedTransactions.reduce((acc, t) => {
             const amt = Number(t.amount) || 0;
-            return t.db_cr === 'CR' ? acc + amt : acc - amt;
+            return normalizeDbCr(t.db_cr) === 'CR' ? acc + amt : acc - amt;
         }, 0);
     },
 
@@ -228,7 +267,7 @@ export const useHistoryStore = defineStore('history', {
         if (!this.paginatedTransactions) return 0;
         return this.paginatedTransactions.reduce((acc, t) => {
             const amt = Number(t.amount) || 0;
-            return t.db_cr === 'DB' ? acc + amt : acc;
+            return normalizeDbCr(t.db_cr) === 'DB' ? acc + amt : acc;
         }, 0);
     },
 
@@ -236,7 +275,7 @@ export const useHistoryStore = defineStore('history', {
         if (!this.paginatedTransactions) return 0;
         return this.paginatedTransactions.reduce((acc, t) => {
             const amt = Number(t.amount) || 0;
-            return t.db_cr === 'CR' ? acc + amt : acc;
+            return normalizeDbCr(t.db_cr) === 'CR' ? acc + amt : acc;
         }, 0);
     }
   },
@@ -269,8 +308,9 @@ export const useHistoryStore = defineStore('history', {
         // Get all parent IDs of split transactions
         const parentIds = new Set();
         for (const txn of transactions) {
-          if (txn.parent_id) {
-            parentIds.add(txn.parent_id);
+          const parentId = String(txn.parent_id || '').trim();
+          if (parentId) {
+            parentIds.add(parentId);
           }
         }
         
@@ -278,7 +318,12 @@ export const useHistoryStore = defineStore('history', {
         
         // Mark transactions that have children
         for (const txn of transactions) {
-          txn.is_split = parentIds.has(txn.id);
+          const txnId = String(txn.id || '').trim();
+          txn.is_split = txnId ? parentIds.has(txnId) : false;
+          const normalizedDbCr = normalizeDbCr(txn.db_cr);
+          if (normalizedDbCr) {
+            txn.db_cr = normalizedDbCr;
+          }
         }
         
         // Debug: Check a few transactions that should be marked as split

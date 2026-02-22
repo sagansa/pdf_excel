@@ -78,6 +78,46 @@ def _normalize_iso_date(value):
     return None
 
 
+def _normalize_month_start(value):
+    if value in (None, ''):
+        return None
+    if isinstance(value, datetime):
+        dt = value.date().replace(day=1)
+        return dt.isoformat()
+    if isinstance(value, date):
+        dt = value.replace(day=1)
+        return dt.isoformat()
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        for fmt in ('%Y-%m', '%Y-%m-%d'):
+            try:
+                dt = datetime.strptime(raw[:10], fmt).date().replace(day=1)
+                return dt.isoformat()
+            except ValueError:
+                continue
+    return None
+
+
+def _normalize_db_cr(value, default='DB'):
+    raw = str(value or '').strip().upper()
+    if not raw:
+        return default
+
+    if raw in {'CR', 'CREDIT', 'KREDIT', 'K'}:
+        return 'CR'
+    if raw in {'DB', 'DEBIT', 'D', 'DE'}:
+        return 'DB'
+
+    if raw.startswith('CR') or 'CREDIT' in raw or raw.startswith('K'):
+        return 'CR'
+    if raw.startswith('DB') or raw.startswith('DE') or 'DEBIT' in raw:
+        return 'DB'
+
+    return default
+
+
 def _split_parent_exclusion_clause(conn, alias='t'):
     txn_columns = _table_columns(conn, 'transactions')
     if 'parent_id' not in txn_columns:
@@ -300,6 +340,7 @@ def get_transactions():
                         d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
                     elif isinstance(value, Decimal):
                         d[key] = float(value)
+                d['db_cr'] = _normalize_db_cr(d.get('db_cr'))
                 transactions.append(d)
             return jsonify({'transactions': transactions})
     except Exception as e:
@@ -542,6 +583,91 @@ def assign_mark_transaction(txn_id):
             query = text("UPDATE transactions SET mark_id = :mark_id, updated_at = :updated_at WHERE id = :id")
             conn.execute(query, {'id': txn_id, 'mark_id': mark_id, 'updated_at': now})
             return jsonify({'message': 'Transaction marked successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/transactions/<txn_id>/amortization-group', methods=['PUT', 'PATCH', 'POST'])
+def update_transaction_amortization_group(txn_id):
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    payload = request.json or {}
+    asset_group_id_raw = payload.get('asset_group_id')
+    asset_group_id = str(asset_group_id_raw).strip() if asset_group_id_raw not in (None, '') else None
+    is_amortizable = _parse_bool(payload.get('is_amortizable', True))
+    use_half_rate = _parse_bool(payload.get('use_half_rate', False))
+    amortization_start_date = _normalize_iso_date(payload.get('amortization_start_date'))
+    amortization_notes = payload.get('amortization_notes')
+    if amortization_notes is not None:
+        amortization_notes = str(amortization_notes).strip()
+    if amortization_notes == '':
+        amortization_notes = None
+
+    useful_life_raw = payload.get('amortization_useful_life')
+    amortization_useful_life = None
+    if useful_life_raw not in (None, ''):
+        try:
+            amortization_useful_life = int(useful_life_raw)
+            if amortization_useful_life <= 0:
+                return jsonify({'error': 'amortization_useful_life must be greater than 0'}), 400
+        except (TypeError, ValueError):
+            return jsonify({'error': 'amortization_useful_life must be numeric'}), 400
+
+    try:
+        with engine.begin() as conn:
+            txn_columns = _table_columns(conn, 'transactions')
+
+            required_columns = {'amortization_asset_group_id', 'is_amortizable', 'use_half_rate', 'amortization_start_date'}
+            if not required_columns.issubset(txn_columns):
+                return jsonify({
+                    'error': 'Kolom amortization di transactions belum lengkap. Jalankan migrasi amortization terbaru.'
+                }), 400
+
+            set_fields = [
+                "amortization_asset_group_id = :asset_group_id",
+                "is_amortizable = :is_amortizable",
+                "use_half_rate = :use_half_rate",
+                "amortization_start_date = :amortization_start_date"
+            ]
+            params = {
+                'txn_id': txn_id,
+                'asset_group_id': asset_group_id,
+                'is_amortizable': is_amortizable,
+                'use_half_rate': use_half_rate,
+                'amortization_start_date': amortization_start_date
+            }
+
+            if 'amortization_useful_life' in txn_columns:
+                set_fields.append("amortization_useful_life = :amortization_useful_life")
+                params['amortization_useful_life'] = amortization_useful_life
+            if 'amortization_notes' in txn_columns:
+                set_fields.append("amortization_notes = :amortization_notes")
+                params['amortization_notes'] = amortization_notes
+            if 'updated_at' in txn_columns:
+                set_fields.append("updated_at = :updated_at")
+                params['updated_at'] = datetime.now()
+
+            query = text(f"""
+                UPDATE transactions
+                SET {', '.join(set_fields)}
+                WHERE id = :txn_id
+            """)
+            result = conn.execute(query, params)
+            if int(result.rowcount or 0) == 0:
+                return jsonify({'error': 'Transaction not found'}), 404
+
+        return jsonify({
+            'message': 'Transaction amortization group updated successfully',
+            'transaction_id': txn_id,
+            'asset_group_id': asset_group_id,
+            'is_amortizable': is_amortizable,
+            'use_half_rate': use_half_rate,
+            'amortization_start_date': amortization_start_date,
+            'amortization_useful_life': amortization_useful_life,
+            'amortization_notes': amortization_notes
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -923,9 +1049,12 @@ def get_payroll_transactions():
                 })
 
             user_col_expr = "t.sagansa_user_id" if 'sagansa_user_id' in txn_columns else "NULL"
+            period_col_expr = "t.payroll_period_month" if 'payroll_period_month' in txn_columns else "NULL"
             if conn.dialect.name == 'sqlite':
-                year_filter = "strftime('%Y', t.txn_date) = :year_str"
-                month_filter = "AND strftime('%m', t.txn_date) = :month_str" if month else ""
+                effective_date_expr = "COALESCE(t.payroll_period_month, t.txn_date)" if 'payroll_period_month' in txn_columns else "t.txn_date"
+                year_filter = f"strftime('%Y', {effective_date_expr}) = :year_str"
+                month_filter = f"AND strftime('%m', {effective_date_expr}) = :month_str" if month else ""
+                effective_period_expr = f"strftime('%Y-%m', {effective_date_expr})"
                 params = {
                     'company_id': company_id,
                     'year_str': f"{year:04d}",
@@ -934,8 +1063,10 @@ def get_payroll_transactions():
                     'user_id': user_id or None
                 }
             else:
-                year_filter = "YEAR(t.txn_date) = :year"
-                month_filter = "AND MONTH(t.txn_date) = :month" if month else ""
+                effective_date_expr = "COALESCE(t.payroll_period_month, t.txn_date)" if 'payroll_period_month' in txn_columns else "t.txn_date"
+                year_filter = f"YEAR({effective_date_expr}) = :year"
+                month_filter = f"AND MONTH({effective_date_expr}) = :month" if month else ""
+                effective_period_expr = f"DATE_FORMAT({effective_date_expr}, '%Y-%m')"
                 params = {
                     'company_id': company_id,
                     'year': year,
@@ -958,6 +1089,8 @@ def get_payroll_transactions():
                     m.personal_use,
                     m.internal_report,
                     m.tax_report,
+                    {period_col_expr} AS payroll_period_month,
+                    {effective_period_expr} AS effective_payroll_period,
                     {user_col_expr} AS sagansa_user_id,
                     c.name AS company_name
                 FROM transactions t
@@ -1004,6 +1137,8 @@ def get_payroll_transactions():
                 d['sagansa_user_id'] = current_user_id
                 d['sagansa_user_name'] = (user_map.get(current_user_id, {}).get('name') or current_user_id) if current_user_id else None
                 d['is_employee'] = bool(current_user_id and current_user_id in employee_user_ids)
+                d['payroll_period_month'] = _normalize_month_start(d.get('payroll_period_month'))
+                d['effective_payroll_period'] = str(d.get('effective_payroll_period') or '').strip() or None
                 if current_user_id:
                     assigned_count += 1
                 transactions.append(d)
@@ -1058,6 +1193,47 @@ def assign_payroll_user(txn_id):
             'txn_id': txn_id,
             'sagansa_user_id': user_id,
             'sagansa_user_name': (user_map.get(user_id, {}).get('name') or user_id) if user_id else None
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/payroll/transactions/<txn_id>/period-month', methods=['PUT'])
+def update_payroll_transaction_period_month(txn_id):
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    payload = request.json or {}
+    month_raw = payload.get('payroll_period_month')
+    month_value = _normalize_month_start(month_raw) if month_raw not in (None, '') else None
+
+    if month_raw not in (None, '') and not month_value:
+        return jsonify({'error': 'payroll_period_month harus format YYYY-MM atau YYYY-MM-DD'}), 400
+
+    try:
+        with engine.begin() as conn:
+            txn_columns = _table_columns(conn, 'transactions')
+            if 'payroll_period_month' not in txn_columns:
+                return jsonify({'error': 'Kolom payroll_period_month belum tersedia. Jalankan migrasi terbaru.'}), 400
+
+            conn.execute(text("""
+                UPDATE transactions
+                SET payroll_period_month = :payroll_period_month,
+                    updated_at = :updated_at
+                WHERE id = :txn_id
+            """), {
+                'payroll_period_month': month_value,
+                'updated_at': datetime.now(),
+                'txn_id': txn_id
+            })
+
+        effective_period = (month_value or '')[:7] if month_value else None
+        return jsonify({
+            'message': 'Payroll period month updated successfully',
+            'txn_id': txn_id,
+            'payroll_period_month': month_value,
+            'effective_payroll_period': effective_period
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1135,8 +1311,8 @@ def get_payroll_monthly_summary():
 
     if year is None:
         return jsonify({'error': 'year must be numeric (1900-3000)'}), 400
-    if month is None:
-        return jsonify({'error': 'month is required and must be numeric (1-12)'}), 400
+    if request.args.get('month') not in (None, '') and month is None:
+        return jsonify({'error': 'month must be numeric (1-12)'}), 400
 
     try:
         with engine.connect() as conn:
@@ -1158,15 +1334,20 @@ def get_payroll_monthly_summary():
                 })
 
             user_col_expr = "t.sagansa_user_id" if 'sagansa_user_id' in txn_columns else "NULL"
+            effective_date_expr = "COALESCE(t.payroll_period_month, t.txn_date)" if 'payroll_period_month' in txn_columns else "t.txn_date"
             if conn.dialect.name == 'sqlite':
-                period_clause = "strftime('%Y', t.txn_date) = :year_str AND strftime('%m', t.txn_date) = :month_str"
+                period_clause = f"strftime('%Y', {effective_date_expr}) = :year_str"
+                if month:
+                    period_clause += f" AND strftime('%m', {effective_date_expr}) = :month_str"
                 params = {
                     'company_id': company_id,
                     'year_str': f"{year:04d}",
                     'month_str': f"{month:02d}"
                 }
             else:
-                period_clause = "YEAR(t.txn_date) = :year AND MONTH(t.txn_date) = :month"
+                period_clause = f"YEAR({effective_date_expr}) = :year"
+                if month:
+                    period_clause += f" AND MONTH({effective_date_expr}) = :month"
                 params = {
                     'company_id': company_id,
                     'year': year,
@@ -1693,7 +1874,7 @@ def save_transaction_splits(txn_id):
                     'description': split.get('description', ''),
                     'amount': split.get('amount', 0),
                     # Keep DB/CR consistent with parent unless explicitly provided.
-                    'db_cr': split.get('db_cr') or parent_data.get('db_cr') or 'DB',
+                    'db_cr': _normalize_db_cr(split.get('db_cr') or parent_data.get('db_cr') or 'DB'),
                     'txn_date': parent_data.get('txn_date'),
                     'mark_id': split.get('mark_id'),
                     'notes': split.get('notes', ''),

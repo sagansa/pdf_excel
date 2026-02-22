@@ -1,10 +1,10 @@
 <template>
   <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
     <!-- Main Table -->
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto overflow-y-visible">
       <table class="min-w-full divide-y divide-gray-200 table-compact">
         <thead>
-          <tr>
+          <tr class="bg-white">
             <th class="w-10 text-center">
                 <input 
                     type="checkbox" 
@@ -75,17 +75,14 @@
                   </td>
                   <td class="min-w-[150px]" @click.stop>
                       <div class="flex items-center gap-2">
-                          <select
+                          <SearchableSelect
                               v-if="!t.is_split"
-                              class="text-xs border-transparent bg-transparent hover:border-gray-300 hover:bg-white rounded-md p-1 w-full focus:ring-indigo-500 transition-all flex-1"
-                              :value="t.mark_id || ''"
-                              @change="store.assignMark(t.id, $event.target.value || null)"
-                          >
-                              <option value="">-- Unmarked --</option>
-                              <option v-for="m in store.sortedMarks" :key="m.id" :value="m.id">
-                                  {{ m.internal_report || m.personal_use || 'Marked' }}
-                              </option>
-                          </select>
+                              class="w-full flex-1"
+                              :model-value="t.mark_id || ''"
+                              :options="markOptions"
+                              placeholder="-- Unmarked --"
+                              @update:model-value="onMarkSelected(t.id, $event)"
+                          />
                           <div v-else class="text-[10px] text-indigo-700 font-bold px-2 py-1 bg-indigo-50 rounded-md flex-1 flex items-center gap-1.5 border border-indigo-100">
                              <i class="bi bi-stack"></i>
                              Mixed Marks
@@ -240,6 +237,7 @@
 import { ref, computed, watch } from 'vue';
 import { useHistoryStore } from '../../stores/history';
 import ConfirmModal from '../ui/ConfirmModal.vue';
+import SearchableSelect from '../ui/SearchableSelect.vue';
 
 const store = useHistoryStore();
 const emit = defineEmits(['view-details', 'split-transaction']);
@@ -315,12 +313,28 @@ const visiblePages = computed(() => {
     return rangeWithDots;
 });
 
+const markOptions = computed(() => {
+    const options = [{ id: '__UNMARKED__', label: '-- Unmarked --' }];
+    for (const m of store.sortedMarks || []) {
+        options.push({
+            id: m.id,
+            label: m.internal_report || m.personal_use || 'Marked'
+        });
+    }
+    return options;
+});
+
 const toggleSelectAll = () => {
     if (isAllSelected.value) {
         store.deselectAll();
     } else {
         store.selectAll();
     }
+};
+
+const onMarkSelected = (txnId, selectedValue) => {
+    const normalized = selectedValue === '__UNMARKED__' ? null : (selectedValue || null);
+    store.assignMark(txnId, normalized);
 };
 
 // Utils

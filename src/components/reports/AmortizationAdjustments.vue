@@ -42,7 +42,7 @@
                 <th
                   class="px-4 py-3 text-left text-xs font-medium text-indigo-700 uppercase min-w-[120px]"
                 >
-                  Type / Group
+                  Group / Deductible
                 </th>
                 <th
                   class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
@@ -94,17 +94,17 @@
                   <div class="flex flex-col gap-0.5 max-w-[250px]">
                     <!-- Notes as Main Title (Bold) if exists -->
                     <div
-                      v-if="item.amortization_notes"
+                      v-if="item.notes || item.amortization_notes"
                       class="text-sm font-bold text-slate-800 break-words leading-tight"
                     >
-                      {{ item.amortization_notes }}
+                      {{ item.notes || item.amortization_notes }}
                     </div>
                     <!-- Description/Asset Name as Subtitle (Italic) -->
                     <div
                       class="text-xs text-slate-500 italic break-words leading-tight"
                       :class="{
                         'font-semibold text-slate-700 not-italic text-sm':
-                          !item.amortization_notes,
+                          !(item.notes || item.amortization_notes),
                       }"
                     >
                       {{ item.asset_name }}
@@ -114,10 +114,10 @@
                 <td class="px-4 py-3">
                   <div class="flex flex-col">
                     <span class="text-xs font-medium text-slate-700">{{
-                      item.group
+                      getCalculatedGroupLabel(item)
                     }}</span>
                     <span class="text-[10px] text-slate-500">{{
-                      item.rate_type
+                      getDeductibleLabel(item)
                     }}</span>
                   </div>
                 </td>
@@ -303,7 +303,7 @@
                 <th
                   class="px-4 py-3 text-left text-xs font-medium text-indigo-700 uppercase min-w-[120px]"
                 >
-                  Type / Group
+                  Group / Deductible
                 </th>
                 <th
                   class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
@@ -390,9 +390,7 @@
                         getGroupName(item.asset_group_id)
                       }}</span>
                       <span class="text-[10px] text-slate-500">{{
-                        item.use_half_rate
-                          ? "50% Deductible"
-                          : "100% Deductible"
+                        getDeductibleLabel(item)
                       }}</span>
                     </template>
                     <template v-else>
@@ -837,7 +835,7 @@
               >Notes</label
             >
             <p class="text-sm text-gray-900 italic">
-              {{ selectedTransaction.txn_notes || "-" }}
+              {{ selectedTransaction.notes || selectedTransaction.amortization_notes || "-" }}
             </p>
           </div>
 
@@ -853,7 +851,7 @@
                     >Asset Group</label
                   >
                   <select
-                    v-model="selectedTransaction.amortization_asset_group_id"
+                    v-model="selectedTransaction.asset_group_id"
                     class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                   >
                     <option value="">Select Group...</option>
@@ -892,7 +890,7 @@
                 >
                 <input
                   type="date"
-                  v-model="selectedTransaction.start_date"
+                  v-model="selectedTransaction.amortization_start_date"
                   class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                 />
               </div>
@@ -902,7 +900,7 @@
                   >Notes</label
                 >
                 <textarea
-                  v-model="selectedTransaction.amortization_notes"
+                  v-model="selectedTransaction.notes"
                   rows="2"
                   class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                   placeholder="Additional notes about amortization..."
@@ -922,12 +920,7 @@
             Cancel
           </button>
           <button
-            @click="
-              () => {
-                updateTransactionGroup(selectedTransaction);
-                closeTransactionDetailModal();
-              }
-            "
+            @click="saveSelectedTransactionGroup"
             class="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-lg font-medium text-sm transition-all"
           >
             Save Changes
@@ -944,8 +937,7 @@ import { useReportsStore } from "../../stores/reports";
 import { useCoaStore } from "../../stores/coa";
 import { useAmortizationStore } from "../../stores/amortization";
 import { useMarksStore } from "../../stores/marks";
-import { reportsApi, marksApi } from "../../api/index";
-import axios from "axios";
+import { reportsApi, marksApi, historyApi } from "../../api/index";
 
 const props = defineProps({
   companyId: {
@@ -1333,13 +1325,45 @@ const getAssetTypeLabel = (type) => {
   return labels[type] || type;
 };
 
+const toBool = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return ["1", "true", "yes", "y", "on"].includes(normalized);
+  }
+  return false;
+};
+
+const getDeductibleLabel = (item) => {
+  return toBool(item?.use_half_rate) ? "50%" : "100%";
+};
+
+const getCalculatedGroupLabel = (item) => {
+  const typeLabel = getAssetTypeLabel(item?.asset_type || "Tangible");
+  const groupName = String(item?.group_name || item?.mark_name || "").trim();
+  const usefulLife = Number(item?.useful_life_years || 0);
+
+  if (groupName) {
+    if (Number.isFinite(usefulLife) && usefulLife > 0) {
+      return `${typeLabel} - ${groupName} (${Math.round(usefulLife)} tahun)`;
+    }
+    return `${typeLabel} - ${groupName}`;
+  }
+
+  if (item?.group) return String(item.group);
+  return typeLabel;
+};
+
 const getGroupName = (groupId) => {
   if (!groupId) return "";
   const group = assetGroups.value.find((g) => g.id === groupId);
   if (!group) return "Unknown Group";
-  return group.tarif_rate
-    ? `${group.group_name} (${group.tarif_rate}%)`
-    : group.group_name;
+  const typeLabel = getAssetTypeLabel(group.asset_type || "Tangible");
+  const groupName = group.group_name || "Unknown Group";
+  return group.useful_life_years
+    ? `${typeLabel} - ${groupName} (${group.useful_life_years} tahun)`
+    : `${typeLabel} - ${groupName}`;
 };
 
 // Fetch asset groups for dropdown
@@ -1356,19 +1380,39 @@ const fetchAssetGroups = async () => {
 // Update transaction asset group
 const updateTransactionGroup = async (item) => {
   try {
-    await axios.put(`/api/transactions/${item.id}/amortization-group`, {
-      asset_group_id: item.amortization_asset_group_id || null,
+    const txnId = item?.asset_id || item?.id;
+    if (!txnId) {
+      alert("Failed to update transaction group: Transaction ID is missing");
+      return false;
+    }
+
+    await historyApi.updateTransactionAmortizationGroup(txnId, {
+      asset_group_id: item.asset_group_id || item.amortization_asset_group_id || null,
       is_amortizable: true,
-      use_half_rate: item.use_half_rate || false,
-      amortization_start_date: item.start_date || null,
+      use_half_rate: Boolean(item.use_half_rate),
+      amortization_start_date: item.amortization_start_date || item.start_date || null,
       amortization_useful_life: item.useful_life_years || null,
-      amortization_notes: item.amortization_notes || "",
+      amortization_notes: item.notes || item.amortization_notes || "",
     });
     emit("saved");
-    fetchData(); // Refresh to recalculate
+    await fetchData(); // Refresh to recalculate
+    return true;
   } catch (err) {
     console.error("Failed to update transaction group:", err);
-    alert("Failed to update transaction group");
+    alert(
+      `Failed to update transaction group: ${
+        err?.response?.data?.error || err?.message || "Unknown error"
+      }`,
+    );
+    return false;
+  }
+};
+
+const saveSelectedTransactionGroup = async () => {
+  if (!selectedTransaction.value?.id) return;
+  const isSaved = await updateTransactionGroup(selectedTransaction.value);
+  if (isSaved) {
+    closeTransactionDetailModal();
   }
 };
 
@@ -1376,8 +1420,12 @@ const updateTransactionGroup = async (item) => {
 const openTransactionDetail = (item) => {
   selectedTransaction.value = {
     ...item,
+    id: item.id || item.asset_id || null,
+    asset_group_id: item.asset_group_id || item.amortization_asset_group_id || "",
+    amortization_start_date:
+      item.amortization_start_date || item.start_date || item.txn_date || "",
+    notes: item.notes || item.amortization_notes || "",
     use_half_rate: !!item.use_half_rate, // Force boolean
-    start_date: item.start_date || item.txn_date || "", // Default to txn_date
   };
   showTransactionDetailModal.value = true;
 };

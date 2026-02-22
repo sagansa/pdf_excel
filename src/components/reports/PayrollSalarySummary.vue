@@ -73,35 +73,26 @@
                   {{ formatCurrency(employee.total) }}
                 </td>
               </tr>
-              <tr v-if="isExpanded(employee.key)" class="bg-gray-50/60">
-                <td colspan="100" class="p-0">
-                  <div class="overflow-x-auto">
-                    <table class="w-full text-xs min-w-[980px]">
-                      <tbody class="divide-y divide-gray-100">
-                        <tr
-                          v-for="component in employee.components"
-                          :key="`component-${employee.key}-${component.mark_name}`"
-                        >
-                          <td class="px-6 py-2 text-gray-700 min-w-[260px] sticky left-0 bg-gray-50/60">
-                            <span class="inline-flex items-center gap-2">
-                              <i class="bi bi-dot text-base"></i>
-                              {{ component.mark_name }}
-                            </span>
-                          </td>
-                          <td
-                            v-for="month in monthColumns"
-                            :key="`component-${employee.key}-${component.mark_name}-${month.month_key}`"
-                            class="px-4 py-2 text-right text-gray-700 whitespace-nowrap"
-                          >
-                            {{ formatCurrency(component.monthly[month.month_key] || 0) }}
-                          </td>
-                          <td class="px-4 py-2 text-right font-semibold text-gray-900 whitespace-nowrap bg-indigo-50/70">
-                            {{ formatCurrency(component.total) }}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+              <tr
+                v-for="component in isExpanded(employee.key) ? employee.components : []"
+                :key="`component-${employee.key}-${component.mark_name}`"
+                class="bg-gray-50"
+              >
+                <td class="px-6 py-2 text-gray-700 min-w-[260px] sticky left-0 bg-gray-50 z-10">
+                  <span class="inline-flex items-center gap-2">
+                    <i class="bi bi-dot text-base"></i>
+                    {{ component.mark_name }}
+                  </span>
+                </td>
+                <td
+                  v-for="month in monthColumns"
+                  :key="`component-${employee.key}-${component.mark_name}-${month.month_key}`"
+                  class="px-4 py-2 text-right text-gray-700 whitespace-nowrap"
+                >
+                  {{ formatCurrency(component.monthly[month.month_key] || 0) }}
+                </td>
+                <td class="px-4 py-2 text-right font-semibold text-gray-900 whitespace-nowrap bg-indigo-50">
+                  {{ formatCurrency(component.total) }}
                 </td>
               </tr>
             </template>

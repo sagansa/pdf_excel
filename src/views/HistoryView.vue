@@ -1,7 +1,7 @@
 <template>
-  <div class="w-full px-6 space-y-6" @click="showExportMenu = false">
+  <div class="w-full px-6 space-y-5" @click="showExportMenu = false">
     <!-- Header -->
-    <div class="bg-white border-b border-gray-200 -mx-6 -mt-6 px-6 py-4 mb-6 sticky top-0 z-30 shadow-sm flex items-center justify-between">
+    <div class="bg-white/95 backdrop-blur border-b border-gray-200 -mx-6 -mt-6 px-6 py-4 mb-5 sticky top-0 z-40 shadow-sm flex items-center justify-between">
       <div>
         <h3 class="text-xl font-bold text-gray-900">History & Database</h3>
         <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">Manage source data and transactional adjustments</p>
@@ -25,8 +25,8 @@
     <!-- Active Content Area -->
     <div class="space-y-6">
       <!-- 1. Transactions Tab -->
-      <div v-show="activeTab === 'transactions'" class="space-y-6">
-        <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+      <div v-show="activeTab === 'transactions'" class="space-y-5 pt-5">
+        <div class="flex justify-between items-center bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <div>
                 <h3 class="text-lg font-bold text-gray-900">Database Transactions</h3>
                 <p class="text-xs text-gray-500">Manage and analyze your historical statement data</p>

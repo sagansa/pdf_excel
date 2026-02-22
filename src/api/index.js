@@ -61,6 +61,9 @@ export const historyApi = {
   updateNotes(txnId, notes) {
     return api.put(`/transactions/${txnId}/notes`, { notes });
   },
+  updateTransactionAmortizationGroup(txnId, payload = {}) {
+    return api.put(`/transactions/${txnId}/amortization-group`, payload);
+  },
   getSplits(txnId) {
     return api.get(`/transactions/${txnId}/splits`);
   },
@@ -150,6 +153,11 @@ export const historyApi = {
   assignPayrollUser(txnId, sagansaUserId = null) {
     return api.put(`/payroll/transactions/${txnId}/assign-user`, {
       sagansa_user_id: sagansaUserId
+    });
+  },
+  updatePayrollPeriodMonth(txnId, payrollPeriodMonth = null) {
+    return api.put(`/payroll/transactions/${txnId}/period-month`, {
+      payroll_period_month: payrollPeriodMonth
     });
   },
   bulkAssignPayrollUser(txnIds, sagansaUserId = null) {

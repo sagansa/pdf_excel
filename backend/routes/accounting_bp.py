@@ -38,6 +38,89 @@ def _split_parent_exclusion_clause(conn, alias='t'):
         return ''
     return f" AND NOT EXISTS (SELECT 1 FROM transactions t_child WHERE t_child.parent_id = {alias}.id)"
 
+
+def _to_float(value, default=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _fetch_inventory_balance_row(conn, year, company_id):
+    result = conn.execute(text("""
+        SELECT *
+        FROM inventory_balances
+        WHERE year = :year AND company_id = :company_id
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
+    """), {
+        'year': int(year),
+        'company_id': company_id
+    })
+    row = result.fetchone()
+    return dict(row._mapping) if row else None
+
+
+def _serialize_inventory_balance(row_dict):
+    if not row_dict:
+        return {}
+    serialized = {}
+    for key, value in row_dict.items():
+        if isinstance(value, Decimal):
+            serialized[key] = float(value)
+        elif isinstance(value, datetime):
+            serialized[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            serialized[key] = value
+    return serialized
+
+
+def _build_inventory_balance_with_carry(conn, year, company_id):
+    year = int(year)
+    current = _serialize_inventory_balance(_fetch_inventory_balance_row(conn, year, company_id))
+    previous = _serialize_inventory_balance(_fetch_inventory_balance_row(conn, year - 1, company_id))
+
+    prev_ending_amount = _to_float(previous.get('ending_inventory_amount')) if previous else 0.0
+    prev_ending_qty = _to_float(previous.get('ending_inventory_qty')) if previous else 0.0
+
+    if not current:
+        if abs(prev_ending_amount) < 0.000001 and abs(prev_ending_qty) < 0.000001:
+            return {}
+        return {
+            'id': None,
+            'company_id': company_id,
+            'year': year,
+            'beginning_inventory_amount': prev_ending_amount,
+            'beginning_inventory_qty': prev_ending_qty,
+            'ending_inventory_amount': 0.0,
+            'ending_inventory_qty': 0.0,
+            'base_value': prev_ending_amount,
+            'is_manual': True,
+            'is_carry_forward': True,
+            'carried_from_year': year - 1
+        }
+
+    current_beginning_amount = _to_float(current.get('beginning_inventory_amount'))
+    current_beginning_qty = _to_float(current.get('beginning_inventory_qty'))
+    carry_allowed = (
+        abs(current_beginning_amount) < 0.000001 and
+        abs(current_beginning_qty) < 0.000001 and
+        (abs(prev_ending_amount) >= 0.000001 or abs(prev_ending_qty) >= 0.000001)
+    )
+
+    if carry_allowed:
+        current['beginning_inventory_amount'] = prev_ending_amount
+        current['beginning_inventory_qty'] = prev_ending_qty
+        current['is_carry_forward'] = True
+        current['carried_from_year'] = year - 1
+    else:
+        current['is_carry_forward'] = False
+        current['carried_from_year'] = None
+
+    if 'is_manual' not in current:
+        current['is_manual'] = True
+    return current
+
 @accounting_bp.route('/api/coa', methods=['GET'])
 def get_chart_of_accounts():
     """Get all Chart of Accounts entries"""
@@ -341,29 +424,168 @@ def get_inventory_balances():
         return jsonify({'error': error_msg}), 500
         
     try:
-        year = request.args.get('year') or datetime.now().year
+        year_raw = request.args.get('year') or datetime.now().year
+        try:
+            year = int(year_raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'year must be numeric'}), 400
+
         company_id = request.args.get('company_id')
         
         if not company_id:
             return jsonify({'error': 'company_id is required'}), 400
             
         with engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT * FROM inventory_balances WHERE year = :year AND company_id = :company"),
-                {'year': year, 'company': company_id}
-            )
-            row = result.fetchone()
-            if row:
-                d = dict(row._mapping)
-                for key, value in d.items():
-                    if isinstance(value, Decimal):
-                        d[key] = float(value)
-                    elif isinstance(value, datetime):
-                        d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
-                return jsonify({'balance': d})
-            return jsonify({'balance': {}})
+            balance = _build_inventory_balance_with_carry(conn, year, company_id)
+            return jsonify({'balance': balance})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@accounting_bp.route('/api/inventory-balances', methods=['POST'])
+@accounting_bp.route('/api/reports/inventory-balances', methods=['POST'])
+def save_inventory_balances():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    payload = request.json or {}
+    company_id = str(payload.get('company_id') or '').strip()
+    if not company_id:
+        return jsonify({'error': 'company_id is required'}), 400
+
+    year_raw = payload.get('year')
+    try:
+        year = int(year_raw)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'year must be numeric'}), 400
+
+    beginning_amount = _to_float(payload.get('beginning_inventory_amount'), 0.0)
+    beginning_qty = _to_float(payload.get('beginning_inventory_qty'), 0.0)
+    ending_amount = _to_float(payload.get('ending_inventory_amount'), 0.0)
+    ending_qty = _to_float(payload.get('ending_inventory_qty'), 0.0)
+    base_value = _to_float(payload.get('base_value'), beginning_amount)
+
+    now = datetime.now()
+    eps = 0.000001
+
+    try:
+        with engine.begin() as conn:
+            existing = _fetch_inventory_balance_row(conn, year, company_id)
+            old_ending_amount = _to_float(existing.get('ending_inventory_amount'), 0.0) if existing else 0.0
+            old_ending_qty = _to_float(existing.get('ending_inventory_qty'), 0.0) if existing else 0.0
+            if existing:
+                conn.execute(text("""
+                    UPDATE inventory_balances
+                    SET
+                        beginning_inventory_amount = :beginning_inventory_amount,
+                        beginning_inventory_qty = :beginning_inventory_qty,
+                        ending_inventory_amount = :ending_inventory_amount,
+                        ending_inventory_qty = :ending_inventory_qty,
+                        base_value = :base_value,
+                        updated_at = :updated_at
+                    WHERE id = :id
+                """), {
+                    'id': existing.get('id'),
+                    'beginning_inventory_amount': beginning_amount,
+                    'beginning_inventory_qty': beginning_qty,
+                    'ending_inventory_amount': ending_amount,
+                    'ending_inventory_qty': ending_qty,
+                    'base_value': base_value,
+                    'updated_at': now
+                })
+                saved_id = existing.get('id')
+            else:
+                saved_id = str(uuid.uuid4())
+                conn.execute(text("""
+                    INSERT INTO inventory_balances (
+                        id, company_id, year,
+                        beginning_inventory_amount, beginning_inventory_qty,
+                        ending_inventory_amount, ending_inventory_qty,
+                        base_value, created_at, updated_at
+                    ) VALUES (
+                        :id, :company_id, :year,
+                        :beginning_inventory_amount, :beginning_inventory_qty,
+                        :ending_inventory_amount, :ending_inventory_qty,
+                        :base_value, :created_at, :updated_at
+                    )
+                """), {
+                    'id': saved_id,
+                    'company_id': company_id,
+                    'year': year,
+                    'beginning_inventory_amount': beginning_amount,
+                    'beginning_inventory_qty': beginning_qty,
+                    'ending_inventory_amount': ending_amount,
+                    'ending_inventory_qty': ending_qty,
+                    'base_value': base_value,
+                    'created_at': now,
+                    'updated_at': now
+                })
+
+            # Auto-carry forward to next year.
+            # Keep syncing if next-year beginning still looks auto-carried (not manually changed yet).
+            next_year = year + 1
+            next_row = _fetch_inventory_balance_row(conn, next_year, company_id)
+            if not next_row:
+                conn.execute(text("""
+                    INSERT INTO inventory_balances (
+                        id, company_id, year,
+                        beginning_inventory_amount, beginning_inventory_qty,
+                        ending_inventory_amount, ending_inventory_qty,
+                        base_value, created_at, updated_at
+                    ) VALUES (
+                        :id, :company_id, :year,
+                        :beginning_inventory_amount, :beginning_inventory_qty,
+                        0, 0, :base_value, :created_at, :updated_at
+                    )
+                """), {
+                    'id': str(uuid.uuid4()),
+                    'company_id': company_id,
+                    'year': next_year,
+                    'beginning_inventory_amount': ending_amount,
+                    'beginning_inventory_qty': ending_qty,
+                    'base_value': ending_amount,
+                    'created_at': now,
+                    'updated_at': now
+                })
+            else:
+                next_beginning_amount = _to_float(next_row.get('beginning_inventory_amount'), 0.0)
+                next_beginning_qty = _to_float(next_row.get('beginning_inventory_qty'), 0.0)
+                next_ending_amount = _to_float(next_row.get('ending_inventory_amount'), 0.0)
+                next_ending_qty = _to_float(next_row.get('ending_inventory_qty'), 0.0)
+
+                beginning_is_empty = abs(next_beginning_amount) < eps and abs(next_beginning_qty) < eps
+                beginning_matches_old_carry = (
+                    abs(next_beginning_amount - old_ending_amount) < eps and
+                    abs(next_beginning_qty - old_ending_qty) < eps
+                )
+                next_year_has_manual_activity = abs(next_ending_amount) >= eps or abs(next_ending_qty) >= eps
+
+                should_sync_to_next_year = beginning_is_empty or (
+                    beginning_matches_old_carry and not next_year_has_manual_activity
+                )
+
+                if should_sync_to_next_year:
+                    conn.execute(text("""
+                        UPDATE inventory_balances
+                        SET
+                            beginning_inventory_amount = :beginning_inventory_amount,
+                            beginning_inventory_qty = :beginning_inventory_qty,
+                            base_value = :base_value,
+                            updated_at = :updated_at
+                        WHERE id = :id
+                    """), {
+                        'id': next_row.get('id'),
+                        'beginning_inventory_amount': ending_amount,
+                        'beginning_inventory_qty': ending_qty,
+                        'base_value': ending_amount,
+                        'updated_at': now
+                    })
+
+        return jsonify({'message': 'Inventory balances saved successfully', 'id': saved_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @accounting_bp.route('/api/reports/prepaid-expenses', methods=['GET'])
 def get_prepaid_expenses():

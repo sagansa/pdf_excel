@@ -42,7 +42,7 @@
               <p class="text-xs font-medium text-purple-600 uppercase">
                 Total Revenue
               </p>
-              <p class="text-2xl font-bold text-purple-900 mt-1">
+              <p class="text-2xl font-bold text-purple-900 mt-1 whitespace-nowrap tabular-nums">
                 {{ formatCurrency(data.total_revenue) }}
               </p>
             </div>
@@ -62,7 +62,7 @@
               <p class="text-xs font-medium text-orange-600 uppercase">
                 Total Expenses
               </p>
-              <p class="text-2xl font-bold text-orange-900 mt-1">
+              <p class="text-2xl font-bold text-orange-900 mt-1 whitespace-nowrap tabular-nums">
                 {{ formatCurrency(data.total_expenses) }}
               </p>
             </div>
@@ -82,7 +82,7 @@
               <p class="text-xs font-medium text-green-600 uppercase">
                 Net Income
               </p>
-              <p class="text-2xl font-bold text-green-900 mt-1">
+              <p class="text-2xl font-bold text-green-900 mt-1 whitespace-nowrap tabular-nums">
                 {{ formatCurrency(data.net_income) }}
               </p>
             </div>
@@ -142,8 +142,7 @@
               <tr
                 v-for="item in data.revenue"
                 :key="item.code"
-                class="hover:bg-gray-50 group cursor-pointer"
-                @click="openCoaDetail(item)"
+                class="group"
               >
                 <td
                   class="px-6 py-3 text-sm font-mono font-semibold text-gray-900"
@@ -158,27 +157,34 @@
                   class="px-6 py-3 text-right text-sm font-semibold text-purple-700"
                 >
                   <div class="flex items-center justify-end gap-2">
-                    <span>{{ formatCurrency(item.amount) }}</span>
+                    <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                     <button
-                      @click.stop="copyToClipboard(item.amount)"
-                      class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-purple-600 transition-opacity"
+                      @click.stop.prevent="copyToClipboard(item.amount)"
+                      class="text-gray-400 hover:text-purple-600 transition-colors"
                       title="Copy amount"
                     >
                       <i class="bi bi-clipboard text-xs"></i>
                     </button>
+                    <button
+                      @click.stop.prevent="openCoaDetail(item)"
+                      class="text-gray-400 hover:text-indigo-600 transition-colors"
+                      title="View transactions"
+                    >
+                      <i class="bi bi-list-ul text-xs"></i>
+                    </button>
                   </div>
                 </td>
               </tr>
-              <tr class="bg-purple-50 font-bold group">
+              <tr class="bg-purple-50 font-bold">
                 <td colspan="3" class="px-6 py-3 text-sm text-purple-900">
                   Total Revenue
                 </td>
                 <td class="px-6 py-3 text-right text-purple-900">
                   <div class="flex items-center justify-end gap-2">
-                    <span>{{ formatCurrency(data.total_revenue) }}</span>
+                    <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(data.total_revenue) }}</span>
                     <button
-                      @click="copyToClipboard(data.total_revenue)"
-                      class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-purple-600 transition-opacity"
+                      @click.stop.prevent="copyToClipboard(data.total_revenue)"
+                      class="text-gray-400 hover:text-purple-600 transition-colors"
                       title="Copy amount"
                     >
                       <i class="bi bi-clipboard text-xs"></i>
@@ -206,15 +212,15 @@
            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                <p class="text-xs font-medium text-blue-600 uppercase mb-1">Beginning Inventory - 5008</p>
-               <p class="text-lg font-bold text-blue-900">{{ formatCurrency(data.cogs_breakdown.beginning_inventory) }}</p>
+               <p class="text-lg font-bold text-blue-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.cogs_breakdown.beginning_inventory) }}</p>
              </div>
              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                <p class="text-xs font-medium text-blue-600 uppercase mb-1">- Ending Inventory - 5009</p>
-               <p class="text-lg font-bold text-blue-900">{{ formatCurrency(data.cogs_breakdown.ending_inventory) }}</p>
+               <p class="text-lg font-bold text-blue-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.cogs_breakdown.ending_inventory) }}</p>
              </div>
              <div class="bg-blue-100 border border-blue-200 rounded-lg p-4">
                <p class="text-xs font-medium text-blue-600 uppercase mb-1">Total COGS</p>
-               <p class="text-lg font-bold text-blue-900">{{ formatCurrency(data.cogs_breakdown.total_cogs) }}</p>
+               <p class="text-lg font-bold text-blue-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.cogs_breakdown.total_cogs) }}</p>
              </div>
            </div>
 
@@ -239,8 +245,7 @@
                    <tr
                      v-for="item in data.cogs_breakdown.purchases_items"
                      :key="item.code"
-                     class="hover:bg-gray-50 group cursor-pointer"
-                     @click="openCoaDetail(item)"
+                     class="group"
                    >
                      <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">
                        {{ item.code }}
@@ -251,17 +256,17 @@
                      </td>
                      <td class="px-6 py-3 text-sm text-right font-semibold text-blue-700">
                        <div class="flex items-center justify-end gap-2">
-                         <span>{{ formatCurrency(item.amount) }}</span>
+                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                          <button
-                           @click.stop="copyToClipboard(item.amount)"
-                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity"
+                           @click.stop.prevent="copyToClipboard(item.amount)"
+                           class="text-gray-400 hover:text-blue-600 transition-colors"
                            title="Copy amount"
                          >
                            <i class="bi bi-clipboard text-xs"></i>
                          </button>
                          <button
-                           @click.stop="openCoaDetail(item)"
-                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                           @click.stop.prevent="openCoaDetail(item)"
+                           class="text-gray-400 hover:text-indigo-600 transition-colors"
                            title="View transactions"
                          >
                            <i class="bi bi-list-ul text-xs"></i>
@@ -269,16 +274,16 @@
                        </div>
                      </td>
                    </tr>
-                   <tr class="bg-blue-50 font-bold group">
+                   <tr class="bg-blue-50 font-bold">
                      <td colspan="3" class="px-6 py-3 text-sm text-blue-900">
                        Total Purchases
                      </td>
                      <td class="px-6 py-3 text-sm text-right text-blue-900">
                        <div class="flex items-center justify-end gap-2">
-                         <span>{{ formatCurrency(data.cogs_breakdown.purchases) }}</span>
+                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(data.cogs_breakdown.purchases) }}</span>
                          <button
-                           @click="copyToClipboard(data.cogs_breakdown.purchases)"
-                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity"
+                           @click.stop.prevent="copyToClipboard(data.cogs_breakdown.purchases)"
+                           class="text-gray-400 hover:text-blue-600 transition-colors"
                            title="Copy amount"
                          >
                            <i class="bi bi-clipboard text-xs"></i>
@@ -312,8 +317,7 @@
                    <tr
                      v-for="item in data.cogs_breakdown.other_cogs_items"
                      :key="item.code"
-                     class="hover:bg-gray-50 group cursor-pointer"
-                     @click="openCoaDetail(item)"
+                     class="group"
                    >
                      <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">
                        {{ item.code }}
@@ -324,17 +328,17 @@
                      </td>
                      <td class="px-6 py-3 text-sm text-right font-semibold text-blue-700">
                        <div class="flex items-center justify-end gap-2">
-                         <span>{{ formatCurrency(item.amount) }}</span>
+                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                          <button
-                           @click.stop="copyToClipboard(item.amount)"
-                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity"
+                           @click.stop.prevent="copyToClipboard(item.amount)"
+                           class="text-gray-400 hover:text-blue-600 transition-colors"
                            title="Copy amount"
                          >
                            <i class="bi bi-clipboard text-xs"></i>
                          </button>
                          <button
-                           @click.stop="openCoaDetail(item)"
-                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                           @click.stop.prevent="openCoaDetail(item)"
+                           class="text-gray-400 hover:text-indigo-600 transition-colors"
                            title="View transactions"
                          >
                            <i class="bi bi-list-ul text-xs"></i>
@@ -342,16 +346,16 @@
                        </div>
                      </td>
                    </tr>
-                   <tr class="bg-blue-50 font-bold group">
+                   <tr class="bg-blue-50 font-bold">
                      <td colspan="3" class="px-6 py-3 text-sm text-blue-900">
                        Total Other COGS
                      </td>
                      <td class="px-6 py-3 text-sm text-right text-blue-900">
                        <div class="flex items-center justify-end gap-2">
-                         <span>{{ formatCurrency(data.cogs_breakdown.total_other_cogs) }}</span>
+                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(data.cogs_breakdown.total_other_cogs) }}</span>
                          <button
-                           @click="copyToClipboard(data.cogs_breakdown.total_other_cogs)"
-                           class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity"
+                           @click.stop.prevent="copyToClipboard(data.cogs_breakdown.total_other_cogs)"
+                           class="text-gray-400 hover:text-blue-600 transition-colors"
                            title="Copy amount"
                          >
                            <i class="bi bi-clipboard text-xs"></i>
@@ -413,8 +417,7 @@
                <tr
                  v-for="item in data.expenses"
                  :key="item.code"
-                 class="hover:bg-gray-50 group cursor-pointer"
-                 @click="openCoaDetail(item)"
+                 class="group"
                >
                  <td
                    class="px-6 py-3 text-sm font-mono font-semibold text-gray-900"
@@ -429,17 +432,17 @@
                    class="px-6 py-3 text-sm text-right font-semibold text-orange-700"
                  >
                    <div class="flex items-center justify-end gap-2">
-                     <span>{{ formatCurrency(item.amount) }}</span>
+                     <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                      <button
-                       @click.stop="copyToClipboard(item.amount)"
-                       class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-orange-600 transition-opacity"
+                       @click.stop.prevent="copyToClipboard(item.amount)"
+                       class="text-gray-400 hover:text-orange-600 transition-colors"
                        title="Copy amount"
                      >
                        <i class="bi bi-clipboard text-xs"></i>
                      </button>
                      <button
-                       @click.stop="openCoaDetail(item)"
-                       class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                       @click.stop.prevent="openCoaDetail(item)"
+                       class="text-gray-400 hover:text-indigo-600 transition-colors"
                        title="View transactions"
                      >
                        <i class="bi bi-list-ul text-xs"></i>
@@ -447,16 +450,16 @@
                    </div>
                  </td>
                </tr>
-              <tr class="bg-orange-50 font-bold group">
+              <tr class="bg-orange-50 font-bold">
                 <td colspan="3" class="px-6 py-3 text-sm text-orange-900">
                   Total Expenses
                 </td>
                 <td class="px-6 py-3 text-sm text-right text-orange-900">
                   <div class="flex items-center justify-end gap-2">
-                    <span>{{ formatCurrency(data.total_expenses) }}</span>
+                    <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(data.total_expenses) }}</span>
                     <button
-                      @click="copyToClipboard(data.total_expenses)"
-                      class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-orange-600 transition-opacity"
+                      @click.stop.prevent="copyToClipboard(data.total_expenses)"
+                      class="text-gray-400 hover:text-orange-600 transition-colors"
                       title="Copy amount"
                     >
                       <i class="bi bi-clipboard text-xs"></i>
@@ -480,7 +483,7 @@
              <p class="text-xs opacity-75 mt-1">Laba / (Rugi) Bersih</p>
            </div>
            <div class="text-right">
-             <p class="text-3xl font-bold">
+             <p class="text-3xl font-bold whitespace-nowrap tabular-nums">
                {{ formatCurrency(data.net_income) }}
              </p>
              <p class="text-xs opacity-75 mt-1">
@@ -504,25 +507,25 @@
            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                <p class="text-xs font-medium text-blue-600 uppercase mb-1">Amortisasi Komersial</p>
-               <p class="text-lg font-bold text-blue-900">{{ formatCurrency(data.fiscal_correction_breakdown.commercial_amortization) }}</p>
+               <p class="text-lg font-bold text-blue-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.fiscal_correction_breakdown.commercial_amortization) }}</p>
              </div>
              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                <p class="text-xs font-medium text-blue-600 uppercase mb-1">Amortisasi Fiskal</p>
-               <p class="text-lg font-bold text-blue-900">{{ formatCurrency(data.fiscal_correction_breakdown.fiscal_amortization) }}</p>
+               <p class="text-lg font-bold text-blue-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.fiscal_correction_breakdown.fiscal_amortization) }}</p>
              </div>
              <div class="bg-orange-100 border border-orange-200 rounded-lg p-4">
                <p class="text-xs font-medium text-orange-600 uppercase mb-1">Koreksi Fiskal</p>
-               <p class="text-lg font-bold text-orange-900">{{ formatCurrency(data.fiscal_correction_breakdown.fiscal_correction) }}</p>
+               <p class="text-lg font-bold text-orange-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.fiscal_correction_breakdown.fiscal_correction) }}</p>
              </div>
            </div>
            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div class="bg-red-50 border border-red-200 rounded-lg p-4">
                <p class="text-xs font-medium text-red-600 uppercase mb-1">PPh atas Koreksi (22%)</p>
-               <p class="text-lg font-bold text-red-900">{{ formatCurrency(data.fiscal_correction_breakdown.tax_on_correction) }}</p>
+               <p class="text-lg font-bold text-red-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.fiscal_correction_breakdown.tax_on_correction) }}</p>
              </div>
              <div class="bg-red-100 border border-red-200 rounded-lg p-4">
                <p class="text-xs font-medium text-red-700 uppercase mb-1">Total Dampak Pajak</p>
-               <p class="text-lg font-bold text-red-900">{{ formatCurrency(data.fiscal_correction_breakdown.total_tax_impact) }}</p>
+               <p class="text-lg font-bold text-red-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.fiscal_correction_breakdown.total_tax_impact) }}</p>
              </div>
            </div>
          </div>
@@ -582,9 +585,30 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-const copyToClipboard = (value) => {
-  const formatted = formatCurrency(value);
-  navigator.clipboard.writeText(formatted);
+const copyToClipboard = async (value) => {
+  const numericValue = Number(value ?? 0);
+  const textToCopy = Number.isFinite(numericValue)
+    ? numericValue.toString()
+    : '0';
+
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(textToCopy);
+      return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = textToCopy;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  } catch (error) {
+    console.error('Failed to copy amount:', error);
+  }
 };
 
 const openCoaDetail = (coa) => {
@@ -638,9 +662,3 @@ const getGroupTotal = (items, groupName) => {
     .reduce((sum, item) => sum + (item.annual_amortization || 0), 0);
 };
 </script>
-
-<style scoped>
-.group:hover td {
-  background-color: rgba(99, 102, 241, 0.05);
-}
-</style>

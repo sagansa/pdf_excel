@@ -10,13 +10,35 @@ DATE_PATTERN = re.compile(r'^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}$')
 DATE_LINE_PATTERN = re.compile(r'^\s*(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})(.*)$')
 TIME_LINE_PATTERN = re.compile(r'^(\d{2}:\d{2}:\d{2})\s+(WIB|WITA|WIT)\s*(.*)$', re.IGNORECASE)
 AMOUNT_PATTERN = re.compile(r'[+-]?\d[\d\.]*,\d{2}')
-FOOTER_KEYWORDS = [
+END_OF_TRANSACTIONS_KEYWORDS = [
+    'ini adalah batas akhir transaksi anda',
+    'batas akhir transaksi anda'
+]
+IGNORED_NON_TXN_KEYWORDS = [
+    'e-statement',
+    'plaza mandiri',
+    'nama/name',
+    'periode/period',
+    'cabang/branch',
+    'dicetak pada/issued on',
+    'tabungan mandiri',
+    'saldo awal/initial balance',
+    'nomor rekening/account number',
+    'mata uang/currency',
+    'dana masuk/incoming transactions',
+    'dana keluar/outgoing transactions',
+    'saldo akhir/closing balance',
+    'disclaimer',
     'pt bank mandiri',
     'mandiri call',
-    'disclaimer',
-    'batas akhir transaksi',
-    'ini adalah batas akhir'
+    'serta merupakan peserta penjamin',
+    'lembaga penjamin simpanan'
 ]
+TABLE_HEADER_PREFIXES = (
+    'no no',
+    'no tanggal',
+    'no date',
+)
 
 MAX_DETAIL_LINES = 4
 
@@ -127,23 +149,33 @@ def parse_statement(pdf_path):
             if not line:
                 continue
 
-            lower_line = line.lower()
-            footer_hit = any(keyword in lower_line for keyword in FOOTER_KEYWORDS)
-            if footer_hit and in_table:
+            normalized_line = ' '.join(line.split()).lower()
+            lower_line = normalized_line
+            header_detected = any(normalized_line.startswith(prefix) for prefix in TABLE_HEADER_PREFIXES)
+            end_of_transactions = any(keyword in lower_line for keyword in END_OF_TRANSACTIONS_KEYWORDS)
+            is_page_counter = bool(
+                re.fullmatch(r'\d+\s+dari\s+\d+', normalized_line)
+                or re.fullmatch(r'\d+\s+of\s+\d+', normalized_line)
+            )
+            ignore_line = is_page_counter or any(keyword in lower_line for keyword in IGNORED_NON_TXN_KEYWORDS)
+
+            if end_of_transactions:
+                if current_transaction:
+                    finalized = _finalize_transaction(current_transaction)
+                    if finalized:
+                        transactions.append(finalized)
+                    current_transaction = None
                 break
-            if footer_hit and not in_table:
+
+            if header_detected:
+                if not in_table:
+                    in_table = True
                 continue
 
-            normalized_line = ' '.join(line.split()).lower()
-            header_detected = (
-                normalized_line.startswith('no no')
-                or normalized_line.startswith('no tanggal')
-                or normalized_line.startswith('no date')
-            )
+            if ignore_line:
+                continue
 
             if not in_table:
-                if header_detected:
-                    in_table = True
                 continue
 
             if current_transaction is None:

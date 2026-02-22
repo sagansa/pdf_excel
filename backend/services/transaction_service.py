@@ -40,6 +40,24 @@ def _normalize_company_id(value):
     return candidate
 
 
+def _normalize_db_cr(value, default='DB'):
+    raw = str(value or '').strip().upper()
+    if not raw:
+        return default
+
+    if raw in {'CR', 'CREDIT', 'KREDIT', 'K'}:
+        return 'CR'
+    if raw in {'DB', 'DEBIT', 'D', 'DE'}:
+        return 'DB'
+
+    if raw.startswith('CR') or 'CREDIT' in raw or raw.startswith('K'):
+        return 'CR'
+    if raw.startswith('DB') or raw.startswith('DE') or 'DEBIT' in raw:
+        return 'DB'
+
+    return default
+
+
 def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, file_hash: str):
     engine, error_msg = get_db_engine()
     if engine is None:
@@ -74,7 +92,7 @@ def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, 
                 'txn_date': txn_date,
                 'description': str(description or '')[:1000],
                 'amount': amount_val,
-                'db_cr': str(db_cr or 'DB')[:2].upper(),
+                'db_cr': _normalize_db_cr(db_cr),
                 'bank_code': bank_code,
                 'source_file': source_file,
                 'file_hash': file_hash,

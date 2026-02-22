@@ -51,55 +51,21 @@
         </div>
       </div>
 
-      <!-- Company Selector -->
-      <div v-if="activeTab === 'amortization'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <label class="block text-sm font-semibold text-gray-700 mb-2">Select Company</label>
-        <div class="flex gap-4">
-          <select 
-            v-model="selectedCompanyId"
-            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-          >
-            <option value="">Select a company...</option>
-            <option v-for="company in companies" :key="company.id" :value="company.id">
-              {{ company.name }}
-            </option>
-          </select>
-        </div>
-      </div>
-
       <!-- Settings Content -->
       <div v-if="activeTab === 'payroll'">
         <PayrollEmployeeSettings />
       </div>
-      <div v-else-if="selectedCompanyId">
-        <AmortizationSettings 
-          v-if="activeTab === 'amortization'"
-          :company-id="selectedCompanyId"
-        />
-      </div>
-      <div v-else-if="activeTab === 'amortization'" class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-        <i class="bi bi-building text-6xl text-gray-300"></i>
-        <p class="text-gray-500 mt-4 text-lg font-medium">No Company Selected</p>
-        <p class="text-gray-400 text-sm mt-2">Please select a company to configure settings</p>
+      <div v-else-if="activeTab === 'amortization'">
+        <AmortizationSettings />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useCompanyStore } from '../stores/companies';
+import { ref } from 'vue';
 import AmortizationSettings from '../components/settings/AmortizationSettings.vue';
 import PayrollEmployeeSettings from '../components/settings/PayrollEmployeeSettings.vue';
 
-const companyStore = useCompanyStore();
-
 const activeTab = ref('amortization');
-const selectedCompanyId = ref('');
-const companies = ref([]);
-
-onMounted(async () => {
-  await companyStore.fetchCompanies();
-  companies.value = companyStore.companies;
-});
 </script>
