@@ -7,7 +7,7 @@
     <div class="relative">
       <div class="relative w-full cursor-default overflow-hidden rounded-lg bg-gray-50/50 border border-gray-200 text-left focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-opacity-50 transition-all">
         <ComboboxInput
-          class="w-full border-none py-2 pl-3 pr-14 text-xs leading-5 text-gray-900 focus:ring-0 bg-transparent outline-none"
+          class="w-full border-none py-2 pl-3 pr-14 text-xs leading-5 text-gray-900 placeholder-gray-400 focus:placeholder-transparent focus:ring-0 bg-transparent outline-none"
           :class="{ 'text-orange-500 italic': isMissingMark(selectedValue) }"
           :displayValue="(val) => getLabel(val)"
           @change="query = $event.target.value"

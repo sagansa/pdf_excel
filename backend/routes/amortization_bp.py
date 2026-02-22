@@ -1,6 +1,5 @@
 import uuid
 import json
-import uuid
 from flask import Blueprint, request, jsonify, current_app as app
 from datetime import datetime, date
 from sqlalchemy import text
@@ -8,6 +7,16 @@ from decimal import Decimal
 from backend.db.session import get_db_engine
 
 amortization_bp = Blueprint('amortization_bp', __name__)
+
+
+def _as_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {'1', 'true', 'yes', 'y', 'on'}
+    return False
 
 @amortization_bp.route('/api/amortization/asset-groups', methods=['GET'])
 def get_amortization_asset_groups():
@@ -23,33 +32,61 @@ def get_amortization_asset_groups():
         with engine.connect() as conn:
             query_params = {}
             conditions = []
-            
+
             if company_id:
-                conditions.append("company_id = :company_id")
+                conditions.append("(company_id = :company_id OR company_id IS NULL)")
                 query_params['company_id'] = company_id
+            else:
+                # Default mode for settings: use global groups only.
+                conditions.append("company_id IS NULL")
+
             if asset_type:
                 conditions.append("asset_type = :asset_type")
                 query_params['asset_type'] = asset_type
-            
+
             where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-            
+
             query = text(f"""
-                SELECT id, group_name, group_number, asset_type, tarif_rate, 
+                SELECT id, group_name, group_number, asset_type, tarif_rate,
+                       tarif_half_rate, useful_life_years, company_id
+                FROM amortization_asset_groups
+                {where_clause}
+                ORDER BY asset_type, group_number,
+                         CASE WHEN company_id = :company_id THEN 0 ELSE 1 END
+            """) if company_id else text(f"""
+                SELECT id, group_name, group_number, asset_type, tarif_rate,
                        tarif_half_rate, useful_life_years, company_id
                 FROM amortization_asset_groups
                 {where_clause}
                 ORDER BY asset_type, group_number
             """)
-            
+
             result = conn.execute(query, query_params)
             groups = []
+            merged_by_key = {}
+
             for row in result:
                 d = dict(row._mapping)
                 for key, value in d.items():
                     if isinstance(value, Decimal):
                         d[key] = float(value)
-                groups.append(d)
-            
+
+                # If company_id is provided, prefer company row over global row
+                # for the same (asset_type, group_number).
+                if company_id:
+                    merge_key = f"{d.get('asset_type')}::{d.get('group_number')}"
+                    existing = merged_by_key.get(merge_key)
+                    if existing is None or (d.get('company_id') and not existing.get('company_id')):
+                        merged_by_key[merge_key] = d
+                else:
+                    groups.append(d)
+
+            if company_id:
+                groups = sorted(
+                    merged_by_key.values(),
+                    key=lambda g: (str(g.get('asset_type') or ''), int(g.get('group_number') or 0))
+                )
+
             return jsonify({'groups': groups})
     except Exception as e:
         app.logger.error(f"Failed to fetch asset groups: {e}")
@@ -309,7 +346,13 @@ def get_amortization_items():
                 group_display = f"{type_label}"
                 if d.get('group_name'):
                     group_display += f" - {d['group_name']}"
-                group_display += f" ({tarif_rate}%)"
+                useful_life_display = d.get('useful_life_years')
+                if useful_life_display not in (None, '', 0):
+                    group_display += f" ({int(useful_life_display)} tahun)"
+                else:
+                    group_display += f" ({tarif_rate}%)"
+
+                deductible_display = "50%" if _as_bool(d.get('use_half_rate')) else "100%"
                 
                 d.update({
                     'accumulated_depreciation_prev_year': accum_prev_val,
@@ -318,7 +361,7 @@ def get_amortization_items():
                     'total_accumulated_depreciation': accum_prev_val + annual_amortization,
                     'book_value_end_year': max(0, amount - (accum_prev_val + annual_amortization)),
                     'group': group_display,
-                    'rate_type': f'{tarif_rate}%',
+                    'rate_type': deductible_display,
                     'is_manual': bool(d.get('is_manual')),
                     'is_from_ledger': False,
                     'is_manual_asset': d.get('is_manual'),
@@ -432,8 +475,14 @@ def get_amortization_items():
                     group_display += f" - {d['group_name']}"
                 elif d.get('mark_name'):
                     group_display += f" - {d['mark_name']}"
-                
-                group_display += f" ({tarif_rate}%)"
+
+                useful_life_display = d.get('useful_life_years')
+                if useful_life_display not in (None, '', 0):
+                    group_display += f" ({int(useful_life_display)} tahun)"
+                else:
+                    group_display += f" ({tarif_rate}%)"
+
+                deductible_display = "50%" if _as_bool(d.get('use_half_rate')) else "100%"
                 
                 d.update({
                     'annual_amortization': current_year_amort,
@@ -442,7 +491,7 @@ def get_amortization_items():
                     'book_value_end_year': max(0, base_amount - (accum_prev + current_year_amort)),
                     'multiplier': multiplier_display,
                     'group': group_display,
-                    'rate_type': f'{tarif_rate}%',
+                    'rate_type': deductible_display,
                     'is_manual': False,
                     'is_from_ledger': True,
                     'is_manual_asset': False,
@@ -537,7 +586,13 @@ def get_amortization_items():
                 group_display = f"{type_label}"
                 if d.get('group_name'):
                     group_display += f" - {d['group_name']}"
-                group_display += f" ({tarif_rate}%)"
+                useful_life_display = d.get('useful_life_years')
+                if useful_life_display not in (None, '', 0):
+                    group_display += f" ({int(useful_life_display)} tahun)"
+                else:
+                    group_display += f" ({tarif_rate}%)"
+
+                deductible_display = "50%" if _as_bool(d.get('use_half_rate')) else "100%"
                 
                 d.update({
                     'annual_amortization': current_year_amort,
@@ -546,7 +601,7 @@ def get_amortization_items():
                     'book_value_end_year': max(0, base_amount - (accum_prev + current_year_amort)),
                     'multiplier': multiplier_display,
                     'group': group_display,
-                    'rate_type': f'{tarif_rate}%',
+                    'rate_type': deductible_display,
                     'is_manual': False,
                     'is_from_ledger': False,
                     'is_manual_asset': False,
@@ -640,12 +695,9 @@ def get_amortization_settings():
             result = conn.execute(query, {'company_id': company_id})
             
             settings = {
-                'use_mark_based_amortization': False,
-                'amortization_asset_marks': [],
                 'default_asset_useful_life': 5,
                 'default_amortization_rate': 20.0,
-                'amortization_expense_coa_codes': ['5314'],
-                'fiscal_correction_coa_codes': [],
+                'allow_partial_year': True,
                 'accumulated_depreciation_coa_codes': {
                     'Building': '1524',
                     'Tangible': '1530',
@@ -660,12 +712,12 @@ def get_amortization_settings():
                 typ = row.setting_type
                 
                 if typ == 'boolean':
-                    settings[name] = val.lower() == 'true'
+                    settings[name] = str(val).lower() == 'true'
                 elif typ == 'json':
                     try:
                         settings[name] = json.loads(val)
                     except:
-                        settings[name] = []
+                        settings[name] = {}
                 elif typ == 'number':
                     try:
                         settings[name] = float(val)
@@ -673,14 +725,10 @@ def get_amortization_settings():
                         settings[name] = 0
                 else:
                     settings[name] = val
-                    
-            # Fetch available marks
-            marks_result = conn.execute(text("SELECT id, personal_use FROM marks ORDER BY personal_use ASC"))
-            available_marks = [dict(row._mapping) for row in marks_result]
             
             return jsonify({
                 'settings': settings,
-                'available_marks': available_marks
+                'available_marks': []
             })
     except Exception as e:
         app.logger.error(f"Failed to fetch amortization settings: {e}")
@@ -697,45 +745,98 @@ def save_amortization_settings():
         return jsonify({'error': error_msg}), 500
     
     try:
-        company_id = data.get('company_id')
-        if not company_id:
-            return jsonify({'error': 'company_id is required'}), 400
-        
-        settings_to_save = [
-            ('use_mark_based_amortization', str(data.get('use_mark_based_amortization', False)).lower(), 'boolean'),
-            ('amortization_asset_marks', json.dumps(data.get('amortization_asset_marks', [])), 'json'),
-            ('default_asset_useful_life', str(data.get('default_asset_useful_life',5)), 'number'),
-            ('default_amortization_rate', str(data.get('default_amortization_rate', 20.0)), 'number'),
-            ('amortization_expense_coa_codes', json.dumps(data.get('amortization_expense_coa_codes', ['5314'])), 'json'),
-            ('fiscal_correction_coa_codes', json.dumps(data.get('fiscal_correction_coa_codes', [])), 'json'),
-            ('accumulated_depreciation_coa_codes', json.dumps(data.get('accumulated_depreciation_coa_codes', {
+        company_id = (data.get('company_id') or '').strip() or None
+
+        default_settings = {
+            'default_asset_useful_life': 5,
+            'default_amortization_rate': 20.0,
+            'allow_partial_year': True,
+            'accumulated_depreciation_coa_codes': {
                 'Building': '1524',
                 'Tangible': '1530',
                 'LandRights': '1534',
                 'Intangible': '1601'
-            })), 'json')
-        ]
-        
+            }
+        }
+
         with engine.begin() as conn:
+            read_query = text("""
+                SELECT setting_name, setting_value, setting_type
+                FROM amortization_settings
+                WHERE (company_id = :company_id OR company_id IS NULL)
+                ORDER BY company_id ASC
+            """)
+            rows = conn.execute(read_query, {'company_id': company_id})
+
+            existing_settings = {}
+            for row in rows:
+                if row.setting_type == 'boolean':
+                    parsed = str(row.setting_value).lower() == 'true'
+                elif row.setting_type == 'number':
+                    try:
+                        parsed = float(row.setting_value)
+                    except Exception:
+                        parsed = 0
+                elif row.setting_type == 'json':
+                    try:
+                        parsed = json.loads(row.setting_value)
+                    except Exception:
+                        parsed = []
+                else:
+                    parsed = row.setting_value
+                existing_settings[row.setting_name] = parsed
+
+            merged_settings = {**default_settings, **existing_settings}
+            for key in default_settings.keys():
+                if key in data:
+                    merged_settings[key] = data.get(key)
+
+            settings_to_save = [
+                ('default_asset_useful_life', str(merged_settings.get('default_asset_useful_life', 5)), 'number'),
+                ('default_amortization_rate', str(merged_settings.get('default_amortization_rate', 20.0)), 'number'),
+                ('allow_partial_year', str(bool(merged_settings.get('allow_partial_year', True))).lower(), 'boolean'),
+                ('accumulated_depreciation_coa_codes', json.dumps(merged_settings.get('accumulated_depreciation_coa_codes', default_settings['accumulated_depreciation_coa_codes'])), 'json')
+            ]
+
+            update_query = text("""
+                UPDATE amortization_settings
+                SET setting_value = :val,
+                    setting_type = :typ,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE setting_name = :name
+                  AND (
+                    (:company_id IS NULL AND company_id IS NULL)
+                    OR company_id = :company_id
+                  )
+            """)
+            insert_query = text("""
+                INSERT INTO amortization_settings
+                (id, company_id, setting_name, setting_value, setting_type, created_at, updated_at)
+                VALUES (:id, :company_id, :name, :val, :typ, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """)
+
             for name, val, typ in settings_to_save:
-                conn.execute(
-                    text("""
-                        INSERT INTO amortization_settings 
-                        (id, company_id, setting_name, setting_value, setting_type, updated_at)
-                        VALUES (:id, :company_id, :name, :val, :typ, NOW())
-                        ON DUPLICATE KEY UPDATE
-                            setting_value = VALUES(setting_value),
-                            setting_type = VALUES(setting_type),
-                            updated_at = NOW()
-                    """),
+                update_result = conn.execute(
+                    update_query,
                     {
-                        'id': str(uuid.uuid4()),
                         'company_id': company_id,
                         'name': name,
                         'val': val,
                         'typ': typ
                     }
                 )
+
+                if update_result.rowcount == 0:
+                    conn.execute(
+                        insert_query,
+                        {
+                            'id': str(uuid.uuid4()),
+                            'company_id': company_id,
+                            'name': name,
+                            'val': val,
+                            'typ': typ
+                        }
+                    )
         return jsonify({'success': True})
     except Exception as e:
         app.logger.error(f"Failed to save amortization settings: {e}")

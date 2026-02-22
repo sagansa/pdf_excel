@@ -149,6 +149,291 @@ def _to_float(value, default=0.0):
         return default
 
 
+def _normalize_text(value):
+    return re.sub(r'[^a-z0-9]+', '', str(value or '').strip().lower())
+
+
+def _is_cogs_expense_item(item):
+    code = str((item or {}).get('code') or '').strip()
+    subcategory = _normalize_text((item or {}).get('subcategory'))
+
+    cogs_subcategories = {
+        'cogs',
+        'costofgoodssold',
+        'costofgoodsold',
+        'hargapokokpenjualan',
+        'bebanpokokpenjualan'
+    }
+
+    if subcategory in cogs_subcategories:
+        return True
+    if 'costofgoods' in subcategory or 'hargapokok' in subcategory:
+        return True
+
+    # Fallback by COA code family: 50xx is generally COGS in this project setup.
+    if code.startswith('50'):
+        return True
+
+    return False
+
+
+def _load_amortization_calculation_settings(conn, company_id=None):
+    default_rate = 20.0
+    allow_partial_year = True
+
+    if company_id:
+        settings_query = text("""
+            SELECT setting_name, setting_value
+            FROM amortization_settings
+            WHERE company_id = :company_id OR company_id IS NULL
+            ORDER BY company_id ASC
+        """)
+        rows = conn.execute(settings_query, {'company_id': company_id})
+    else:
+        settings_query = text("""
+            SELECT setting_name, setting_value
+            FROM amortization_settings
+            WHERE company_id IS NULL
+        """)
+        rows = conn.execute(settings_query)
+
+    for row in rows:
+        setting_name = str(row.setting_name or '').strip()
+        setting_value = row.setting_value
+        if setting_name == 'default_amortization_rate':
+            default_rate = _to_float(setting_value, 20.0)
+        elif setting_name == 'allow_partial_year':
+            allow_partial_year = _parse_bool(setting_value)
+
+    return default_rate, allow_partial_year
+
+
+def _calculate_current_year_amortization(
+    base_amount,
+    tarif_rate,
+    start_date_value,
+    report_year,
+    use_half_rate=False,
+    allow_partial_year=True
+):
+    amount = _to_float(base_amount, 0.0)
+    rate = _to_float(tarif_rate, 0.0)
+    if amount <= 0 or rate <= 0:
+        return 0.0
+
+    start_date = _parse_date(start_date_value)
+    if start_date is None:
+        start_date = date(report_year, 1, 1)
+
+    acquisition_year = start_date.year
+    if acquisition_year > report_year:
+        return 0.0
+
+    annual_amort_base = amount * (rate / 100.0)
+    accumulated_prev = 0.0
+    current_year_amort = 0.0
+
+    for year in range(acquisition_year, report_year + 1):
+        year_amort = annual_amort_base
+        if year == acquisition_year:
+            if allow_partial_year:
+                months = 12 - start_date.month + 1
+                year_amort = annual_amort_base * (months / 12.0)
+            elif use_half_rate:
+                year_amort = annual_amort_base * 0.5
+
+        remaining = amount - accumulated_prev
+        year_amort = min(year_amort, max(remaining, 0.0))
+
+        if year < report_year:
+            accumulated_prev += year_amort
+        else:
+            current_year_amort = year_amort
+
+    return max(current_year_amort, 0.0)
+
+
+def _calculate_dynamic_5314_total(conn, start_date, company_id=None):
+    report_year = int(str(start_date)[:4])
+    default_rate, allow_partial_year = _load_amortization_calculation_settings(conn, company_id)
+
+    if company_id:
+        company_filter_sql = "AND ai.company_id = :company_id"
+        company_params = {'company_id': company_id}
+    else:
+        company_filter_sql = ""
+        company_params = {}
+
+    manual_query = text(f"""
+        SELECT
+            ai.year,
+            ai.amount,
+            ai.amortization_date,
+            ai.asset_group_id,
+            ai.use_half_rate,
+            ag.tarif_rate
+        FROM amortization_items ai
+        LEFT JOIN amortization_asset_groups ag ON ai.asset_group_id = ag.id
+        WHERE 1=1
+          {company_filter_sql}
+    """)
+    manual_rows = conn.execute(manual_query, company_params)
+
+    manual_total = 0.0
+    for row in manual_rows:
+        amount = _to_float(row.amount, 0.0)
+        if amount <= 0:
+            continue
+
+        item_year = int(_to_float(row.year, report_year))
+        start_date_value = _parse_date(row.amortization_date) or date(report_year, 1, 1)
+        purchase_year = start_date_value.year
+
+        # One-time direct adjustment: only recognized on item year.
+        if not row.asset_group_id and item_year != report_year:
+            continue
+        if purchase_year > report_year:
+            continue
+
+        tarif_rate = _to_float(row.tarif_rate, default_rate) or default_rate
+        if row.asset_group_id:
+            annual_amort = _calculate_current_year_amortization(
+                amount,
+                tarif_rate,
+                start_date_value,
+                report_year,
+                use_half_rate=_parse_bool(row.use_half_rate),
+                allow_partial_year=allow_partial_year
+            )
+        else:
+            annual_amort = amount
+
+        manual_total += annual_amort
+
+    if conn.dialect.name == 'sqlite':
+        txn_year_clause = "CAST(strftime('%Y', t.txn_date) AS INTEGER) <= :report_year"
+    else:
+        txn_year_clause = "YEAR(t.txn_date) <= :report_year"
+
+    txn_company_clause = "AND t.company_id = :company_id" if company_id else ""
+    txn_query = text(f"""
+        SELECT DISTINCT
+            t.id,
+            t.amount AS acquisition_cost,
+            t.amortization_start_date,
+            t.txn_date,
+            t.use_half_rate,
+            ag.tarif_rate
+        FROM transactions t
+        INNER JOIN marks m ON t.mark_id = m.id
+        INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
+        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        LEFT JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
+        WHERE coa.code = '5314'
+          {txn_company_clause}
+          AND {txn_year_clause}
+    """)
+    txn_params = {'report_year': report_year}
+    if company_id:
+        txn_params['company_id'] = company_id
+
+    calculated_total = 0.0
+    for row in conn.execute(txn_query, txn_params):
+        base_amount = _to_float(row.acquisition_cost, 0.0)
+        if base_amount <= 0:
+            continue
+
+        start_date_value = _parse_date(row.amortization_start_date) or _parse_date(row.txn_date) or date(report_year, 1, 1)
+        tarif_rate = _to_float(row.tarif_rate, default_rate) or default_rate
+        calculated_total += _calculate_current_year_amortization(
+            base_amount,
+            tarif_rate,
+            start_date_value,
+            report_year,
+            use_half_rate=_parse_bool(row.use_half_rate),
+            allow_partial_year=allow_partial_year
+        )
+
+    asset_company_clause = "AND a.company_id = :company_id" if company_id else ""
+    assets_query = text(f"""
+        SELECT
+            a.acquisition_cost,
+            a.acquisition_date,
+            a.amortization_start_date,
+            a.use_half_rate,
+            ag.tarif_rate
+        FROM amortization_assets a
+        LEFT JOIN amortization_asset_groups ag ON a.asset_group_id = ag.id
+        WHERE (a.is_active = TRUE OR a.is_active = 1)
+          {asset_company_clause}
+    """)
+    asset_params = {'company_id': company_id} if company_id else {}
+    for row in conn.execute(assets_query, asset_params):
+        base_amount = _to_float(row.acquisition_cost, 0.0)
+        if base_amount <= 0:
+            continue
+
+        start_date_value = _parse_date(row.amortization_start_date) or _parse_date(row.acquisition_date) or date(report_year, 1, 1)
+        tarif_rate = _to_float(row.tarif_rate, default_rate) or default_rate
+        calculated_total += _calculate_current_year_amortization(
+            base_amount,
+            tarif_rate,
+            start_date_value,
+            report_year,
+            use_half_rate=_parse_bool(row.use_half_rate),
+            allow_partial_year=allow_partial_year
+        )
+
+    total_5314 = manual_total + calculated_total
+    return {
+        'report_year': report_year,
+        'manual_total': manual_total,
+        'calculated_total': calculated_total,
+        'total_5314': total_5314
+    }
+
+
+def _get_inventory_balance_with_carry(conn, year, company_id=None):
+    year = int(year)
+    current_query = text("""
+        SELECT beginning_inventory_amount, beginning_inventory_qty,
+               ending_inventory_amount, ending_inventory_qty
+        FROM inventory_balances
+        WHERE year = :year AND (:company_id IS NULL OR company_id = :company_id)
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
+    """)
+    current = conn.execute(current_query, {'year': year, 'company_id': company_id}).fetchone()
+
+    beginning_amount = _to_float(current[0], 0.0) if current else 0.0
+    beginning_qty = _to_float(current[1], 0.0) if current else 0.0
+    ending_amount = _to_float(current[2], 0.0) if current else 0.0
+    ending_qty = _to_float(current[3], 0.0) if current else 0.0
+
+    if abs(beginning_amount) < 0.000001 and abs(beginning_qty) < 0.000001:
+        prev_query = text("""
+            SELECT ending_inventory_amount, ending_inventory_qty
+            FROM inventory_balances
+            WHERE year = :year AND (:company_id IS NULL OR company_id = :company_id)
+            ORDER BY updated_at DESC, created_at DESC
+            LIMIT 1
+        """)
+        previous = conn.execute(prev_query, {'year': year - 1, 'company_id': company_id}).fetchone()
+        if previous:
+            prev_ending_amount = _to_float(previous[0], 0.0)
+            prev_ending_qty = _to_float(previous[1], 0.0)
+            if abs(prev_ending_amount) >= 0.000001 or abs(prev_ending_qty) >= 0.000001:
+                beginning_amount = prev_ending_amount
+                beginning_qty = prev_ending_qty
+
+    return {
+        'beginning_inventory_amount': beginning_amount,
+        'beginning_inventory_qty': beginning_qty,
+        'ending_inventory_amount': ending_amount,
+        'ending_inventory_qty': ending_qty
+    }
+
+
 def _overlap_days(start_a, end_a, start_b, end_b):
     if not all([start_a, end_a, start_b, end_b]):
         return 0
@@ -235,18 +520,10 @@ def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_i
             coa.subcategory,
             SUM(
                 CASE
-                    WHEN coa.normal_balance = 'DEBIT' THEN
-                        CASE
-                            WHEN t.db_cr = 'DB' THEN t.amount
-                            WHEN t.db_cr = 'CR' THEN -t.amount
-                            ELSE 0
-                        END
-                    WHEN coa.normal_balance = 'CREDIT' THEN
-                        CASE
-                            WHEN t.db_cr = 'CR' THEN t.amount
-                            WHEN t.db_cr = 'DB' THEN -t.amount
-                            ELSE 0
-                        END
+                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'DEBIT' THEN t.amount
+                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'CREDIT' THEN -t.amount
+                    WHEN t.db_cr = 'DB' THEN t.amount
+                    WHEN t.db_cr = 'CR' THEN -t.amount
                     ELSE 0
                 END
             ) AS total_amount
@@ -535,7 +812,13 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
         WITH coa_balances AS (
             SELECT 
                 mcm.coa_id,
-                SUM(CASE WHEN t.db_cr = 'CR' THEN -t.amount ELSE t.amount END) as total_amount
+                SUM(
+                    CASE
+                        WHEN mcm.mapping_type = 'DEBIT' THEN t.amount
+                        WHEN mcm.mapping_type = 'CREDIT' THEN -t.amount
+                        ELSE 0
+                    END
+                ) as total_amount
             FROM transactions t
             INNER JOIN marks m ON t.mark_id = m.id
             INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
@@ -926,40 +1209,16 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
             coa.name,
             coa.category,
             coa.subcategory,
-            coa.normal_balance,
             SUM(
                 CASE 
-                    -- Revenue accounts (normal balance CREDIT, except contra-revenue like 4011)
-                    WHEN coa.category = 'REVENUE' AND coa.normal_balance = 'CREDIT' THEN
-                        CASE 
-                            WHEN t.db_cr = 'CR' THEN t.amount
-                            WHEN t.db_cr = 'DB' THEN -t.amount
-                            ELSE 0
-                        END
-                    -- Contra-revenue accounts (normal balance DEBIT, like 4011)
-                    WHEN coa.category = 'REVENUE' AND coa.normal_balance = 'DEBIT' THEN
-                        CASE 
-                            WHEN t.db_cr = 'DB' THEN t.amount
-                            WHEN t.db_cr = 'CR' THEN -t.amount
-                            ELSE 0
-                        END
-                    -- Expense accounts (normal balance DEBIT)
-                    WHEN coa.category = 'EXPENSE' AND coa.normal_balance = 'DEBIT' THEN
-                        CASE 
-                            WHEN t.db_cr = 'DB' THEN t.amount
-                            WHEN t.db_cr = 'CR' THEN -t.amount
-                            ELSE 0
-                        END
-                    -- Contra-expense accounts (normal balance CREDIT, if any)
-                    WHEN coa.category = 'EXPENSE' AND coa.normal_balance = 'CREDIT' THEN
-                        CASE 
-                            WHEN t.db_cr = 'CR' THEN t.amount
-                            WHEN t.db_cr = 'DB' THEN -t.amount
-                            ELSE 0
-                        END
+                    -- Account posting sign from mapping: debit = +, credit = -
+                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'DEBIT' THEN t.amount
+                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'CREDIT' THEN -t.amount
+                    WHEN t.db_cr = 'DB' THEN t.amount
+                    WHEN t.db_cr = 'CR' THEN -t.amount
                     ELSE 0
                 END
-            ) as total_amount
+            ) as signed_amount
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
         INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
@@ -968,7 +1227,7 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
             AND coa.category IN ('REVENUE', 'EXPENSE')
             AND (:company_id IS NULL OR t.company_id = :company_id)
             {split_exclusion_clause}
-        GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory, coa.normal_balance
+        GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory
         ORDER BY coa.code
     """)
     
@@ -983,6 +1242,7 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
     rent_expense_templates = {}
     total_revenue = 0
     total_expenses = 0
+    fallback_5314_from_ledger = 0.0
 
     def merge_expense_item(item):
         for existing in expenses:
@@ -993,7 +1253,9 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
     
     for row in result:
         d = dict(row._mapping)
-        amount = float(d['total_amount']) if d['total_amount'] else 0
+        signed_amount = float(d['signed_amount']) if d['signed_amount'] else 0
+        # Revenue effect is inverse of account posting sign; expense follows posting sign.
+        amount = -signed_amount if d['category'] == 'REVENUE' else signed_amount
         
         item = {
             'code': d['code'],
@@ -1005,17 +1267,11 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
         
         if d['category'] == 'REVENUE':
             revenue.append(item)
-            # For contra-revenue accounts (normal balance DEBIT), the amount reduces revenue
-            # For regular revenue accounts (normal balance CREDIT), the amount increases revenue
-            if d['normal_balance'] == 'DEBIT':
-                # Contra-revenue accounts (like 4011) should reduce total revenue
-                total_revenue -= amount
-            else:
-                # Regular revenue accounts should increase total revenue
-                total_revenue += amount
+            total_revenue += amount
         else:  # EXPENSE
-            # Skip ALL 5314 entries - we'll add the correct amount manually later
+            # Skip ledger 5314 in the expense list; we'll inject dynamic 5314 later.
             if d['code'] == '5314':
+                fallback_5314_from_ledger += amount
                 continue
 
             if d['code'] in RENT_EXPENSE_CODES:
@@ -1050,22 +1306,25 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
         merge_expense_item(rent_item)
         total_expenses += prorated_rent_expense
     
-    # 2.5 Add 5314 (Amortisasi Aktiva Berwujud) - Using Fixed Amount
-    # Skip all calculations and use fixed amount as requested
-    calculated_amort_total = 0  # Keep for reference but don't calculate
-    
-    # Traditional amortization_assets calculation disabled - using fixed amount instead
-    
-    # Manual amortization calculation disabled - using fixed amount instead
-    manual_amort_total = 0
-    
-    # Skip the rest of the calculation - using fixed amount instead
-    
-    # Set the exact amount for 5314 as requested: Rp 56.094.288
-    # This includes both automatic and manual amortization
-    fixed_5314_amount = 56094288.0
-    
-    # Note: marks-based asset depreciation is already included in calculated_amort_total above
+    # 2.5 Calculate 5314 (Beban Penyusutan dan Amortisasi) dynamically:
+    # total = calculated amortization + manual amortization.
+    amortization_breakdown = {
+        'report_year': int(str(start_date)[:4]),
+        'manual_total': 0.0,
+        'calculated_total': 0.0,
+        'total_5314': 0.0
+    }
+    dynamic_calc_ok = True
+    try:
+        amortization_breakdown = _calculate_dynamic_5314_total(conn, start_date, company_id)
+    except Exception as e:
+        dynamic_calc_ok = False
+        logger.error(f"Failed to calculate dynamic 5314 amount: {e}")
+    calculated_amort_total = _to_float(amortization_breakdown.get('calculated_total'), 0.0)
+    manual_amort_total = _to_float(amortization_breakdown.get('manual_total'), 0.0)
+    dynamic_5314_amount = _to_float(amortization_breakdown.get('total_5314'), 0.0)
+    if not dynamic_calc_ok:
+        dynamic_5314_amount = fallback_5314_from_ledger
     
     # 2. Handle COGS (HPP) with Manual Inventory Adjustments
     beginning_inv = 0
@@ -1075,28 +1334,25 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
     year = datetime.strptime(start_date, '%Y-%m-%d').year
     
     try:
-        inventory_query = text("""
-            SELECT beginning_inventory_amount, ending_inventory_amount
-            FROM inventory_balances
-            WHERE year = :year AND (:company_id IS NULL OR company_id = :company_id)
-            LIMIT 1
-        """)
-        inv_result = conn.execute(inventory_query, {'year': year, 'company_id': company_id}).fetchone()
-        if inv_result:
-            beginning_inv = float(inv_result[0] or 0)
-            ending_inv = float(inv_result[1] or 0)
+        inv_balance = _get_inventory_balance_with_carry(conn, year, company_id)
+        beginning_inv = _to_float(inv_balance.get('beginning_inventory_amount'), 0.0)
+        ending_inv = _to_float(inv_balance.get('ending_inventory_amount'), 0.0)
     except Exception as e:
         logger.error(f"Failed to fetch inventory balances: {e}")
 
-    # Identify 'Purchases' and 'Other COGS' from expenses
+    # Identify 'Purchases' and 'Other COGS' from expenses.
+    # Use robust COGS detection (subcategory normalization + 50xx code fallback).
     purchases = 0
+    purchases_items = []
     other_cogs_items = []
-    
-    cogs_items = [e for e in expenses if e.get('subcategory') == 'Cost of Goods Sold']
-    
+
+    cogs_items = [e for e in expenses if _is_cogs_expense_item(e)]
+
     for item in cogs_items:
-        if item['code'] == '5001':
-            purchases += item['amount']
+        item_code = str(item.get('code') or '').strip()
+        if item_code == '5001':
+            purchases += _to_float(item.get('amount'), 0.0)
+            purchases_items.append(item)
         else:
             other_cogs_items.append(item)
     
@@ -1107,6 +1363,7 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
     cogs_breakdown = {
         'beginning_inventory': beginning_inv,
         'purchases': purchases,
+        'purchases_items': purchases_items,
         'other_cogs_items': other_cogs_items,
         'total_other_cogs': total_other_cogs,
         'ending_inventory': ending_inv,
@@ -1114,25 +1371,16 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
         'year': year
     }
 
-    # Filter out COGS items and add the correct 5314 amount
-    final_expenses = [e for e in expenses if e.get('subcategory') != 'Cost of Goods Sold']
-    
-    # Add the correct 5314 amount
+    # Filter out COGS items and inject dynamic 5314 amount.
+    final_expenses = [
+        e for e in expenses
+        if not _is_cogs_expense_item(e) and str(e.get('code') or '') != '5314'
+    ]
     final_expenses.append({
         'code': '5314',
         'name': 'Beban Penyusutan dan Amortisasi',
         'subcategory': 'Operating Expenses',
-        'amount': 56094288.0,
-        'category': 'EXPENSE'
-    })
-    
-    # Override any 5314 entries with the exact amount requested: Rp 56.094.288
-    final_expenses = [e for e in final_expenses if e.get('code') != '5314']
-    final_expenses.append({
-        'code': '5314',
-        'name': 'Beban Penyusutan dan Amortisasi',
-        'subcategory': 'Operating Expenses',
-        'amount': 56094288.0,
+        'amount': dynamic_5314_amount,
         'category': 'EXPENSE'
     })
     
@@ -1147,6 +1395,18 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
         'total_revenue': total_revenue,
         'total_expenses': total_expenses_calculated,
         'cogs_breakdown': cogs_breakdown,
+        'net_income_components': {
+            'formula': 'total_revenue - total_expenses - total_cogs',
+            'total_revenue': total_revenue,
+            'total_expenses': total_expenses_calculated,
+            'total_cogs': calculate_hpp
+        },
+        'amortization_breakdown': {
+            'manual_total': manual_amort_total,
+            'calculated_total': calculated_amort_total,
+            'total_5314': dynamic_5314_amount,
+            'report_year': amortization_breakdown.get('report_year')
+        },
         'net_income': total_revenue - total_expenses_calculated - calculate_hpp
     }
 
@@ -1232,10 +1492,11 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
     txn_columns = _table_columns(conn, 'transactions')
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
     user_col_expr = "t.sagansa_user_id" if 'sagansa_user_id' in txn_columns else "NULL"
+    effective_date_expr = "COALESCE(t.payroll_period_month, t.txn_date)" if 'payroll_period_month' in txn_columns else "t.txn_date"
     if conn.dialect.name == 'sqlite':
-        month_key_expr = "strftime('%Y-%m', t.txn_date)"
+        month_key_expr = f"strftime('%Y-%m', {effective_date_expr})"
     else:
-        month_key_expr = "DATE_FORMAT(t.txn_date, '%Y-%m')"
+        month_key_expr = f"DATE_FORMAT({effective_date_expr}, '%Y-%m')"
 
     query = text(f"""
         SELECT
@@ -1247,7 +1508,7 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
         WHERE COALESCE(m.is_salary_component, 0) = 1
-          AND t.txn_date BETWEEN :start_date AND :end_date
+          AND {effective_date_expr} BETWEEN :start_date AND :end_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}
         GROUP BY

@@ -36,7 +36,8 @@ export const useAmortizationStore = defineStore('amortization', {
     async fetchAssetGroups(companyId, assetType = null) {
       this.isLoading = true;
       try {
-        const params = { company_id: companyId };
+        const params = {};
+        if (companyId) params.company_id = companyId;
         if (assetType) params.asset_type = assetType;
         
         const response = await api.get('/amortization/asset-groups', { params });

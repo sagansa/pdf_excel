@@ -58,22 +58,22 @@
                   <tr v-if="data.assets.current.length === 0">
                     <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm">No current assets</td>
                   </tr>
-                  <tr v-for="item in data.assets.current" :key="item.id" class="hover:bg-gray-50 group cursor-pointer" @click="openCoaDetail(item)">
+                  <tr v-for="item in data.assets.current" :key="item.id" class="group">
                     <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">{{ item.code }}</td>
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-blue-700">
                       <div class="flex items-center justify-end gap-2">
                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
-                          @click.stop="copyToClipboard(item.amount)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity"
+                          @click.stop.prevent="copyToClipboard(item.amount)"
+                          class="text-gray-400 hover:text-blue-600 transition-colors"
                           title="Copy amount"
                         >
                           <i class="bi bi-clipboard text-xs"></i>
                         </button>
                         <button
-                          @click.stop="openCoaDetail(item)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                          @click.stop.prevent="openCoaDetail(item)"
+                          class="text-gray-400 hover:text-indigo-600 transition-colors"
                           title="View transactions"
                         >
                           <i class="bi bi-list-ul text-xs"></i>
@@ -104,22 +104,22 @@
                   <tr v-if="data.assets.non_current.length === 0">
                     <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm">No non-current assets</td>
                   </tr>
-                  <tr v-for="item in data.assets.non_current" :key="item.id" class="hover:bg-gray-50 group cursor-pointer" @click="openCoaDetail(item)">
+                  <tr v-for="item in data.assets.non_current" :key="item.id" class="group">
                     <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">{{ item.code }}</td>
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-indigo-700">
                       <div class="flex items-center justify-end gap-2">
                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
-                          @click.stop="copyToClipboard(item.amount)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                          @click.stop.prevent="copyToClipboard(item.amount)"
+                          class="text-gray-400 hover:text-indigo-600 transition-colors"
                           title="Copy amount"
                         >
                           <i class="bi bi-clipboard text-xs"></i>
                         </button>
                         <button
-                          @click.stop="openCoaDetail(item)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                          @click.stop.prevent="openCoaDetail(item)"
+                          class="text-gray-400 hover:text-indigo-600 transition-colors"
                           title="View transactions"
                         >
                           <i class="bi bi-list-ul text-xs"></i>
@@ -140,7 +140,7 @@
                 <p class="text-xs opacity-75 mt-1">Jumlah Aset</p>
               </div>
               <div class="text-right">
-                <p class="text-3xl font-bold">{{ formatCurrency(data.assets.total) }}</p>
+                <p class="text-3xl font-bold whitespace-nowrap tabular-nums">{{ formatCurrency(data.assets.total) }}</p>
               </div>
             </div>
           </div>
@@ -166,22 +166,22 @@
                   <tr v-if="data.liabilities.current.length === 0">
                     <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm">No current liabilities</td>
                   </tr>
-                  <tr v-for="item in data.liabilities.current" :key="item.id" class="hover:bg-gray-50 group cursor-pointer" @click="openCoaDetail(item)">
+                  <tr v-for="item in data.liabilities.current" :key="item.id" class="group">
                     <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">{{ item.code }}</td>
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-orange-700">
                       <div class="flex items-center justify-end gap-2">
                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
-                          @click.stop="copyToClipboard(item.amount)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-orange-600 transition-opacity"
+                          @click.stop.prevent="copyToClipboard(item.amount)"
+                          class="text-gray-400 hover:text-orange-600 transition-colors"
                           title="Copy amount"
                         >
                           <i class="bi bi-clipboard text-xs"></i>
                         </button>
                         <button
-                          @click.stop="openCoaDetail(item)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                          @click.stop.prevent="openCoaDetail(item)"
+                          class="text-gray-400 hover:text-indigo-600 transition-colors"
                           title="View transactions"
                         >
                           <i class="bi bi-list-ul text-xs"></i>
@@ -212,22 +212,22 @@
                   <tr v-if="data.liabilities.non_current.length === 0">
                     <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm">No non-current liabilities</td>
                   </tr>
-                  <tr v-for="item in data.liabilities.non_current" :key="item.id" class="hover:bg-gray-50 group cursor-pointer" @click="openCoaDetail(item)">
+                  <tr v-for="item in data.liabilities.non_current" :key="item.id" class="group">
                     <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">{{ item.code }}</td>
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
                     <td class="px-6 py-3 text-sm text-right font-semibold text-red-700">
                       <div class="flex items-center justify-end gap-2">
                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
-                          @click.stop="copyToClipboard(item.amount)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition-opacity"
+                          @click.stop.prevent="copyToClipboard(item.amount)"
+                          class="text-gray-400 hover:text-red-600 transition-colors"
                           title="Copy amount"
                         >
                           <i class="bi bi-clipboard text-xs"></i>
                         </button>
                         <button
-                          @click.stop="openCoaDetail(item)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                          @click.stop.prevent="openCoaDetail(item)"
+                          class="text-gray-400 hover:text-indigo-600 transition-colors"
                           title="View transactions"
                         >
                           <i class="bi bi-list-ul text-xs"></i>
@@ -261,8 +261,7 @@
                   <tr
                     v-for="item in data.equity.items"
                     :key="item.id"
-                    :class="item.is_computed ? 'bg-green-50/40' : 'hover:bg-gray-50 group cursor-pointer'"
-                    @click="openCoaDetail(item)"
+                    :class="item.is_computed ? 'bg-green-50/40' : 'group'"
                   >
                     <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">{{ item.code }}</td>
                     <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
@@ -270,16 +269,16 @@
                       <div class="flex items-center justify-end gap-2">
                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
-                          @click.stop="copyToClipboard(item.amount)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-green-600 transition-opacity"
+                          @click.stop.prevent="copyToClipboard(item.amount)"
+                          class="text-gray-400 hover:text-green-600 transition-colors"
                           title="Copy amount"
                         >
                           <i class="bi bi-clipboard text-xs"></i>
                         </button>
                         <button
-                          @click.stop="openCoaDetail(item)"
+                          @click.stop.prevent="openCoaDetail(item)"
                           v-if="!item.is_computed"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                          class="text-gray-400 hover:text-indigo-600 transition-colors"
                           title="View transactions"
                         >
                           <i class="bi bi-list-ul text-xs"></i>
@@ -300,7 +299,7 @@
                 <p class="text-xs opacity-75 mt-1">Jumlah Liabilitas & Ekuitas</p>
               </div>
               <div class="text-right">
-                <p class="text-3xl font-bold">{{ formatCurrency(data.total_liabilities_and_equity) }}</p>
+                <p class="text-3xl font-bold whitespace-nowrap tabular-nums">{{ formatCurrency(data.total_liabilities_and_equity) }}</p>
               </div>
             </div>
           </div>
@@ -311,7 +310,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps({
   data: {
@@ -323,7 +322,6 @@ const props = defineProps({
 const emit = defineEmits(['view-coa']);
 
 const hasData = computed(() => props.data !== null);
-const copiedAmount = ref(null);
 
 const openCoaDetail = (item) => {
   if (!item || item.is_computed) return;
@@ -351,16 +349,28 @@ const formatCurrency = (amount) => {
 };
 
 const copyToClipboard = async (amount) => {
-  try {
-    const rawAmount = Math.abs(amount).toString();
-    await navigator.clipboard.writeText(rawAmount);
+  const numericValue = Number(amount ?? 0);
+  const textToCopy = Number.isFinite(numericValue)
+    ? numericValue.toString()
+    : '0';
 
-    copiedAmount.value = amount;
-    setTimeout(() => {
-      copiedAmount.value = null;
-    }, 1500);
-  } catch (err) {
-    console.error('Failed to copy:', err);
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(textToCopy);
+      return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = textToCopy;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  } catch (error) {
+    console.error('Failed to copy amount:', error);
   }
 };
 </script>

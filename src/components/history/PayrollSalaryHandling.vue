@@ -8,8 +8,8 @@
     </div>
 
     <div class="bg-white rounded-xl border border-gray-200 p-4">
-      <div class="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 w-full lg:w-auto">
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
             <div class="text-xs uppercase font-semibold text-indigo-600">Transactions</div>
             <div class="text-lg font-bold text-indigo-900">{{ transactionsSummary.total_transactions }}</div>
@@ -27,65 +27,98 @@
             <div class="text-lg font-bold text-sky-900">{{ formatCurrency(transactionsSummary.total_amount) }}</div>
           </div>
         </div>
-        <div class="flex flex-col gap-2 w-full lg:w-auto lg:items-end">
-          <div class="flex flex-wrap items-center gap-2">
-            <select
-              v-model="selectedMonth"
-              class="w-40 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
-            </select>
-            <input
-              v-model="search"
-              @keyup.enter="loadData"
-              type="text"
-              placeholder="Search transaction..."
-              class="w-64 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <button
-              @click="loadData"
-              class="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
-            >
-              Refresh
-            </button>
+
+        <div class="rounded-lg border border-gray-200 bg-gray-50/70 p-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-600">Filter Data</h4>
+            <span class="text-xs text-gray-500">{{ filteredTransactions.length }}/{{ transactions.length }} rows</span>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="w-64">
+
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-2">
+            <div class="xl:col-span-2">
+              <div class="text-[11px] font-medium text-gray-600 mb-1">Periode</div>
+              <select
+                v-model="selectedMonth"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+              </select>
+            </div>
+
+            <div class="xl:col-span-4">
+              <div class="text-[11px] font-medium text-gray-600 mb-1">Search</div>
+              <input
+                v-model="search"
+                @keyup.enter="loadData"
+                type="text"
+                placeholder="Search transaction..."
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+
+            <div class="xl:col-span-3">
+              <div class="text-[11px] font-medium text-gray-600 mb-1">Employee</div>
               <MultiSelect
                 v-model="selectedEmployeeIds"
                 :options="employeeFilterOptions"
                 placeholder="Filter employee..."
               />
             </div>
-            <input
-              v-model="amountMin"
-              type="text"
-              placeholder="Min amount"
-              class="w-32 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <input
-              v-model="amountMax"
-              type="text"
-              placeholder="Max amount"
-              class="w-32 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <button
-              @click="clearLocalFilters"
-              class="px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-            >
-              Clear Filters
-            </button>
-            <span class="text-xs text-gray-500">
-              {{ filteredTransactions.length }}/{{ transactions.length }} rows
-            </span>
+
+            <div class="xl:col-span-3">
+              <div class="text-[11px] font-medium text-gray-600 mb-1">Component (Mark)</div>
+              <MultiSelect
+                v-model="selectedComponentNames"
+                :options="componentFilterOptions"
+                placeholder="Filter component (mark)..."
+              />
+            </div>
+
+            <div class="xl:col-span-2">
+              <div class="text-[11px] font-medium text-gray-600 mb-1">Min Amount</div>
+              <input
+                v-model="amountMin"
+                type="text"
+                placeholder="Min amount"
+                class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+
+            <div class="xl:col-span-2">
+              <div class="text-[11px] font-medium text-gray-600 mb-1">Max Amount</div>
+              <input
+                v-model="amountMax"
+                type="text"
+                placeholder="Max amount"
+                class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+
+            <div class="xl:col-span-8 flex flex-wrap items-end gap-2">
+              <button
+                @click="loadData"
+                class="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+              >
+                Refresh
+              </button>
+              <button
+                @click="clearLocalFilters"
+                class="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100"
+              >
+                Clear Filters
+              </button>
+            </div>
           </div>
+        </div>
+
+        <div class="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
           <div class="flex flex-wrap items-center gap-2">
             <span class="text-xs font-semibold text-gray-700">
               {{ selectedTransactionCount }} selected
             </span>
             <select
               v-model="bulkAssignUserId"
-              class="w-64 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full sm:w-72 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               :disabled="selectedTransactionCount === 0 || loadingUsers || isBulkAssigning"
             >
               <option value="">-- Select employee for selected transactions --</option>
@@ -101,7 +134,7 @@
             </button>
             <button
               @click="clearSelection"
-              class="px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-60"
+              class="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-60"
               :disabled="selectedTransactionCount === 0 || isBulkAssigning"
             >
               Clear Selection
@@ -109,7 +142,13 @@
           </div>
         </div>
       </div>
-      <p v-if="pageMessage" class="text-xs text-amber-700 mt-3">{{ pageMessage }}</p>
+
+      <div
+        v-if="pageMessage"
+        class="mt-3 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700"
+      >
+        {{ pageMessage }}
+      </div>
     </div>
 
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -143,15 +182,16 @@
                 </button>
               </th>
               <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Amount</th>
+              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Payroll Month</th>
               <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Employee (Sagansa)</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="loadingTransactions">
-              <td colspan="5" class="px-4 py-6 text-center text-gray-500">Loading payroll transactions...</td>
+              <td colspan="6" class="px-4 py-6 text-center text-gray-500">Loading payroll transactions...</td>
             </tr>
             <tr v-else-if="filteredTransactions.length === 0">
-              <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+              <td colspan="6" class="px-4 py-6 text-center text-gray-500">
                 No salary component transactions for current filter
               </td>
             </tr>
@@ -167,10 +207,30 @@
               </td>
               <td class="px-4 py-3">
                 <div class="font-medium text-gray-900">{{ formatDate(txn.txn_date) }}</div>
-                <div class="text-xs text-gray-600 max-w-[420px] truncate">{{ txn.description || '-' }}</div>
+                <div class="text-xs text-gray-600 whitespace-normal break-words">{{ txn.description || '-' }}</div>
               </td>
               <td class="px-4 py-3 text-gray-700">{{ txn.component_name || '-' }}</td>
               <td class="px-4 py-3 text-right font-medium text-gray-900">{{ formatCurrency(txn.amount) }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <input
+                    type="month"
+                    :value="getTxnPayrollMonthValue(txn)"
+                    @change="updateTxnPayrollMonth(txn, $event.target.value)"
+                    class="w-36 px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    :disabled="savingTxnId === txn.id || savingPeriodTxnId === txn.id || isBulkAssigning"
+                  />
+                  <button
+                    @click="resetTxnPayrollMonth(txn)"
+                    class="px-2 py-1 text-[11px] font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-60"
+                    :disabled="!txn.payroll_period_month || savingPeriodTxnId === txn.id || isBulkAssigning"
+                    title="Reset ke bulan transaksi"
+                  >
+                    Default
+                  </button>
+                </div>
+                <div v-if="savingPeriodTxnId === txn.id" class="text-[11px] text-gray-500 mt-1">Saving period...</div>
+              </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
                   <select
@@ -208,15 +268,15 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
             <div class="text-xs uppercase font-semibold text-gray-500">Employees</div>
-            <div class="text-base font-bold text-gray-900">{{ monthlySummary.employee_count }}</div>
+            <div class="text-base font-bold text-gray-900">{{ displayMonthlySummary.employee_count }}</div>
           </div>
           <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
             <div class="text-xs uppercase font-semibold text-gray-500">Transactions</div>
-            <div class="text-base font-bold text-gray-900">{{ monthlySummary.total_transactions }}</div>
+            <div class="text-base font-bold text-gray-900">{{ displayMonthlySummary.total_transactions }}</div>
           </div>
           <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
             <div class="text-xs uppercase font-semibold text-gray-500">Total Payroll</div>
-            <div class="text-base font-bold text-gray-900">{{ formatCurrency(monthlySummary.total_salary_amount) }}</div>
+            <div class="text-base font-bold text-gray-900">{{ formatCurrency(displayMonthlySummary.total_salary_amount) }}</div>
           </div>
         </div>
       </div>
@@ -234,10 +294,10 @@
             <tr v-if="loadingSummary">
               <td colspan="4" class="px-4 py-6 text-center text-gray-500">Loading payroll summary...</td>
             </tr>
-            <tr v-else-if="summaryRows.length === 0">
-              <td colspan="4" class="px-4 py-6 text-center text-gray-500">No payroll summary for this month</td>
+            <tr v-else-if="displaySummaryRows.length === 0">
+              <td colspan="4" class="px-4 py-6 text-center text-gray-500">No payroll summary for selected period</td>
             </tr>
-            <tr v-for="row in summaryRows" :key="row.sagansa_user_id || 'unassigned'" class="hover:bg-gray-50">
+            <tr v-for="row in displaySummaryRows" :key="summaryRowKey(row)" class="hover:bg-gray-50">
               <td class="px-4 py-3">
                 <div class="font-medium text-gray-900">{{ row.sagansa_user_name || 'Unassigned' }}</div>
                 <div class="text-xs text-gray-500">{{ row.sagansa_user_id || '-' }}</div>
@@ -299,6 +359,7 @@ const transactionsSummary = ref({
 const selectedMonth = ref(new Date().getMonth() + 1);
 const search = ref('');
 const selectedEmployeeIds = ref([]);
+const selectedComponentNames = ref([]);
 const amountMin = ref('');
 const amountMax = ref('');
 const sortField = ref('txn_date');
@@ -310,6 +371,7 @@ const loadingUsers = ref(false);
 const loadingTransactions = ref(false);
 const loadingSummary = ref(false);
 const savingTxnId = ref(null);
+const savingPeriodTxnId = ref(null);
 const isBulkAssigning = ref(false);
 const selectAllCheckbox = ref(null);
 const isFilterLoaded = ref(false);
@@ -323,13 +385,16 @@ const normalizedYear = computed(() => {
 });
 
 const monthOptions = computed(() => {
-  return Array.from({ length: 12 }, (_, idx) => {
-    const month = idx + 1;
-    return {
-      value: month,
-      label: new Date(2000, idx, 1).toLocaleDateString('en-US', { month: 'long' })
-    };
-  });
+  return [
+    { value: '', label: 'Semua Bulan (Setahun)' },
+    ...Array.from({ length: 12 }, (_, idx) => {
+      const month = idx + 1;
+      return {
+        value: month,
+        label: new Date(2000, idx, 1).toLocaleDateString('en-US', { month: 'long' })
+      };
+    })
+  ];
 });
 
 const employeeUsers = computed(() => users.value.filter((user) => Boolean(user.is_employee)));
@@ -337,6 +402,11 @@ const employeeUsers = computed(() => users.value.filter((user) => Boolean(user.i
 const employeeUserIdSet = computed(() => {
   return new Set(employeeUsers.value.map((user) => String(user.id || '').trim()).filter(Boolean));
 });
+
+const normalizeComponentName = (value) => {
+  const normalized = String(value || '').trim();
+  return normalized || '(Unnamed Salary Component)';
+};
 
 const employeeFilterOptions = computed(() => {
   const options = [{
@@ -350,6 +420,36 @@ const employeeFilterOptions = computed(() => {
     });
   }
   return options;
+});
+
+const componentFilterOptions = computed(() => {
+  const names = new Set();
+
+  for (const txn of transactions.value) {
+    names.add(normalizeComponentName(txn.component_name));
+  }
+
+  for (const row of summaryRows.value) {
+    for (const component of (row.components || [])) {
+      names.add(normalizeComponentName(component.component_name));
+    }
+  }
+
+  return Array.from(names)
+    .sort((a, b) => a.localeCompare(b, 'id'))
+    .map((name) => ({
+      id: name,
+      label: name
+    }));
+});
+
+const componentFilterSet = computed(() => {
+  return new Set(selectedComponentNames.value.map((name) => normalizeComponentName(name)));
+});
+
+const componentFilteredTransactions = computed(() => {
+  if (componentFilterSet.value.size === 0) return [...transactions.value];
+  return transactions.value.filter((txn) => componentFilterSet.value.has(normalizeComponentName(txn.component_name)));
 });
 
 const parsedAmountMin = computed(() => {
@@ -367,7 +467,7 @@ const parsedAmountMax = computed(() => {
 });
 
 const filteredTransactions = computed(() => {
-  let rows = [...transactions.value];
+  let rows = [...componentFilteredTransactions.value];
 
   if (selectedEmployeeIds.value.length > 0) {
     const selectedSet = new Set(selectedEmployeeIds.value.map((id) => String(id)));
@@ -402,6 +502,63 @@ const filteredTransactions = computed(() => {
   return rows;
 });
 
+const displaySummaryRows = computed(() => {
+  if (componentFilterSet.value.size === 0) return summaryRows.value;
+
+  const grouped = new Map();
+  for (const txn of componentFilteredTransactions.value) {
+    const userId = String(txn.sagansa_user_id || '').trim() || null;
+    const userName = txn.sagansa_user_name || userId || 'Unassigned';
+    const groupKey = userId ? `u:${userId}` : `u:unassigned:${userName}`;
+    const componentName = normalizeComponentName(txn.component_name);
+    const amount = Math.abs(Number(txn.amount || 0));
+
+    if (!grouped.has(groupKey)) {
+      grouped.set(groupKey, {
+        sagansa_user_id: userId,
+        sagansa_user_name: userName,
+        total_amount: 0,
+        transaction_count: 0,
+        components_map: new Map()
+      });
+    }
+
+    const row = grouped.get(groupKey);
+    row.total_amount += amount;
+    row.transaction_count += 1;
+    row.components_map.set(componentName, (row.components_map.get(componentName) || 0) + amount);
+  }
+
+  return Array.from(grouped.values())
+    .map((row) => ({
+      sagansa_user_id: row.sagansa_user_id,
+      sagansa_user_name: row.sagansa_user_name,
+      total_amount: row.total_amount,
+      transaction_count: row.transaction_count,
+      components: Array.from(row.components_map.entries())
+        .map(([componentName, amount]) => ({ component_name: componentName, amount }))
+        .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
+    }))
+    .sort((a, b) => Number(b.total_amount || 0) - Number(a.total_amount || 0));
+});
+
+const displayMonthlySummary = computed(() => {
+  if (componentFilterSet.value.size === 0) return monthlySummary.value;
+
+  const totalAmount = componentFilteredTransactions.value.reduce(
+    (sum, txn) => sum + Math.abs(Number(txn.amount || 0)),
+    0
+  );
+
+  return {
+    year: Number(monthlySummary.value?.year || normalizedYear.value),
+    month: monthlySummary.value?.month ?? (selectedMonth.value === '' ? null : Number(selectedMonth.value)),
+    employee_count: displaySummaryRows.value.length,
+    total_transactions: componentFilteredTransactions.value.length,
+    total_salary_amount: totalAmount
+  };
+});
+
 const selectedTransactionIdSet = computed(() => new Set(selectedTransactionIds.value.map((id) => String(id))));
 
 const selectedTransactionCount = computed(() => selectedTransactionIds.value.length);
@@ -433,14 +590,42 @@ const formatDate = (dateStr) => {
   return d.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
+const toYearMonth = (value) => {
+  if (!value) return '';
+  const str = String(value);
+  if (/^\d{4}-\d{2}$/.test(str)) return str;
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 7);
+  const d = new Date(str);
+  if (!Number.isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+  return str.slice(0, 7);
+};
+
 const isEmployeeUser = (userId) => {
   const normalized = String(userId || '').trim();
   if (!normalized) return false;
   return employeeUserIdSet.value.has(normalized);
 };
 
+const getTxnPayrollMonthValue = (txn) => {
+  if (!txn) return '';
+  const monthFromOverride = toYearMonth(txn.payroll_period_month);
+  if (monthFromOverride) return monthFromOverride;
+  return toYearMonth(txn.txn_date);
+};
+
+const summaryRowKey = (row) => {
+  const userId = String(row?.sagansa_user_id || '').trim();
+  if (userId) return `u:${userId}`;
+  return `u:unassigned:${String(row?.sagansa_user_name || 'Unassigned').trim() || 'Unassigned'}`;
+};
+
 const clearLocalFilters = () => {
   selectedEmployeeIds.value = [];
+  selectedComponentNames.value = [];
   amountMin.value = '';
   amountMax.value = '';
 };
@@ -494,10 +679,12 @@ const toggleSelectAllFiltered = (checked) => {
 const saveUiFilters = async () => {
   if (!isFilterLoaded.value) return;
   try {
+    const normalizedSelectedMonth = selectedMonth.value === '' ? '' : Number(selectedMonth.value || '');
     await filterApi.saveFilters(FILTER_VIEW_NAME, {
-      selectedMonth: Number(selectedMonth.value || 1),
+      selectedMonth: Number.isFinite(normalizedSelectedMonth) ? normalizedSelectedMonth : '',
       search: String(search.value || ''),
       selectedEmployeeIds: selectedEmployeeIds.value.map((id) => String(id)),
+      selectedComponentNames: selectedComponentNames.value.map((name) => String(name)),
       amountMin: String(amountMin.value || ''),
       amountMax: String(amountMax.value || ''),
       sortField: String(sortField.value || 'txn_date'),
@@ -521,12 +708,19 @@ const loadUiFilters = async () => {
     const response = await filterApi.getFilters(FILTER_VIEW_NAME);
     const filters = response?.data?.filters || {};
     if (Object.keys(filters).length > 0) {
-      const month = Number(filters.selectedMonth);
-      if (Number.isFinite(month) && month >= 1 && month <= 12) {
-        selectedMonth.value = month;
+      if (filters.selectedMonth === '' || filters.selectedMonth === null || filters.selectedMonth === undefined) {
+        selectedMonth.value = '';
+      } else {
+        const month = Number(filters.selectedMonth);
+        if (Number.isFinite(month) && month >= 1 && month <= 12) {
+          selectedMonth.value = month;
+        }
       }
       if (Array.isArray(filters.selectedEmployeeIds)) {
         selectedEmployeeIds.value = filters.selectedEmployeeIds.map((id) => String(id));
+      }
+      if (Array.isArray(filters.selectedComponentNames)) {
+        selectedComponentNames.value = filters.selectedComponentNames.map((name) => String(name));
       }
       if (filters.search !== undefined) search.value = String(filters.search || '');
       if (filters.amountMin !== undefined) amountMin.value = String(filters.amountMin || '');
@@ -583,7 +777,8 @@ const loadTransactions = async () => {
     };
     if (response.data.message) pageMessage.value = response.data.message;
     if (!response.data.message && transactions.value.length === 0) {
-      pageMessage.value = `Tidak ada Salary Component Transactions untuk filter saat ini (Year ${normalizedYear.value}, Month ${selectedMonth.value}).`;
+      const periodLabel = selectedMonth.value === '' ? `Year ${normalizedYear.value} (Semua Bulan)` : `Year ${normalizedYear.value}, Month ${selectedMonth.value}`;
+      pageMessage.value = `Tidak ada Salary Component Transactions untuk filter saat ini (${periodLabel}).`;
     }
   } catch (error) {
     console.error('Failed to load payroll transactions:', error);
@@ -655,6 +850,46 @@ const assignUser = async (txn, userIdRaw) => {
   }
 };
 
+const updateTxnPayrollMonth = async (txn, monthValue) => {
+  if (!txn?.id) return;
+  const selectedMonthValue = String(monthValue || '').trim();
+  if (!selectedMonthValue) return;
+
+  const txnMonth = toYearMonth(txn.txn_date);
+  const payloadMonth = selectedMonthValue === txnMonth ? null : selectedMonthValue;
+
+  savingPeriodTxnId.value = txn.id;
+  try {
+    await historyApi.updatePayrollPeriodMonth(txn.id, payloadMonth);
+    await Promise.all([loadTransactions(), loadSummary()]);
+    pageMessage.value = payloadMonth
+      ? `Payroll month transaksi berhasil diubah ke ${selectedMonthValue}.`
+      : 'Payroll month transaksi direset mengikuti bulan transaksi.';
+  } catch (error) {
+    console.error('Failed to update payroll month:', error);
+    alert('Failed to update payroll month: ' + (error.response?.data?.error || error.message));
+    await loadTransactions();
+  } finally {
+    savingPeriodTxnId.value = null;
+  }
+};
+
+const resetTxnPayrollMonth = async (txn) => {
+  if (!txn?.id) return;
+  savingPeriodTxnId.value = txn.id;
+  try {
+    await historyApi.updatePayrollPeriodMonth(txn.id, null);
+    await Promise.all([loadTransactions(), loadSummary()]);
+    pageMessage.value = 'Payroll month transaksi direset mengikuti bulan transaksi.';
+  } catch (error) {
+    console.error('Failed to reset payroll month:', error);
+    alert('Failed to reset payroll month: ' + (error.response?.data?.error || error.message));
+    await loadTransactions();
+  } finally {
+    savingPeriodTxnId.value = null;
+  }
+};
+
 const bulkAssignSelectedUser = async () => {
   if (selectedTransactionIds.value.length === 0) return;
   if (!bulkAssignUserId.value) return;
@@ -698,6 +933,11 @@ watch(employeeFilterOptions, (options) => {
   selectedEmployeeIds.value = selectedEmployeeIds.value.filter((id) => validIds.has(String(id)));
 });
 
+watch(componentFilterOptions, (options) => {
+  const validNames = new Set(options.map((option) => String(option.id)));
+  selectedComponentNames.value = selectedComponentNames.value.filter((name) => validNames.has(String(name)));
+});
+
 watch(filteredTransactions, (rows) => {
   const visibleIds = new Set(rows.map((row) => String(row.id)));
   selectedTransactionIds.value = selectedTransactionIds.value.filter((id) => visibleIds.has(String(id)));
@@ -708,6 +948,7 @@ watch(
     selectedMonth.value,
     search.value,
     selectedEmployeeIds.value.join('|'),
+    selectedComponentNames.value.join('|'),
     amountMin.value,
     amountMax.value,
     sortField.value,
