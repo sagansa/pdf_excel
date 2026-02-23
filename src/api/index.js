@@ -249,6 +249,11 @@ export const reportsApi = {
     if (companyId) params.company_id = companyId;
     return api.get('/reports/payroll-salary-summary', { params });
   },
+  getAvailableReportYears(companyId) {
+    const params = {};
+    if (companyId) params.company_id = companyId;
+    return api.get('/reports/available-years', { params });
+  },
   getInventoryBalances(year, companyId) {
     const params = { year, company_id: companyId };
     return api.get('/inventory-balances', { params });

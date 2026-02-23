@@ -15,6 +15,7 @@ export const useReportsStore = defineStore('reports', {
     coaDetail: null,
     monthlyRevenue: null,
     monthlyRevenuePrevYear: null,
+    availableYears: [],
     isLoading: false,
     error: null,
     // Filter states
@@ -69,6 +70,24 @@ export const useReportsStore = defineStore('reports', {
         await filterApi.saveFilters('reports', this.filters);
       } catch (e) {
         console.error("Failed to save reports filters:", e);
+      }
+    },
+
+    async fetchAvailableYears(companyId = null) {
+      try {
+        const response = await reportsApi.getAvailableReportYears(companyId);
+        const years = Array.isArray(response?.data?.years) ? response.data.years : [];
+        const normalized = years
+          .map((year) => parseInt(year, 10))
+          .filter((year) => !Number.isNaN(year))
+          .sort((a, b) => b - a);
+
+        this.availableYears = normalized.length > 0 ? normalized : [new Date().getFullYear()];
+        return this.availableYears;
+      } catch (err) {
+        console.error('Failed to fetch available report years:', err);
+        this.availableYears = [new Date().getFullYear()];
+        return this.availableYears;
       }
     },
 

@@ -2,40 +2,79 @@
   <div class="max-w-3xl mx-auto space-y-6">
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
       <form @submit.prevent="handleSubmit">
-        <div class="space-y-8">
-          <!-- Bank & Year Selection -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="space-y-2">
-              <label class="label-base">Select Your Bank</label>
-              <select class="input-base" v-model="formData.bankType" required>
-                <option value="">Choose bank...</option>
-                <option value="bca">REK BCA</option>
-                <option value="mandiri">REK Mandiri</option>
-                <option value="bri">REK BRI (CSV)</option>
-                <option value="saqu">SAQU</option>
-                <option value="blu">BLU BY BCA</option>
-                <option value="ccbca">CC BCA</option>
-                <option value="dbs">CC DBS</option>
-                <option value="ccmandiri">CC Mandiri</option>
+        <div class="space-y-6">
+          <!-- 1. Bank Selection Cards (Horizontal & Compact) -->
+          <div class="space-y-2">
+            <label class="label-base text-base">Select Bank</label>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <button 
+                type="button"
+                v-for="group in bankGroups" 
+                :key="group.id" 
+                @click="selectedBankGroup = group.id"
+                class="relative flex items-center p-3 rounded-lg border-2 transition-all duration-200"
+                :class="[
+                  selectedBankGroup === group.id 
+                    ? `border-${group.color}-500 bg-${group.color}-50 ring-2 ring-${group.color}-500/10 shadow-sm` 
+                    : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                ]"
+              >
+                <!-- Icon -->
+                <div 
+                  class="w-8 h-8 rounded-full flex shrink-0 items-center justify-center mr-3 transition-colors duration-200"
+                  :class="[
+                    selectedBankGroup === group.id 
+                      ? `bg-${group.color}-100 text-${group.color}-600` 
+                      : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'
+                  ]"
+                >
+                  <i :class="['bi text-sm', group.icon]"></i>
+                </div>
+                
+                <!-- Label -->
+                <span 
+                  class="font-semibold text-sm truncate"
+                  :class="selectedBankGroup === group.id ? `text-${group.color}-900` : 'text-gray-700'"
+                >
+                  {{ group.name }}
+                </span>
+
+                <!-- Active Indicator -->
+                <div v-if="selectedBankGroup === group.id" class="absolute -top-1.5 -right-1.5 bg-white rounded-full">
+                  <i :class="`bi bi-check-circle-fill text-${group.color}-500 text-sm`"></i>
+                </div>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Selected Options Row (Compact 3-column layout) -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- 2. Statement Type -->
+            <div class="space-y-1">
+              <label class="label-base text-sm">Format</label>
+              <select class="input-base bg-white py-2" v-model="formData.bankType" required :disabled="!selectedBankGroup">
+                <option value="">{{ selectedBankGroup ? 'Choose format...' : 'Select bank first' }}</option>
+                <option v-for="type in availableStatementTypes" :key="type.value" :value="type.value">
+                  {{ type.label }}
+                </option>
               </select>
             </div>
             
-            <div class="space-y-2">
-              <label class="label-base">Statement Year</label>
-              <select class="input-base" v-model="formData.statementYear">
+            <!-- 3. Year -->
+            <div class="space-y-1">
+              <label class="label-base text-sm">Year</label>
+              <select class="input-base bg-white py-2" v-model="formData.statementYear">
                  <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
               </select>
             </div>
-          </div>
 
-          <!-- Company Selection -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <div class="space-y-2">
-              <label class="label-base">Select Company (Optional)</label>
-              <select class="input-base" v-model="formData.companyId">
+            <!-- 4. Company -->
+             <div class="space-y-1">
+              <label class="label-base text-sm">Company (Optional)</label>
+              <select class="input-base bg-white py-2" v-model="formData.companyId">
                 <option value="">-- No Company --</option>
                 <option v-for="c in companyStore.companies" :key="c.id" :value="c.id">
-                    {{ c.short_name }} - {{ c.name }}
+                    {{ c.short_name }}
                 </option>
               </select>
             </div>
@@ -99,7 +138,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, computed, ref } from 'vue';
+import { onMounted, reactive, computed, ref, watch } from 'vue';
 import { useConverterStore } from '../stores/converter';
 import { useCompanyStore } from '../stores/companies';
 import FileDropZone from '../components/converter/FileDropZone.vue';
@@ -120,6 +159,78 @@ const years = computed(() => {
     const list = [];
     for (let y = currentYear; y >= 2020; y--) list.push(y);
     return list;
+});
+
+const selectedBankGroup = ref('');
+
+const bankGroups = [
+  {
+    id: 'mandiri',
+    name: 'Mandiri',
+    icon: 'bi-bank',
+    color: 'amber',
+    types: [
+      { label: 'Credit Card', value: 'ccmandiri' },
+      { label: 'Bank Account (Email PDF)', value: 'mandiri_email' },
+      { label: 'Bank Account (App)', value: 'mandiri' },
+    ]
+  },
+  {
+    id: 'bca',
+    name: 'BCA',
+    icon: 'bi-building',
+    color: 'blue',
+    types: [
+      { label: 'Credit Card', value: 'ccbca' },
+      { label: 'Bank Account', value: 'bca' },
+    ]
+  },
+  {
+    id: 'bri',
+    name: 'BRI',
+    icon: 'bi-buildings',
+    color: 'orange',
+    types: [
+      { label: 'Bank Account (CSV)', value: 'bri' },
+    ]
+  },
+  {
+    id: 'dbs',
+    name: 'DBS',
+    icon: 'bi-cash-coin',
+    color: 'red',
+    types: [
+      { label: 'Credit Card', value: 'dbs' },
+    ]
+  },
+  {
+    id: 'blu',
+    name: 'Blu by BCA',
+    icon: 'bi-phone',
+    color: 'cyan',
+    types: [
+      { label: 'Bank Account', value: 'blu' },
+    ]
+  },
+  {
+    id: 'saqu',
+    name: 'Bank Saqu',
+    icon: 'bi-wallet2',
+    color: 'rose',
+    types: [
+      { label: 'Bank Account', value: 'saqu' },
+    ]
+  }
+];
+
+const availableStatementTypes = computed(() => {
+  if (!selectedBankGroup.value) return [];
+  const group = bankGroups.find(g => g.id === selectedBankGroup.value);
+  return group ? group.types : [];
+});
+
+watch(selectedBankGroup, () => {
+  formData.bankType = '';
 });
 
 const formData = reactive({
@@ -216,3 +327,20 @@ const handleConfirmSave = async () => {
     }
 };
 </script>
+
+<style scoped>
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+</style>

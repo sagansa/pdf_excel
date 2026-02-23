@@ -340,12 +340,14 @@ const formatDate = (dateStr) => {
 
 const formatCurrency = (amount) => {
   if (amount === null || amount === undefined) return 'Rp 0';
-  return new Intl.NumberFormat('id-ID', {
+  const numericValue = Number(amount);
+  const formatted = new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(amount);
+  }).format(Math.abs(numericValue));
+  return numericValue < 0 ? `(${formatted})` : formatted;
 };
 
 const copyToClipboard = async (amount) => {

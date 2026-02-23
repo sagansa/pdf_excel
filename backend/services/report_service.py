@@ -648,7 +648,10 @@ def _calculate_prorated_contract_rent_expense(conn, start_date, end_date, compan
         if amount_bruto <= 0:
             continue
 
-        total_prorated += amount_bruto * (overlap / contract_days)
+        amount_net = amount_bruto * (1.0 - (rate / 100.0))
+        
+        # Prorate the net rent expense over the contract days
+        total_prorated += amount_net * (overlap / contract_days)
 
     return total_prorated
 
@@ -798,6 +801,95 @@ def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None):
         total_payable += tax_amount
 
     return total_payable
+
+
+def _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id=None):
+    """
+    Computes unpaid / deferred PPh 4(2) liability from rental contracts.
+    Liability exists if payment_timing is deferred and the stated payment_date (if any)
+    is past the report's as_of_date.
+    """
+    contract_columns = _table_columns(conn, 'rental_contracts')
+    txn_columns = _table_columns(conn, 'transactions')
+    if 'rental_contract_id' not in txn_columns or 'pph42_payment_timing' not in contract_columns:
+        return 0.0
+
+    as_of_date_obj = _parse_date(as_of_date)
+    if not as_of_date_obj:
+        return 0.0
+
+    split_exclusion_clause = _split_parent_exclusion_clause(conn, 'tpay')
+    total_amount_sql = "COALESCE(c.total_amount, 0)" if 'total_amount' in contract_columns else "0"
+    method_sql = "COALESCE(c.calculation_method, 'BRUTO')" if 'calculation_method' in contract_columns else "'BRUTO'"
+    rate_sql = "COALESCE(c.pph42_rate, 10)" if 'pph42_rate' in contract_columns else "10"
+    timing_sql = "COALESCE(c.pph42_payment_timing, 'same_period')" if 'pph42_payment_timing' in contract_columns else "'same_period'"
+    payment_date_sql = "c.pph42_payment_date" if 'pph42_payment_date' in contract_columns else "NULL"
+
+    query = text(f"""
+        SELECT
+            c.id,
+            c.start_date,
+            {total_amount_sql} AS total_amount,
+            {method_sql} AS calculation_method,
+            {rate_sql} AS pph42_rate,
+            {timing_sql} AS pph42_payment_timing,
+            {payment_date_sql} AS pph42_payment_date,
+            COALESCE(txn.linked_total, 0) AS linked_total
+        FROM rental_contracts c
+        LEFT JOIN (
+            SELECT
+                tpay.rental_contract_id,
+                COALESCE(SUM(ABS(tpay.amount)), 0) AS linked_total
+            FROM transactions tpay
+            WHERE tpay.rental_contract_id IS NOT NULL
+              AND (:company_id IS NULL OR tpay.company_id = :company_id)
+              AND tpay.txn_date <= :as_of_date
+              {split_exclusion_clause}
+            GROUP BY tpay.rental_contract_id
+        ) txn ON txn.rental_contract_id = c.id
+        WHERE c.start_date <= :as_of_date
+          AND {timing_sql} IN ('next_period', 'next_year')
+          AND (:company_id IS NULL OR c.company_id = :company_id)
+    """)
+
+    result = conn.execute(query, {
+        'as_of_date': as_of_date,
+        'company_id': company_id
+    })
+
+    total_rental_tax_payable = 0.0
+
+    for row in result:
+        payment_date = _parse_date(row.pph42_payment_date)
+        if payment_date and payment_date <= as_of_date_obj:
+            # Tax has presumably been paid by this period
+            continue
+
+        total_amount = _to_float(row.total_amount, 0.0)
+        linked_total = _to_float(row.linked_total, 0.0)
+        method = str(row.calculation_method or 'BRUTO').strip().upper()
+        rate = max(0.0, min(_to_float(row.pph42_rate, 10.0), 100.0))
+
+        if total_amount > 0:
+            amount_bruto = total_amount
+        elif linked_total > 0:
+            if method == 'NETTO':
+                divisor = max(0.000001, 1.0 - (rate / 100.0))
+                amount_bruto = linked_total / divisor
+            else:
+                amount_bruto = linked_total
+        else:
+            amount_bruto = 0.0
+
+        if amount_bruto <= 0:
+            continue
+
+        amount_net = amount_bruto * (1.0 - (rate / 100.0))
+        tax_amount = max(0.0, amount_bruto - amount_net)
+        
+        total_rental_tax_payable += tax_amount
+
+    return total_rental_tax_payable
 
 def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
     """
@@ -950,7 +1042,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
             service_tax_coa = _resolve_service_tax_payable_account(conn, company_id)
             add_or_update_liability_item(
                 service_tax_coa.get('id') or f'computed_service_tax_{as_of_date}_{company_id or "all"}',
-                service_tax_coa.get('code') or '2141',
+                service_tax_coa.get('code') or '2191',
                 service_tax_coa.get('name') or 'Utang PPh Jasa',
                 service_tax_coa.get('subcategory') or 'Current Liabilities',
                 service_tax_payable_computed,
@@ -958,6 +1050,23 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
             )
     except Exception as e:
         logger.error(f"Failed to include service tax payable in balance sheet: {e}")
+
+    # 1.4 Bridge rental PPh 4(2) tax payable into liabilities.
+    # This is computed from rental contracts that have deferred tax payments.
+    try:
+        rental_tax_payable = _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id)
+        rental_tax_payable_computed = float(rental_tax_payable or 0.0)
+        if abs(rental_tax_payable_computed) >= 0.000001:
+            add_or_update_liability_item(
+                f'computed_rental_tax_{as_of_date}_{company_id or "all"}',
+                '2141',
+                'Utang PPh Final Pasal 4(2)',
+                'Current Liabilities',
+                rental_tax_payable_computed,
+                force_current=True
+            )
+    except Exception as e:
+        logger.error(f"Failed to include rental tax payable (PPh 4(2)) in balance sheet: {e}")
 
     # 1.5 Bring current-year profit/loss into equity as "Laba/Rugi Tahun Berjalan".
     # This keeps balance sheet equity aligned with the income statement for the same year.

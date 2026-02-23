@@ -577,12 +577,15 @@ const formatDate = (dateStr) => {
 };
 
 const formatCurrency = (value) => {
-  return new Intl.NumberFormat('id-ID', {
+  if (value === null || value === undefined) return 'Rp 0';
+  const numValue = Number(value);
+  const formatted = new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(value);
+  }).format(Math.abs(numValue));
+  return numValue < 0 ? `(${formatted})` : formatted;
 };
 
 const copyToClipboard = async (value) => {

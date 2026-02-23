@@ -1,5 +1,5 @@
 <template>
-  <BaseModal :isOpen="isOpen" @close="onClose" size="lg">
+  <BaseModal :isOpen="isOpen" @close="onClose" size="2xl">
     <template #title>
       <div class="flex items-center justify-between w-full">
         <div class="flex items-center gap-2">
@@ -82,64 +82,59 @@
             <div
               v-for="(split, index) in splits"
               :key="index"
-              class="group bg-white border border-gray-200 hover:border-indigo-300 rounded-md p-2 shadow-sm transition-all grid grid-cols-[auto_1fr_auto] gap-2 items-start"
+              class="group bg-white border border-gray-200 hover:border-indigo-300 rounded-lg p-3 shadow-sm transition-all flex items-center gap-4"
             >
                <!-- Badge -->
-               <div class="mt-1.5 w-4 h-4 rounded-full bg-gray-100 text-[9px] font-bold text-gray-500 flex items-center justify-center">
+               <div class="w-6 h-6 rounded-full bg-gray-100 text-xs font-bold text-gray-500 flex items-center justify-center shrink-0">
                  {{ index + 1 }}
                </div>
 
-               <!-- Content -->
-               <div class="space-y-1.5">
-                 <!-- Main Row: Mark + Amount -->
-                 <div class="flex items-center gap-2">
-                    <div class="flex-1 min-w-0">
-                       <div class="space-y-2">
-  <!-- Standard Select for Testing -->
-  <select 
-    v-model="split.mark_id" 
-    class="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none"
-  >
-    <option value="">Select mark...</option>
-    <option 
-      v-for="opt in markOptions" 
-      :key="opt.id" 
-      :value="opt.id"
-    >
-      {{ opt.label }}
-    </option>
-   </select>
-</div>
-                    </div>
-                    <div class="w-28 relative">
-                       <input
-                          type="number"
-                          step="0.01"
-                          v-model.number="split.amount"
-                          class="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs font-mono font-bold text-right focus:ring-1 focus:ring-indigo-500 outline-none"
-                          placeholder="0.00"
-                        >
-                        <button
-                          v-if="index === splits.length - 1 && remainingAmount > 0"
-                          @click="fillRemainder(index)"
-                          class="absolute -top-1.5 -right-1 w-3 h-3 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-[8px] hover:bg-indigo-200"
-                          title="Fill Remainder"
-                        >
-                          <i class="bi bi-arrow-down-short"></i>
-                        </button>
-                    </div>
+               <!-- Content Row -->
+               <div class="flex-1 grid grid-cols-12 gap-4 items-center">
+                 <!-- Mark Selector (takes up most space) -->
+                 <div class="col-span-5">
+                   <SearchableSelect
+                     v-model="split.mark_id"
+                     :options="markOptions"
+                     placeholder="Select mark..."
+                   />
                  </div>
+
                  <!-- Optional Notes -->
-                 <input
-                    v-model="split.notes"
-                    placeholder="Optional notes..."
-                    class="w-full bg-transparent text-[10px] text-gray-500 focus:text-gray-800 outline-none placeholder:text-gray-300 border-none p-0 h-auto"
-                  >
+                 <div class="col-span-4">
+                   <input
+                     v-model="split.notes"
+                     placeholder="Notes..."
+                     class="w-full text-sm border border-gray-200 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors placeholder:text-gray-400"
+                   >
+                 </div>
+
+                 <!-- Amount Input -->
+                 <div class="col-span-3 relative group/amount">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span class="text-gray-400 sm:text-sm">Rp</span>
+                    </div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      v-model.number="split.amount"
+                      class="w-full pl-8 pr-3 py-2 bg-gray-50 focus:bg-white border border-gray-200 rounded-md text-sm font-mono font-bold text-right focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-colors"
+                      placeholder="0"
+                    >
+                    <button
+                      v-if="index === splits.length - 1 && remainingAmount > 0"
+                      @click="fillRemainder(index)"
+                      class="absolute -top-2.5 -right-2 w-5 h-5 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs hover:bg-indigo-200 shadow-sm opacity-0 group-hover/amount:opacity-100 transition-opacity"
+                      title="Fill Remainder"
+                    >
+                      <i class="bi bi-arrow-down-short"></i>
+                    </button>
+                 </div>
                </div>
 
-               <!-- Delete -->
-               <button @click="removeSplit(index)" class="mt-1.5 text-gray-300 hover:text-red-500 transition-colors">
-                 <i class="bi bi-x-circle-fill text-xs"></i>
+               <!-- Delete Button -->
+               <button @click="removeSplit(index)" class="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0">
+                 <i class="bi bi-trash-fill text-sm"></i>
                </button>
             </div>
           </transition-group>
