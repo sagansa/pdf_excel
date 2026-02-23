@@ -106,6 +106,10 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  availableYears: {
+    type: Array,
+    default: () => []
+  },
   companies: {
     type: Array,
     default: () => []
@@ -119,15 +123,16 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'generate']);
 
 const availableYears = computed(() => {
-  const currentYear = new Date().getFullYear();
-  const years = [];
-  
-  // Include current year and previous year
-  years.push(currentYear - 1);
-  years.push(currentYear);
-  years.push(currentYear + 1);
-  
-  return years.sort((a, b) => a - b);
+  const fromTransactions = (props.availableYears || [])
+    .map((year) => parseInt(year, 10))
+    .filter((year) => !Number.isNaN(year))
+    .sort((a, b) => b - a);
+
+  if (fromTransactions.length > 0) {
+    return fromTransactions;
+  }
+
+  return [new Date().getFullYear()];
 });
 
 const isValid = computed(() => {
@@ -142,20 +147,19 @@ const updateFilter = (key, value) => {
 };
 
 const handleYearChange = (year) => {
-  console.log('ReportFilters: handleYearChange called with year:', year);
-  const startDate = `${year}-01-01`;
-  const endDate = `${year}-12-31`;
-  const asOfDate = `${year}-12-31`;
+  const selectedYear = String(year);
+  const startDate = `${selectedYear}-01-01`;
+  const endDate = `${selectedYear}-12-31`;
+  const asOfDate = `${selectedYear}-12-31`;
   
   const newFilters = {
     ...props.modelValue,
-    year: year,
+    year: selectedYear,
     startDate: startDate,
     endDate: endDate,
     asOfDate: asOfDate
   };
-  
-  console.log('ReportFilters: Emitting new filters:', newFilters);
+
   emit('update:modelValue', newFilters);
 };
 </script>

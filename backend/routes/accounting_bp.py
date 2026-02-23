@@ -288,6 +288,49 @@ def get_payroll_salary_summary():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@accounting_bp.route('/api/reports/available-years', methods=['GET'])
+def get_available_report_years():
+    """Get available transaction years for reports filter."""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    try:
+        company_id = request.args.get('company_id')
+
+        with engine.connect() as conn:
+            split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+            if conn.dialect.name == 'sqlite':
+                year_expr = "CAST(strftime('%Y', t.txn_date) AS INTEGER)"
+            else:
+                year_expr = "YEAR(t.txn_date)"
+
+            query = text(f"""
+                SELECT DISTINCT {year_expr} AS year
+                FROM transactions t
+                WHERE t.txn_date IS NOT NULL
+                  AND (:company_id IS NULL OR t.company_id = :company_id)
+                  {split_exclusion_clause}
+                ORDER BY year DESC
+            """)
+
+            years = []
+            for row in conn.execute(query, {'company_id': company_id}):
+                try:
+                    year_val = int(row.year)
+                    if year_val > 0:
+                        years.append(year_val)
+                except (TypeError, ValueError):
+                    continue
+
+            if not years:
+                years = [datetime.now().year]
+
+            return jsonify({'years': years})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @accounting_bp.route('/api/reports/coa-detail', methods=['GET'])
 def get_coa_detail_report():
     engine, error_msg = get_db_engine()

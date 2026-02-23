@@ -107,6 +107,7 @@
       <!-- Filters -->
       <ReportFilters
         v-model="store.filters"
+        :available-years="store.availableYears"
         :companies="companies"
         :is-loading="store.isLoading"
         @generate="generateReport"
@@ -229,6 +230,39 @@ watch(() => store.filters.year, (newYear) => {
 
 const companies = ref([]);
 
+const getCurrentYear = () => new Date().getFullYear();
+
+const getYearDateRange = (year) => {
+  const normalizedYear = String(year);
+  return {
+    year: normalizedYear,
+    startDate: `${normalizedYear}-01-01`,
+    endDate: `${normalizedYear}-12-31`,
+    asOfDate: `${normalizedYear}-12-31`
+  };
+};
+
+const syncFiltersWithAvailableYears = () => {
+  const availableYears = (store.availableYears || [])
+    .map((year) => parseInt(year, 10))
+    .filter((year) => !Number.isNaN(year))
+    .sort((a, b) => b - a);
+
+  const fallbackYear = availableYears.length > 0 ? availableYears[0] : getCurrentYear();
+  const selectedYear = parseInt(store.filters.year, 10);
+  const shouldResetYear = Number.isNaN(selectedYear) || !availableYears.includes(selectedYear);
+  const targetYear = shouldResetYear ? fallbackYear : selectedYear;
+  const yearRange = getYearDateRange(targetYear);
+
+  store.filters = {
+    ...store.filters,
+    year: yearRange.year,
+    startDate: shouldResetYear || !store.filters.startDate ? yearRange.startDate : store.filters.startDate,
+    endDate: shouldResetYear || !store.filters.endDate ? yearRange.endDate : store.filters.endDate,
+    asOfDate: shouldResetYear || !store.filters.asOfDate ? yearRange.asOfDate : store.filters.asOfDate
+  };
+};
+
 const generateReport = async () => {
   // Global validation
   if (!store.filters.startDate || !store.filters.endDate || !store.filters.asOfDate) {
@@ -283,28 +317,22 @@ onMounted(async () => {
   // Load persistence filters
   await store.loadFilters();
   console.log('ReportsView: After loadFilters, current filters:', store.filters);
-  
-  // Set default year to current year if not set
-  if (!store.filters.year) {
-      const currentYear = new Date().getFullYear();
-      store.filters.year = currentYear.toString();
-      console.log('ReportsView: Setting default year to:', currentYear);
-  }
-  
-  // Set default dates if empty (use current year)
-  if (!store.filters.startDate) {
-      const currentYear = new Date().getFullYear();
-      store.filters.startDate = `${currentYear}-01-01`;
-      console.log('ReportsView: Setting default startDate to:', store.filters.startDate);
-  }
-  if (!store.filters.endDate) {
-      store.filters.endDate = `${new Date().getFullYear()}-12-31`;
-      console.log('ReportsView: Setting default endDate to:', store.filters.endDate);
-  }
-  
+
+  await store.fetchAvailableYears(store.filters.companyId || null);
+  syncFiltersWithAvailableYears();
+
   console.log('ReportsView: Final filters before generate:', store.filters);
   
   // Auto-generate report with filters
   await generateReport();
 });
+
+watch(
+  () => store.filters.companyId,
+  async (companyId, oldCompanyId) => {
+    if (companyId === oldCompanyId) return;
+    await store.fetchAvailableYears(companyId || null);
+    syncFiltersWithAvailableYears();
+  }
+);
 </script>

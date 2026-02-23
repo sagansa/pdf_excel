@@ -11,7 +11,7 @@ from backend.services.transaction_service import save_transactions_to_db
 from backend.utils.date_helpers import normalize_date_columns, standardize_statement_dates
 from backend.utils.pdf_helpers import infer_year_from_pdf, infer_year_from_filename
 from pdf_unlock import unlock_pdf
-from bank_parsers import bca, mandiri, dbs, bca_cc, mandiri_cc, bri, saqu, blu
+from bank_parsers import bca, mandiri, mandiri_email, dbs, bca_cc, mandiri_cc, bri, saqu, blu
 from sqlalchemy import text
 
 # PyPDF2 Error handling
@@ -206,6 +206,8 @@ def convert_pdf():
             
             if bank_key == 'mandiri':
                 df = mandiri.parse_statement(pdf_path)
+            elif bank_key == 'mandiri_email':
+                df = mandiri_email.parse_statement(pdf_path)
             elif bank_key == 'dbs':
                 df = dbs.parse_statement(pdf_path, target_year=inferred_year)
             elif bank_key == 'ccbca':
@@ -255,6 +257,7 @@ def convert_pdf():
             bank_code_for_db = bank_key.upper()
             if bank_code_for_db == 'CCBCA': bank_code_for_db = 'BCA_CC'
             elif bank_code_for_db == 'CCMANDIRI': bank_code_for_db = 'MANDIRI_CC'
+            elif bank_code_for_db == 'MANDIRI_EMAIL': bank_code_for_db = 'MANDIRI'
             
             db_success, db_error = save_transactions_to_db(df, bank_code_for_db, original_name, file_hash)
             if not db_success:
