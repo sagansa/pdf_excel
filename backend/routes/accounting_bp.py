@@ -196,9 +196,10 @@ def get_income_statement():
         start_date = request.args.get('start_date') or f"{now.year}-01-01"
         end_date = request.args.get('end_date') or now.strftime('%Y-%m-%d')
         company_id = request.args.get('company_id')
-        
+        report_type = request.args.get('report_type', 'real')
+
         with engine.connect() as conn:
-            data = fetch_income_statement_data(conn, start_date, end_date, company_id)
+            data = fetch_income_statement_data(conn, start_date, end_date, company_id, report_type)
             data['period'] = {'start_date': start_date, 'end_date': end_date}
             return jsonify(data)
     except Exception as e:
@@ -214,9 +215,10 @@ def get_balance_sheet():
     try:
         as_of_date = request.args.get('date') or request.args.get('as_of_date') or datetime.now().strftime('%Y-%m-%d')
         company_id = request.args.get('company_id')
+        report_type = request.args.get('report_type', 'real')
 
         with engine.connect() as conn:
-            data = fetch_balance_sheet_data(conn, as_of_date, company_id)
+            data = fetch_balance_sheet_data(conn, as_of_date, company_id, report_type)
             return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -236,10 +238,11 @@ def get_monthly_revenue():
             year = datetime.now().year
         else:
             year = int(year)
+        report_type = request.args.get('report_type', 'real')
             
         with engine.connect() as conn:
-            current_data = fetch_monthly_revenue_data(conn, year, company_id)
-            prev_data = fetch_monthly_revenue_data(conn, year - 1, company_id)
+            current_data = fetch_monthly_revenue_data(conn, year, company_id, report_type)
+            prev_data = fetch_monthly_revenue_data(conn, year - 1, company_id, report_type)
             return jsonify({
                 'year': year, 
                 'data': current_data,
@@ -261,9 +264,10 @@ def get_cash_flow():
         start_date = request.args.get('start_date') or f"{now.year}-01-01"
         end_date = request.args.get('end_date') or now.strftime('%Y-%m-%d')
         company_id = request.args.get('company_id')
+        report_type = request.args.get('report_type', 'real')
 
         with engine.connect() as conn:
-            data = fetch_cash_flow_data(conn, start_date, end_date, company_id)
+            data = fetch_cash_flow_data(conn, start_date, end_date, company_id, report_type)
             return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -281,9 +285,10 @@ def get_payroll_salary_summary():
         start_date = request.args.get('start_date') or f"{now.year}-01-01"
         end_date = request.args.get('end_date') or now.strftime('%Y-%m-%d')
         company_id = request.args.get('company_id')
+        report_type = request.args.get('report_type', 'real')
 
         with engine.connect() as conn:
-            data = fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id)
+            data = fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id, report_type)
             return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

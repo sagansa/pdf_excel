@@ -52,6 +52,12 @@ def _split_parent_exclusion_clause(conn, alias='t'):
     return f" AND NOT EXISTS (SELECT 1 FROM transactions t_child WHERE t_child.parent_id = {alias}.id)"
 
 
+def _coretax_filter_clause(report_type='real', alias='m'):
+    if str(report_type).strip().lower() != 'coretax':
+        return ""
+    return f" AND ({alias}.tax_report IS NOT NULL AND TRIM({alias}.tax_report) != '')"
+
+
 def _safe_identifier(value, fallback):
     raw = str(value or fallback).strip()
     if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', raw):
@@ -253,7 +259,7 @@ def _calculate_current_year_amortization(
     return max(current_year_amort, 0.0)
 
 
-def _calculate_dynamic_5314_total(conn, start_date, company_id=None):
+def _calculate_dynamic_5314_total(conn, start_date, company_id=None, report_type='real'):
     report_year = int(str(start_date)[:4])
     default_rate, allow_partial_year = _load_amortization_calculation_settings(conn, company_id)
 
@@ -277,7 +283,10 @@ def _calculate_dynamic_5314_total(conn, start_date, company_id=None):
         WHERE 1=1
           {company_filter_sql}
     """)
-    manual_rows = conn.execute(manual_query, company_params)
+    if str(report_type).strip().lower() != 'coretax':
+        manual_rows = conn.execute(manual_query, company_params)
+    else:
+        manual_rows = []
 
     manual_total = 0.0
     for row in manual_rows:
@@ -316,6 +325,7 @@ def _calculate_dynamic_5314_total(conn, start_date, company_id=None):
         txn_year_clause = "YEAR(t.txn_date) <= :report_year"
 
     txn_company_clause = "AND t.company_id = :company_id" if company_id else ""
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
     txn_query = text(f"""
         SELECT DISTINCT
             t.id,
@@ -332,6 +342,7 @@ def _calculate_dynamic_5314_total(conn, start_date, company_id=None):
         WHERE coa.code = '5314'
           {txn_company_clause}
           AND {txn_year_clause}
+          {coretax_clause}
     """)
     txn_params = {'report_year': report_year}
     if company_id:
@@ -368,7 +379,13 @@ def _calculate_dynamic_5314_total(conn, start_date, company_id=None):
           {asset_company_clause}
     """)
     asset_params = {'company_id': company_id} if company_id else {}
-    for row in conn.execute(assets_query, asset_params):
+    
+    if str(report_type).strip().lower() != 'coretax':
+        asset_rows = conn.execute(assets_query, asset_params)
+    else:
+        asset_rows = []
+
+    for row in asset_rows:
         base_amount = _to_float(row.acquisition_cost, 0.0)
         if base_amount <= 0:
             continue
@@ -393,7 +410,15 @@ def _calculate_dynamic_5314_total(conn, start_date, company_id=None):
     }
 
 
-def _get_inventory_balance_with_carry(conn, year, company_id=None):
+def _get_inventory_balance_with_carry(conn, year, company_id=None, report_type='real'):
+    if str(report_type).strip().lower() == 'coretax':
+        return {
+            'beginning_inventory_amount': 0.0,
+            'beginning_inventory_qty': 0.0,
+            'ending_inventory_amount': 0.0,
+            'ending_inventory_qty': 0.0
+        }
+
     year = int(year)
     current_query = text("""
         SELECT beginning_inventory_amount, beginning_inventory_qty,
@@ -506,10 +531,9 @@ def _resolve_rent_expense_account(conn, company_id=None, templates=None):
         'subcategory': 'Operating Expenses',
         'category': 'EXPENSE'
     }
-
-
-def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_id=None):
+def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_id=None, report_type='real'):
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
     txn_columns = _table_columns(conn, 'transactions')
     contract_filter = "AND t.rental_contract_id IS NULL" if 'rental_contract_id' in txn_columns else ""
 
@@ -537,6 +561,7 @@ def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_i
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {contract_filter}
           {split_exclusion_clause}
+                {coretax_clause}
         GROUP BY coa.code, coa.name, coa.subcategory
     """)
 
@@ -562,7 +587,7 @@ def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_i
     return items
 
 
-def _calculate_prorated_contract_rent_expense(conn, start_date, end_date, company_id=None):
+def _calculate_prorated_contract_rent_expense(conn, start_date, end_date, company_id=None, report_type='real'):
     txn_columns = _table_columns(conn, 'transactions')
     contract_columns = _table_columns(conn, 'rental_contracts')
 
@@ -577,6 +602,7 @@ def _calculate_prorated_contract_rent_expense(conn, start_date, end_date, compan
         return 0.0
 
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 'tpay')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
     total_amount_sql = "COALESCE(c.total_amount, 0)" if 'total_amount' in contract_columns else "0"
     method_sql = "COALESCE(c.calculation_method, 'BRUTO')" if 'calculation_method' in contract_columns else "'BRUTO'"
     rate_sql = "COALESCE(c.pph42_rate, 10)" if 'pph42_rate' in contract_columns else "10"
@@ -596,9 +622,11 @@ def _calculate_prorated_contract_rent_expense(conn, start_date, end_date, compan
                 tpay.rental_contract_id,
                 COALESCE(SUM(ABS(tpay.amount)), 0) AS linked_total
             FROM transactions tpay
+            LEFT JOIN marks m ON tpay.mark_id = m.id
             WHERE tpay.rental_contract_id IS NOT NULL
               AND (:company_id IS NULL OR tpay.company_id = :company_id)
               {split_exclusion_clause}
+              {coretax_clause}
             GROUP BY tpay.rental_contract_id
         ) txn ON txn.rental_contract_id = c.id
         WHERE c.start_date <= :report_end
@@ -633,6 +661,9 @@ def _calculate_prorated_contract_rent_expense(conn, start_date, end_date, compan
         linked_total = _to_float(row.linked_total, 0.0)
         method = str(row.calculation_method or 'BRUTO').strip().upper()
         rate = max(0.0, min(_to_float(row.pph42_rate, 10.0), 100.0))
+
+        if str(report_type).strip().lower() == 'coretax' and linked_total <= 0:
+            continue
 
         if total_amount > 0:
             amount_bruto = total_amount
@@ -714,7 +745,7 @@ def _resolve_service_tax_payable_account(conn, company_id=None):
     }
 
 
-def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None):
+def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None, report_type='real'):
     txn_columns = _table_columns(conn, 'transactions')
     mark_columns = _table_columns(conn, 'marks')
     tracked_columns = {'service_npwp', 'service_calculation_method', 'service_tax_payment_timing', 'service_tax_payment_date'}
@@ -732,6 +763,7 @@ def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None):
     timing_expr = "COALESCE(t.service_tax_payment_timing, 'same_period')" if 'service_tax_payment_timing' in txn_columns else "'same_period'"
     payment_date_expr = "t.service_tax_payment_date" if 'service_tax_payment_date' in txn_columns else "NULL"
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
 
     if conn.dialect.name == 'sqlite':
         mark_is_service_expr = "LOWER(COALESCE(CAST(m.is_service AS TEXT), '0')) IN ('1', 'true', 'yes', 'y')"
@@ -766,6 +798,7 @@ def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None):
           AND t.txn_date <= :as_of_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}
+                {coretax_clause}
     """)
 
     rows = conn.execute(query, {'as_of_date': as_of_date, 'company_id': company_id})
@@ -803,7 +836,7 @@ def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None):
     return total_payable
 
 
-def _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id=None):
+def _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id=None, report_type='real'):
     """
     Computes unpaid / deferred PPh 4(2) liability from rental contracts.
     Liability exists if payment_timing is deferred and the stated payment_date (if any)
@@ -819,6 +852,7 @@ def _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id=None):
         return 0.0
 
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 'tpay')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
     total_amount_sql = "COALESCE(c.total_amount, 0)" if 'total_amount' in contract_columns else "0"
     method_sql = "COALESCE(c.calculation_method, 'BRUTO')" if 'calculation_method' in contract_columns else "'BRUTO'"
     rate_sql = "COALESCE(c.pph42_rate, 10)" if 'pph42_rate' in contract_columns else "10"
@@ -841,7 +875,9 @@ def _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id=None):
                 tpay.rental_contract_id,
                 COALESCE(SUM(ABS(tpay.amount)), 0) AS linked_total
             FROM transactions tpay
+            LEFT JOIN marks m ON tpay.mark_id = m.id
             WHERE tpay.rental_contract_id IS NOT NULL
+              {coretax_clause}
               AND (:company_id IS NULL OR tpay.company_id = :company_id)
               AND tpay.txn_date <= :as_of_date
               {split_exclusion_clause}
@@ -891,7 +927,7 @@ def _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id=None):
 
     return total_rental_tax_payable
 
-def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
+def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='real'):
     """
     Helper function to fetch balance sheet data.
     Returns calculated values and lists of items.
@@ -900,6 +936,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
 
     # 1. Get asset, liability, and equity COA balances
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
     query = text(f"""
         WITH coa_balances AS (
             SELECT 
@@ -917,6 +954,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
             WHERE t.txn_date <= :as_of_date
                 AND (:company_id IS NULL OR t.company_id = :company_id)
                 {split_exclusion_clause}
+                {coretax_clause}
             GROUP BY mcm.coa_id
         )
         SELECT
@@ -1036,7 +1074,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
     # 1.3 Bridge service withholding tax payable into liabilities.
     # This is computed from service transaction tax configuration when payment is deferred.
     try:
-        service_tax_payable = _calculate_service_tax_payable_as_of(conn, as_of_date, company_id)
+        service_tax_payable = _calculate_service_tax_payable_as_of(conn, as_of_date, company_id, report_type)
         service_tax_payable_computed = float(service_tax_payable or 0.0)
         if abs(service_tax_payable_computed) >= 0.000001:
             service_tax_coa = _resolve_service_tax_payable_account(conn, company_id)
@@ -1054,7 +1092,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
     # 1.4 Bridge rental PPh 4(2) tax payable into liabilities.
     # This is computed from rental contracts that have deferred tax payments.
     try:
-        rental_tax_payable = _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id)
+        rental_tax_payable = _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id, report_type)
         rental_tax_payable_computed = float(rental_tax_payable or 0.0)
         if abs(rental_tax_payable_computed) >= 0.000001:
             add_or_update_liability_item(
@@ -1073,7 +1111,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
     current_year_net_income = 0.0
     try:
         year_start = as_of_date_obj.replace(month=1, day=1).strftime('%Y-%m-%d')
-        income_statement_data = fetch_income_statement_data(conn, year_start, as_of_date, company_id)
+        income_statement_data = fetch_income_statement_data(conn, year_start, as_of_date, company_id, report_type)
         current_year_net_income = float(income_statement_data.get('net_income') or 0.0)
 
         if abs(current_year_net_income) >= 0.000001:
@@ -1221,6 +1259,83 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
             asset_totals[asset_code] = asset_totals.get(asset_code, 0.0) + amount
             accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accumulated_amount
 
+        # Calculate non-manual accumulated depreciation from transactions
+        split_exclusion_clause_txn = _split_parent_exclusion_clause(conn, 't')
+        coretax_clause_txn = _coretax_filter_clause(report_type, 'm')
+        txn_query = text(f"""
+            SELECT DISTINCT
+                t.id,
+                t.amount AS acquisition_cost,
+                t.amortization_start_date,
+                t.txn_date,
+                t.use_half_rate,
+                ag.asset_type,
+                ag.tarif_rate
+            FROM transactions t
+            INNER JOIN marks m ON t.mark_id = m.id
+            INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
+            INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+            INNER JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
+            WHERE coa.category = 'ASSET'
+              AND t.txn_date <= :as_of_date
+              AND (:company_id IS NULL OR t.company_id = :company_id)
+              {split_exclusion_clause_txn}
+              {coretax_clause_txn}
+        """)
+        for row in conn.execute(txn_query, {'as_of_date': as_of_date, 'company_id': company_id}):
+            amount = float(row.acquisition_cost or 0)
+            if amount <= 0:
+                continue
+            start_date = _parse_date(row.amortization_start_date) or _parse_date(row.txn_date)
+            if not start_date or start_date > as_of_date_obj:
+                continue
+            
+            asset_type = row.asset_type or 'Tangible'
+            accum_code = accumulated_code_by_type.get(asset_type, accumulated_code_by_type['Tangible'])
+            rate = float(row.tarif_rate or 20)
+            
+            accum_amount = _calculate_accumulated_amortization(
+                amount, rate, start_date, as_of_date_obj,
+                use_half_rate=_parse_bool(row.use_half_rate),
+                allow_partial_year=allow_partial_year
+            )
+            accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accum_amount
+
+        # Calculate non-manual accumulated depreciation from amortization_assets
+        if str(report_type).strip().lower() != 'coretax':
+            assets_query = text("""
+                SELECT
+                    a.acquisition_cost,
+                    a.acquisition_date,
+                    a.amortization_start_date,
+                    a.use_half_rate,
+                    ag.asset_type,
+                    ag.tarif_rate
+                FROM amortization_assets a
+                LEFT JOIN amortization_asset_groups ag ON a.asset_group_id = ag.id
+                WHERE (a.is_active = TRUE OR a.is_active = 1)
+                  AND a.acquisition_date <= :as_of_date
+                  AND (:company_id IS NULL OR a.company_id = :company_id)
+            """)
+            for row in conn.execute(assets_query, {'as_of_date': as_of_date, 'company_id': company_id}):
+                amount = float(row.acquisition_cost or 0)
+                if amount <= 0:
+                    continue
+                start_date = _parse_date(row.amortization_start_date) or _parse_date(row.acquisition_date)
+                if not start_date or start_date > as_of_date_obj:
+                    continue
+                
+                asset_type = row.asset_type or 'Tangible'
+                accum_code = accumulated_code_by_type.get(asset_type, accumulated_code_by_type['Tangible'])
+                rate = float(row.tarif_rate or 20)
+                
+                accum_amount = _calculate_accumulated_amortization(
+                    amount, rate, start_date, as_of_date_obj,
+                    use_half_rate=_parse_bool(row.use_half_rate),
+                    allow_partial_year=allow_partial_year
+                )
+                accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accum_amount
+
         all_codes = list(set(asset_totals.keys()) | set(accum_totals.keys()))
         coa_lookup = {}
         if all_codes:
@@ -1306,12 +1421,13 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None):
         'is_balanced': abs(calculated_assets_total - (calculated_liabilities_total + calculated_equity_total)) < 0.01
     }
 
-def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
+def fetch_income_statement_data(conn, start_date, end_date, company_id=None, report_type='real'):
     """
     Helper function to fetch income statement data.
     Returns calculated values and lists of items.
     """
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
     query = text(f"""
         SELECT 
             coa.code,
@@ -1336,6 +1452,7 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
             AND coa.category IN ('REVENUE', 'EXPENSE')
             AND (:company_id IS NULL OR t.company_id = :company_id)
             {split_exclusion_clause}
+                {coretax_clause}
         GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory
         ORDER BY coa.code
     """)
@@ -1398,11 +1515,11 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
 
     # Rent expense (5315/5105) is not recognized from full payment amount.
     # For linked rental contracts, recognize only the prorated amount that overlaps the report period.
-    for rent_item in _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_id):
+    for rent_item in _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_id, report_type):
         merge_expense_item(rent_item)
         total_expenses += _to_float(rent_item.get('amount'), 0.0)
 
-    prorated_rent_expense = _calculate_prorated_contract_rent_expense(conn, start_date, end_date, company_id)
+    prorated_rent_expense = _calculate_prorated_contract_rent_expense(conn, start_date, end_date, company_id, report_type)
     if abs(prorated_rent_expense) >= 0.000001:
         rent_account = _resolve_rent_expense_account(conn, company_id, rent_expense_templates)
         rent_item = {
@@ -1425,7 +1542,7 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
     }
     dynamic_calc_ok = True
     try:
-        amortization_breakdown = _calculate_dynamic_5314_total(conn, start_date, company_id)
+        amortization_breakdown = _calculate_dynamic_5314_total(conn, start_date, company_id, report_type)
     except Exception as e:
         dynamic_calc_ok = False
         logger.error(f"Failed to calculate dynamic 5314 amount: {e}")
@@ -1443,7 +1560,7 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
     year = datetime.strptime(start_date, '%Y-%m-%d').year
     
     try:
-        inv_balance = _get_inventory_balance_with_carry(conn, year, company_id)
+        inv_balance = _get_inventory_balance_with_carry(conn, year, company_id, report_type)
         beginning_inv = _to_float(inv_balance.get('beginning_inventory_amount'), 0.0)
         ending_inv = _to_float(inv_balance.get('ending_inventory_amount'), 0.0)
     except Exception as e:
@@ -1519,12 +1636,13 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None):
         'net_income': total_revenue - total_expenses_calculated - calculate_hpp
     }
 
-def fetch_monthly_revenue_data(conn, year, company_id=None):
+def fetch_monthly_revenue_data(conn, year, company_id=None, report_type='real'):
     """
     Fetch total revenue grouped by month for a specific year.
     Used for Coretax summary.
     """
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
     query = text(f"""
         SELECT 
             MONTH(t.txn_date) as month_num,
@@ -1555,6 +1673,7 @@ def fetch_monthly_revenue_data(conn, year, company_id=None):
             AND coa.category = 'REVENUE'
             AND (:company_id IS NULL OR t.company_id = :company_id)
             {split_exclusion_clause}
+                {coretax_clause}
         GROUP BY MONTH(t.txn_date)
         ORDER BY month_num
     """)
@@ -1579,7 +1698,7 @@ def fetch_monthly_revenue_data(conn, year, company_id=None):
     ]
 
 
-def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=None):
+def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=None, report_type='real'):
     """
     Fetch payroll summary grouped by month -> employee -> salary component(mark).
     Respects report period and company filter.
@@ -1600,6 +1719,7 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
 
     txn_columns = _table_columns(conn, 'transactions')
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
     user_col_expr = "t.sagansa_user_id" if 'sagansa_user_id' in txn_columns else "NULL"
     effective_date_expr = "COALESCE(t.payroll_period_month, t.txn_date)" if 'payroll_period_month' in txn_columns else "t.txn_date"
     if conn.dialect.name == 'sqlite':
@@ -1620,6 +1740,7 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
           AND {effective_date_expr} BETWEEN :start_date AND :end_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}
+                {coretax_clause}
         GROUP BY
             {month_key_expr},
             {user_col_expr},
@@ -1723,7 +1844,7 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
     }
 
 
-def fetch_cash_flow_data(conn, start_date, end_date, company_id=None):
+def fetch_cash_flow_data(conn, start_date, end_date, company_id=None, report_type='real'):
     """
     Fetch cash flow report using direct method from transaction cash movements.
     Classification heuristic:
@@ -1733,6 +1854,7 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None):
       - unclassified: no mapping signal
     """
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
     section_names = {
         'operating': 'Operating Activities',
         'investing': 'Investing Activities',
@@ -1770,6 +1892,7 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None):
         WHERE t.txn_date BETWEEN :start_date AND :end_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}
+                {coretax_clause}
         GROUP BY
             t.id, t.txn_date, t.description, t.amount, t.db_cr,
             t.company_id, c.name, m.personal_use, m.internal_report
@@ -1846,6 +1969,7 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None):
         WHERE t.txn_date < :start_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}
+          {coretax_clause}
     """)
     opening_row = conn.execute(opening_query, {'start_date': start_date, 'company_id': company_id}).fetchone()
     opening_cash = _to_float(opening_row.opening_cash if opening_row else 0.0, 0.0)
@@ -1863,6 +1987,7 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None):
         WHERE t.txn_date <= :end_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}
+          {coretax_clause}
     """)
     closing_row = conn.execute(closing_query, {'end_date': end_date, 'company_id': company_id}).fetchone()
     closing_cash = _to_float(closing_row.closing_cash if closing_row else 0.0, 0.0)

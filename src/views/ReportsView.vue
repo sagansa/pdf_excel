@@ -259,7 +259,8 @@ const syncFiltersWithAvailableYears = () => {
     year: yearRange.year,
     startDate: shouldResetYear || !store.filters.startDate ? yearRange.startDate : store.filters.startDate,
     endDate: shouldResetYear || !store.filters.endDate ? yearRange.endDate : store.filters.endDate,
-    asOfDate: shouldResetYear || !store.filters.asOfDate ? yearRange.asOfDate : store.filters.asOfDate
+    asOfDate: shouldResetYear || !store.filters.asOfDate ? yearRange.asOfDate : store.filters.asOfDate,
+    reportType: store.filters.reportType || 'real'
   };
 };
 
@@ -298,7 +299,8 @@ const handleExport = async (format) => {
       {
         start_date: store.filters.startDate,
         end_date: store.filters.endDate,
-        company_id: store.filters.companyId
+        company_id: store.filters.companyId,
+        report_type: store.filters.reportType
       }
     );
   } catch (error) {

@@ -1,0 +1,26 @@
+{
+  "as_of_date": "2025-12-31",
+  "assets": {
+    "current": [],
+    "non_current": [],
+    "total": 0
+  },
+  "liabilities": {
+    "current": [],
+    "non_current": [],
+    "total": 0
+  },
+  "equity": {
+    "items": [],
+    "total": 0
+  },
+  "current_year_net_income": 0.0,
+  "total_assets": 0,
+  "total_liabilities": 0,
+  "total_equity": 0,
+  "computed_liabilities": {
+    "service_tax_payable": 0.0
+  },
+  "total_liabilities_and_equity": 0,
+  "is_balanced": true
+}
