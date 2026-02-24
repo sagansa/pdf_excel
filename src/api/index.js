@@ -224,28 +224,28 @@ export const filterApi = {
 };
 
 export const reportsApi = {
-  getIncomeStatement(startDate, endDate, companyId) {
-    const params = { start_date: startDate, end_date: endDate };
+  getIncomeStatement(startDate, endDate, companyId, reportType = 'real') {
+    const params = { start_date: startDate, end_date: endDate, report_type: reportType };
     if (companyId) params.company_id = companyId;
     return api.get('/reports/income-statement', { params });
   },
-  getMonthlyRevenue(year, companyId) {
-    const params = { year };
+  getMonthlyRevenue(year, companyId, reportType = 'real') {
+    const params = { year, report_type: reportType };
     if (companyId) params.company_id = companyId;
     return api.get('/reports/monthly-revenue', { params });
   },
-  getBalanceSheet(asOfDate, companyId) {
-    const params = { as_of_date: asOfDate };
+  getBalanceSheet(asOfDate, companyId, reportType = 'real') {
+    const params = { as_of_date: asOfDate, report_type: reportType };
     if (companyId) params.company_id = companyId;
     return api.get('/reports/balance-sheet', { params });
   },
-  getCashFlow(startDate, endDate, companyId) {
-    const params = { start_date: startDate, end_date: endDate };
+  getCashFlow(startDate, endDate, companyId, reportType = 'real') {
+    const params = { start_date: startDate, end_date: endDate, report_type: reportType };
     if (companyId) params.company_id = companyId;
     return api.get('/reports/cash-flow', { params });
   },
-  getPayrollSalarySummary(startDate, endDate, companyId) {
-    const params = { start_date: startDate, end_date: endDate };
+  getPayrollSalarySummary(startDate, endDate, companyId, reportType = 'real') {
+    const params = { start_date: startDate, end_date: endDate, report_type: reportType };
     if (companyId) params.company_id = companyId;
     return api.get('/reports/payroll-salary-summary', { params });
   },

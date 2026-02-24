@@ -91,7 +91,7 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
-    async fetchIncomeStatement(startDate, endDate, companyId = null) {
+    async fetchIncomeStatement(startDate, endDate, companyId = null, reportType = 'real') {
       this.isLoading = true;
       this.error = null;
       
@@ -105,7 +105,7 @@ export const useReportsStore = defineStore('reports', {
           params.append('company_id', companyId);
         }
 
-        const response = await reportsApi.getIncomeStatement(startDate, endDate, companyId);
+        const response = await reportsApi.getIncomeStatement(startDate, endDate, companyId, reportType);
         this.incomeStatement = response.data;
         
         // Update filters
@@ -148,7 +148,7 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
-    async fetchMonthlyRevenue(year, companyId = null) {
+    async fetchMonthlyRevenue(year, companyId = null, reportType = 'real') {
       this.isLoading = true;
       this.error = null;
       try {
@@ -169,7 +169,7 @@ export const useReportsStore = defineStore('reports', {
           params.append('company_id', companyId);
         }
 
-        const response = await reportsApi.getMonthlyRevenue(parsedYear.toString(), companyId);
+        const response = await reportsApi.getMonthlyRevenue(parsedYear.toString(), companyId, reportType);
         console.log('ReportsStore: fetchMonthlyRevenue response:', response.data);
         this.monthlyRevenue = response.data.data;
         this.monthlyRevenuePrevYear = response.data.prev_year_data;
@@ -184,11 +184,11 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
-    async fetchBalanceSheet(asOfDate, companyId = null) {
+    async fetchBalanceSheet(asOfDate, companyId = null, reportType = 'real') {
       this.isLoading = true;
       this.error = null;
       try {
-        const response = await reportsApi.getBalanceSheet(asOfDate, companyId);
+        const response = await reportsApi.getBalanceSheet(asOfDate, companyId, reportType);
         this.balanceSheet = response.data;
         return response.data;
       } catch (err) {
@@ -200,11 +200,11 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
-    async fetchCashFlow(startDate, endDate, companyId = null) {
+    async fetchCashFlow(startDate, endDate, companyId = null, reportType = 'real') {
       this.isLoading = true;
       this.error = null;
       try {
-        const response = await reportsApi.getCashFlow(startDate, endDate, companyId);
+        const response = await reportsApi.getCashFlow(startDate, endDate, companyId, reportType);
         this.cashFlow = response.data;
         return response.data;
       } catch (err) {
@@ -216,11 +216,11 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
-    async fetchPayrollSalarySummary(startDate, endDate, companyId = null) {
+    async fetchPayrollSalarySummary(startDate, endDate, companyId = null, reportType = 'real') {
       this.isLoading = true;
       this.error = null;
       try {
-        const response = await reportsApi.getPayrollSalarySummary(startDate, endDate, companyId);
+        const response = await reportsApi.getPayrollSalarySummary(startDate, endDate, companyId, reportType);
         this.payrollSalarySummary = response.data;
         return response.data;
       } catch (err) {
@@ -236,13 +236,14 @@ export const useReportsStore = defineStore('reports', {
       this.isLoading = true;
       this.error = null;
       try {
+        const { startDate, endDate, companyId, asOfDate, year, reportType } = this.filters;
         // Parallel fetch for all core reports
         await Promise.all([
-          this.fetchIncomeStatement(this.filters.startDate, this.filters.endDate, this.filters.companyId),
-          this.fetchBalanceSheet(this.filters.asOfDate, this.filters.companyId),
-          this.fetchMonthlyRevenue(this.filters.year, this.filters.companyId),
-          this.fetchCashFlow(this.filters.startDate, this.filters.endDate, this.filters.companyId),
-          this.fetchPayrollSalarySummary(this.filters.startDate, this.filters.endDate, this.filters.companyId)
+          this.fetchIncomeStatement(startDate, endDate, companyId, reportType),
+          this.fetchBalanceSheet(asOfDate, companyId, reportType),
+          this.fetchMonthlyRevenue(year, companyId, reportType),
+          this.fetchCashFlow(startDate, endDate, companyId, reportType),
+          this.fetchPayrollSalarySummary(startDate, endDate, companyId, reportType)
         ]);
         return true;
       } catch (err) {
