@@ -3,32 +3,16 @@
     <!-- Header with Actions -->
     <div class="flex items-center justify-between">
       <div>
-        <h3 class="text-lg font-semibold text-gray-900">Rental Contracts & Locations</h3>
-        <p class="text-sm text-gray-500 mt-1">Manage rental contracts, stores, and locations</p>
+        <h3 class="text-lg font-semibold text-gray-900">Rental Contracts</h3>
+        <p class="text-sm text-gray-500 mt-1">Manage rental contracts and payments</p>
       </div>
-      <div class="flex gap-2">
-        <button
-          @click="showLocationModal = true"
-          class="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
-        >
-          <i class="bi bi-geo-alt mr-2"></i>
-          Add Location
-        </button>
-        <button
-          @click="showStoreModal = true"
-          class="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
-        >
-          <i class="bi bi-shop mr-2"></i>
-          Add Store
-        </button>
-        <button
-          @click="showContractModal = true"
-          class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <i class="bi bi-file-earmark-text mr-2"></i>
-          Add Contract
-        </button>
-      </div>
+      <button
+        @click="showContractModal = true"
+        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
+      >
+        <i class="bi bi-file-earmark-text mr-2"></i>
+        Add Contract
+      </button>
     </div>
 
     <!-- Contracts List -->
@@ -73,24 +57,29 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  @click="viewContractDetails(contract)"
-                  class="text-indigo-600 hover:text-indigo-900 mr-3"
-                >
-                  View
-                </button>
-                <button
-                  @click="editContract(contract)"
-                  class="text-gray-600 hover:text-gray-900 mr-3"
-                >
-                  Edit
-                </button>
-                <button
-                  @click="deleteContractConfirm(contract)"
-                  class="text-red-600 hover:text-red-900"
-                >
-                  Delete
-                </button>
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click="viewContractDetails(contract)"
+                    class="text-indigo-600 hover:text-indigo-900 p-1"
+                    title="View Details"
+                  >
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  <button
+                    @click="editContract(contract)"
+                    class="text-gray-600 hover:text-gray-900 p-1"
+                    title="Edit"
+                  >
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                  <button
+                    @click="deleteContractConfirm(contract)"
+                    class="text-red-600 hover:text-red-900 p-1"
+                    title="Delete"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
               </td>
             </tr>
             <tr v-if="contracts.length === 0">
@@ -299,15 +288,6 @@
       @saved="handleLocationSaved"
     />
 
-    <!-- Add/Edit Store Modal -->
-    <AddStoreModal
-      :isOpen="showStoreModal"
-      :store="selectedStore"
-      :companyId="companyId"
-      @close="showStoreModal = false; selectedStore = null"
-      @saved="handleStoreSaved"
-    />
-
     <!-- Add/Edit Contract Modal -->
     <AddContractModal
       :isOpen="showContractModal"
@@ -333,8 +313,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { rentalApi } from '../../api';
-import AddLocationModal from './modals/AddLocationModal.vue';
-import AddStoreModal from './modals/AddStoreModal.vue';
 import AddContractModal from './modals/AddContractModal.vue';
 import ConfirmModal from '../ui/ConfirmModal.vue';
 
@@ -346,8 +324,6 @@ const props = defineProps({
 });
 
 const contracts = ref([]);
-const locations = ref([]);
-const stores = ref([]);
 const selectedContract = ref(null);
 const contractTransactions = ref([]);
 const generatedJournals = ref([]);
@@ -357,15 +333,11 @@ const showJournals = ref(false);
 const isGeneratingJournals = ref(false);
 
 const showContractModal = ref(false);
-const showLocationModal = ref(false);
-const showStoreModal = ref(false);
 const showDetailsModal = ref(false);
 const showLinkTransactionModal = ref(false);
 const showDeleteModal = ref(false);
 const contractToDelete = ref(null);
 
-const selectedLocation = ref(null);
-const selectedStore = ref(null);
 const selectedContractForEdit = ref(null);
 
 const loadContracts = async () => {
@@ -374,24 +346,6 @@ const loadContracts = async () => {
     contracts.value = response.data.contracts || [];
   } catch (error) {
     console.error('Failed to load contracts:', error);
-  }
-};
-
-const loadLocations = async () => {
-  try {
-    const response = await rentalApi.getLocations(props.companyId);
-    locations.value = response.data.locations || [];
-  } catch (error) {
-    console.error('Failed to load locations:', error);
-  }
-};
-
-const loadStores = async () => {
-  try {
-    const response = await rentalApi.getStores(props.companyId);
-    stores.value = response.data.stores || [];
-  } catch (error) {
-    console.error('Failed to load stores:', error);
   }
 };
 
@@ -439,25 +393,11 @@ const getStatusClass = (status) => {
 
 onMounted(() => {
   loadContracts();
-  loadLocations();
-  loadStores();
 });
 
 watch(() => props.companyId, () => {
   loadContracts();
-  loadLocations();
-  loadStores();
 });
-
-const handleLocationSaved = () => {
-  loadLocations();
-  loadContracts(); // Reload contracts in case location info changed
-};
-
-const handleStoreSaved = () => {
-  loadStores();
-  loadContracts(); // Reload contracts in case store info changed
-};
 
 const handleContractSaved = () => {
   loadContracts();

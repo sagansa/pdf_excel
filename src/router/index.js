@@ -8,6 +8,8 @@ import ChartOfAccountsView from '../views/ChartOfAccountsView.vue'
 import ReportsView from '../views/ReportsView.vue'
 import UploadSummaryView from '../views/UploadSummaryView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import ProductsView from '../views/ProductsView.vue'
+import ManagementView from '../views/ManagementView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -56,6 +58,16 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: SettingsView
+    },
+    {
+      path: '/products',
+      name: 'products',
+      component: ProductsView
+    },
+    {
+      path: '/management',
+      name: 'management',
+      component: ManagementView
     }
     // Add other routes here later
   ]

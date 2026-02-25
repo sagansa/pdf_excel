@@ -7,7 +7,9 @@ from backend.routes.company_bp import company_bp
 from backend.routes.accounting_bp import accounting_bp
 from backend.routes.amortization_bp import amortization_bp
 from backend.routes.pdf_bp import pdf_bp
+from backend.routes.pdf_bp import pdf_bp
 from backend.routes.rental_bp import rental_bp
+from backend.routes.hpp_bp import hpp_bp
 
 app = Flask(__name__)
 # Configure CORS
@@ -25,6 +27,7 @@ app.register_blueprint(accounting_bp)
 app.register_blueprint(amortization_bp)
 app.register_blueprint(pdf_bp)
 app.register_blueprint(rental_bp)
+app.register_blueprint(hpp_bp)
 
 
 if __name__ == '__main__':

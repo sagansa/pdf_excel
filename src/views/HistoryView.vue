@@ -144,6 +144,15 @@
         </div>
       </div>
 
+      <!-- 1.5. COGS Batches Tab -->
+      <div v-if="activeTab === 'hpp_batches'">
+        <HppBatchesTab 
+          :key="`hpp-${reportStore.filters.companyId}-${reportStore.filters.year}`"
+          :company-id="reportStore.filters.companyId"
+          :year="reportStore.filters.year"
+        />
+      </div>
+
       <!-- 2. Inventory Tab -->
       <div v-if="activeTab === 'inventory'">
         <InventoryAdjustments 
@@ -250,6 +259,7 @@ import AmortizationAdjustments from '../components/reports/AmortizationAdjustmen
 import RentalContracts from '../components/reports/RentalContracts.vue';
 import ServiceTaxHandling from '../components/history/ServiceTaxHandling.vue';
 import PayrollSalaryHandling from '../components/history/PayrollSalaryHandling.vue';
+import HppBatchesTab from '../components/history/HppBatchesTab.vue';
 
 const store = useHistoryStore();
 const reportStore = useReportsStore();
@@ -257,6 +267,7 @@ const reportStore = useReportsStore();
 const activeTab = ref('transactions');
 const tabs = [
   { id: 'transactions', name: 'Transactions', icon: 'bi bi-database-fill' },
+  { id: 'hpp_batches', name: 'COGS Batches', icon: 'bi bi-boxes' },
   { id: 'inventory', name: 'Inventory', icon: 'bi bi-box-seam' },
   { id: 'amortization', name: 'Amortization', icon: 'bi bi-calendar-check' },
   { id: 'services', name: 'Service Tax', icon: 'bi bi-receipt-cutoff' },
@@ -288,6 +299,15 @@ onMounted(async () => {
 watch(() => store.filters.company, (val) => {
   if (val && val !== reportStore.filters.companyId) {
     reportStore.filters.companyId = val;
+  }
+});
+
+// Watch reportStore company changes and reload history data
+watch(() => reportStore.filters.companyId, async (newCompanyId, oldCompanyId) => {
+  if (newCompanyId !== oldCompanyId && newCompanyId) {
+    console.log('Report company changed, reloading history transactions...');
+    store.filters.companyId = newCompanyId;
+    await store.loadData();
   }
 });
 

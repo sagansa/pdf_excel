@@ -1,17 +1,21 @@
-import sys
-sys.path.append('.')
-from backend.db.session import get_sagansa_engine
-from sqlalchemy import text
+import os
+from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
 
-def test():
-    engine, error = get_sagansa_engine()
+load_dotenv()
+db_user = os.getenv('DB_USER')
+db_password = os.getenv('DB_PASSWORD')
+db_host = os.getenv('DB_HOST')
+db_port = os.getenv('DB_PORT')
+db_name = os.getenv('DB_NAME')
+
+url = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+engine = create_engine(url)
+
+try:
     with engine.connect() as conn:
-        res = conn.execute(text("SELECT count(*) FROM transactions"))
-        print("Total transactions:", res.scalar())
-        res = conn.execute(text("SELECT t.txn_date, t.amount, coa.code FROM transactions t JOIN marks m ON t.mark_id=m.id JOIN mark_coa_mapping mcm ON mcm.mark_id=m.id JOIN chart_of_accounts coa ON coa.id=mcm.coa_id WHERE coa.code='1600'"))
-        print("\n1600 Trans:")
-        for r in res:
-            print(dict(r._mapping))
-
-if __name__ == "__main__":
-    test()
+        result = conn.execute(text("SELECT id, batch_date, memo FROM hpp_batches ORDER BY created_at DESC LIMIT 5;"))
+        for row in result:
+            print(row)
+except Exception as e:
+    print(e)

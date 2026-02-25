@@ -126,6 +126,11 @@
                     No marks or COA assigned to this transaction.
                 </p>
             </div>
+            
+            <!-- HPP Section -->
+            <div class="col-span-2">
+                <HppDetailSection :transaction="localTxn" />
+            </div>
     </div>
 
     <template #footer>
@@ -147,6 +152,7 @@
 import { computed, toRefs } from 'vue';
 import BaseModal from '../ui/BaseModal.vue';
 import { useHistoryStore } from '../../stores/history';
+import HppDetailSection from './HppDetailSection.vue';
 
 const props = defineProps({
   isOpen: Boolean,

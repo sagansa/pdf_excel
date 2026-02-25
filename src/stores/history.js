@@ -462,8 +462,12 @@ export const useHistoryStore = defineStore('history', {
             await historyApi.assignCompany(id, companyId);
             const txn = this.allTransactions.find(t => t.id === id);
             if (txn) txn.company_id = companyId;
+            
+            // Reload all transactions to reflect the change in the table
+            console.log('Company assigned, reloading transactions...');
+            await this.loadData();
         } catch (e) {
-            console.error(e);
+            console.error('Failed to assign company:', e);
             throw e;
         }
     },

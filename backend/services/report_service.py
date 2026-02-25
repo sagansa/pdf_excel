@@ -2,7 +2,7 @@ import logging
 import json
 import os
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy import text
 from backend.db.session import get_sagansa_engine
 
@@ -1111,7 +1111,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     current_year_net_income = 0.0
     try:
         year_start = as_of_date_obj.replace(month=1, day=1).strftime('%Y-%m-%d')
-        income_statement_data = fetch_income_statement_data(conn, year_start, as_of_date, company_id, report_type)
+        income_statement_data = fetch_income_statement_data(conn, year_start, as_of_date, company_id, report_type, comparative=False)
         current_year_net_income = float(income_statement_data.get('net_income') or 0.0)
 
         if abs(current_year_net_income) >= 0.000001:
@@ -1126,6 +1126,30 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
             })
     except Exception as e:
         logger.error(f"Failed to include current year net income in balance sheet equity: {e}")
+
+    # 1.6 Add previous year's retained earnings (Laba Ditahan Tahun Sebelumnya).
+    # This is the accumulated net income from all prior years.
+    previous_year_retained_earnings = 0.0
+    try:
+        previous_year_end = (as_of_date_obj.replace(month=1, day=1) - timedelta(days=1)).strftime('%Y-%m-%d')
+        previous_year_start = as_of_date_obj.replace(year=as_of_date_obj.year - 1, month=1, day=1).strftime('%Y-%m-%d')
+        
+        # Calculate net income from all prior years (from beginning to end of previous year)
+        prior_income_statement = fetch_income_statement_data(conn, '1900-01-01', previous_year_end, company_id, report_type, comparative=False)
+        previous_year_retained_earnings = float(prior_income_statement.get('net_income') or 0.0)
+
+        if abs(previous_year_retained_earnings) >= 0.000001:
+            equity.append({
+                'id': f'computed_prev_retained_earnings_{as_of_date}_{company_id or "all"}',
+                'code': '3200',
+                'name': 'Laba Ditahan Tahun Sebelumnya',
+                'subcategory': 'Retained Earnings',
+                'amount': previous_year_retained_earnings,
+                'category': 'EQUITY',
+                'is_computed': True
+            })
+    except Exception as e:
+        logger.error(f"Failed to include previous year retained earnings in balance sheet equity: {e}")
 
     # 2. Add ending inventory from inventory_balances.
     try:
@@ -1421,13 +1445,118 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
         'is_balanced': abs(calculated_assets_total - (calculated_liabilities_total + calculated_equity_total)) < 0.01
     }
 
-def fetch_income_statement_data(conn, start_date, end_date, company_id=None, report_type='real'):
+def fetch_income_statement_data(conn, start_date, end_date, company_id=None, report_type='real', comparative=False):
     """
     Helper function to fetch income statement data.
     Returns calculated values and lists of items.
+    If comparative=True, returns data for current period and previous year period.
     """
-    split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    print(f"[Income Statement] Fetching data: start={start_date}, end={end_date}, comparative={comparative}")
+    
+    # For comparative, also fetch previous year data
+    previous_year_data = None
+    if comparative:
+        # Calculate previous year period
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        prev_start_date = start_date_obj.replace(year=start_date_obj.year - 1).strftime('%Y-%m-%d')
+        prev_end_date = end_date_obj.replace(year=end_date_obj.year - 1).strftime('%Y-%m-%d')
+        
+        print(f"[Income Statement] Fetching previous year: {prev_start_date} to {prev_end_date}")
+        
+        previous_year_data = _fetch_income_statement_data_internal(
+            conn, prev_start_date, prev_end_date, company_id, report_type,
+            split_exclusion_clause=None, coretax_clause=None
+        )
+        
+        print(f"[Income Statement] Previous year data: revenue={previous_year_data.get('total_revenue', 0)}, expenses={previous_year_data.get('total_expenses', 0)}")
+    
+    # Get current period data
+    current_data = _fetch_income_statement_data_internal(
+        conn, start_date, end_date, company_id, report_type,
+        split_exclusion_clause=None, coretax_clause=None
+    )
+    
+    print(f"[Income Statement] Current year data: revenue={current_data.get('total_revenue', 0)}, expenses={current_data.get('total_expenses', 0)}")
+    
+    # If comparative, merge the data
+    if comparative and previous_year_data:
+        # Create lookup for previous year data
+        prev_revenue_lookup = {item['code']: item['amount'] for item in previous_year_data['revenue']}
+        prev_expenses_lookup = {item['code']: item['amount'] for item in previous_year_data['expenses']}
+        
+        # Create lookup for current year data
+        curr_revenue_lookup = {item['code']: item for item in current_data['revenue']}
+        curr_expenses_lookup = {item['code']: item for item in current_data['expenses']}
+        
+        print(f"[Income Statement] Previous year revenue codes: {list(prev_revenue_lookup.keys())}")
+        print(f"[Income Statement] Current year revenue codes: {list(curr_revenue_lookup.keys())}")
+        
+        # Merge revenue: include all codes from both years
+        all_revenue_codes = set(prev_revenue_lookup.keys()) | set(curr_revenue_lookup.keys())
+        merged_revenue = []
+        
+        for code in all_revenue_codes:
+            if code in curr_revenue_lookup:
+                item = curr_revenue_lookup[code].copy()
+                item['previous_year_amount'] = prev_revenue_lookup.get(code, 0.0)
+            else:
+                # Only exists in previous year
+                item = previous_year_data['revenue'][[i for i, x in enumerate(previous_year_data['revenue']) if x['code'] == code][0]].copy()
+                item['amount'] = 0.0  # No current year amount
+                item['previous_year_amount'] = prev_revenue_lookup.get(code, 0.0)
+            merged_revenue.append(item)
+        
+        # Sort by code
+        merged_revenue.sort(key=lambda x: x['code'])
+        current_data['revenue'] = merged_revenue
+        
+        # Merge expenses: include all codes from both years
+        all_expense_codes = set(prev_expenses_lookup.keys()) | set(curr_expenses_lookup.keys())
+        merged_expenses = []
+        
+        for code in all_expense_codes:
+            if code in curr_expenses_lookup:
+                item = curr_expenses_lookup[code].copy()
+                item['previous_year_amount'] = prev_expenses_lookup.get(code, 0.0)
+            else:
+                # Only exists in previous year
+                item = previous_year_data['expenses'][[i for i, x in enumerate(previous_year_data['expenses']) if x['code'] == code][0]].copy()
+                item['amount'] = 0.0  # No current year amount
+                item['previous_year_amount'] = prev_expenses_lookup.get(code, 0.0)
+            merged_expenses.append(item)
+        
+        # Sort by code
+        merged_expenses.sort(key=lambda x: x['code'])
+        current_data['expenses'] = merged_expenses
+        
+        # Add previous year totals
+        current_data['previous_year_total_revenue'] = previous_year_data['total_revenue']
+        current_data['previous_year_total_expenses'] = previous_year_data['total_expenses']
+        current_data['previous_year_net_income'] = previous_year_data['net_income']
+        
+        # Add previous_year_purchases to cogs_breakdown
+        if 'cogs_breakdown' in current_data and 'cogs_breakdown' in previous_year_data:
+            current_data['cogs_breakdown']['previous_year_purchases'] = previous_year_data['cogs_breakdown'].get('purchases', 0.0)
+            # Add previous_year_amount to each purchases_item
+            prev_purchases_lookup = {item['code']: item['amount'] for item in previous_year_data['cogs_breakdown'].get('purchases_items', [])}
+            for item in current_data['cogs_breakdown'].get('purchases_items', []):
+                item['previous_year_amount'] = prev_purchases_lookup.get(item['code'], 0.0)
+        
+        print(f"[Income Statement] Merged comparative data successfully")
+        print(f"[Income Statement] Merged revenue count: {len(merged_revenue)}")
+        print(f"[Income Statement] Merged expenses count: {len(merged_expenses)}")
+    
+    return current_data
+
+def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id, report_type, split_exclusion_clause=None, coretax_clause=None):
+    """Internal function to fetch income statement data for a specific period."""
+    if split_exclusion_clause is None:
+        split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    if coretax_clause is None:
+        coretax_clause = _coretax_filter_clause(report_type, 'm')
+    
     query = text(f"""
         SELECT 
             coa.code,
@@ -1585,6 +1714,11 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None, rep
     total_other_cogs = sum(item['amount'] for item in other_cogs_items)
     calculate_hpp = beginning_inv + purchases + total_other_cogs - ending_inv
     
+    # Note: product_cogs from hpp_batch_products is NOT included in COGS calculation
+    # to avoid double counting, as the transactions are already captured in purchases (COA 5001)
+    product_cogs = 0.0
+    previous_year_purchases = 0.0
+    
     # Provide a specific breakdown for the UI
     cogs_breakdown = {
         'beginning_inventory': beginning_inv,
@@ -1592,9 +1726,11 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None, rep
         'purchases_items': purchases_items,
         'other_cogs_items': other_cogs_items,
         'total_other_cogs': total_other_cogs,
+        'product_cogs': product_cogs,
         'ending_inventory': ending_inv,
         'total_cogs': calculate_hpp,
-        'year': year
+        'year': year,
+        'previous_year_purchases': previous_year_purchases
     }
 
     # Filter out COGS items and inject dynamic 5314 amount.
