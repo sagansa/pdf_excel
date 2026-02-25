@@ -61,6 +61,16 @@
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Chart of Accounts</span>
         </router-link>
 
+        <router-link to="/products" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Products' : ''">
+          <i class="bi bi-box-seam text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Products</span>
+        </router-link>
+
+        <router-link to="/management" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Locations & Stores' : ''">
+          <i class="bi bi-geo-alt text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Locations & Stores</span>
+        </router-link>
+
         <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
             <p class="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Reports</p>
         </div>
@@ -156,6 +166,7 @@ const pageTitle = computed(() => {
         case 'companies': return 'Company Management';
         case 'marks': return 'Mark Management';
         case 'chart-of-accounts': return 'Chart of Accounts';
+        case 'products': return 'Product Management';
         case 'reports': return 'Financial Reports';
         case 'settings': return 'System Settings';
         default: return 'StatementX';

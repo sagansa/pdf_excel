@@ -204,12 +204,12 @@
        >
          <div class="bg-blue-50 border-b border-blue-100 px-6 py-3">
            <h3 class="text-sm font-bold text-blue-900 uppercase">
-             Cost of Goods Sold (HPP)
+             Cost of Goods Sold
            </h3>
          </div>
          <div class="p-6 space-y-6">
            <!-- Inventory Summary Cards -->
-           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                <p class="text-xs font-medium text-blue-600 uppercase mb-1">Beginning Inventory - 5008</p>
                <p class="text-lg font-bold text-blue-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.cogs_breakdown.beginning_inventory) }}</p>

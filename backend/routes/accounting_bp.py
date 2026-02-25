@@ -197,10 +197,12 @@ def get_income_statement():
         end_date = request.args.get('end_date') or now.strftime('%Y-%m-%d')
         company_id = request.args.get('company_id')
         report_type = request.args.get('report_type', 'real')
+        comparative = request.args.get('comparative', 'false').lower() == 'true'
 
         with engine.connect() as conn:
-            data = fetch_income_statement_data(conn, start_date, end_date, company_id, report_type)
+            data = fetch_income_statement_data(conn, start_date, end_date, company_id, report_type, comparative=comparative)
             data['period'] = {'start_date': start_date, 'end_date': end_date}
+            data['comparative'] = comparative
             return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -498,6 +500,101 @@ def save_inventory_balances():
         return jsonify({'error': error_msg}), 500
 
     payload = request.json or {}
+
+@accounting_bp.route('/api/reports/marks-summary', methods=['GET'])
+def get_marks_summary():
+    """
+    Get summary of debit and credit amounts grouped by mark.
+    Bank accounting perspective:
+    - DB (Debit) = Money IN (bank receives money)
+    - CR (Credit) = Money OUT (bank pays money)
+    Net = Debit - Credit (positive = more money in, negative = more money out)
+    """
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+    
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        company_id = request.args.get('company_id')
+        
+        if not start_date or not end_date:
+            return jsonify({'error': 'start_date and end_date are required'}), 400
+        
+        with engine.connect() as conn:
+            query = text("""
+                SELECT 
+                    m.id as mark_id,
+                    m.personal_use as mark_name,
+                    SUM(CASE 
+                        WHEN t.db_cr = 'DB' THEN t.amount 
+                        WHEN t.db_cr = 'CR' THEN 0 
+                        ELSE 0 
+                    END) as total_debit,
+                    SUM(CASE 
+                        WHEN t.db_cr = 'CR' THEN t.amount 
+                        WHEN t.db_cr = 'DB' THEN 0 
+                        ELSE 0 
+                    END) as total_credit,
+                    COUNT(t.id) as transaction_count
+                FROM transactions t
+                INNER JOIN marks m ON t.mark_id = m.id
+                WHERE t.txn_date >= :start_date AND t.txn_date <= :end_date
+                    AND (:company_id IS NULL OR t.company_id = :company_id)
+                GROUP BY m.id, m.personal_use
+                ORDER BY mark_name ASC
+            """)
+            
+            result = conn.execute(query, {
+                'start_date': start_date,
+                'end_date': end_date,
+                'company_id': company_id
+            })
+            
+            marks = []
+            total_debit_all = 0
+            total_credit_all = 0
+            
+            for row in result:
+                d = dict(row._mapping)
+                total_debit = float(d['total_debit'] or 0)
+                total_credit = float(d['total_credit'] or 0)
+                
+                total_debit_all += total_debit
+                total_credit_all += total_credit
+                
+                # Bank accounting: Net = Debit - Credit
+                # Positive = more money in (inflow)
+                # Negative = more money out (outflow)
+                net_amount = total_debit - total_credit
+                
+                marks.append({
+                    'mark_id': d['mark_id'],
+                    'mark_name': d['mark_name'] or 'Unnamed Mark',
+                    'total_debit': total_debit,
+                    'total_credit': total_credit,
+                    'net_amount': net_amount,
+                    'transaction_count': d['transaction_count']
+                })
+            
+            # Calculate overall summary
+            net_difference_all = total_debit_all - total_credit_all
+            
+            return jsonify({
+                'marks': marks,
+                'summary': {
+                    'total_debit': total_debit_all,
+                    'total_credit': total_credit_all,
+                    'net_difference': net_difference_all,
+                    'total_marks': len(marks)
+                }
+            })
+            
+    except Exception as e:
+        import traceback
+        print(f"Error in marks-summary: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
     company_id = str(payload.get('company_id') or '').strip()
     if not company_id:
         return jsonify({'error': 'company_id is required'}), 400

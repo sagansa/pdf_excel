@@ -156,7 +156,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useHistoryStore } from '../../stores/history';
 import MultiSelect from '../ui/MultiSelect.vue';
 
@@ -177,5 +177,13 @@ const markOptions = computed(() => {
     });
     
     return options;
+});
+
+// Watch company changes and reload transactions
+watch(() => store.filters.companyId, async (newCompanyId, oldCompanyId) => {
+    if (newCompanyId !== oldCompanyId && newCompanyId) {
+        console.log('Company changed, reloading transactions...');
+        await store.fetchTransactions();
+    }
 });
 </script>

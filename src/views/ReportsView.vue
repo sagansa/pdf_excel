@@ -100,6 +100,16 @@
               <i class="bi bi-people mr-2"></i>
               Payroll Summary
             </button>
+            <button
+              @click="activeTab = 'marks-report'"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
+              :class="activeTab === 'marks-report'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+            >
+              <i class="bi bi-tags mr-2"></i>
+              Marks Summary
+            </button>
           </nav>
         </div>
       </div>
@@ -131,7 +141,7 @@
 
         <!-- Report Content -->
         <div :class="{ 'opacity-50 pointer-events-none': store.isLoading }">
-          <IncomeStatement
+          <IncomeStatementComparative
             v-if="activeTab === 'income-statement'"
             :key="`is-${refreshKey}`"
             :data="store.incomeStatement"
@@ -158,6 +168,10 @@
             :key="`ps-${refreshKey}`"
             :data="store.payrollSalarySummary"
           />
+          <MarksReport
+            v-if="activeTab === 'marks-report'"
+            :key="`mr-${refreshKey}`"
+          />
         </div>
       </div>
     </div>
@@ -178,11 +192,12 @@ import { useReportsStore } from '../stores/reports';
 import { useCompanyStore } from '../stores/companies';
 import { useCoaStore } from '../stores/coa';
 import ReportFilters from '../components/reports/ReportFilters.vue';
-import IncomeStatement from '../components/reports/IncomeStatement.vue';
+import IncomeStatementComparative from '../components/reports/IncomeStatementComparative.vue';
 import MonthlyRevenue from '../components/reports/MonthlyRevenue.vue';
 import BalanceSheet from '../components/reports/BalanceSheet.vue';
 import CashFlow from '../components/reports/CashFlow.vue';
 import PayrollSalarySummary from '../components/reports/PayrollSalarySummary.vue';
+import MarksReport from '../components/reports/MarksReport.vue';
 import COADetailModal from '../components/reports/COADetailModal.vue';
 
 const store = useReportsStore();
@@ -254,6 +269,15 @@ const syncFiltersWithAvailableYears = () => {
   const targetYear = shouldResetYear ? fallbackYear : selectedYear;
   const yearRange = getYearDateRange(targetYear);
 
+  console.log('syncFiltersWithAvailableYears:', {
+    availableYears,
+    selectedYear,
+    shouldResetYear,
+    targetYear,
+    currentFilters: store.filters,
+    yearRange
+  });
+
   store.filters = {
     ...store.filters,
     year: yearRange.year,
@@ -262,6 +286,8 @@ const syncFiltersWithAvailableYears = () => {
     asOfDate: shouldResetYear || !store.filters.asOfDate ? yearRange.asOfDate : store.filters.asOfDate,
     reportType: store.filters.reportType || 'real'
   };
+  
+  console.log('After sync:', store.filters);
 };
 
 const generateReport = async () => {

@@ -1,0 +1,254 @@
+TABLES: ['amortization_asset_groups', 'amortization_asset_types', 'amortization_assets', 'amortization_calculations', 'amortization_config_history', 'amortization_items', 'amortization_settings', 'chart_of_accounts', 'companies', 'inventory_balances', 'mark_amortization_mappings', 'mark_asset_mapping', 'mark_coa_mapping', 'marks', 'migrations', 'payroll_employee_flags', 'pdf_excel_migrations', 'rental_contracts', 'rental_locations', 'rental_stores', 'transaction_splits', 'transactions', 'user_filters']
+-- amortization_asset_groups --
+id char(36)
+company_id char(36)
+group_number int
+group_name varchar(100)
+asset_type enum('Tangible','Intangible','Building')
+useful_life_years int
+tarif_rate decimal(5,2)
+tarif_half_rate decimal(5,2)
+is_active tinyint(1)
+created_at datetime
+updated_at datetime
+-- amortization_asset_types --
+id int
+type_code varchar(20)
+type_name varchar(50)
+type_name_en varchar(50)
+description text
+is_active tinyint(1)
+created_at datetime
+-- amortization_assets --
+id char(36)
+company_id char(36)
+asset_group_id char(36)
+asset_code varchar(50)
+asset_name varchar(255)
+asset_description text
+acquisition_date date
+acquisition_cost decimal(15,2)
+residual_value decimal(15,2)
+use_half_rate tinyint(1)
+calculation_method enum('Straight Line','Declining Balance')
+accumulated_amortization decimal(15,2)
+book_value decimal(15,2)
+amortization_start_date date
+amortization_end_date date
+is_active tinyint(1)
+is_fully_amortized tinyint(1)
+created_at datetime
+updated_at datetime
+-- amortization_calculations --
+id char(36)
+asset_id char(36)
+year int
+month int
+calculated_amount decimal(15,2)
+applied_rate decimal(5,2)
+base_amount decimal(15,2)
+notes text
+is_manual_adjustment tinyint(1)
+created_at datetime
+-- amortization_config_history --
+id char(36)
+company_id char(36)
+config_type varchar(50)
+action varchar(50)
+config_data json
+performed_by varchar(100)
+performed_at datetime
+-- amortization_items --
+id char(36)
+company_id char(36)
+year int
+amortization_date date
+coa_id char(36)
+mark_id char(36)
+asset_group_id char(36)
+description varchar(255)
+amount decimal(15,2)
+use_half_rate tinyint(1)
+notes text
+is_manual tinyint(1)
+created_at datetime
+updated_at datetime
+-- amortization_settings --
+id char(36)
+company_id char(36)
+setting_name varchar(100)
+setting_value text
+setting_type enum('json','text','number','boolean')
+description text
+created_at datetime
+updated_at datetime
+-- chart_of_accounts --
+id char(36)
+code varchar(20)
+name varchar(255)
+category enum('ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE')
+subcategory varchar(100)
+description text
+is_active tinyint(1)
+parent_id char(36)
+created_at datetime
+updated_at datetime
+normal_balance varchar(10)
+-- companies --
+id char(36)
+name varchar(255)
+short_name varchar(50)
+created_at datetime
+updated_at datetime
+-- inventory_balances --
+id char(36)
+company_id char(36)
+year int
+beginning_inventory_amount decimal(15,2)
+beginning_inventory_qty decimal(15,2)
+ending_inventory_amount decimal(15,2)
+ending_inventory_qty decimal(15,2)
+is_manual tinyint(1)
+created_at datetime
+updated_at datetime
+base_value decimal(15,2)
+-- mark_amortization_mappings --
+id varchar(36)
+mark_id varchar(36)
+asset_type varchar(20)
+useful_life_years int
+amortization_rate decimal(5,2)
+asset_group_id varchar(36)
+is_deductible_50_percent tinyint(1)
+created_at datetime
+updated_at datetime
+-- mark_asset_mapping --
+id char(36)
+mark_id char(36)
+asset_type enum('Tangible','Intangible','Building')
+asset_group_id char(36)
+useful_life_years int
+amortization_rate decimal(5,2)
+is_deductible_50_percent tinyint(1)
+is_active tinyint(1)
+created_at datetime
+updated_at datetime
+-- mark_coa_mapping --
+id char(36)
+mark_id char(36)
+coa_id char(36)
+mapping_type enum('DEBIT','CREDIT')
+notes text
+created_at datetime
+updated_at datetime
+-- marks --
+id char(36)
+internal_report text
+personal_use text
+tax_report text
+created_at datetime
+updated_at datetime
+is_asset tinyint(1)
+asset_type enum('Tangible','Intangible','Building')
+useful_life_years int
+amortization_rate decimal(5,2)
+is_service tinyint(1)
+is_salary_component tinyint(1)
+-- migrations --
+id int
+migration_name varchar(255)
+executed_at datetime
+-- payroll_employee_flags --
+sagansa_user_id varchar(128)
+is_employee tinyint(1)
+created_at datetime
+updated_at datetime
+-- pdf_excel_migrations --
+id int
+migration_name varchar(255)
+executed_at datetime
+-- rental_contracts --
+id char(36)
+company_id char(36)
+store_id char(36)
+location_id char(36)
+contract_number varchar(100)
+landlord_name varchar(255)
+start_date date
+end_date date
+total_amount decimal(15,2)
+status varchar(20)
+notes text
+created_at datetime
+updated_at datetime
+calculation_method varchar(10)
+pph42_rate decimal(5,2)
+pph42_payment_timing varchar(20)
+pph42_payment_date date
+-- rental_locations --
+id char(36)
+company_id char(36)
+location_name varchar(255)
+address text
+city varchar(100)
+province varchar(100)
+postal_code varchar(20)
+latitude decimal(10,8)
+longitude decimal(11,8)
+area_sqm decimal(10,2)
+notes text
+created_at datetime
+updated_at datetime
+-- rental_stores --
+id char(36)
+company_id char(36)
+store_code varchar(50)
+store_name varchar(255)
+current_location_id char(36)
+status varchar(20)
+opened_date date
+closed_date date
+notes text
+created_at datetime
+updated_at datetime
+-- transaction_splits --
+id char(36)
+transaction_id char(36)
+mark_id char(36)
+amount decimal(20,2)
+notes text
+created_at datetime
+updated_at datetime
+-- transactions --
+id char(36)
+txn_date datetime
+description text
+amount decimal(15,2)
+db_cr char(2)
+bank_code varchar(50)
+source_file varchar(255)
+mark varchar(100)
+created_at datetime
+updated_at datetime
+mark_id char(36)
+amortization_asset_group_id char(36)
+is_amortizable tinyint(1)
+use_half_rate tinyint(1)
+amortization_start_date date
+amortization_useful_life int
+amortization_notes text
+company_id char(36)
+file_hash varchar(32)
+notes text
+rental_contract_id char(36)
+parent_id char(36)
+service_npwp varchar(32)
+service_calculation_method varchar(10)
+service_tax_payment_timing varchar(20)
+service_tax_payment_date date
+sagansa_user_id varchar(128)
+payroll_period_month date
+-- user_filters --
+view_name varchar(50)
+filters json
+updated_at timestamp

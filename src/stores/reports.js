@@ -91,21 +91,21 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
-    async fetchIncomeStatement(startDate, endDate, companyId = null, reportType = 'real') {
+    async fetchIncomeStatement(startDate, endDate, companyId = null, reportType = 'real', comparative = true) {
       this.isLoading = true;
       this.error = null;
       
       try {
-        const params = new URLSearchParams({
-          start_date: startDate,
-          end_date: endDate
+        console.log('Fetching Income Statement with params:', {
+          startDate,
+          endDate,
+          companyId,
+          reportType,
+          comparative
         });
         
-        if (companyId) {
-          params.append('company_id', companyId);
-        }
-
         const response = await reportsApi.getIncomeStatement(startDate, endDate, companyId, reportType);
+        console.log('Income Statement response:', response.data);
         this.incomeStatement = response.data;
         
         // Update filters
@@ -115,8 +115,8 @@ export const useReportsStore = defineStore('reports', {
         
         return response.data;
       } catch (err) {
+        console.error('Error fetching income statement:', err);
         this.error = err.response?.data?.error || 'Failed to fetch income statement';
-        console.error(err);
         throw new Error(this.error);
       } finally {
         this.isLoading = false;

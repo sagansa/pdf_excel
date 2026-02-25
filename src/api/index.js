@@ -225,7 +225,12 @@ export const filterApi = {
 
 export const reportsApi = {
   getIncomeStatement(startDate, endDate, companyId, reportType = 'real') {
-    const params = { start_date: startDate, end_date: endDate, report_type: reportType };
+    const params = {
+      start_date: startDate,
+      end_date: endDate,
+      report_type: reportType,
+      comparative: 'true' // Always send comparative data
+    };
     if (companyId) params.company_id = companyId;
     return api.get('/reports/income-statement', { params });
   },
@@ -248,6 +253,11 @@ export const reportsApi = {
     const params = { start_date: startDate, end_date: endDate, report_type: reportType };
     if (companyId) params.company_id = companyId;
     return api.get('/reports/payroll-salary-summary', { params });
+  },
+  getMarksSummary(startDate, endDate, companyId, reportType = 'real') {
+    const params = { start_date: startDate, end_date: endDate, report_type: reportType };
+    if (companyId) params.company_id = companyId;
+    return api.get('/reports/marks-summary', { params });
   },
   getAvailableReportYears(companyId) {
     const params = {};
@@ -376,5 +386,44 @@ export const rentalApi = {
   // Journal Generation
   generateJournals(contractId, companyId) {
     return api.post(`/rental-contracts/${contractId}/generate-journals`, { company_id: companyId });
+  }
+};
+
+export const productApi = {
+  getProducts(companyId) {
+    const params = companyId ? { company_id: companyId } : {};
+    return api.get('/products', { params });
+  },
+  createProduct(data) {
+    return api.post('/products', data);
+  },
+  updateProduct(id, data) {
+    return api.put(`/products/${id}`, data);
+  },
+  deleteProduct(id) {
+    return api.delete(`/products/${id}`);
+  }
+};
+
+export const hppApi = {
+  getBatches(companyId) {
+    const params = companyId ? { company_id: companyId } : {};
+    return api.get('/hpp-batches', { params });
+  },
+  getBatchDetails(batchId) {
+    return api.get(`/hpp-batches/${batchId}`);
+  },
+  saveBatch(data) {
+    return api.post('/hpp-batches', data);
+  },
+  deleteBatch(batchId) {
+    return api.delete(`/hpp-batches/${batchId}`);
+  },
+  getLinkableTransactions(companyId, startDate, endDate) {
+    const params = {};
+    if (companyId) params.company_id = companyId;
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    return api.get('/transactions/linkable-to-hpp', { params });
   }
 };
