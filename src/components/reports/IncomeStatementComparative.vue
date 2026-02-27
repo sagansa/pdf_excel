@@ -102,6 +102,62 @@
           </div>
         </div>
 
+        
+          <div class="space-y-3">
+            <div v-for="item in data.cogs_detail" :key="item.code" class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-2">
+                    <span class="font-mono text-sm font-bold text-blue-900">{{ item.code }}</span>
+                    <span class="text-sm font-semibold text-gray-900">{{ item.name }}</span>
+                    <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{{ item.type }}</span>
+                  </div>
+                  <div class="text-sm text-gray-600">
+                    {{ item.description }}
+                  </div>
+                </div>
+                <div class="text-right ml-4">
+                  <div class="text-lg font-bold text-blue-700 whitespace-nowrap tabular-nums">
+                    Rp {{ formatCurrency(item.amount) }}
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                <div class="text-xs text-gray-500">
+                  <i class="bi bi-info-circle mr-1"></i>
+                  Click to view detailed transactions
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    @click.stop.prevent="copyToClipboard(item.amount)"
+                    class="text-gray-400 hover:text-blue-600 transition-colors p-2 rounded hover:bg-blue-50"
+                    title="Copy amount"
+                  >
+                    <i class="bi bi-clipboard text-sm"></i>
+                  </button>
+                  <button
+                    @click.stop.prevent="openCoaDetail(item)"
+                    class="text-gray-400 hover:text-indigo-600 transition-colors p-2 rounded hover:bg-indigo-50"
+                    title="View transactions"
+                  >
+                    <i class="bi bi-list-ul text-sm"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Total Summary -->
+          <div class="mt-6 pt-4 border-t border-blue-200">
+            <div class="flex items-center justify-between bg-blue-100 rounded-lg p-3">
+              <h5 class="text-sm font-bold text-blue-900 uppercase">Total COGS</h5>
+              <div class="text-xl font-bold text-blue-900 whitespace-nowrap tabular-nums">
+                Rp {{ formatCurrency(data.total_cogs) }}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Purchases Breakdown Table (Comparative) -->
         <div v-if="data.cogs_breakdown.purchases_items && data.cogs_breakdown.purchases_items.length > 0">
           <div class="bg-blue-100 border-b border-blue-200 px-6 py-2 mb-3">
@@ -248,7 +304,6 @@
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script setup>

@@ -401,10 +401,16 @@ def get_coa_detail_report():
             coa_category = coa_info.get('category', '')
             split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
 
+            txn_columns = _table_columns(conn, 'transactions')
+            npwp_expr = "t.service_npwp" if 'service_npwp' in txn_columns else "NULL"
+            method_expr = "COALESCE(t.service_calculation_method, 'BRUTO')" if 'service_calculation_method' in txn_columns else "'BRUTO'"
+            
             query = text(f"""
                 SELECT 
                     t.id, t.txn_date, t.description, t.amount, t.db_cr,
-                    m.personal_use as mark_name, c.name as company_name, mcm.mapping_type
+                    m.personal_use as mark_name, m.is_service, c.name as company_name, mcm.mapping_type,
+                    {npwp_expr} AS service_npwp,
+                    {method_expr} AS service_calculation_method
                 FROM transactions t
                 INNER JOIN marks m ON t.mark_id = m.id
                 INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
@@ -455,7 +461,39 @@ def get_coa_detail_report():
                         effective_amount = -amount
 
                 d['effective_amount'] = effective_amount
-                total += effective_amount
+                
+                # Apply service tax gross-up for Income Statement reports
+                if coa_category in ('EXPENSE', 'REVENUE'):
+                    is_service = str(d.get('is_service', '0')).lower() in ('1', 'true', 'yes', 'y')
+                    has_npwp_col = d.get('service_npwp') is not None
+                    
+                    if is_service or has_npwp_col:
+                        npwp_digits = ''.join(ch for ch in str(d.get('service_npwp') or '') if ch.isdigit())
+                        has_npwp = len(npwp_digits) == 15
+                        tax_rate = 2.0 if has_npwp else 4.0
+                        
+                        amount_abs = abs(float(d['amount']))
+                        method = str(d.get('service_calculation_method') or 'BRUTO').strip().upper()
+                        
+                        tax_to_add = 0.0
+                        if method == 'NETTO':
+                            divisor = max(0.000001, 1.0 - (tax_rate / 100.0))
+                            tax_to_add = (amount_abs / divisor) - amount_abs
+                        else:
+                            tax_to_add = amount_abs * (tax_rate / 100.0)
+                            
+                        if tax_to_add > 0:
+                            # If it's a positive effective_amount (standard expense), add tax.
+                            # If it's negative (reversal), subtract tax.
+                            if d['effective_amount'] >= 0:
+                                d['effective_amount'] += tax_to_add
+                            else:
+                                d['effective_amount'] -= tax_to_add
+                            
+                            # Update the base amount as well for display
+                            d['amount'] = float(d['amount']) + (tax_to_add if d['amount'] >= 0 else -tax_to_add)
+
+                total += d['effective_amount']
                 transactions.append(d)
             
             return jsonify({
@@ -500,6 +538,153 @@ def save_inventory_balances():
         return jsonify({'error': error_msg}), 500
 
     payload = request.json or {}
+    
+    # Validate required fields
+    required_fields = ['year', 'company_id']
+    for field in required_fields:
+        if field not in payload:
+            return jsonify({'error': f'{field} is required'}), 400
+    
+    try:
+        year = int(payload.get('year'))
+        company_id = payload.get('company_id')
+        
+        # Extract optional fields
+        beginning_amount = _to_float(payload.get('beginning_inventory_amount'), 0.0)
+        beginning_qty = _to_float(payload.get('beginning_inventory_qty'), 0.0)
+        ending_amount = _to_float(payload.get('ending_inventory_amount'), 0.0)
+        ending_qty = _to_float(payload.get('ending_inventory_qty'), 0.0)
+        base_value = _to_float(payload.get('base_value'), 0.0)
+        
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            from datetime import datetime
+            import uuid
+            
+            now = datetime.now()
+            
+            # Check if record exists
+            existing_query = text("""
+                SELECT id FROM inventory_balances 
+                WHERE year = :year AND company_id = :company_id
+            """)
+            existing = conn.execute(existing_query, {
+                'year': year,
+                'company_id': company_id
+            }).fetchone()
+            
+            if existing:
+                # Update existing record
+                update_query = text("""
+                    UPDATE inventory_balances SET
+                        beginning_inventory_amount = :beginning_amount,
+                        beginning_inventory_qty = :beginning_qty,
+                        ending_inventory_amount = :ending_amount,
+                        ending_inventory_qty = :ending_qty,
+                        base_value = :base_value,
+                        is_manual = 1,
+                        updated_at = :updated_at
+                    WHERE year = :year AND company_id = :company_id
+                """)
+                
+                conn.execute(update_query, {
+                    'beginning_amount': beginning_amount,
+                    'beginning_qty': beginning_qty,
+                    'ending_amount': ending_amount,
+                    'ending_qty': ending_qty,
+                    'base_value': base_value,
+                    'year': year,
+                    'company_id': company_id,
+                    'updated_at': now
+                })
+                
+                record_id = existing.id
+                conn.commit()  # Commit the transaction!
+                
+            else:
+                # Insert new record
+                record_id = str(uuid.uuid4())
+                insert_query = text("""
+                    INSERT INTO inventory_balances (
+                        id, company_id, year,
+                        beginning_inventory_amount, beginning_inventory_qty,
+                        ending_inventory_amount, ending_inventory_qty,
+                        base_value, is_manual, created_at, updated_at
+                    ) VALUES (
+                        :id, :company_id, :year,
+                        :beginning_amount, :beginning_qty,
+                        :ending_amount, :ending_qty,
+                        :base_value, 1, :created_at, :updated_at
+                    )
+                """)
+                
+                conn.execute(insert_query, {
+                    'id': record_id,
+                    'company_id': company_id,
+                    'year': year,
+                    'beginning_amount': beginning_amount,
+                    'beginning_qty': beginning_qty,
+                    'ending_amount': ending_amount,
+                    'ending_qty': ending_qty,
+                    'base_value': base_value,
+                    'created_at': now,
+                    'updated_at': now
+                })
+                conn.commit()  # Commit transaction!
+            
+            # Auto-carry forward to next year if it doesn't exist
+            next_year = year + 1
+            next_check_query = text("""
+                SELECT id FROM inventory_balances 
+                WHERE year = :next_year AND company_id = :company_id
+            """)
+            next_existing = conn.execute(next_check_query, {
+                'next_year': next_year,
+                'company_id': company_id
+            }).fetchone()
+            
+            if not next_existing:
+                next_id = str(uuid.uuid4())
+                insert_next_query = text("""
+                    INSERT INTO inventory_balances (
+                        id, company_id, year,
+                        beginning_inventory_amount, beginning_inventory_qty,
+                        ending_inventory_amount, ending_inventory_qty,
+                        base_value, is_carry_forward, is_manual, created_at, updated_at
+                    ) VALUES (
+                        :id, :company_id, :year,
+                        :beginning_amount, :beginning_qty,
+                        0, 0,
+                        :base_value, 1, 0, :created_at, :updated_at
+                    )
+                """)
+                
+                conn.execute(insert_next_query, {
+                    'id': next_id,
+                    'company_id': company_id,
+                    'year': next_year,
+                    'beginning_amount': ending_amount,
+                    'beginning_qty': ending_qty,
+                    'base_value': ending_amount,
+                    'created_at': now,
+                    'updated_at': now
+                })
+                conn.commit()  # Commit transaction for carry forward!
+            
+            # Get updated balance
+            balance = _build_inventory_balance_with_carry(conn, year, company_id)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Inventory balance saved successfully',
+                'balance': balance
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @accounting_bp.route('/api/reports/marks-summary', methods=['GET'])
 def get_marks_summary():

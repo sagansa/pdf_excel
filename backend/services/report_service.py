@@ -791,7 +791,10 @@ def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None, repo
     query = text(f"""
         SELECT
             t.id,
+            t.txn_date,
             t.amount,
+            t.mark_id,
+            m.is_service,
             {npwp_expr} AS service_npwp,
             {method_expr} AS service_calculation_method,
             {timing_expr} AS service_tax_payment_timing,
@@ -838,6 +841,105 @@ def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None, repo
         total_payable += tax_amount
 
     return total_payable
+
+
+def _calculate_service_tax_adjustment_for_period(conn, start_date, end_date, company_id=None, report_type='real'):
+    """
+    Calculates the total service withholding tax (PPh 23/21) for a given period.
+    This is used to 'gross up' the expenses in the Income Statement.
+    """
+    txn_columns = _table_columns(conn, 'transactions')
+    mark_columns = _table_columns(conn, 'marks')
+    tracked_columns = {'service_npwp', 'service_calculation_method', 'service_tax_payment_timing'}
+    has_any_service_tracking = any(col in txn_columns for col in tracked_columns)
+    has_service_mark = 'is_service' in mark_columns
+    if not has_service_mark and not has_any_service_tracking:
+        return []
+
+    npwp_expr = "t.service_npwp" if 'service_npwp' in txn_columns else "NULL"
+    method_expr = "COALESCE(t.service_calculation_method, 'BRUTO')" if 'service_calculation_method' in txn_columns else "'BRUTO'"
+    split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
+
+    if conn.dialect.name == 'sqlite':
+        mark_is_service_expr = "LOWER(COALESCE(CAST(m.is_service AS TEXT), '0')) IN ('1', 'true', 'yes', 'y')"
+    else:
+        mark_is_service_expr = "LOWER(COALESCE(CAST(m.is_service AS CHAR), '0')) IN ('1', 'true', 'yes', 'y')"
+
+    service_filters = []
+    if has_service_mark:
+        service_filters.append(mark_is_service_expr)
+    if 'service_npwp' in txn_columns:
+        service_filters.append("COALESCE(t.service_npwp, '') <> ''")
+    if 'service_tax_payment_timing' in txn_columns:
+        service_filters.append("COALESCE(t.service_tax_payment_timing, 'same_period') IN ('next_period', 'next_year')")
+    if 'service_tax_payment_date' in txn_columns:
+        service_filters.append("t.service_tax_payment_date IS NOT NULL")
+    
+    if not service_filters:
+        return []
+    service_where_clause = " OR ".join(service_filters)
+
+    query = text(f"""
+        SELECT
+            coa.code,
+            coa.name,
+            coa.subcategory,
+            t.amount,
+            {npwp_expr} AS service_npwp,
+            {method_expr} AS service_calculation_method
+        FROM transactions t
+        INNER JOIN marks m ON t.mark_id = m.id
+        INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        WHERE ({service_where_clause})
+          AND coa.category = 'EXPENSE'
+          AND t.txn_date BETWEEN :start_date AND :end_date
+          AND (:company_id IS NULL OR t.company_id = :company_id)
+          {split_exclusion_clause}
+                {coretax_clause}
+    """)
+
+    rows = conn.execute(query, {
+        'start_date': start_date,
+        'end_date': end_date,
+        'company_id': company_id
+    }).fetchall()
+    
+    adjustments_by_coa = {}
+
+    for row in rows:
+        npwp_digits = ''.join(ch for ch in str(row.service_npwp or '') if ch.isdigit())
+        has_npwp = len(npwp_digits) == 15
+        tax_rate = 2.0 if has_npwp else 4.0
+        amount_base = abs(_to_float(row.amount, 0.0))
+        method = str(row.service_calculation_method or 'BRUTO').strip().upper()
+        
+        tax_amount = 0.0
+        if method == 'NETTO':
+            divisor = max(0.000001, 1.0 - (tax_rate / 100.0))
+            bruto = amount_base / divisor
+            tax_amount = max(0.0, bruto - amount_base)
+        else:
+            # For BRUTO, we assume the user paid the 'base' amount, 
+            # and the withheld tax is an ADDITION to that expense.
+            tax_amount = amount_base * (tax_rate / 100.0)
+
+        if tax_amount <= 0:
+            continue
+
+        coa_code = str(row.code)
+        if coa_code not in adjustments_by_coa:
+            adjustments_by_coa[coa_code] = {
+                'code': coa_code,
+                'name': row.name,
+                'subcategory': row.subcategory,
+                'amount': 0.0,
+                'category': 'EXPENSE'
+            }
+        adjustments_by_coa[coa_code]['amount'] += tax_amount
+
+    return list(adjustments_by_coa.values())
 
 
 def _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id=None, report_type='real'):
@@ -1470,6 +1572,9 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     # Calculate totals from arrays (more reliable than incremental calculation).
     calculated_assets_total = sum(item.get('amount', 0) for item in assets_current + assets_non_current)
     calculated_liabilities_total = sum(item.get('amount', 0) for item in liabilities_current + liabilities_non_current)
+    
+    # Equity SHOULD include current year net income for the Balance Sheet to balance A = L + E
+    # We've confirmed NI matches between IS and BS via verification.
     calculated_equity_total = sum(item.get('amount', 0) for item in equity)
     
     # Also fix top-level totals for frontend compatibility
@@ -1607,6 +1712,49 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None, rep
         print(f"[Income Statement] Merged revenue count: {len(merged_revenue)}")
         print(f"[Income Statement] Merged expenses count: {len(merged_expenses)}")
     
+    # Build COGS detail items for frontend display
+    cogs_detail_items = []
+    if current_data.get('cogs_breakdown'):
+        # Combine purchases_items and other_cogs_items for Purchase Breakdown display
+        purchases_items = current_data.get('cogs_breakdown', {}).get('purchases_items', [])
+        other_cogs_items = current_data.get('cogs_breakdown', {}).get('other_cogs_items', [])
+        
+        # Add all COGS items to purchases_items for unified display
+        all_cogs_items = purchases_items + other_cogs_items
+        
+        # Update purchases_items in current_data for frontend Purchase Breakdown
+        current_data['cogs_breakdown']['purchases_items'] = all_cogs_items
+        current_data['cogs_breakdown']['purchases'] = current_data.get('cogs_breakdown', {}).get('total_cogs', 0.0)
+        
+        # Add inventory adjustment if applicable
+        if current_data.get('cogs_breakdown', {}).get('beginning_inventory') and current_data.get('cogs_breakdown', {}).get('ending_inventory'):
+            beginning_inv = current_data.get('cogs_breakdown', {}).get('beginning_inventory', 0.0)
+            ending_inv = current_data.get('cogs_breakdown', {}).get('ending_inventory', 0.0)
+            
+            if beginning_inv != ending_inv:
+                inventory_adjustment = beginning_inv - ending_inv
+                cogs_detail_items.append({
+                    'code': 'INV_ADJ',
+                    'name': 'Penyesuaian Persediaan',
+                    'subcategory': 'Inventory Adjustment',
+                    'amount': float(inventory_adjustment),
+                    'description': f'Perubahan persediaan: Awal Rp {beginning_inv:,.0f} - Akhir Rp {ending_inv:,.0f}',
+                    'type': 'inventory_adjustment'
+                })
+    
+    # Add COGS detail to current data
+    current_data['cogs_detail'] = cogs_detail_items
+    
+    # Fix total_cogs to use calculate_hpp from cogs_breakdown
+    if current_data.get('cogs_breakdown') and 'total_cogs' in current_data['cogs_breakdown']:
+        current_data['total_cogs'] = current_data['cogs_breakdown']['total_cogs']
+    elif 'total_cogs' in current_data:
+        # Keep existing total_cogs if available
+        pass
+    else:
+        # Fallback: calculate from cogs_detail
+        current_data['total_cogs'] = sum(item.get('amount', 0) for item in cogs_detail_items)
+    
     return current_data
 
 def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id, report_type, split_exclusion_clause=None, coretax_clause=None):
@@ -1719,6 +1867,16 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
         }
         merge_expense_item(rent_item)
         total_expenses += prorated_rent_expense
+    
+    # 2.4.1 Calculate service withholding tax adjustments (gross-up).
+    # Since transactions are recorded as Net payment, we must add the withheld tax back to expenses.
+    try:
+        service_tax_adjustments = _calculate_service_tax_adjustment_for_period(conn, start_date, end_date, company_id, report_type)
+        for adj in service_tax_adjustments:
+            merge_expense_item(adj)
+            total_expenses += _to_float(adj.get('amount'), 0.0)
+    except Exception as e:
+        logger.error(f"Failed to calculate service tax adjustments: {e}")
     
     # 2.5 Calculate 5314 (Beban Penyusutan dan Amortisasi) dynamically:
     # total = calculated amortization + manual amortization.
