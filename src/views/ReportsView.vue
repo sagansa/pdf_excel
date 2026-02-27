@@ -96,7 +96,7 @@
               :class="'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
             >
               <i class="bi bi-journal-text mr-2"></i>
-              General Ledger
+              GL
             </button>
             <button
               @click="activeTab = 'payroll-summary'"
