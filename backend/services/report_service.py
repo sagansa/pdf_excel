@@ -259,7 +259,7 @@ def _calculate_current_year_amortization(
     return max(current_year_amort, 0.0)
 
 
-def _calculate_dynamic_5314_total(conn, start_date, company_id=None, report_type='real'):
+def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=None, report_type='real'):
     report_year = int(str(start_date)[:4])
     default_rate, allow_partial_year = _load_amortization_calculation_settings(conn, company_id)
 
@@ -319,8 +319,12 @@ def _calculate_dynamic_5314_total(conn, start_date, company_id=None, report_type
 
         manual_total += annual_amort
 
+    # For multi-year periods, we need to handle date ranges properly
+    # Check if we're dealing with a multi-year income statement by analyzing the call context
+    # This is called from income statement with date range start_date to end_date
+    # We'll use a safer approach that covers the full period
     if conn.dialect.name == 'sqlite':
-        txn_year_clause = "CAST(strftime('%Y', t.txn_date) AS INTEGER) <= :report_year"
+        txn_year_clause = "CAST(strftime('%Y', t.txn_date) AS INTEGER) <= YEAR(DATE(:start_date, '+3 year'))"
     else:
         txn_year_clause = "YEAR(t.txn_date) <= :report_year"
 
@@ -1128,15 +1132,40 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
         logger.error(f"Failed to include current year net income in balance sheet equity: {e}")
 
     # 1.6 Add previous year's retained earnings (Laba Ditahan Tahun Sebelumnya).
-    # This is the accumulated net income from all prior years.
+    # This is the accumulated net income from all prior years (starting from initial_capital start_year).
     previous_year_retained_earnings = 0.0
     try:
-        previous_year_end = (as_of_date_obj.replace(month=1, day=1) - timedelta(days=1)).strftime('%Y-%m-%d')
-        previous_year_start = as_of_date_obj.replace(year=as_of_date_obj.year - 1, month=1, day=1).strftime('%Y-%m-%d')
+        # Get the start_year from initial_capital_settings
+        report_year = as_of_date_obj.year
+        company_start_year = report_year - 1  # Default to previous year
         
-        # Calculate net income from all prior years (from beginning to end of previous year)
-        prior_income_statement = fetch_income_statement_data(conn, '1900-01-01', previous_year_end, company_id, report_type, comparative=False)
-        previous_year_retained_earnings = float(prior_income_statement.get('net_income') or 0.0)
+        initial_capital_query = text("""
+            SELECT MIN(start_year) as min_start_year
+            FROM initial_capital_settings
+            WHERE company_id = :company_id
+        """)
+        start_year_result = conn.execute(initial_capital_query, {'company_id': company_id}).fetchone()
+        if start_year_result and start_year_result.min_start_year:
+            company_start_year = int(start_year_result.min_start_year)
+        
+        # Calculate previous year's end date
+        previous_year_end = f"{report_year - 1}-12-31"
+        previous_year_start = f"{company_start_year}-01-01"
+        
+        # Calculate net income from all prior years (cumulative sum of individual years)
+        # For first year, there should be no prior retained earnings
+        if report_year <= company_start_year:
+            previous_year_retained_earnings = 0.0
+        else:
+            # CORRECT: Calculate retained earnings as cumulative sum of individual years
+            total_retained = 0.0
+            for year in range(company_start_year, report_year):
+                year_start = f"{year}-01-01"
+                year_end = f"{year}-12-31"
+                year_income_statement = fetch_income_statement_data(conn, year_start, year_end, company_id, report_type, comparative=False)
+                year_net_income = float(year_income_statement.get('net_income') or 0.0)
+                total_retained += year_net_income
+            previous_year_retained_earnings = total_retained
 
         if abs(previous_year_retained_earnings) >= 0.000001:
             equity.append({
@@ -1150,6 +1179,36 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
             })
     except Exception as e:
         logger.error(f"Failed to include previous year retained earnings in balance sheet equity: {e}")
+
+    # 1.7 Add initial capital (Modal Setor di Awal) if configured.
+    try:
+        initial_capital_query = text("""
+            SELECT amount, start_year, description
+            FROM initial_capital_settings
+            WHERE company_id = :company_id
+        """)
+        
+        initial_capital_result = conn.execute(initial_capital_query, {'company_id': company_id}).fetchone()
+        
+        if initial_capital_result:
+            initial_capital_amount = float(initial_capital_result.amount or 0)
+            start_year = int(initial_capital_result.start_year or 0)
+            description = initial_capital_result.description or 'Modal Setor di Awal'
+            
+            # Only include if report year >= start_year
+            report_year = as_of_date_obj.year
+            if report_year >= start_year and abs(initial_capital_amount) >= 0.000001:
+                equity.insert(0, {
+                    'id': f'initial_capital_{company_id}',
+                    'code': '3100',
+                    'name': description,
+                    'subcategory': 'Paid-in Capital',
+                    'amount': initial_capital_amount,
+                    'category': 'EQUITY',
+                    'is_computed': False
+                })
+    except Exception as e:
+        logger.error(f"Failed to include initial capital in balance sheet equity: {e}")
 
     # 2. Add ending inventory from inventory_balances.
     try:
@@ -1671,7 +1730,7 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
     }
     dynamic_calc_ok = True
     try:
-        amortization_breakdown = _calculate_dynamic_5314_total(conn, start_date, company_id, report_type)
+        amortization_breakdown = _calculate_dynamic_5314_total(conn, start_date, end_date=end_date, company_id=company_id, report_type=report_type)
     except Exception as e:
         dynamic_calc_ok = False
         logger.error(f"Failed to calculate dynamic 5314 amount: {e}")

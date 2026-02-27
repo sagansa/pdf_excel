@@ -1,0 +1,36 @@
+    query = text(f"""
+        WITH coa_balances AS (
+            SELECT 
+                mcm.coa_id,
+                SUM(
+                    CASE
+                        -- CR = positive (money in), DB = negative (money out)
+                        -- This ensures marks with mixed DB/CR will net out correctly
+                        WHEN t.db_cr = 'CR' THEN t.amount
+                        WHEN t.db_cr = 'DB' THEN -t.amount
+                        ELSE 0
+                    END
+                ) as total_amount
+            FROM transactions t
+            INNER JOIN marks m ON t.mark_id = m.id
+            INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+            WHERE t.txn_date <= :as_of_date
+                AND (:company_id IS NULL OR t.company_id = :company_id)
+                {split_exclusion_clause}
+                {coretax_clause}
+            GROUP BY mcm.coa_id
+        )
+        SELECT
+            coa.id,
+            coa.code,
+            coa.name,
+            coa.category,
+            coa.subcategory,
+            COALESCE(b.total_amount, 0) as total_amount
+        FROM chart_of_accounts coa
+        LEFT JOIN coa_balances b ON b.coa_id = coa.id
+        WHERE coa.category IN ('ASSET', 'LIABILITY', 'EQUITY')
+            AND coa.is_active = TRUE
+            AND COALESCE(b.total_amount, 0) != 0
+        ORDER BY coa.code
+    """)

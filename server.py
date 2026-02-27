@@ -10,6 +10,8 @@ from backend.routes.pdf_bp import pdf_bp
 from backend.routes.pdf_bp import pdf_bp
 from backend.routes.rental_bp import rental_bp
 from backend.routes.hpp_bp import hpp_bp
+from backend.routes.initial_capital_bp import initial_capital_bp
+from backend.routes.general_ledger_bp import general_ledger_bp
 
 app = Flask(__name__)
 # Configure CORS
@@ -28,6 +30,8 @@ app.register_blueprint(amortization_bp)
 app.register_blueprint(pdf_bp)
 app.register_blueprint(rental_bp)
 app.register_blueprint(hpp_bp)
+app.register_blueprint(initial_capital_bp)
+app.register_blueprint(general_ledger_bp)
 
 
 if __name__ == '__main__':

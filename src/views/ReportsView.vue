@@ -91,6 +91,14 @@
               Cash Flow
             </button>
             <button
+              @click="navigateToGeneralLedger()"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
+              :class="'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+            >
+              <i class="bi bi-journal-text mr-2"></i>
+              General Ledger
+            </button>
+            <button
               @click="activeTab = 'payroll-summary'"
               class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
               :class="activeTab === 'payroll-summary'
@@ -333,6 +341,11 @@ const handleExport = async (format) => {
     console.error('Failed to export:', error);
     alert('Failed to export report');
   }
+};
+
+const navigateToGeneralLedger = () => {
+  // Navigate to General Ledger page
+  window.location.href = '/general-ledger';
 };
 
 onMounted(async () => {
