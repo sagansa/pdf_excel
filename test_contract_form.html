@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rental Contract Form Test</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        select, input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Rental Contract Form Test</h1>
+        
+        <div class="form-group">
+            <label>Store *</label>
+            <select v-model="form.store_id" required>
+                <option value="">Select a store...</option>
+                <option v-for="store in stores" :key="store.id" :value="store.id">
+                    {{ store.store_name || store.name }}
+                </option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Location *</label>
+            <select v-model="form.location_id" required>
+                <option value="">Select a location...</option>
+                <option v-for="loc in locations" :key="loc.id" :value="loc.id">
+                    {{ loc.location_name }} - {{ loc.address }}
+                </option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Start Date *</label>
+            <input v-model="form.start_date" type="date" required>
+        </div>
+
+        <div class="form-group">
+            <label>End Date *</label>
+            <input v-model="form.end_date" type="date" required>
+        </div>
+
+        <div class="form-group">
+            <label>Total Amount *</label>
+            <input v-model="form.total_amount" type="number" required>
+        </div>
+
+        <button @click="submitForm">Create Contract</button>
+
+        <div class="debug">
+            <h3>Debug Information:</h3>
+            <p>Stores loaded: {{ stores.length }}</p>
+            <p>Locations loaded: {{ locations.length }}</p>
+            <p>Form data: {{ JSON.stringify(form, null, 2) }}</p>
+            <p>Loading: {{ loading }}</p>
+            <p>Error: {{ error }}</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        
+        createApp({
+            setup() {
+                const stores = ref([]);
+                const locations = ref([]);
+                const loading = ref(false);
+                const error = ref('');
+                
+                const form = ref({
+                    store_id: '',
+                    location_id: '',
+                    start_date: '2024-01-01',
+                    end_date: '2024-12-31',
+                    total_amount: 50000000
+                });
+
+                const loadStores = async () => {
+                    try {
+                        console.log('Loading stores...');
+                        const response = await axios.get('/api/stores');
+                        stores.value = response.data.stores || [];
+                        console.log('Stores loaded:', stores.value);
+                    } catch (err) {
+                        console.error('Failed to load stores:', err);
+                        error.value = 'Failed to load stores';
+                    }
+                };
+
+                const loadLocations = async () => {
+                    try {
+                        console.log('Loading locations...');
+                        const response = await axios.get('/api/rental-locations?company_id=8ab69d4a-e591-4f05-909e-25ff12352efb');
+                        locations.value = response.data.locations || [];
+                        console.log('Locations loaded:', locations.value);
+                    } catch (err) {
+                        console.error('Failed to load locations:', err);
+                        error.value = 'Failed to load locations';
+                    }
+                };
+
+                const submitForm = async () => {
+                    loading.value = true;
+                    error.value = '';
+                    
+                    try {
+                        console.log('Submitting form:', form.value);
+                        const response = await axios.post('/api/rental-contracts', {
+                            ...form.value,
+                            company_id: '8ab69d4a-e591-4f05-909e-25ff12352efb',
+                            status: 'active'
+                        });
+                        console.log('Contract created:', response.data);
+                        alert('Contract created successfully!');
+                    } catch (err) {
+                        console.error('Failed to create contract:', err);
+                        error.value = 'Failed to create contract: ' + (err.response?.data?.error || err.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                onMounted(async () => {
+                    console.log('Component mounted');
+                    await Promise.all([loadStores(), loadLocations()]);
+                });
+
+                return {
+                    stores,
+                    locations,
+                    form,
+                    loading,
+                    error,
+                    submitForm
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

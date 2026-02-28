@@ -11,34 +11,38 @@
       </div>
       
       <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Store *</label>
-          <select
-            v-model="form.store_id"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="">Select a store...</option>
-            <option v-for="store in stores" :key="store.id" :value="store.id">
-              {{ store.store_code }} - {{ store.store_name }}
-            </option>
-          </select>
+        <!-- Store and Location -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Store *</label>
+            <select
+              v-model="form.store_id"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            >
+              <option value="">Select a store...</option>
+              <option v-for="store in stores" :key="store.id" :value="store.id">
+                {{ store.store_code }} - {{ store.store_name }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+            <select
+              v-model="form.location_id"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            >
+              <option value="">Select a location...</option>
+              <option v-for="loc in locations" :key="loc.id" :value="loc.id">
+                {{ loc.location_name }} - {{ loc.address }}
+              </option>
+            </select>
+          </div>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Location *</label>
-          <select
-            v-model="form.location_id"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="">Select a location...</option>
-            <option v-for="loc in locations" :key="loc.id" :value="loc.id">
-              {{ loc.location_name }} - {{ loc.address }}
-            </option>
-          </select>
-        </div>
-
+        <!-- Dates -->
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
@@ -46,7 +50,7 @@
               v-model="form.start_date"
               type="date"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             />
           </div>
           <div>
@@ -55,54 +59,72 @@
               v-model="form.end_date"
               type="date"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             />
           </div>
         </div>
 
+        <!-- Accounting Config -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Metode Perhitungan</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Metode</label>
             <select
               v-model="form.calculation_method"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
             >
               <option value="BRUTO">Bruto</option>
               <option value="NETTO">Netto (Gross-up)</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Tarif PPh 4(2) (%)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tarif PPh (%)</label>
             <input
               v-model.number="form.pph42_rate"
               type="number"
               min="0"
               max="100"
               step="0.01"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Bayar PPh 4(2)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Bayar</label>
             <select
               v-model="form.pph42_payment_timing"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
             >
-              <option value="same_period">Periode yang sama</option>
-              <option value="next_period">Periode berikutnya</option>
-              <option value="next_year">Tahun berikutnya</option>
+              <option value="same_period">Periode sama</option>
+              <option value="next_period">Bulan depan</option>
+              <option value="next_year">Tahun depan</option>
             </select>
+          </div>
+          <div v-if="form.pph42_payment_timing !== 'same_period'">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Bayar PPh</label>
+            <input
+              v-model="form.pph42_payment_date"
+              type="date"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
+            />
+          </div>
+          <div v-if="form.pph42_payment_timing !== 'same_period'">
+            <label class="block text-sm font-medium text-gray-700 mb-1">No. Ref Pembayaran PPh</label>
+            <input
+              v-model="form.pph42_payment_ref"
+              type="text"
+              placeholder="Nomor referensi / NTPN"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
+            />
           </div>
         </div>
 
         <!-- Transaction Selection -->
-        <div class="md:col-span-2 space-y-3">
+        <div class="space-y-3">
           <div class="flex items-center justify-between">
             <label class="block text-sm font-bold text-gray-700">
               <i class="bi bi-link-45deg mr-1"></i>
               Link Transactions
             </label>
-            <span class="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+            <span class="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full font-medium">
               {{ selectedTransactions.length }} selected
             </span>
           </div>
@@ -114,7 +136,7 @@
                   v-model="transactionSearch"
                   type="text"
                   placeholder="Search transactions..."
-                  class="flex-1 text-sm px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  class="flex-1 text-xs px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
                 <button
                   type="button"
@@ -127,7 +149,7 @@
               </div>
             </div>
             
-            <div class="max-h-60 overflow-y-auto">
+            <div class="max-h-48 overflow-y-auto">
               <div
                 v-for="txn in filteredTransactions"
                 :key="txn.id"
@@ -144,8 +166,8 @@
                 <label :for="'txn-' + txn.id" class="ml-3 flex-1 cursor-pointer">
                   <div class="flex items-center justify-between">
                     <div>
-                      <div class="text-sm font-medium text-gray-900">{{ txn.description }}</div>
-                      <div class="text-xs text-gray-500">
+                      <div class="text-xs font-semibold text-gray-900">{{ txn.description }}</div>
+                      <div class="text-[10px] text-gray-500">
                         {{ formatDate(txn.txn_date) }} | {{ txn.personal_use || txn.internal_report || 'No mark' }}
                       </div>
                     </div>
@@ -156,100 +178,43 @@
                 </label>
               </div>
               
-              <div v-if="filteredTransactions.length === 0" class="px-4 py-8 text-center text-gray-500 text-sm">
+              <div v-if="filteredTransactions.length === 0" class="px-4 py-8 text-center text-gray-500 text-xs">
                 <i class="bi bi-inbox text-2xl mb-2 block"></i>
-                No linkable transactions found
+                No linkable transactions found (Only marked as rental)
               </div>
-            </div>
-          </div>
-          
-          <!-- Total Amount Display -->
-          <div class="bg-indigo-50 rounded-lg p-4 flex items-center justify-between">
-            <div>
-              <div class="text-xs font-bold text-indigo-700 uppercase">Total from Selected</div>
-              <div class="text-sm text-indigo-600">
-                {{ selectedTransactions.length }} transaction{{ selectedTransactions.length !== 1 ? 's' : '' }}
-              </div>
-            </div>
-            <div class="text-2xl font-bold text-indigo-900">
-              {{ formatCurrency(baseSelectedAmount) }}
             </div>
           </div>
         </div>
 
+        <!-- Summary -->
         <div class="bg-white border border-gray-200 rounded-lg p-4">
-          <div class="text-xs font-bold text-gray-500 uppercase mb-3">Ringkasan Otomatis Rent & PPh 4(2)</div>
+          <div class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-wider">Accounting Summary</div>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <div>
-              <div class="text-gray-500 text-xs">Dasar Pembayaran</div>
+              <div class="text-gray-500 text-[10px] uppercase">Dasar Bayar</div>
               <div class="font-semibold text-gray-900">{{ formatCurrency(baseSelectedAmount) }}</div>
             </div>
             <div>
-              <div class="text-gray-500 text-xs">Nilai Bruto</div>
+              <div class="text-gray-500 text-[10px] uppercase">Nilai Bruto</div>
               <div class="font-semibold text-indigo-700">{{ formatCurrency(calculatedBrutoAmount) }}</div>
             </div>
             <div>
-              <div class="text-gray-500 text-xs">Nilai Netto</div>
+              <div class="text-gray-500 text-[10px] uppercase">Nilai Netto</div>
               <div class="font-semibold text-gray-900">{{ formatCurrency(calculatedNetAmount) }}</div>
             </div>
             <div>
-              <div class="text-gray-500 text-xs">PPh 4(2)</div>
+              <div class="text-gray-500 text-[10px] uppercase">PPh 4(2)</div>
               <div class="font-semibold text-amber-700">{{ formatCurrency(calculatedTaxAmount) }}</div>
             </div>
           </div>
-          <p class="text-xs text-gray-500 mt-3">
-            Nilai bruto digunakan sebagai dasar perhitungan jurnal kontrak sewa.
-          </p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Total Amount *</label>
-          <input
-            :value="formatCurrency(calculatedBrutoAmount || 0)"
-            type="text"
-            readonly
-            disabled
-            class="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
-            placeholder="Select transactions to calculate total"
-          />
-          <p class="mt-1 text-xs text-gray-500">
-            <i class="bi bi-info-circle mr-1"></i>
-            Total is automatically calculated from selected transactions
-          </p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Payment Schedule</label>
-          <select
-            v-model="form.payment_schedule"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="semi-annual">Semi-Annual</option>
-            <option value="annual">Annual</option>
-            <option value="one-time">One-Time</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-          <select
-            v-model="form.status"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="active">Active</option>
-            <option value="expired">Expired</option>
-            <option value="terminated">Terminated</option>
-          </select>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
           <textarea
             v-model="form.notes"
-            rows="3"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            rows="2"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
           ></textarea>
         </div>
 
@@ -264,7 +229,7 @@
           <button
             type="submit"
             :disabled="loading"
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 shadow-md"
           >
             {{ loading ? 'Saving...' : (editMode ? 'Update' : 'Create') }}
           </button>
@@ -286,6 +251,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'saved']);
 
+// State
 const editMode = ref(false);
 const loading = ref(false);
 const stores = ref([]);
@@ -303,54 +269,48 @@ const form = ref({
   calculation_method: 'BRUTO',
   pph42_rate: 10,
   pph42_payment_timing: 'same_period',
-  payment_schedule: 'monthly',
+  pph42_payment_date: '',
+  pph42_payment_ref: '',
   status: 'active',
   notes: ''
 });
 
-watch(() => props.contract, (newContract) => {
-  if (newContract && newContract.id) {
-    editMode.value = true;
-    form.value = {
-      ...newContract,
-      calculation_method: (newContract.calculation_method || 'BRUTO').toUpperCase(),
-      pph42_rate: Number(newContract.pph42_rate ?? 10),
-      pph42_payment_timing: newContract.pph42_payment_timing || 'same_period'
-    };
-  } else {
-    editMode.value = false;
-    if (!props.isOpen) {
-      resetForm();
-    }
-  }
-});
+// Helper Functions
+const resetForm = () => {
+  form.value = {
+    store_id: '',
+    location_id: '',
+    start_date: '',
+    end_date: '',
+    total_amount: 0,
+    calculation_method: 'BRUTO',
+    pph42_rate: 10,
+    pph42_payment_timing: 'same_period',
+    pph42_payment_date: '',
+    pph42_payment_ref: '',
+    status: 'active',
+    notes: ''
+  };
+};
 
-watch(() => props.isOpen, async (isOpen) => {
-  if (isOpen) {
-    await Promise.all([loadStores(), loadLocations(), loadLinkableTransactions()]);
-    if (props.contract?.id) {
-      await loadExistingLinkedTransactions(props.contract.id);
-    }
-    if (!props.contract) {
-      resetForm();
-    }
-  } else {
-    resetForm();
-    editMode.value = false;
-    selectedTransactions.value = [];
-    transactionSearch.value = '';
-  }
-});
+const formatCurrency = (amount) => {
+  if (!amount) return 'Rp 0';
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(amount);
+};
 
-// Auto-update total amount when transactions are selected
-watch(selectedTransactions, () => {
-  // Always sync form.total_amount with calculated total
-  form.value.total_amount = calculatedBrutoAmount.value;
-}, { deep: true });
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+};
 
+// Data Loading Functions
 const loadStores = async () => {
   try {
-    // Fetch all stores (not filtered by company)
     const response = await rentalApi.getStores(null);
     stores.value = response.data.stores || [];
   } catch (error) {
@@ -365,6 +325,7 @@ const loadLocations = async () => {
     locations.value = response.data.locations || [];
   } catch (error) {
     console.error('Failed to load locations:', error);
+    locations.value = [];
   }
 };
 
@@ -399,6 +360,7 @@ const isSelected = (txnId) => {
   return selectedTransactions.value.includes(txnId);
 };
 
+// Computed
 const filteredTransactions = computed(() => {
   if (!transactionSearch.value) return linkableTransactions.value;
   const search = transactionSearch.value.toLowerCase();
@@ -416,17 +378,12 @@ const baseSelectedAmount = computed(() => {
   }, 0);
 });
 
-const safeTaxRate = computed(() => {
-  const raw = Number(form.value.pph42_rate ?? 10);
-  if (Number.isNaN(raw)) return 10;
-  return Math.min(Math.max(raw, 0), 100);
-});
-
 const calculatedBrutoAmount = computed(() => {
   const base = baseSelectedAmount.value;
   if (!base) return 0;
   if ((form.value.calculation_method || 'BRUTO').toUpperCase() === 'NETTO') {
-    const divisor = 1 - (safeTaxRate.value / 100);
+    const rate = Number(form.value.pph42_rate ?? 10);
+    const divisor = 1 - (rate / 100);
     if (divisor <= 0) return 0;
     return base / divisor;
   }
@@ -439,44 +396,56 @@ const calculatedNetAmount = computed(() => {
   if ((form.value.calculation_method || 'BRUTO').toUpperCase() === 'NETTO') {
     return baseSelectedAmount.value;
   }
-  return bruto * (1 - (safeTaxRate.value / 100));
+  const rate = Number(form.value.pph42_rate ?? 10);
+  return bruto * (1 - (rate / 100));
 });
 
 const calculatedTaxAmount = computed(() => {
   return Math.max(0, calculatedBrutoAmount.value - calculatedNetAmount.value);
 });
 
-const formatCurrency = (amount) => {
-  if (!amount) return 'Rp 0';
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(amount);
-};
+// Watches
+watch(() => props.contract, (newContract) => {
+  if (newContract && newContract.id) {
+    editMode.value = true;
+    const paymentDate = newContract.pph42_payment_date 
+      ? String(newContract.pph42_payment_date).substring(0, 10)
+      : '';
+    form.value = {
+      ...newContract,
+      calculation_method: (newContract.calculation_method || 'BRUTO').toUpperCase(),
+      pph42_rate: Number(newContract.pph42_rate ?? 10),
+      pph42_payment_timing: newContract.pph42_payment_timing || 'same_period',
+      pph42_payment_date: paymentDate,
+      pph42_payment_ref: newContract.pph42_payment_ref || ''
+    };
+  } else {
+    editMode.value = false;
+    if (!props.isOpen) {
+      resetForm();
+    }
+  }
+}, { immediate: true });
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-';
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
-};
+watch(() => props.isOpen, async (isOpen) => {
+  if (isOpen) {
+    try {
+      await Promise.all([loadStores(), loadLocations(), loadLinkableTransactions()]);
+      if (props.contract?.id) {
+        await loadExistingLinkedTransactions(props.contract.id);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  } else {
+    resetForm();
+    editMode.value = false;
+    selectedTransactions.value = [];
+    transactionSearch.value = '';
+  }
+});
 
-const resetForm = () => {
-  form.value = {
-    store_id: '',
-    location_id: '',
-    start_date: '',
-    end_date: '',
-    total_amount: 0,
-    calculation_method: 'BRUTO',
-    pph42_rate: 10,
-    pph42_payment_timing: 'same_period',
-    payment_schedule: 'monthly',
-    status: 'active',
-    notes: ''
-  };
-};
-
+// Submit handler
 const handleSubmit = async () => {
   loading.value = true;
   try {
@@ -484,32 +453,16 @@ const handleSubmit = async () => {
       ...form.value,
       company_id: props.companyId,
       total_amount: calculatedBrutoAmount.value,
-      linked_transaction_ids: selectedTransactions.value
+      linked_transaction_ids: selectedTransactions.value,
+      pph42_payment_date: form.value.pph42_payment_timing === 'same_period' 
+        ? null 
+        : (form.value.pph42_payment_date || null)
     };
 
-    console.log('Creating contract with data:', {
-      ...data,
-      linked_transaction_ids_count: data.linked_transaction_ids?.length || 0
-    });
-
-    let contractId;
     if (editMode.value) {
       await rentalApi.updateContract(props.contract.id, data);
-      contractId = props.contract.id;
-      
-      // Ensure selected links are applied (idempotent on backend side)
-      if (selectedTransactions.value.length > 0) {
-        for (const txnId of selectedTransactions.value) {
-          try {
-            await rentalApi.linkTransaction(contractId, txnId);
-          } catch (linkError) {
-            console.error(`Failed to link transaction ${txnId}:`, linkError);
-          }
-        }
-      }
     } else {
-      const response = await rentalApi.createContract(data);
-      contractId = response.data.id;
+      await rentalApi.createContract(data);
     }
 
     emit('saved');

@@ -35,26 +35,25 @@
         </div>
 
         <div>
-          <label class="block text-sm font-bold text-gray-700 mb-2">Location</label>
-          <select
-            v-model="form.location_id"
+          <label class="block text-sm font-bold text-gray-700 mb-2">Store Code</label>
+          <input
+            v-model="form.store_code"
+            type="text"
             class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-          >
-            <option value="">-- Select Location (Optional) --</option>
-            <option v-for="loc in locations" :key="loc.id" :value="loc.id">
-              {{ loc.location_name || loc.name }}
-            </option>
-          </select>
+            placeholder="e.g., STORE001 (optional)"
+          />
         </div>
 
         <div>
-          <label class="block text-sm font-bold text-gray-700 mb-2">Address</label>
-          <textarea
-            v-model="form.address"
-            rows="3"
+          <label class="block text-sm font-bold text-gray-700 mb-2">Status</label>
+          <select
+            v-model="form.status"
             class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-            placeholder="Store address (optional)"
-          ></textarea>
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="closed">Closed</option>
+          </select>
         </div>
 
         <div>
@@ -101,8 +100,8 @@ const emit = defineEmits(['close', 'saved']);
 
 const form = ref({
   name: '',
-  location_id: '',
-  address: '',
+  store_code: '',
+  status: 'active',
   notes: ''
 });
 
@@ -110,27 +109,14 @@ const locations = ref([]);
 const isSaving = ref(false);
 const error = ref('');
 
-const loadLocations = async () => {
-  if (!props.companyId) return;
-  try {
-    const response = await rentalApi.getLocations(props.companyId);
-    locations.value = response.data.locations || [];
-    console.log('Loaded locations:', locations.value);
-  } catch (e) {
-    console.error('Failed to load locations:', e);
-  }
-};
-
 const init = async () => {
   error.value = '';
   form.value = {
     name: '',
-    location_id: '',
-    address: '',
+    store_code: '',
+    status: 'active',
     notes: ''
   };
-
-  await loadLocations();
 
   if (props.storeId) {
     try {
@@ -141,8 +127,8 @@ const init = async () => {
       if (store) {
         form.value = {
           name: store.store_name || store.name || '',
-          location_id: store.location_id || store.current_location_id || '',
-          address: store.address || '',
+          store_code: store.store_code || '',
+          status: store.status || 'active',
           notes: store.notes || ''
         };
       } else {
@@ -169,11 +155,10 @@ const handleSubmit = async () => {
 
   // Map form fields to backend expected fields
   const payload = {
-    store_code: form.value.name, // Backend expects store_code
-    store_name: form.value.name, // Backend expects store_name
-    current_location_id: form.value.location_id || null,
-    status: 'active', // Default status
-    notes: form.value.notes
+    store_name: form.value.name,
+    store_code: form.value.store_code || null,
+    status: form.value.status,
+    notes: form.value.notes || null
   };
 
   console.log('Saving store with payload:', payload);

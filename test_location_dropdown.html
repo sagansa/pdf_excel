@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Location Dropdown</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <h1>Location Dropdown Test</h1>
+        <select v-model="selectedLocation">
+            <option value="">Select location... ({{ locations.length }} available)</option>
+            <option v-for="loc in locations" :key="loc.id" :value="loc.id">
+                {{ loc.location_name }} - {{ loc.address }}
+            </option>
+        </select>
+        <p>Selected: {{ selectedLocation }}</p>
+        <p>Debug: {{ locations.length }} locations loaded</p>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        
+        createApp({
+            setup() {
+                const locations = ref([]);
+                const selectedLocation = ref('');
+                
+                const loadLocations = async () => {
+                    try {
+                        console.log('Loading locations...');
+                        const response = await axios.get('/api/rental-locations?company_id=8ab69d4a-e591-4f05-909e-25ff12352efb');
+                        console.log('Response:', response.data);
+                        locations.value = response.data.locations || [];
+                        console.log('Locations loaded:', locations.value);
+                    } catch (error) {
+                        console.error('Error:', error);
+                    }
+                };
+                
+                onMounted(() => {
+                    loadLocations();
+                });
+                
+                return {
+                    locations,
+                    selectedLocation
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

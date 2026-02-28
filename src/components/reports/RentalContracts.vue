@@ -6,13 +6,62 @@
         <h3 class="text-lg font-semibold text-gray-900">Rental Contracts</h3>
         <p class="text-sm text-gray-500 mt-1">Manage rental contracts and payments</p>
       </div>
-      <button
-        @click="showContractModal = true"
-        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
-      >
-        <i class="bi bi-file-earmark-text mr-2"></i>
-        Add Contract
-      </button>
+      <div class="flex gap-2">
+        <button
+          @click="showSettingsModal = true"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <i class="bi bi-gear mr-2"></i>
+          Settings
+        </button>
+        <button
+          @click="showContractModal = true"
+          class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          <i class="bi bi-file-earmark-text mr-2"></i>
+          Add Contract
+        </button>
+      </div>
+    </div>
+
+    <!-- Pending Transactions Alert -->
+    <div v-if="pendingTransactions?.length > 0" class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 shadow-sm">
+      <div class="flex items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill text-amber-500 text-xl"></i>
+        <div class="flex-1">
+          <h4 class="text-sm font-bold text-amber-900">Pending Rental Transactions ({{ pendingTransactions.length }})</h4>
+          <p class="text-xs text-amber-700 mt-0.5">
+            Berikut adalah transaksi yang sudah ditandai sebagai "Sewa Tempat" namun belum dihubungkan ke kontrak apapun. 
+            Segera buat atau hubungkan ke kontrak agar perhitungan laporan keuangan akurat.
+          </p>
+          <div class="mt-3 max-h-32 overflow-y-auto bg-white bg-opacity-60 border border-amber-100 rounded p-2">
+            <table class="min-w-full text-xs">
+              <thead class="text-amber-900 border-b border-amber-100">
+                <tr>
+                  <th class="text-left py-1 font-bold">Tanggal</th>
+                  <th class="text-left py-1 font-bold">Keterangan</th>
+                  <th class="text-right py-1 font-bold">Jumlah</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-amber-50">
+                <tr v-for="txn in pendingTransactions" :key="txn.id" class="hover:bg-amber-50/50">
+                  <td class="py-1 whitespace-nowrap">{{ formatDate(txn.txn_date) }}</td>
+                  <td class="py-1 truncate max-w-[200px]" :title="txn.description">{{ txn.description }}</td>
+                  <td class="py-1 text-right font-medium text-amber-900">{{ formatCurrency(txn.amount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-3">
+            <button
+              @click="showContractModal = true"
+              class="text-xs font-bold text-amber-900 border border-amber-300 rounded px-3 py-1 bg-amber-100 hover:bg-amber-200 transition-colors"
+            >
+              Buat Kontrak Baru
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Contracts List -->
@@ -24,8 +73,8 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payments</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Accounting (Monthly)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amortization (Remaining)</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -44,12 +93,13 @@
                 <div class="text-sm text-gray-900">{{ formatDate(contract.start_date) }}</div>
                 <div class="text-xs text-gray-500">to {{ formatDate(contract.end_date) }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ formatCurrency(contract.total_amount) }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-semibold text-gray-900">{{ formatCurrency(getAccountingSummary(contract).monthly_amortization) }}</div>
+                <div class="text-[10px] text-gray-500 uppercase">{{ contract.calculation_method }} • {{ contract.pph42_rate }}% PPh</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ contract.transaction_count }} txns</div>
-                <div class="text-xs text-gray-500">{{ formatCurrency(contract.total_paid) }} paid</div>
+                <div class="text-sm text-indigo-700 font-medium">{{ formatCurrency(getAccountingSummary(contract).remaining_prepaid) }}</div>
+                <div class="text-[10px] text-gray-500 uppercase">Amortized: {{ formatCurrency(getAccountingSummary(contract).total_amortized) }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span :class="getStatusClass(contract.status)" class="px-2 py-1 text-xs font-medium rounded-full">
@@ -123,6 +173,47 @@
             <div>
               <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Total Amount</label>
               <p class="text-sm text-gray-900">{{ formatCurrency(selectedContract.total_amount) }}</p>
+            </div>
+          </div>
+          
+          <!-- Accounting Summary -->
+          <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-5">
+            <h4 class="text-xs font-bold text-indigo-800 uppercase mb-4 tracking-wider flex items-center">
+              <i class="bi bi-calculator mr-2"></i>
+              Accounting Summary
+            </h4>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              <div>
+                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Bruto (Base)</label>
+                <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(getAccountingSummary(selectedContract).bruto) }}</p>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Netto (Payment)</label>
+                <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(getAccountingSummary(selectedContract).net) }}</p>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">PPh 4(2) ({{ selectedContract.pph42_rate }}%)</label>
+                <p class="text-sm font-semibold text-amber-700">{{ formatCurrency(getAccountingSummary(selectedContract).tax) }}</p>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Monthly Amort.</label>
+                <p class="text-sm font-bold text-indigo-700">{{ formatCurrency(getAccountingSummary(selectedContract).monthly_amortization) }}</p>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Amortized so far</label>
+                <p class="text-sm font-medium text-gray-900">{{ formatCurrency(getAccountingSummary(selectedContract).total_amortized) }}</p>
+                <p class="text-[9px] text-gray-500 uppercase">{{ getAccountingSummary(selectedContract).elapsed_months }} of {{ getAccountingSummary(selectedContract).total_months }} months</p>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Remaining Prepaid</label>
+                <p class="text-sm font-bold text-green-700">{{ formatCurrency(getAccountingSummary(selectedContract).remaining_prepaid) }}</p>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">PPh Payment</label>
+                <p class="text-sm font-medium text-gray-900">{{ selectedContract.pph42_payment_timing }}</p>
+                <p v-if="selectedContract.pph42_payment_date" class="text-[9px] text-indigo-600 font-bold uppercase">Paid on: {{ formatDate(selectedContract.pph42_payment_date) }}</p>
+                <p v-else-if="selectedContract.pph42_payment_timing !== 'same_period'" class="text-[9px] text-amber-600 font-bold uppercase">Not yet recorded</p>
+              </div>
             </div>
           </div>
 
@@ -307,13 +398,21 @@
       @close="showDeleteModal = false; contractToDelete = null"
       @confirm="confirmDeleteContract"
     />
+
+    <RentalSettingsModal
+      :isOpen="showSettingsModal"
+      :companyId="companyId"
+      @close="showSettingsModal = false"
+      @saved="onSettingsSaved"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import { rentalApi } from '../../api';
+import { rentalApi, reportsApi } from '../../api';
 import AddContractModal from './modals/AddContractModal.vue';
+import RentalSettingsModal from './modals/RentalSettingsModal.vue';
 import ConfirmModal from '../ui/ConfirmModal.vue';
 
 const props = defineProps({
@@ -329,10 +428,12 @@ const contractTransactions = ref([]);
 const generatedJournals = ref([]);
 const amortizationSchedule = ref([]);
 const monthlyAmount = ref(0);
+const pendingTransactions = ref([]);
 const showJournals = ref(false);
 const isGeneratingJournals = ref(false);
 
 const showContractModal = ref(false);
+const showSettingsModal = ref(false);
 const showDetailsModal = ref(false);
 const showLinkTransactionModal = ref(false);
 const showDeleteModal = ref(false);
@@ -342,10 +443,14 @@ const selectedContractForEdit = ref(null);
 
 const loadContracts = async () => {
   try {
-    const response = await rentalApi.getContracts(props.companyId);
-    contracts.value = response.data.contracts || [];
+    const [contractsRes, pendingRes] = await Promise.all([
+      rentalApi.getContracts(props.companyId),
+      rentalApi.getLinkableTransactions(props.companyId, null)
+    ]);
+    contracts.value = contractsRes.data.contracts || [];
+    pendingTransactions.value = (pendingRes.data.transactions || []).filter(t => !t.rental_contract_id);
   } catch (error) {
-    console.error('Failed to load contracts:', error);
+    console.error('Failed to load rental data:', error);
   }
 };
 
@@ -386,9 +491,79 @@ const getStatusClass = (status) => {
   const classes = {
     'active': 'bg-green-100 text-green-800',
     'expired': 'bg-red-100 text-red-800',
+    'pending': 'bg-amber-100 text-amber-800',
     'terminated': 'bg-gray-100 text-gray-800'
   };
   return classes[status] || 'bg-gray-100 text-gray-800';
+};
+
+const getAccountingSummary = (contract) => {
+  if (!contract) return {};
+  
+  const totalAmount = parseFloat(contract.total_amount) || 0;
+  const totalPaid = parseFloat(contract.total_paid) || 0;
+  const method = contract.calculation_method || 'BRUTO';
+  const rate = parseFloat(contract.pph42_rate) || 10;
+  
+  let bruto = 0;
+  let net = 0;
+  let tax = 0;
+  
+  if (totalAmount > 0) {
+    bruto = totalAmount;
+    if (method === 'NETTO') {
+      net = totalAmount;
+      bruto = net / (1 - (rate / 100));
+    } else {
+      net = bruto * (1 - (rate / 100));
+    }
+  } else if (totalPaid > 0) {
+    if (method === 'NETTO') {
+      net = totalPaid;
+      bruto = net / (1 - (rate / 100));
+    } else {
+      bruto = totalPaid;
+      net = bruto * (1 - (rate / 100));
+    }
+  }
+  tax = bruto - net;
+
+  // Amortization
+  const start = new Date(contract.start_date);
+  const end = new Date(contract.end_date);
+  const today = new Date();
+  
+  // Total months (inclusive of start and end months)
+  let totalMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+  if (totalMonths <= 0) totalMonths = 1;
+  
+  // Amortization based on netto (matches 1421 balance from bank transactions)
+  const monthlyAmortization = net / totalMonths;
+  
+  // Elapsed months through today
+  const amortEnd = today < end ? today : end;
+  let elapsed = 0;
+  if (amortEnd >= start) {
+    elapsed = (amortEnd.getFullYear() - start.getFullYear()) * 12 + (amortEnd.getMonth() - start.getMonth());
+    if (amortEnd.getDate() >= start.getDate() || amortEnd.getMonth() !== start.getMonth() || amortEnd >= end) {
+      elapsed += 1;
+    }
+    elapsed = Math.min(elapsed, totalMonths);
+  }
+  
+  const totalAmortized = monthlyAmortization * elapsed;
+  const remainingPrepaid = net - totalAmortized;
+
+  return {
+    bruto,
+    net,
+    tax,
+    monthly_amortization: monthlyAmortization,
+    total_amortized: totalAmortized,
+    remaining_prepaid: remainingPrepaid,
+    total_months: totalMonths,
+    elapsed_months: elapsed
+  };
 };
 
 onMounted(() => {
@@ -458,6 +633,10 @@ const generateJournals = async () => {
   } finally {
     isGeneratingJournals.value = false;
   }
+};
+
+const onSettingsSaved = () => {
+  loadContracts();
 };
 
 </script>

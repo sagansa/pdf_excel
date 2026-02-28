@@ -97,6 +97,7 @@ def _filter_rent_transaction_ids(conn, transaction_ids, company_id):
             OR LOWER(COALESCE(m.personal_use, '')) LIKE '%%sewa%%'
             OR LOWER(COALESCE(t.description, '')) LIKE '%%sewa%%'
             OR LOWER(COALESCE(t.description, '')) LIKE '%%rent%%'
+            OR COALESCE(m.is_rental, 0) = 1
             OR EXISTS (
               SELECT 1
               FROM mark_coa_mapping mcm
@@ -321,7 +322,6 @@ def update_store(store_id):
                 'store_code': data.get('store_code'),
                 'store_name': data.get('store_name'),
                 'name': data.get('store_name'),
-                'current_location_id': data.get('current_location_id'),
                 'status': data.get('status'),
                 'notes': data.get('notes'),
                 'updated_at': now
@@ -370,6 +370,7 @@ def get_contracts():
             pph42_rate_sql = "COALESCE(c.pph42_rate, 10)" if 'pph42_rate' in contract_columns else "10"
             pph42_timing_sql = "COALESCE(c.pph42_payment_timing, 'same_period')" if 'pph42_payment_timing' in contract_columns else "'same_period'"
             pph42_date_sql = "c.pph42_payment_date" if 'pph42_payment_date' in contract_columns else "NULL"
+            pph42_ref_sql = "c.pph42_payment_ref" if 'pph42_payment_ref' in contract_columns else "NULL"
             store_name_sql = "s.store_name" if 'store_name' in store_columns else "s.name"
             store_code_sql = "s.store_code" if 'store_code' in store_columns else "NULL"
 
@@ -385,7 +386,8 @@ def get_contracts():
                     {calculation_method_sql} AS calculation_method,
                     {pph42_rate_sql} AS pph42_rate,
                     {pph42_timing_sql} AS pph42_payment_timing,
-                    {pph42_date_sql} AS pph42_payment_date
+                    {pph42_date_sql} AS pph42_payment_date,
+                    {pph42_ref_sql} AS pph42_payment_ref
                 FROM rental_contracts c
                 LEFT JOIN rental_stores s ON c.store_id = s.id
                 LEFT JOIN rental_locations l ON c.location_id = l.id
@@ -442,10 +444,9 @@ def get_expiring_contracts():
             store_name_sql = "s.store_name" if 'store_name' in store_columns else "s.name"
             if conn.dialect.name == 'sqlite':
                 query = text(f"""
-                    SELECT c.*, {store_name_sql} AS store_name, l.location_name
+                    SELECT c.*, {store_name_sql} AS store_name
                     FROM rental_contracts c
                     LEFT JOIN rental_stores s ON c.store_id = s.id
-                    LEFT JOIN rental_locations l ON c.location_id = l.id
                     WHERE (:company_id IS NULL OR c.company_id = :company_id)
                       AND c.status = 'active'
                       AND date(c.end_date) <= date('now', :window)
@@ -454,10 +455,9 @@ def get_expiring_contracts():
                 params = {'company_id': company_id, 'window': f'+{days} day'}
             else:
                 query = text(f"""
-                    SELECT c.*, {store_name_sql} AS store_name, l.location_name
+                    SELECT c.*, {store_name_sql} AS store_name
                     FROM rental_contracts c
                     LEFT JOIN rental_stores s ON c.store_id = s.id
-                    LEFT JOIN rental_locations l ON c.location_id = l.id
                     WHERE (:company_id IS NULL OR c.company_id = :company_id)
                       AND c.status = 'active'
                       AND c.end_date <= DATE_ADD(CURDATE(), INTERVAL :days DAY)
@@ -498,7 +498,7 @@ def create_contract():
                 'id': contract_id,
                 'company_id': data['company_id'],
                 'store_id': data['store_id'],
-                'location_id': data['location_id'],
+                'location_id': data.get('location_id'),
                 'contract_number': data.get('contract_number'),
                 'landlord_name': data.get('landlord_name'),
                 'start_date': data['start_date'],
@@ -510,6 +510,7 @@ def create_contract():
                 'pph42_rate': data.get('pph42_rate'),
                 'pph42_payment_timing': data.get('pph42_payment_timing'),
                 'pph42_payment_date': data.get('pph42_payment_date'),
+                'pph42_payment_ref': data.get('pph42_payment_ref'),
                 'created_at': now,
                 'updated_at': now
             }
@@ -518,7 +519,8 @@ def create_contract():
                 'calculation_method': data.get('calculation_method'),
                 'pph42_rate': data.get('pph42_rate'),
                 'pph42_payment_timing': data.get('pph42_payment_timing'),
-                'pph42_payment_date': data.get('pph42_payment_date')
+                'pph42_payment_date': data.get('pph42_payment_date'),
+                'pph42_payment_ref': data.get('pph42_payment_ref')
             }
             if 'notes' in contract_columns and (
                 'calculation_method' not in contract_columns
@@ -620,6 +622,7 @@ def update_contract(contract_id):
                 'pph42_rate': data.get('pph42_rate'),
                 'pph42_payment_timing': data.get('pph42_payment_timing'),
                 'pph42_payment_date': data.get('pph42_payment_date'),
+                'pph42_payment_ref': data.get('pph42_payment_ref'),
                 'updated_at': now
             }
 
@@ -627,7 +630,8 @@ def update_contract(contract_id):
                 'calculation_method': data.get('calculation_method'),
                 'pph42_rate': data.get('pph42_rate'),
                 'pph42_payment_timing': data.get('pph42_payment_timing'),
-                'pph42_payment_date': data.get('pph42_payment_date')
+                'pph42_payment_date': data.get('pph42_payment_date'),
+                'pph42_payment_ref': data.get('pph42_payment_ref')
             }
             if 'notes' in contract_columns and (
                 'calculation_method' not in contract_columns
@@ -850,6 +854,7 @@ def get_linkable_transactions():
                       OR LOWER(COALESCE(m.personal_use, '')) LIKE '%%sewa%%'
                       OR LOWER(COALESCE(t.description, '')) LIKE '%%sewa%%'
                       OR LOWER(COALESCE(t.description, '')) LIKE '%%rent%%'
+                      OR COALESCE(m.is_rental, 0) = 1
                       OR EXISTS (
                           SELECT 1
                           FROM mark_coa_mapping mcm
