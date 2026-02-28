@@ -67,6 +67,23 @@
         </div>
       </div>
 
+      <div class="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+        <input
+          type="checkbox"
+          id="is_rental"
+          v-model="form.is_rental"
+          class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-5 w-5"
+        />
+        <div class="flex-1">
+          <label for="is_rental" class="text-sm font-semibold text-gray-900 cursor-pointer">
+            Sewa Tempat / Kontrak Sewa
+          </label>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Centang jika mark ini termasuk biaya sewa tempat (akan muncul di daftar kontrak sewa)
+          </p>
+        </div>
+      </div>
+
       <div v-if="error" class="text-sm text-red-600 bg-red-50 p-2 rounded">
           {{ error }}
       </div>
@@ -109,7 +126,8 @@ const form = reactive({
     tax_report: '',
     is_asset: false,
     is_service: false,
-    is_salary_component: false
+    is_salary_component: false,
+    is_rental: false
 });
 
 watch(() => props.markToEdit, (newVal) => {
@@ -124,6 +142,7 @@ watch(() => props.markToEdit, (newVal) => {
         form.is_asset = Boolean(newVal.is_asset === 1 || newVal.is_asset === true);
         form.is_service = Boolean(newVal.is_service === 1 || newVal.is_service === true);
         form.is_salary_component = Boolean(newVal.is_salary_component === 1 || newVal.is_salary_component === true);
+        form.is_rental = Boolean(newVal.is_rental === 1 || newVal.is_rental === true);
         console.log('MarkFormModal: Form populated:', form);
     } else {
         isEdit.value = false;
@@ -133,6 +152,7 @@ watch(() => props.markToEdit, (newVal) => {
         form.is_asset = false;
         form.is_service = false;
         form.is_salary_component = false;
+        form.is_rental = false;
         console.log('MarkFormModal: Form reset to empty');
     }
 }, { immediate: true });
@@ -149,6 +169,7 @@ watch(() => props.isOpen, (isOpen) => {
         form.is_asset = Boolean(mark.is_asset === 1 || mark.is_asset === true);
         form.is_service = Boolean(mark.is_service === 1 || mark.is_service === true);
         form.is_salary_component = Boolean(mark.is_salary_component === 1 || mark.is_salary_component === true);
+        form.is_rental = Boolean(mark.is_rental === 1 || mark.is_rental === true);
         console.log('MarkFormModal: Form refreshed on modal open:', form);
     }
 });
@@ -168,7 +189,8 @@ const handleSubmit = async () => {
             ...form,
             is_asset: Boolean(form.is_asset),
             is_service: Boolean(form.is_service),
-            is_salary_component: Boolean(form.is_salary_component)
+            is_salary_component: Boolean(form.is_salary_component),
+            is_rental: Boolean(form.is_rental)
         };
         
         // Debug logging to see what data is being sent

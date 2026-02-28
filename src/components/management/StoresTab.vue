@@ -36,8 +36,8 @@
         <thead class="bg-gray-50">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Store Name</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Address</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Store Code</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
           </tr>
         </thead>
@@ -47,10 +47,13 @@
               <div class="text-sm font-bold text-gray-900">{{ store.store_name || store.name }}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm text-gray-500">{{ store.location_name || store.current_location_id || '-' }}</div>
+              <div class="text-sm text-gray-500">{{ store.store_code || '-' }}</div>
             </td>
-            <td class="px-6 py-4">
-              <div class="text-sm text-gray-500 max-w-md truncate">{{ store.address || '-' }}</div>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 text-xs font-medium rounded-full" 
+                    :class="store.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
+                {{ store.status || 'active' }}
+              </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right">
               <button

@@ -144,19 +144,9 @@
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-          
-          <!-- Total Summary -->
-          <div class="mt-6 pt-4 border-t border-blue-200">
-            <div class="flex items-center justify-between bg-blue-100 rounded-lg p-3">
-              <h5 class="text-sm font-bold text-blue-900 uppercase">Total COGS</h5>
-              <div class="text-xl font-bold text-blue-900 whitespace-nowrap tabular-nums">
-                Rp {{ formatCurrency(data.total_cogs) }}
-              </div>
-            </div>
           </div>
         </div>
+
 
         <!-- Purchases Breakdown Table (Comparative) -->
         <div v-if="data.cogs_breakdown.purchases_items && data.cogs_breakdown.purchases_items.length > 0">
@@ -304,6 +294,7 @@
         </div>
       </div>
     </div>
+  </div>
 </template>
 
 <script setup>

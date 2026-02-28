@@ -653,46 +653,45 @@ def _calculate_prorated_contract_rent_expense(conn, start_date, end_date, compan
         if contract_end < contract_start:
             contract_end = contract_start
 
-        contract_days = (contract_end - contract_start).days + 1
-        if contract_days <= 0:
-            continue
-
-        overlap = _overlap_days(contract_start, contract_end, report_start, report_end)
-        if overlap <= 0:
-            continue
-
-        total_amount = _to_float(row.total_amount, 0.0)
         linked_total = _to_float(row.linked_total, 0.0)
-        method = str(row.calculation_method or 'BRUTO').strip().upper()
-        rate = max(0.0, min(_to_float(row.pph42_rate, 10.0), 100.0))
 
         if str(report_type).strip().lower() == 'coretax' and linked_total <= 0:
             continue
 
-        if total_amount > 0:
-            amount_bruto = total_amount
-        elif linked_total > 0:
-            if method == 'NETTO':
-                divisor = max(0.000001, 1.0 - (rate / 100.0))
-                amount_bruto = linked_total / divisor
-            else:
-                amount_bruto = linked_total
-        else:
-            amount_bruto = 0.0
-
-        if amount_bruto <= 0:
+        # Use netto (linked_total) as amortization base - matches 1421 balance
+        if linked_total <= 0:
             continue
 
-        amount_net = amount_bruto * (1.0 - (rate / 100.0))
-        
-        # Prorate the net rent expense over the contract days
-        total_prorated += amount_net * (overlap / contract_days)
+        # Monthly proration (consistent with BS amortization)
+        total_months = (contract_end.year - contract_start.year) * 12 + (contract_end.month - contract_start.month) + 1
+        if total_months <= 0:
+            total_months = 1
+
+        monthly_amount = linked_total / total_months
+
+        # Calculate overlap months in the report period
+        overlap_start = max(contract_start, report_start)
+        overlap_end = min(contract_end, report_end)
+        if overlap_end < overlap_start:
+            continue
+
+        overlap_months = (overlap_end.year - overlap_start.year) * 12 + (overlap_end.month - overlap_start.month) + 1
+        overlap_months = min(overlap_months, total_months)
+
+        if overlap_months <= 0:
+            continue
+
+        total_prorated += monthly_amount * overlap_months
 
     return total_prorated
 
 
-def _resolve_service_tax_payable_account(conn, company_id=None):
+def _resolve_service_tax_payable_account(conn, company_id=None, preferred_setting=None):
     setting_candidates = ['service_tax_payable_coa', 'prepaid_tax_payable_coa']
+    if preferred_setting and preferred_setting in setting_candidates:
+        # Move preferred to front
+        setting_candidates.remove(preferred_setting)
+        setting_candidates.insert(0, preferred_setting)
 
     try:
         settings_columns = _table_columns(conn, 'amortization_settings')
@@ -942,6 +941,198 @@ def _calculate_service_tax_adjustment_for_period(conn, start_date, end_date, com
     return list(adjustments_by_coa.values())
 
 
+def _calculate_cumulative_rental_amortization_as_of(conn, as_of_date, company_id=None, report_type='real'):
+    """
+    Computes cumulative prepaid rent amortized from contract start through as_of_date.
+    
+    Uses linked_total (netto payment amount) as the base, since 1421 balance
+    comes from bank transaction amounts which are netto payments.
+    
+    The monthly amortization = linked_total / duration_months.
+    Prorated by elapsed months from contract start to min(as_of_date, contract_end).
+    """
+    contract_columns = _table_columns(conn, 'rental_contracts')
+    txn_columns = _table_columns(conn, 'transactions')
+    if 'rental_contract_id' not in txn_columns:
+        return 0.0
+    if not contract_columns or 'start_date' not in contract_columns or 'end_date' not in contract_columns:
+        return 0.0
+
+    as_of_date_obj = _parse_date(as_of_date)
+    if not as_of_date_obj:
+        return 0.0
+
+    split_exclusion_clause = _split_parent_exclusion_clause(conn, 'tpay')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
+
+    query = text(f"""
+        SELECT
+            c.id,
+            c.start_date,
+            c.end_date,
+            COALESCE(txn.linked_total, 0) AS linked_total
+        FROM rental_contracts c
+        LEFT JOIN (
+            SELECT
+                tpay.rental_contract_id,
+                COALESCE(SUM(ABS(tpay.amount)), 0) AS linked_total
+            FROM transactions tpay
+            LEFT JOIN marks m ON tpay.mark_id = m.id
+            WHERE tpay.rental_contract_id IS NOT NULL
+              AND (:company_id IS NULL OR tpay.company_id = :company_id)
+              {split_exclusion_clause}
+              {coretax_clause}
+            GROUP BY tpay.rental_contract_id
+        ) txn ON txn.rental_contract_id = c.id
+        WHERE c.start_date <= :as_of_date
+          AND (:company_id IS NULL OR c.company_id = :company_id)
+    """)
+
+    result = conn.execute(query, {
+        'as_of_date': as_of_date,
+        'company_id': company_id
+    })
+
+    total_amortized = 0.0
+
+    for row in result:
+        contract_start = _parse_date(row.start_date)
+        contract_end = _parse_date(row.end_date) or contract_start
+        if not contract_start or not contract_end:
+            continue
+        if contract_end < contract_start:
+            contract_end = contract_start
+
+        linked_total = _to_float(row.linked_total, 0.0)
+        if linked_total <= 0:
+            continue
+
+        # Calculate elapsed months
+        amort_end = min(as_of_date_obj, contract_end)
+        if amort_end < contract_start:
+            continue
+
+        total_months = (contract_end.year - contract_start.year) * 12 + (contract_end.month - contract_start.month) + 1
+        if total_months <= 0:
+            total_months = 1
+
+        elapsed_months = (amort_end.year - contract_start.year) * 12 + (amort_end.month - contract_start.month)
+        # Count current month if we're past the start day
+        if amort_end.day >= contract_start.day or amort_end.month != contract_start.month or amort_end >= contract_end:
+            elapsed_months += 1
+        elapsed_months = min(elapsed_months, total_months)
+
+        if elapsed_months <= 0:
+            continue
+
+        # Use linked_total (netto payment) as base — matches what's in 1421
+        monthly_amount = linked_total / total_months
+        total_amortized += monthly_amount * elapsed_months
+
+    return total_amortized
+
+
+def _calculate_rental_tax_breakdown(conn, as_of_date, company_id=None, report_type='real'):
+    """
+    Returns a breakdown of rental PPh 4(2) tax:
+      - total_tax: tax for all contracts that started by as_of_date (Dr 1421)
+      - unpaid_tax: deferred tax not yet paid (Cr 2191)
+      - paid_tax: deferred tax already paid (Cr 1101)
+    """
+    contract_columns = _table_columns(conn, 'rental_contracts')
+    txn_columns = _table_columns(conn, 'transactions')
+    result_default = {'total_tax': 0.0, 'unpaid_tax': 0.0, 'paid_tax': 0.0}
+
+    if 'rental_contract_id' not in txn_columns:
+        return result_default
+    if not contract_columns or 'start_date' not in contract_columns:
+        return result_default
+
+    as_of_date_obj = _parse_date(as_of_date)
+    if not as_of_date_obj:
+        return result_default
+
+    split_exclusion_clause = _split_parent_exclusion_clause(conn, 'tpay')
+    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    total_amount_sql = "COALESCE(c.total_amount, 0)" if 'total_amount' in contract_columns else "0"
+    method_sql = "COALESCE(c.calculation_method, 'BRUTO')" if 'calculation_method' in contract_columns else "'BRUTO'"
+    rate_sql = "COALESCE(c.pph42_rate, 10)" if 'pph42_rate' in contract_columns else "10"
+    timing_sql = "COALESCE(c.pph42_payment_timing, 'same_period')" if 'pph42_payment_timing' in contract_columns else "'same_period'"
+    payment_date_sql = "c.pph42_payment_date" if 'pph42_payment_date' in contract_columns else "NULL"
+
+    query = text(f"""
+        SELECT
+            c.id,
+            c.start_date,
+            {total_amount_sql} AS total_amount,
+            {method_sql} AS calculation_method,
+            {rate_sql} AS pph42_rate,
+            {timing_sql} AS pph42_payment_timing,
+            {payment_date_sql} AS pph42_payment_date,
+            COALESCE(txn.linked_total, 0) AS linked_total
+        FROM rental_contracts c
+        LEFT JOIN (
+            SELECT
+                tpay.rental_contract_id,
+                COALESCE(SUM(ABS(tpay.amount)), 0) AS linked_total
+            FROM transactions tpay
+            LEFT JOIN marks m ON tpay.mark_id = m.id
+            WHERE tpay.rental_contract_id IS NOT NULL
+              {coretax_clause}
+              AND (:company_id IS NULL OR tpay.company_id = :company_id)
+              AND tpay.txn_date <= :as_of_date
+              {split_exclusion_clause}
+            GROUP BY tpay.rental_contract_id
+        ) txn ON txn.rental_contract_id = c.id
+        WHERE c.start_date <= :as_of_date
+          AND (:company_id IS NULL OR c.company_id = :company_id)
+    """)
+
+    rows = conn.execute(query, {
+        'as_of_date': as_of_date,
+        'company_id': company_id
+    })
+
+    total_tax = 0.0
+    unpaid_tax = 0.0
+    paid_tax = 0.0
+
+    for row in rows:
+        total_amount = _to_float(row.total_amount, 0.0)
+        linked_total = _to_float(row.linked_total, 0.0)
+        method = str(row.calculation_method or 'BRUTO').strip().upper()
+        rate = max(0.0, min(_to_float(row.pph42_rate, 10.0), 100.0))
+        timing = str(row.pph42_payment_timing or 'same_period').strip().lower()
+        payment_date = _parse_date(row.pph42_payment_date)
+
+        if total_amount > 0:
+            amount_bruto = total_amount
+        elif linked_total > 0:
+            if method == 'NETTO':
+                divisor = max(0.000001, 1.0 - (rate / 100.0))
+                amount_bruto = linked_total / divisor
+            else:
+                amount_bruto = linked_total
+        else:
+            continue
+
+        if amount_bruto <= 0:
+            continue
+
+        amount_net = amount_bruto * (1.0 - (rate / 100.0))
+        tax = max(0.0, amount_bruto - amount_net)
+        total_tax += tax
+
+        # Deferred timing: tax is a liability until paid
+        if timing in ('next_period', 'next_year'):
+            if payment_date and payment_date <= as_of_date_obj:
+                paid_tax += tax  # Already paid → Cr 1101
+            else:
+                unpaid_tax += tax  # Still owed → Cr 2191
+
+    return {'total_tax': total_tax, 'unpaid_tax': unpaid_tax, 'paid_tax': paid_tax}
+
+
 def _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id=None, report_type='real'):
     """
     Computes unpaid / deferred PPh 4(2) liability from rental contracts.
@@ -1183,7 +1374,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
         service_tax_payable = _calculate_service_tax_payable_as_of(conn, as_of_date, company_id, report_type)
         service_tax_payable_computed = float(service_tax_payable or 0.0)
         if abs(service_tax_payable_computed) >= 0.000001:
-            service_tax_coa = _resolve_service_tax_payable_account(conn, company_id)
+            service_tax_coa = _resolve_service_tax_payable_account(conn, company_id, preferred_setting='service_tax_payable_coa')
             add_or_update_liability_item(
                 service_tax_coa.get('id') or f'computed_service_tax_{as_of_date}_{company_id or "all"}',
                 service_tax_coa.get('code') or '2191',
@@ -1195,22 +1386,95 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     except Exception as e:
         logger.error(f"Failed to include service tax payable in balance sheet: {e}")
 
-    # 1.4 Bridge rental PPh 4(2) tax payable into liabilities.
-    # This is computed from rental contracts that have deferred tax payments.
+    # 1.4 Bridge rental PPh 4(2): Dr 1421 (bruto prepaid), Cr 2191 (unpaid liability), Cr 1101 (paid cash)
     try:
-        rental_tax_payable = _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id, report_type)
-        rental_tax_payable_computed = float(rental_tax_payable or 0.0)
-        if abs(rental_tax_payable_computed) >= 0.000001:
+        tax_breakdown = _calculate_rental_tax_breakdown(conn, as_of_date, company_id, report_type)
+        total_tax = float(tax_breakdown.get('total_tax', 0.0))
+        unpaid_tax = float(tax_breakdown.get('unpaid_tax', 0.0))
+        paid_tax = float(tax_breakdown.get('paid_tax', 0.0))
+
+        # Resolve COA codes
+        prepaid_code = '1421'
+        cash_code = '1101'
+        try:
+            if _table_columns(conn, 'amortization_settings'):
+                s_row = conn.execute(text("""
+                    SELECT setting_value FROM amortization_settings
+                    WHERE setting_name = 'prepaid_prepaid_asset_coa'
+                      AND (company_id = :company_id OR company_id IS NULL)
+                    ORDER BY company_id DESC LIMIT 1
+                """), {'company_id': company_id}).fetchone()
+                if s_row and s_row[0]:
+                    prepaid_code = str(s_row[0]).strip()
+        except Exception:
+            pass
+
+        # Dr 1421 += total_tax (gross up prepaid to bruto value)
+        if abs(total_tax) >= 0.000001:
+            if prepaid_code in asset_items:
+                asset_items[prepaid_code]['amount'] += total_tax
+            else:
+                add_or_update_asset_item(
+                    f'computed_prepaid_tax_{as_of_date}_{company_id or "all"}',
+                    prepaid_code,
+                    'Biaya Dibayar di Muka',
+                    'Prepaid Expenses',
+                    total_tax,
+                    force_current=True
+                )
+
+        # Cr 2191 += unpaid_tax (outstanding tax liability)
+        if abs(unpaid_tax) >= 0.000001:
+            rental_tax_coa = _resolve_service_tax_payable_account(conn, company_id, preferred_setting='prepaid_tax_payable_coa')
             add_or_update_liability_item(
                 f'computed_rental_tax_{as_of_date}_{company_id or "all"}',
-                '2141',
-                'Utang PPh Final Pasal 4(2)',
-                'Current Liabilities',
-                rental_tax_payable_computed,
+                rental_tax_coa.get('code') or '2191',
+                rental_tax_coa.get('name') or 'Utang PPh Final Pasal 4(2)',
+                rental_tax_coa.get('subcategory') or 'Current Liabilities',
+                unpaid_tax,
                 force_current=True
             )
+
+        # Cr 1101 -= paid_tax (cash reduction from PPh payment)
+        if abs(paid_tax) >= 0.000001:
+            if cash_code in asset_items:
+                asset_items[cash_code]['amount'] -= paid_tax
+            # If 1101 doesn't exist in asset_items, the deduction is implicit
     except Exception as e:
-        logger.error(f"Failed to include rental tax payable (PPh 4(2)) in balance sheet: {e}")
+        logger.error(f"Failed to include rental tax bridging in balance sheet: {e}")
+
+    # 1.4b Bridge prepaid rent amortization into the Balance Sheet.
+    # The raw 1421 balance from transactions shows the full payment amount.
+    # We subtract the cumulative amortized portion so BS shows only remaining prepaid.
+    try:
+        cumulative_amortization = _calculate_cumulative_rental_amortization_as_of(conn, as_of_date, company_id, report_type)
+        if abs(cumulative_amortization) >= 0.000001:
+            # Resolve the prepaid COA from settings (default 1421)
+            prepaid_coa_code = '1421'
+            try:
+                if _table_columns(conn, 'amortization_settings'):
+                    setting_row = conn.execute(text("""
+                        SELECT setting_value
+                        FROM amortization_settings
+                        WHERE setting_name = 'prepaid_prepaid_asset_coa'
+                          AND (company_id = :company_id OR company_id IS NULL)
+                        ORDER BY company_id DESC
+                        LIMIT 1
+                    """), {'company_id': company_id}).fetchone()
+                    if setting_row and setting_row[0]:
+                        prepaid_coa_code = str(setting_row[0]).strip()
+            except Exception:
+                pass
+
+            # Subtract amortization from the prepaid asset
+            code_key = prepaid_coa_code
+            if code_key in asset_items:
+                asset_items[code_key]['amount'] -= cumulative_amortization
+                # If fully amortized, remove the item
+                if abs(asset_items[code_key]['amount']) < 0.000001:
+                    del asset_items[code_key]
+    except Exception as e:
+        logger.error(f"Failed to bridge prepaid rent amortization in balance sheet: {e}")
 
     # 1.5 Bring current-year profit/loss into equity as "Laba/Rugi Tahun Berjalan".
     # This keeps balance sheet equity aligned with the income statement for the same year.
@@ -2319,6 +2583,7 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None, report_typ
                 END
             ), 0) AS opening_cash
         FROM transactions t
+        LEFT JOIN marks m ON t.mark_id = m.id
         WHERE t.txn_date < :start_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}
@@ -2337,6 +2602,7 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None, report_typ
                 END
             ), 0) AS closing_cash
         FROM transactions t
+        LEFT JOIN marks m ON t.mark_id = m.id
         WHERE t.txn_date <= :end_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}

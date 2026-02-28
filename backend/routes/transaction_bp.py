@@ -437,9 +437,12 @@ def get_marks():
                     d['is_service'] = False
                 if 'is_salary_component' not in d:
                     d['is_salary_component'] = False
+                if 'is_rental' not in d:
+                    d['is_rental'] = False
                 d['is_asset'] = _parse_bool(d.get('is_asset'))
                 d['is_service'] = _parse_bool(d.get('is_service'))
                 d['is_salary_component'] = _parse_bool(d.get('is_salary_component'))
+                d['is_rental'] = _parse_bool(d.get('is_rental'))
                 d['mappings'] = []
                 marks.append(d)
                 marks_dict[d['id']] = d
@@ -486,6 +489,7 @@ def create_mark():
                 'is_asset': _parse_bool(data.get('is_asset', False)),
                 'is_service': _parse_bool(data.get('is_service', False)),
                 'is_salary_component': _parse_bool(data.get('is_salary_component', False)),
+                'is_rental': _parse_bool(data.get('is_rental', False)),
                 'created_at': now,
                 'updated_at': now
             }
@@ -527,7 +531,8 @@ def update_or_delete_mark(mark_id):
                 'tax_report': 'tax_report',
                 'is_asset': 'is_asset',
                 'is_service': 'is_service',
-                'is_salary_component': 'is_salary_component'
+                'is_salary_component': 'is_salary_component',
+                'is_rental': 'is_rental'
             }
 
             params = {'id': mark_id, 'updated_at': datetime.now()}
@@ -535,7 +540,7 @@ def update_or_delete_mark(mark_id):
 
             for payload_key, column_name in field_map.items():
                 if payload_key in data and column_name in mark_columns:
-                    if payload_key in {'is_asset', 'is_service', 'is_salary_component'}:
+                    if payload_key in {'is_asset', 'is_service', 'is_salary_component', 'is_rental'}:
                         params[payload_key] = _parse_bool(data.get(payload_key))
                     else:
                         params[payload_key] = data.get(payload_key)

@@ -756,7 +756,11 @@ def save_amortization_settings():
                 'Tangible': '1530',
                 'LandRights': '1534',
                 'Intangible': '1601'
-            }
+            },
+            'prepaid_prepaid_asset_coa': '1135',
+            'prepaid_rent_expense_coa': '5315',
+            'prepaid_tax_payable_coa': '2191',
+            'rental_cash_coa': '1101'
         }
 
         with engine.begin() as conn:
@@ -795,7 +799,11 @@ def save_amortization_settings():
                 ('default_asset_useful_life', str(merged_settings.get('default_asset_useful_life', 5)), 'number'),
                 ('default_amortization_rate', str(merged_settings.get('default_amortization_rate', 20.0)), 'number'),
                 ('allow_partial_year', str(bool(merged_settings.get('allow_partial_year', True))).lower(), 'boolean'),
-                ('accumulated_depreciation_coa_codes', json.dumps(merged_settings.get('accumulated_depreciation_coa_codes', default_settings['accumulated_depreciation_coa_codes'])), 'json')
+                ('accumulated_depreciation_coa_codes', json.dumps(merged_settings.get('accumulated_depreciation_coa_codes', default_settings['accumulated_depreciation_coa_codes'])), 'json'),
+                ('prepaid_prepaid_asset_coa', str(merged_settings.get('prepaid_prepaid_asset_coa', '1135')), 'text'),
+                ('prepaid_rent_expense_coa', str(merged_settings.get('prepaid_rent_expense_coa', '5315')), 'text'),
+                ('prepaid_tax_payable_coa', str(merged_settings.get('prepaid_tax_payable_coa', '2191')), 'text'),
+                ('rental_cash_coa', str(merged_settings.get('rental_cash_coa', '1101')), 'text')
             ]
 
             update_query = text("""

@@ -158,7 +158,19 @@ def _resolve_coa_by_setting(conn, company_id, setting_name, fallback_codes):
     }
 
 
-def _resolve_cash_account(conn):
+def _resolve_cash_account(conn, company_id=None):
+    # Check settings first
+    val = _get_setting_value(conn, company_id, 'rental_cash_coa')
+    if val:
+        row = conn.execute(text("""
+            SELECT id, code, name
+            FROM chart_of_accounts
+            WHERE id = :val OR code = :val
+            LIMIT 1
+        """), {'val': str(val)}).fetchone()
+        if row:
+            return {'id': row.id, 'code': row.code, 'name': row.name}
+
     for code in ('1111', '1101', '1102', '1100'):
         row = conn.execute(text("""
             SELECT id, code, name
@@ -214,7 +226,7 @@ def _build_amortization_schedule(start_date, duration_months, monthly_amount):
     return schedule
 
 
-def _build_journal_preview(contract, coa_map, financials, pph42_timing, pph42_payment_date):
+def _build_journal_preview(contract, coa_map, financials, pph42_timing, pph42_payment_date, amortization_schedule=None):
     payment_date = financials.get('first_payment_date') or contract.get('start_date')
     if isinstance(payment_date, str):
         payment_date = _parse_date(payment_date)
@@ -255,6 +267,41 @@ def _build_journal_preview(contract, coa_map, financials, pph42_timing, pph42_pa
         'entries': first_entries,
         'is_posted': False
     }]
+
+    # Amortization Journals for current year
+    if amortization_schedule and payment_date:
+        current_year = payment_date.year
+        for item in amortization_schedule:
+            if item['year'] == current_year:
+                # Use last day of the month for transaction date
+                try:
+                    next_month = datetime.date(item['year'], item['month'] + 1, 1) if item['month'] < 12 else datetime.date(item['year'] + 1, 1, 1)
+                    txn_date = next_month - datetime.timedelta(days=1)
+                except:
+                    txn_date = datetime.date(item['year'], item['month'], 28)
+
+                journals.append({
+                    'title': f"Amortisasi Sewa - {item['year']}/{item['month']:02d}",
+                    'description': f"Monthly proportional rent expense for {item['year']}-{item['month']:02d}",
+                    'transaction_date': txn_date.isoformat(),
+                    'entries': [
+                        {
+                            'coa_id': coa_map['expense']['id'],
+                            'coa_code': coa_map['expense']['code'],
+                            'coa_name': coa_map['expense']['name'],
+                            'debit': round(item['amount'], 2),
+                            'credit': 0.0
+                        },
+                        {
+                            'coa_id': coa_map['prepaid']['id'],
+                            'coa_code': coa_map['prepaid']['code'],
+                            'coa_name': coa_map['prepaid']['name'],
+                            'debit': 0.0,
+                            'credit': round(item['amount'], 2)
+                        }
+                    ],
+                    'is_posted': False
+                })
 
     if deferred_tax and coa_map['tax_payable']['id']:
         tax_payment_date = _parse_date(pph42_payment_date)
@@ -405,10 +452,10 @@ def create_or_update_prepaid_from_contract(contract_id, company_id, accounting_o
         duration_months = _month_span(start_date, end_date)
         monthly_amount = round(financials['amount_bruto'] / max(duration_months, 1), 2)
 
-        prepaid_coa = _resolve_coa_by_setting(conn, company_id, 'prepaid_prepaid_asset_coa', ['1135', '1421'])
-        expense_coa = _resolve_coa_by_setting(conn, company_id, 'prepaid_rent_expense_coa', ['5105', '5315'])
-        tax_coa = _resolve_coa_by_setting(conn, company_id, 'prepaid_tax_payable_coa', ['2141', '2191'])
-        cash_coa = _resolve_cash_account(conn)
+        prepaid_coa = _resolve_coa_by_setting(conn, company_id, 'prepaid_prepaid_asset_coa', ['1421', '1135'])
+        expense_coa = _resolve_coa_by_setting(conn, company_id, 'prepaid_rent_expense_coa', ['5315', '5105'])
+        tax_coa = _resolve_coa_by_setting(conn, company_id, 'prepaid_tax_payable_coa', ['2191', '2141'])
+        cash_coa = _resolve_cash_account(conn, company_id)
 
         prepaid_table_columns = _get_table_columns(conn, 'prepaid_expenses')
 
@@ -534,14 +581,15 @@ def create_or_update_prepaid_from_contract(contract_id, company_id, accounting_o
             'cash': cash_coa
         }
 
+        amortization_schedule = _build_amortization_schedule(start_date, duration_months, monthly_amount)
         journals = _build_journal_preview(
             contract=contract,
             coa_map=coa_map,
             financials=financials,
             pph42_timing=pph42_timing,
-            pph42_payment_date=contract_payment_date
+            pph42_payment_date=contract_payment_date,
+            amortization_schedule=amortization_schedule
         )
-        amortization_schedule = _build_amortization_schedule(start_date, duration_months, monthly_amount)
 
         result = {
             'created': prepaid_was_created,
