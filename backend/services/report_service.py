@@ -186,6 +186,7 @@ def _is_cogs_expense_item(item):
 def _load_amortization_calculation_settings(conn, company_id=None):
     default_rate = 20.0
     allow_partial_year = True
+    use_mark_based_amortization = False
 
     if company_id:
         settings_query = text("""
@@ -210,8 +211,10 @@ def _load_amortization_calculation_settings(conn, company_id=None):
             default_rate = _to_float(setting_value, 20.0)
         elif setting_name == 'allow_partial_year':
             allow_partial_year = _parse_bool(setting_value)
+        elif setting_name == 'use_mark_based_amortization':
+            use_mark_based_amortization = _parse_bool(setting_value)
 
-    return default_rate, allow_partial_year
+    return default_rate, allow_partial_year, use_mark_based_amortization
 
 
 def _calculate_current_year_amortization(
@@ -261,7 +264,7 @@ def _calculate_current_year_amortization(
 
 def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=None, report_type='real'):
     report_year = int(str(start_date)[:4])
-    default_rate, allow_partial_year = _load_amortization_calculation_settings(conn, company_id)
+    default_rate, allow_partial_year, use_mark_based_amortization = _load_amortization_calculation_settings(conn, company_id)
 
     if company_id:
         company_filter_sql = "AND ai.company_id = :company_id"
@@ -319,55 +322,57 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
 
         manual_total += annual_amort
 
-    # For multi-year periods, we need to handle date ranges properly
-    # Check if we're dealing with a multi-year income statement by analyzing the call context
-    # This is called from income statement with date range start_date to end_date
-    # We'll use a safer approach that covers the full period
-    if conn.dialect.name == 'sqlite':
-        txn_year_clause = "CAST(strftime('%Y', t.txn_date) AS INTEGER) <= YEAR(DATE(:start_date, '+3 year'))"
-    else:
-        txn_year_clause = "YEAR(t.txn_date) <= :report_year"
-
-    txn_company_clause = "AND t.company_id = :company_id" if company_id else ""
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
-    txn_query = text(f"""
-        SELECT DISTINCT
-            t.id,
-            t.amount AS acquisition_cost,
-            t.amortization_start_date,
-            t.txn_date,
-            t.use_half_rate,
-            ag.tarif_rate
-        FROM transactions t
-        INNER JOIN marks m ON t.mark_id = m.id
-        INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
-        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
-        LEFT JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
-        WHERE coa.code = '5314'
-          {txn_company_clause}
-          AND {txn_year_clause}
-          {coretax_clause}
-    """)
-    txn_params = {'report_year': report_year}
-    if company_id:
-        txn_params['company_id'] = company_id
-
     calculated_total = 0.0
-    for row in conn.execute(txn_query, txn_params):
-        base_amount = _to_float(row.acquisition_cost, 0.0)
-        if base_amount <= 0:
-            continue
 
-        start_date_value = _parse_date(row.amortization_start_date) or _parse_date(row.txn_date) or date(report_year, 1, 1)
-        tarif_rate = _to_float(row.tarif_rate, default_rate) or default_rate
-        calculated_total += _calculate_current_year_amortization(
-            base_amount,
-            tarif_rate,
-            start_date_value,
-            report_year,
-            use_half_rate=_parse_bool(row.use_half_rate),
-            allow_partial_year=allow_partial_year
-        )
+    # Calculate from transactions directly only if enabled
+    if use_mark_based_amortization:
+        # Check if we're dealing with a multi-year income statement by analyzing the call context
+        # This is called from income statement with date range start_date to end_date
+        # We'll use a safer approach that covers the full period
+        if conn.dialect.name == 'sqlite':
+            txn_year_clause = "CAST(strftime('%Y', t.txn_date) AS INTEGER) <= YEAR(DATE(:start_date, '+3 year'))"
+        else:
+            txn_year_clause = "YEAR(t.txn_date) <= :report_year"
+    
+        txn_company_clause = "AND t.company_id = :company_id" if company_id else ""
+        coretax_clause = _coretax_filter_clause(report_type, 'm')
+        txn_query = text(f"""
+            SELECT DISTINCT
+                t.id,
+                t.amount AS acquisition_cost,
+                t.amortization_start_date,
+                t.txn_date,
+                t.use_half_rate,
+                ag.tarif_rate
+            FROM transactions t
+            INNER JOIN marks m ON t.mark_id = m.id
+            INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
+            INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+            LEFT JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
+            WHERE coa.code = '5314'
+              {txn_company_clause}
+              AND {txn_year_clause}
+              {coretax_clause}
+        """)
+        txn_params = {'report_year': report_year}
+        if company_id:
+            txn_params['company_id'] = company_id
+    
+        for row in conn.execute(txn_query, txn_params):
+            base_amount = _to_float(row.acquisition_cost, 0.0)
+            if base_amount <= 0:
+                continue
+    
+            start_date_value = _parse_date(row.amortization_start_date) or _parse_date(row.txn_date) or date(report_year, 1, 1)
+            tarif_rate = _to_float(row.tarif_rate, default_rate) or default_rate
+            calculated_total += _calculate_current_year_amortization(
+                base_amount,
+                tarif_rate,
+                start_date_value,
+                report_year,
+                use_half_rate=_parse_bool(row.use_half_rate),
+                allow_partial_year=allow_partial_year
+            )
 
     asset_company_clause = "AND a.company_id = :company_id" if company_id else ""
     assets_query = text(f"""
@@ -1604,15 +1609,20 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     # 3. Bridge manual amortization items that have not been journalized yet.
     try:
         allow_partial_year = True
-        allow_partial_query = text("""
-            SELECT setting_value
+        use_mark_based_amortization = False
+        
+        settings_flags_query = text("""
+            SELECT setting_name, setting_value
             FROM amortization_settings
-            WHERE setting_name = 'allow_partial_year'
+            WHERE setting_name IN ('allow_partial_year', 'use_mark_based_amortization')
               AND (company_id = :company_id OR company_id IS NULL)
             ORDER BY company_id ASC
         """)
-        for row in conn.execute(allow_partial_query, {'company_id': company_id}):
-            allow_partial_year = _parse_bool(row.setting_value)
+        for row in conn.execute(settings_flags_query, {'company_id': company_id}):
+            if row.setting_name == 'allow_partial_year':
+                allow_partial_year = _parse_bool(row.setting_value)
+            elif row.setting_name == 'use_mark_based_amortization':
+                use_mark_based_amortization = _parse_bool(row.setting_value)
 
         accumulated_code_by_type = {
             'Building': '1524',
@@ -1708,47 +1718,48 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
             asset_totals[asset_code] = asset_totals.get(asset_code, 0.0) + amount
             accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accumulated_amount
 
-        # Calculate non-manual accumulated depreciation from transactions
-        split_exclusion_clause_txn = _split_parent_exclusion_clause(conn, 't')
-        coretax_clause_txn = _coretax_filter_clause(report_type, 'm')
-        txn_query = text(f"""
-            SELECT DISTINCT
-                t.id,
-                t.amount AS acquisition_cost,
-                t.amortization_start_date,
-                t.txn_date,
-                t.use_half_rate,
-                ag.asset_type,
-                ag.tarif_rate
-            FROM transactions t
-            INNER JOIN marks m ON t.mark_id = m.id
-            INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
-            INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
-            INNER JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
-            WHERE coa.category = 'ASSET'
-              AND t.txn_date <= :as_of_date
-              AND (:company_id IS NULL OR t.company_id = :company_id)
-              {split_exclusion_clause_txn}
-              {coretax_clause_txn}
-        """)
-        for row in conn.execute(txn_query, {'as_of_date': as_of_date, 'company_id': company_id}):
-            amount = float(row.acquisition_cost or 0)
-            if amount <= 0:
-                continue
-            start_date = _parse_date(row.amortization_start_date) or _parse_date(row.txn_date)
-            if not start_date or start_date > as_of_date_obj:
-                continue
-            
-            asset_type = row.asset_type or 'Tangible'
-            accum_code = accumulated_code_by_type.get(asset_type, accumulated_code_by_type['Tangible'])
-            rate = float(row.tarif_rate or 20)
-            
-            accum_amount = _calculate_accumulated_amortization(
-                amount, rate, start_date, as_of_date_obj,
-                use_half_rate=_parse_bool(row.use_half_rate),
-                allow_partial_year=allow_partial_year
-            )
-            accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accum_amount
+        # Calculate non-manual accumulated depreciation from transactions (if enabled)
+        if use_mark_based_amortization:
+            split_exclusion_clause_txn = _split_parent_exclusion_clause(conn, 't')
+            coretax_clause_txn = _coretax_filter_clause(report_type, 'm')
+            txn_query = text(f"""
+                SELECT DISTINCT
+                    t.id,
+                    t.amount AS acquisition_cost,
+                    t.amortization_start_date,
+                    t.txn_date,
+                    t.use_half_rate,
+                    ag.asset_type,
+                    ag.tarif_rate
+                FROM transactions t
+                INNER JOIN marks m ON t.mark_id = m.id
+                INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
+                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+                INNER JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
+                WHERE coa.category = 'ASSET'
+                  AND t.txn_date <= :as_of_date
+                  AND (:company_id IS NULL OR t.company_id = :company_id)
+                  {split_exclusion_clause_txn}
+                  {coretax_clause_txn}
+            """)
+            for row in conn.execute(txn_query, {'as_of_date': as_of_date, 'company_id': company_id}):
+                amount = float(row.acquisition_cost or 0)
+                if amount <= 0:
+                    continue
+                start_date = _parse_date(row.amortization_start_date) or _parse_date(row.txn_date)
+                if not start_date or start_date > as_of_date_obj:
+                    continue
+                
+                asset_type = row.asset_type or 'Tangible'
+                accum_code = accumulated_code_by_type.get(asset_type, accumulated_code_by_type['Tangible'])
+                rate = float(row.tarif_rate or 20)
+                
+                accum_amount = _calculate_accumulated_amortization(
+                    amount, rate, start_date, as_of_date_obj,
+                    use_half_rate=_parse_bool(row.use_half_rate),
+                    allow_partial_year=allow_partial_year
+                )
+                accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accum_amount
 
         # Calculate non-manual accumulated depreciation from amortization_assets
         if str(report_type).strip().lower() != 'coretax':
