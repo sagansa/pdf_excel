@@ -372,139 +372,6 @@ def get_amortization_items():
                 total_amount += amount
                 manual_total_amort += annual_amortization
             
-            # Prepare mark condition for transactions
-            query_params = {'company_id': company_id, 'year': year}
-            
-            # Query transactions - use separate approach to avoid duplication
-            # We'll query transactions with COA 5314 first, then add other types separately
-            query_params = {'company_id': company_id, 'year': year}
-            
-            # Query 1: Transactions with COA 5314 (fixed join)
-            txn_5314_query = text("""
-                SELECT DISTINCT
-                    t.id as asset_id, t.txn_date, t.description,
-                    t.amount as acquisition_cost, t.amortization_asset_group_id as asset_group_id,
-                    t.amortization_start_date, t.use_half_rate, t.amortization_notes as notes,
-                    ag.group_name, ag.tarif_rate, ag.useful_life_years, ag.asset_type,
-                    m.personal_use as mark_name,
-                    coa.code as coa_code, coa.name as coa_name
-                FROM transactions t
-                INNER JOIN marks m ON t.mark_id = m.id
-                INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
-                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
-                LEFT JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
-                WHERE coa.code = '5314'
-                AND (t.company_id = :company_id OR :company_id IS NULL)
-                AND YEAR(t.txn_date) <= :year
-                ORDER BY t.txn_date DESC
-            """)
-            
-            txn_query = txn_5314_query
-            
-            txn_result = conn.execute(txn_query, query_params)
-            
-            for row in txn_result:
-                d = dict(row._mapping)
-                for key, value in d.items():
-                    if isinstance(value, Decimal):
-                        d[key] = float(value)
-                    elif isinstance(value, datetime):
-                        d[key] = value.strftime('%Y-%m-%d') if 'date' in key else value.strftime('%Y-%m-%d %H:%M:%S')
-                    elif isinstance(value, date) and not isinstance(value, datetime):
-                        d[key] = value.strftime('%Y-%m-%d')
-                
-                tarif_rate = d.get('tarif_rate') or default_rate
-                base_amount = float(d.get('acquisition_cost', 0))
-                useful_life = int(d.get('useful_life_years') or default_life)
-                
-                # Multi-year calculation
-                report_year = int(year)
-                start_date_val = d.get('amortization_start_date') or d.get('txn_date')
-                if isinstance(start_date_val, str):
-                    try:
-                        start_date_val = datetime.strptime(start_date_val[:10], '%Y-%m-%d').date()
-                    except:
-                        start_date_val = date(report_year, 1, 1)
-                
-                acquisition_year = start_date_val.year
-                annual_amort_base = base_amount * (tarif_rate / 100)
-                
-                accum_prev = 0
-                current_year_amort = 0
-                
-                for y in range(acquisition_year, report_year + 1):
-                    y_amort = annual_amort_base
-                    if y == acquisition_year:
-                        if allow_partial_year:
-                            months = 12 - start_date_val.month + 1
-                            y_amort = annual_amort_base * (months / 12)
-                        elif d.get('use_half_rate'):
-                            y_amort = annual_amort_base * 0.5
-                    
-                    remaining = base_amount - accum_prev
-                    y_amort = min(y_amort, remaining)
-                    
-                    if y < report_year:
-                        accum_prev += y_amort
-                    else:
-                        current_year_amort = y_amort
-                
-                # Calculate multiplier string for display
-                multiplier_display = "1"
-                if report_year == acquisition_year:
-                    if allow_partial_year:
-                        months = 12 - start_date_val.month + 1
-                        multiplier_display = f"{months}/12"
-                    elif d.get('use_half_rate'):
-                        multiplier_display = "1/2"
-                elif report_year < acquisition_year:
-                    multiplier_display = "0"
-                
-                # Asset Type Label mapping
-                type_labels = {
-                    'Tangible': 'Harta Berwujud',
-                    'Intangible': 'Harta Tidak Berwujud',
-                    'Building': 'Bangunan'
-                }
-                
-                asset_type = d.get('asset_type') or 'Tangible'
-                type_label = type_labels.get(asset_type, asset_type)
-                
-                group_display = f"{type_label}"
-                if d.get('group_name'):
-                    group_display += f" - {d['group_name']}"
-                elif d.get('mark_name'):
-                    group_display += f" - {d['mark_name']}"
-
-                useful_life_display = d.get('useful_life_years')
-                if useful_life_display not in (None, '', 0):
-                    group_display += f" ({int(useful_life_display)} tahun)"
-                else:
-                    group_display += f" ({tarif_rate}%)"
-
-                deductible_display = "50%" if _as_bool(d.get('use_half_rate')) else "100%"
-                
-                d.update({
-                    'annual_amortization': current_year_amort,
-                    'accumulated_depreciation_prev_year': accum_prev,
-                    'total_accumulated_depreciation': accum_prev + current_year_amort,
-                    'book_value_end_year': max(0, base_amount - (accum_prev + current_year_amort)),
-                    'multiplier': multiplier_display,
-                    'group': group_display,
-                    'rate_type': deductible_display,
-                    'is_manual': False,
-                    'is_from_ledger': True,
-                    'is_manual_asset': False,
-                    'amount': base_amount,
-                    'acquisition_cost': base_amount,
-                    'amortization_date': d.get('amortization_start_date') or d.get('txn_date'),
-                    'asset_name': d.get('description', '')
-                })
-                
-                items.append(d)
-                total_amount += base_amount
-                automatic_total_amort += current_year_amort
-
             # 3. Fetch from amortization_assets (Registered Assets)
             assets_query = text("""
                 SELECT 
@@ -625,6 +492,81 @@ def get_amortization_items():
             })
     except Exception as e:
         app.logger.error(f"Failed to fetch amortization items: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@amortization_bp.route('/api/reports/pending-amortization', methods=['GET'])
+def get_pending_amortization_transactions():
+    """Retrieve transactions marked as assets that are not yet linked to an amortization_assets record"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+        
+    try:
+        company_id = request.args.get('company_id')
+        year = request.args.get('year')
+        current_asset_id = request.args.get('current_asset_id')
+        
+        if not company_id:
+            return jsonify({'error': 'company_id is required'}), 400
+        
+        year_int = None
+        if year not in (None, ''):
+            try:
+                year_int = int(year)
+            except (TypeError, ValueError):
+                pass
+            
+        with engine.connect() as conn:
+            year_filter = "AND YEAR(t.txn_date) <= :year" if year_int else ""
+            
+            # If current_asset_id is provided, include pending AND transactions already linked to this asset
+            asset_filter = "AND t.amortization_asset_id IS NULL"
+            if current_asset_id:
+                asset_filter = "AND (t.amortization_asset_id IS NULL OR t.amortization_asset_id = :current_asset_id)"
+
+            query = text(f"""
+                SELECT DISTINCT
+                    t.id, 
+                    t.txn_date, 
+                    t.description, 
+                    t.amount,
+                    t.bank_code,
+                    m.personal_use as mark_name,
+                    m.internal_report,
+                    t.amortization_asset_id
+                FROM transactions t
+                JOIN marks m ON t.mark_id = m.id
+                WHERE (t.company_id = :company_id OR :company_id IS NULL)
+                AND m.is_asset = TRUE
+                {asset_filter}
+                {year_filter}
+                ORDER BY t.txn_date DESC
+            """)
+            
+            params = {'company_id': company_id}
+            if year_int:
+                params['year'] = year_int
+            if current_asset_id:
+                params['current_asset_id'] = current_asset_id
+            
+            result = conn.execute(query, params)
+            transactions = []
+            
+            for row in result:
+                d = dict(row._mapping)
+                if isinstance(d.get('amount'), Decimal):
+                    d['amount'] = float(d['amount'])
+                if isinstance(d.get('txn_date'), date):
+                    d['txn_date'] = d['txn_date'].strftime('%Y-%m-%d')
+                transactions.append(d)
+                
+            return jsonify({
+                'transactions': transactions,
+                'total_count': len(transactions)
+            })
+            
+    except Exception as e:
+        app.logger.error(f"Failed to fetch pending amortization transactions: {e}")
         return jsonify({'error': str(e)}), 500
 
 # OLD COA-BASED FUNCTION - REMOVED
@@ -1227,6 +1169,211 @@ def get_amortization_eligible_marks():
         app.logger.error(f"Failed to fetch amortization eligible marks: {e}")
         import traceback
         app.logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@amortization_bp.route('/api/amortization-assets', methods=['POST'])
+def create_amortization_asset():
+    """Create a new amortization asset and link transactions to it"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+        
+    try:
+        data = request.json
+        company_id = data.get('company_id')
+        asset_name = data.get('asset_name')
+        asset_group_id = data.get('asset_group_id')
+        acquisition_date = data.get('acquisition_date')
+        transaction_ids = data.get('transaction_ids', [])
+        
+        if not all([company_id, asset_name, asset_group_id, acquisition_date, transaction_ids]):
+            return jsonify({'error': 'Missing required fields or transactions'}), 400
+            
+        with engine.connect() as conn:
+            # First calculate total acquisition cost from selected transactions
+            # using parameterized IN clause
+            placeholders = ', '.join([f':t{i}' for i in range(len(transaction_ids))])
+            params = {f't{i}': tid for i, tid in enumerate(transaction_ids)}
+            params['company_id'] = company_id
+            
+            check_txn_query = text(f"""
+                SELECT SUM(amount) as total_cost 
+                FROM transactions 
+                WHERE company_id = :company_id AND id IN ({placeholders})
+            """)
+            
+            result = conn.execute(check_txn_query, params).fetchone()
+            if not result or not result[0]:
+                return jsonify({'error': 'Selected transactions not found or have zero value'}), 404
+                
+            acquisition_cost = result[0]
+            
+            # Create the asset
+            asset_id = str(uuid.uuid4())
+            insert_asset_query = text("""
+                INSERT INTO amortization_assets (
+                    id, company_id, asset_group_id, asset_name, 
+                    acquisition_date, acquisition_cost, amortization_start_date,
+                    is_active
+                ) VALUES (
+                    :id, :company_id, :asset_group_id, :asset_name,
+                    :acquisition_date, :acquisition_cost, :acquisition_date,
+                    1
+                )
+            """)
+            
+            conn.execute(insert_asset_query, {
+                'id': asset_id,
+                'company_id': company_id,
+                'asset_group_id': asset_group_id,
+                'asset_name': asset_name,
+                'acquisition_date': acquisition_date,
+                'acquisition_cost': acquisition_cost
+            })
+            
+            # Link transactions to the new asset
+            update_txn_query = text(f"""
+                UPDATE transactions 
+                SET amortization_asset_id = :asset_id 
+                WHERE company_id = :company_id AND id IN ({placeholders})
+            """)
+            update_params = params.copy()
+            update_params['asset_id'] = asset_id
+            
+            conn.execute(update_txn_query, update_params)
+            conn.commit()
+            
+            return jsonify({
+                'message': 'Amortization asset created successfully',
+                'asset_id': asset_id,
+                'acquisition_cost': float(acquisition_cost)
+            }), 201
+            
+    except Exception as e:
+        app.logger.error(f"Failed to create amortization asset: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@amortization_bp.route('/api/amortization-assets/<asset_id>', methods=['PUT'])
+def update_amortization_asset(asset_id):
+    """Update an amortization asset's metadata"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+        
+    try:
+        data = request.json or {}
+        asset_name = data.get('asset_name')
+        asset_group_id = data.get('asset_group_id')
+        acquisition_date = data.get('acquisition_date')
+        transaction_ids = data.get('transaction_ids') # Optional list of transaction IDs
+        
+        if not asset_name:
+            return jsonify({'error': 'asset_name is required'}), 400
+            
+        with engine.connect() as conn:
+            set_fields = ["asset_name = :asset_name"]
+            params = {'asset_id': asset_id, 'asset_name': asset_name}
+            
+            if asset_group_id:
+                set_fields.append("asset_group_id = :asset_group_id")
+                params['asset_group_id'] = asset_group_id
+            if acquisition_date:
+                set_fields.append("acquisition_date = :acquisition_date")
+                set_fields.append("amortization_start_date = :acquisition_date")
+                params['acquisition_date'] = acquisition_date
+                
+            # If transaction_ids are provided, we update the links and recalculate the cost
+            if transaction_ids is not None:
+                # 1. Unlink existing transactions for this asset
+                unlink_txn_query = text("""
+                    UPDATE transactions 
+                    SET amortization_asset_id = NULL 
+                    WHERE amortization_asset_id = :asset_id
+                """)
+                conn.execute(unlink_txn_query, {'asset_id': asset_id})
+                
+                # 2. If new IDs exist, calculate new cost and link them
+                new_cost = 0
+                if len(transaction_ids) > 0:
+                    placeholders = ', '.join([f':t{i}' for i in range(len(transaction_ids))])
+                    cost_params = {f't{i}': tid for i, tid in enumerate(transaction_ids)}
+                    cost_params['company_id'] = data.get('company_id')
+                    
+                    check_txn_query = text(f"""
+                        SELECT SUM(amount) as total_cost 
+                        FROM transactions 
+                        WHERE company_id = :company_id AND id IN ({placeholders})
+                    """)
+                    
+                    result = conn.execute(check_txn_query, cost_params).fetchone()
+                    if not result or not result[0]:
+                        return jsonify({'error': 'Selected transactions not found or have zero value'}), 404
+                    
+                    new_cost = result[0]
+                    
+                    # Link new transactions
+                    update_txn_query = text(f"""
+                        UPDATE transactions 
+                        SET amortization_asset_id = :asset_id 
+                        WHERE company_id = :company_id AND id IN ({placeholders})
+                    """)
+                    update_params = cost_params.copy()
+                    update_params['asset_id'] = asset_id
+                    conn.execute(update_txn_query, update_params)
+                
+                # Setup cost update for the asset
+                set_fields.append("acquisition_cost = :acquisition_cost")
+                params['acquisition_cost'] = new_cost
+            
+            # Update the asset record
+            query = text(f"""
+                UPDATE amortization_assets 
+                SET {', '.join(set_fields)}
+                WHERE id = :asset_id
+            """)
+            result = conn.execute(query, params)
+            
+            if result.rowcount == 0:
+                return jsonify({'error': 'Asset not found'}), 404
+                
+            conn.commit()
+            
+            return jsonify({'message': 'Amortization asset updated successfully'}), 200
+            
+    except Exception as e:
+        app.logger.error(f"Failed to update amortization asset: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@amortization_bp.route('/api/amortization-assets/<asset_id>', methods=['DELETE'])
+def delete_amortization_asset(asset_id):
+    """Delete an amortization asset and unlink its transactions"""
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+        
+    try:
+        with engine.connect() as conn:
+            # Unlink transactions first
+            unlink_txn_query = text("""
+                UPDATE transactions 
+                SET amortization_asset_id = NULL 
+                WHERE amortization_asset_id = :asset_id
+            """)
+            conn.execute(unlink_txn_query, {'asset_id': asset_id})
+            
+            # Then delete the asset
+            delete_asset_query = text("DELETE FROM amortization_assets WHERE id = :asset_id")
+            result = conn.execute(delete_asset_query, {'asset_id': asset_id})
+            
+            if result.rowcount == 0:
+                return jsonify({'error': 'Asset not found'}), 404
+                
+            conn.commit()
+            
+            return jsonify({'message': 'Amortization asset deleted and transactions unlinked successfully'}), 200
+            
+    except Exception as e:
+        app.logger.error(f"Failed to delete amortization asset: {e}")
         return jsonify({'error': str(e)}), 500
 
 @amortization_bp.route('/api/amortization-items', methods=['POST'])

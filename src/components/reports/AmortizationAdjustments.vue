@@ -1,5 +1,33 @@
 <template>
   <div class="space-y-6">
+    <!-- Header with Actions (if any needed for Amortization) -->
+
+    <!-- Pending Transactions Alert (Compact) -->
+    <div
+      v-if="pendingTransactions?.length > 0"
+      class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 shadow-sm"
+    >
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="bi bi-exclamation-triangle-fill text-amber-500 text-xl"></i>
+          <div>
+            <h4 class="text-sm font-bold text-amber-900">
+              {{ pendingTransactions.length }} transaksi aset belum terdaftar
+            </h4>
+            <p class="text-xs text-amber-700 mt-0.5">
+              Terdapat transaksi yang ditandai sebagai Aset namun belum
+              didaftarkan untuk diamortisasi.
+            </p>
+          </div>
+        </div>
+        <button
+          @click="showAddAssetModal = true"
+          class="text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg px-4 py-2 transition-colors inline-flex items-center gap-2 shrink-0"
+        >
+          <i class="bi bi-plus-circle-fill"></i> Daftarkan Aset Baru
+        </button>
+      </div>
+    </div>
     <!-- Calculated Asset Amortization (Automatic) -->
     <div
       v-if="calculatedItems.length > 0"
@@ -103,8 +131,9 @@
                     <div
                       class="text-xs text-slate-500 italic break-words leading-tight"
                       :class="{
-                        'font-semibold text-slate-700 not-italic text-sm':
-                          !(item.notes || item.amortization_notes),
+                        'font-semibold text-slate-700 not-italic text-sm': !(
+                          item.notes || item.amortization_notes
+                        ),
                       }"
                     >
                       {{ item.asset_name }}
@@ -189,12 +218,29 @@
                         <i class="bi bi-eye"></i>
                       </button>
                     </template>
+                    <!-- Registered Asset Actions -->
+                    <template v-else-if="item.asset_id">
+                      <button
+                        @click="editRegisteredAsset(item)"
+                        class="text-gray-400 hover:text-indigo-600 transition-colors"
+                        title="Edit Asset"
+                      >
+                        <i class="bi bi-pencil-square"></i>
+                      </button>
+                      <button
+                        @click="confirmDeleteAsset(item)"
+                        class="text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete Asset"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </template>
                     <span
                       v-else
                       class="text-slate-300 pointer-events-none"
-                      title="Asset details can be managed in settings"
+                      title="No actions available"
                     >
-                      <i class="bi bi-lock-fill text-xs"></i>
+                      <i class="bi bi-dash text-xs"></i>
                     </span>
                   </div>
                 </td>
@@ -826,7 +872,11 @@
               >Asset Mark</label
             >
             <p class="text-sm text-gray-900">
-              {{ selectedTransaction.mark_name || selectedTransaction.coa_name || "-" }}
+              {{
+                selectedTransaction.mark_name ||
+                selectedTransaction.coa_name ||
+                "-"
+              }}
             </p>
           </div>
 
@@ -835,7 +885,11 @@
               >Notes</label
             >
             <p class="text-sm text-gray-900 italic">
-              {{ selectedTransaction.notes || selectedTransaction.amortization_notes || "-" }}
+              {{
+                selectedTransaction.notes ||
+                selectedTransaction.amortization_notes ||
+                "-"
+              }}
             </p>
           </div>
 
@@ -928,6 +982,17 @@
         </div>
       </div>
     </div>
+
+    <!-- Modals -->
+    <AddAssetModal
+      :isOpen="showAddAssetModal"
+      :company-id="companyId"
+      :year="year"
+      :asset-groups="assetGroups"
+      :asset="editingAsset"
+      @close="closeAddAssetModal"
+      @save="handleAssetSaved"
+    />
   </div>
 </template>
 
@@ -937,7 +1002,8 @@ import { useReportsStore } from "../../stores/reports";
 import { useCoaStore } from "../../stores/coa";
 import { useAmortizationStore } from "../../stores/amortization";
 import { useMarksStore } from "../../stores/marks";
-import { reportsApi, marksApi, historyApi } from "../../api/index";
+import api, { reportsApi, marksApi, historyApi } from "../../api/index";
+import AddAssetModal from "./modals/AddAssetModal.vue";
 
 const props = defineProps({
   companyId: {
@@ -966,6 +1032,10 @@ const availableMarks = ref([]);
 const assetGroups = ref([]);
 const showTransactionDetailModal = ref(false);
 const selectedTransaction = ref(null);
+
+const pendingTransactions = ref([]);
+const showAddAssetModal = ref(false);
+const editingAsset = ref(null);
 
 const calculatedItems = computed(() =>
   items.value.filter((item) => item.asset_id),
@@ -1082,6 +1152,7 @@ const fetchData = async () => {
 
   // Fetch asset groups first
   await fetchAssetGroups();
+  await fetchPendingTransactions();
 
   // Fetch amortization items
   try {
@@ -1103,35 +1174,90 @@ const fetchData = async () => {
   }
 
   // Fetch available marks for dropdown
-  console.log('🎯 About to call fetchAvailableMarks...');
+  console.log("🎯 About to call fetchAvailableMarks...");
   await fetchAvailableMarks();
-  console.log('✅ fetchAvailableMarks completed');
+  console.log("✅ fetchAvailableMarks completed");
 };
 
 const fetchAvailableMarks = async () => {
-  console.log('🚀 fetchAvailableMarks called!');
-  console.log('🏢 Company ID:', props.companyId);
-  
+  console.log("🚀 fetchAvailableMarks called!");
+  console.log("🏢 Company ID:", props.companyId);
+
   try {
     // Fetch marks that have asset-related COA mappings
-    console.log('📡 Calling marks API...');
-    const response = await reportsApi.getAmortizationEligibleMarks(props.companyId);
-    console.log('📦 API Response:', response);
-    
+    console.log("📡 Calling marks API...");
+    const response = await reportsApi.getAmortizationEligibleMarks(
+      props.companyId,
+    );
+    console.log("📦 API Response:", response);
+
     // Extract marks from response.data
     availableMarks.value = response.data.marks || [];
-    console.log('📦 Response data:', response.data);
-    console.log('✅ Available marks loaded:', availableMarks.value.length);
-    
+    console.log("📦 Response data:", response.data);
+    console.log("✅ Available marks loaded:", availableMarks.value.length);
+
     if (availableMarks.value.length > 0) {
-      console.log('🎯 Marks sample:', availableMarks.value.slice(0, 3));
+      console.log("🎯 Marks sample:", availableMarks.value.slice(0, 3));
     } else {
-      console.log('❌ No marks found in response');
+      console.log("❌ No marks found in response");
     }
   } catch (error) {
-    console.error('💥 Failed to fetch available marks:', error);
-    console.error('📋 Error details:', error.response?.data || error.message);
+    console.error("💥 Failed to fetch available marks:", error);
+    console.error("📋 Error details:", error.response?.data || error.message);
     availableMarks.value = [];
+  }
+};
+
+const closeAddAssetModal = () => {
+  showAddAssetModal.value = false;
+  editingAsset.value = null;
+};
+
+const editRegisteredAsset = (item) => {
+  editingAsset.value = item;
+  showAddAssetModal.value = true;
+};
+
+const confirmDeleteAsset = async (item) => {
+  if (
+    confirm(
+      `Apakah Anda yakin ingin menghapus aset terdaftar:\n${item.asset_name}?\n\nTransaksi yang ada akan dikembalikan menjadi tertunda (pending).`,
+    )
+  ) {
+    try {
+      await api.delete(`/amortization-assets/${item.asset_id}`);
+      await fetchData();
+    } catch (e) {
+      alert(`Gagal menghapus aset. ${e.response?.data?.error || e.message}`);
+    }
+  }
+};
+
+const fetchPendingTransactions = async () => {
+  if (!props.companyId) return;
+  try {
+    const response = await api.get("/reports/pending-amortization", {
+      params: { company_id: props.companyId, year: props.year },
+    });
+    pendingTransactions.value = response.data.transactions || [];
+  } catch (error) {
+    console.error("Failed to fetch pending asset transactions", error);
+    pendingTransactions.value = [];
+  }
+};
+
+const handleAssetSaved = async (payload, isEdit) => {
+  try {
+    if (isEdit) {
+      await api.put(`/amortization-assets/${payload.asset_id}`, payload);
+    } else {
+      await api.post("/amortization-assets", payload);
+    }
+    closeAddAssetModal();
+    await fetchData(); // Refresh table and pending list
+  } catch (error) {
+    const errorMsg = error.response?.data?.error || error.message;
+    alert(`Gagal menyimpan aset: ${errorMsg}`);
   }
 };
 
@@ -1266,22 +1392,25 @@ const deleteItem = async () => {
 const generateJournalEntries = async () => {
   try {
     isSaving.value = true;
-    
+
     const result = await reportsApi.generateAmortizationJournals({
       company_id: props.companyId,
-      year: parseInt(props.year)
+      year: parseInt(props.year),
     });
-    
+
     // Show success message
     if (result.journal_count > 0) {
-      alert(`✅ Success! Generated ${result.journal_count} journal entries for ${result.items_processed} manual amortization items.\n\nDebit entries (COA 5314): ${result.journal_count}\nCredit entries (COA 1530/1601): ${result.journal_count}\n\nJournals have been created in the balance sheet.`);
+      alert(
+        `✅ Success! Generated ${result.journal_count} journal entries for ${result.items_processed} manual amortization items.\n\nDebit entries (COA 5314): ${result.journal_count}\nCredit entries (COA 1530/1601): ${result.journal_count}\n\nJournals have been created in the balance sheet.`,
+      );
     } else {
-      alert('ℹ️ No journal entries to generate. All manual amortization items already have journals.');
+      alert(
+        "ℹ️ No journal entries to generate. All manual amortization items already have journals.",
+      );
     }
-    
+
     // Refresh data to show updated balance sheet
     await fetchData();
-    
   } catch (err) {
     console.error("Failed to generate journal entries:", err);
     alert(`❌ Failed to generate journal entries: ${err.message || err}`);
@@ -1387,10 +1516,12 @@ const updateTransactionGroup = async (item) => {
     }
 
     await historyApi.updateTransactionAmortizationGroup(txnId, {
-      asset_group_id: item.asset_group_id || item.amortization_asset_group_id || null,
+      asset_group_id:
+        item.asset_group_id || item.amortization_asset_group_id || null,
       is_amortizable: true,
       use_half_rate: Boolean(item.use_half_rate),
-      amortization_start_date: item.amortization_start_date || item.start_date || null,
+      amortization_start_date:
+        item.amortization_start_date || item.start_date || null,
       amortization_useful_life: item.useful_life_years || null,
       amortization_notes: item.notes || item.amortization_notes || "",
     });
@@ -1421,7 +1552,8 @@ const openTransactionDetail = (item) => {
   selectedTransaction.value = {
     ...item,
     id: item.id || item.asset_id || null,
-    asset_group_id: item.asset_group_id || item.amortization_asset_group_id || "",
+    asset_group_id:
+      item.asset_group_id || item.amortization_asset_group_id || "",
     amortization_start_date:
       item.amortization_start_date || item.start_date || item.txn_date || "",
     notes: item.notes || item.amortization_notes || "",
