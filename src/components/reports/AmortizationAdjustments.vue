@@ -1237,7 +1237,7 @@ const fetchPendingTransactions = async () => {
   if (!props.companyId) return;
   try {
     const response = await api.get("/reports/pending-amortization", {
-      params: { company_id: props.companyId, year: props.year },
+      params: { company_id: props.companyId },
     });
     pendingTransactions.value = response.data.transactions || [];
   } catch (error) {

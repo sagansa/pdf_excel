@@ -237,7 +237,7 @@ def get_amortization_items():
                 LEFT JOIN marks m ON ai.mark_id = m.id
                 LEFT JOIN amortization_asset_groups ag ON ai.asset_group_id = ag.id
                 WHERE ai.company_id = :company_id
-                ORDER BY ai.amortization_date DESC, ai.created_at DESC
+                ORDER BY ai.amortization_date ASC, ai.created_at ASC
             """)
             
             items_result = conn.execute(items_query, {'company_id': company_id, 'year': year})
@@ -383,6 +383,7 @@ def get_amortization_items():
                 LEFT JOIN amortization_asset_groups ag ON a.asset_group_id = ag.id
                 WHERE (a.company_id = :company_id OR :company_id IS NULL)
                 AND a.is_active = TRUE
+                ORDER BY a.acquisition_date ASC, a.created_at ASC
             """)
             assets_result = conn.execute(assets_query, {'company_id': company_id})
             
@@ -529,7 +530,10 @@ def get_pending_amortization_transactions():
                     t.id, 
                     t.txn_date, 
                     t.description, 
-                    t.amount,
+                    CASE 
+                        WHEN t.db_cr = 'CR' THEN -t.amount
+                        ELSE t.amount
+                    END as amount,
                     t.bank_code,
                     m.personal_use as mark_name,
                     m.internal_report,
@@ -540,7 +544,7 @@ def get_pending_amortization_transactions():
                 AND m.is_asset = TRUE
                 {asset_filter}
                 {year_filter}
-                ORDER BY t.txn_date DESC
+                ORDER BY t.txn_date ASC
             """)
             
             params = {'company_id': company_id}
@@ -1197,7 +1201,7 @@ def create_amortization_asset():
             params['company_id'] = company_id
             
             check_txn_query = text(f"""
-                SELECT SUM(amount) as total_cost 
+                SELECT SUM(CASE WHEN db_cr = 'CR' THEN -amount ELSE amount END) as total_cost 
                 FROM transactions 
                 WHERE company_id = :company_id AND id IN ({placeholders})
             """)
@@ -1300,7 +1304,7 @@ def update_amortization_asset(asset_id):
                     cost_params['company_id'] = data.get('company_id')
                     
                     check_txn_query = text(f"""
-                        SELECT SUM(amount) as total_cost 
+                        SELECT SUM(CASE WHEN db_cr = 'CR' THEN -amount ELSE amount END) as total_cost 
                         FROM transactions 
                         WHERE company_id = :company_id AND id IN ({placeholders})
                     """)

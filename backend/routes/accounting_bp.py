@@ -713,13 +713,13 @@ def get_marks_summary():
                     m.id as mark_id,
                     m.personal_use as mark_name,
                     SUM(CASE 
-                        WHEN t.db_cr = 'DB' THEN t.amount 
-                        WHEN t.db_cr = 'CR' THEN 0 
+                        WHEN t.db_cr = 'CR' THEN t.amount 
+                        WHEN t.db_cr = 'DB' THEN 0 
                         ELSE 0 
                     END) as total_debit,
                     SUM(CASE 
-                        WHEN t.db_cr = 'CR' THEN t.amount 
-                        WHEN t.db_cr = 'DB' THEN 0 
+                        WHEN t.db_cr = 'DB' THEN t.amount 
+                        WHEN t.db_cr = 'CR' THEN 0 
                         ELSE 0 
                     END) as total_credit,
                     COUNT(t.id) as transaction_count

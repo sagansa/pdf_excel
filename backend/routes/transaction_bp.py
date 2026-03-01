@@ -8,7 +8,7 @@ from sqlalchemy import text, bindparam
 from backend.db.session import get_db_engine, get_sagansa_engine
 
 transaction_bp = Blueprint('transaction_bp', __name__)
-VALID_SERVICE_CALCULATION_METHODS = {'BRUTO', 'NETTO'}
+VALID_SERVICE_CALCULATION_METHODS = {'BRUTO', 'NETTO', 'NONE'}
 VALID_SERVICE_TAX_PAYMENT_TIMINGS = {'same_period', 'next_period', 'next_year'}
 
 
