@@ -118,10 +118,13 @@ def _is_current_asset(subcategory, code):
     return code_str.startswith(('11', '12', '13', '14'))
 
 def _calculate_accumulated_amortization(amount, rate, start_date, as_of_date, use_half_rate=False, allow_partial_year=True):
-    if amount <= 0 or start_date is None or start_date > as_of_date:
+    if amount == 0 or rate <= 0 or start_date is None or start_date > as_of_date:
         return 0.0
 
-    annual_base = amount * (rate / 100.0)
+    is_negative = amount < 0
+    abs_amount = abs(amount)
+
+    annual_base = abs_amount * (rate / 100.0)
     accumulated = 0.0
 
     for year in range(start_date.year, as_of_date.year + 1):
@@ -140,12 +143,13 @@ def _calculate_accumulated_amortization(amount, rate, start_date, as_of_date, us
         elif year == as_of_date.year and as_of_date.month < 12:
             year_amort = annual_base * (as_of_date.month / 12.0)
 
-        remaining = max(amount - accumulated, 0.0)
+        remaining = max(abs_amount - accumulated, 0.0)
         if remaining <= 0:
             break
         accumulated += min(year_amort, remaining)
 
-    return max(0.0, min(accumulated, amount))
+    final_accumulated = max(0.0, min(accumulated, abs_amount))
+    return -final_accumulated if is_negative else final_accumulated
 
 
 def _to_float(value, default=0.0):
@@ -227,7 +231,7 @@ def _calculate_current_year_amortization(
 ):
     amount = _to_float(base_amount, 0.0)
     rate = _to_float(tarif_rate, 0.0)
-    if amount <= 0 or rate <= 0:
+    if amount == 0 or rate <= 0:
         return 0.0
 
     start_date = _parse_date(start_date_value)
@@ -238,7 +242,10 @@ def _calculate_current_year_amortization(
     if acquisition_year > report_year:
         return 0.0
 
-    annual_amort_base = amount * (rate / 100.0)
+    is_negative = amount < 0
+    abs_amount = abs(amount)
+
+    annual_amort_base = abs_amount * (rate / 100.0)
     accumulated_prev = 0.0
     current_year_amort = 0.0
 
@@ -251,7 +258,7 @@ def _calculate_current_year_amortization(
             elif use_half_rate:
                 year_amort = annual_amort_base * 0.5
 
-        remaining = amount - accumulated_prev
+        remaining = abs_amount - accumulated_prev
         year_amort = min(year_amort, max(remaining, 0.0))
 
         if year < report_year:
@@ -259,7 +266,8 @@ def _calculate_current_year_amortization(
         else:
             current_year_amort = year_amort
 
-    return max(current_year_amort, 0.0)
+    final_current = max(current_year_amort, 0.0)
+    return -final_current if is_negative else final_current
 
 
 def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=None, report_type='real'):
@@ -339,7 +347,7 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
         txn_query = text(f"""
             SELECT DISTINCT
                 t.id,
-                t.amount AS acquisition_cost,
+                CASE WHEN t.db_cr = 'CR' THEN -t.amount ELSE t.amount END AS acquisition_cost,
                 t.amortization_start_date,
                 t.txn_date,
                 t.use_half_rate,
@@ -360,7 +368,7 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
     
         for row in conn.execute(txn_query, txn_params):
             base_amount = _to_float(row.acquisition_cost, 0.0)
-            if base_amount <= 0:
+            if base_amount == 0:
                 continue
     
             start_date_value = _parse_date(row.amortization_start_date) or _parse_date(row.txn_date) or date(report_year, 1, 1)
@@ -821,8 +829,11 @@ def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None, repo
         tax_rate = 2.0 if has_npwp else 4.0
         amount_base = abs(_to_float(row.amount, 0.0))
         method = str(row.service_calculation_method or 'BRUTO').strip().upper()
-        if method not in {'BRUTO', 'NETTO'}:
+        if method not in {'BRUTO', 'NETTO', 'NONE'}:
             method = 'BRUTO'
+
+        if method == 'NONE':
+            continue
 
         if method == 'NETTO':
             divisor = max(0.000001, 1.0 - (tax_rate / 100.0))
@@ -920,7 +931,9 @@ def _calculate_service_tax_adjustment_for_period(conn, start_date, end_date, com
         method = str(row.service_calculation_method or 'BRUTO').strip().upper()
         
         tax_amount = 0.0
-        if method == 'NETTO':
+        if method == 'NONE':
+            tax_amount = 0.0
+        elif method == 'NETTO':
             divisor = max(0.000001, 1.0 - (tax_rate / 100.0))
             bruto = amount_base / divisor
             tax_amount = max(0.0, bruto - amount_base)
@@ -1725,7 +1738,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
             txn_query = text(f"""
                 SELECT DISTINCT
                     t.id,
-                    t.amount AS acquisition_cost,
+                    CASE WHEN t.db_cr = 'CR' THEN -t.amount ELSE t.amount END AS acquisition_cost,
                     t.amortization_start_date,
                     t.txn_date,
                     t.use_half_rate,
@@ -1744,7 +1757,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
             """)
             for row in conn.execute(txn_query, {'as_of_date': as_of_date, 'company_id': company_id}):
                 amount = float(row.acquisition_cost or 0)
-                if amount <= 0:
+                if amount == 0:
                     continue
                 start_date = _parse_date(row.amortization_start_date) or _parse_date(row.txn_date)
                 if not start_date or start_date > as_of_date_obj:

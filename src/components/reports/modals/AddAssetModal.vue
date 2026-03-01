@@ -109,8 +109,26 @@
                 />
                 <button
                   type="button"
+                  @click="toggleSortDirection"
+                  class="text-gray-500 hover:text-indigo-600 px-2"
+                  :title="
+                    sortDirection === 'asc'
+                      ? 'Urutkan: Baru ke Lama'
+                      : 'Urutkan: Lama ke Baru'
+                  "
+                >
+                  <i
+                    :class="
+                      sortDirection === 'asc'
+                        ? 'bi bi-sort-numeric-down'
+                        : 'bi bi-sort-numeric-up'
+                    "
+                  ></i>
+                </button>
+                <button
+                  type="button"
                   @click="fetchLinkableTransactions"
-                  class="text-gray-500 hover:text-indigo-600"
+                  class="text-gray-500 hover:text-indigo-600 px-2"
                   title="Refresh"
                 >
                   <i class="bi bi-arrow-clockwise"></i>
@@ -272,6 +290,7 @@ const isLoadingTxns = ref(false);
 const searchQuery = ref("");
 const linkableTransactions = ref([]);
 const selectedTransactionIds = ref([]);
+const sortDirection = ref("asc"); // "asc" for oldest-first, "desc" for newest-first
 
 // Computed
 const isEditMode = computed(() => !!props.asset);
@@ -279,7 +298,7 @@ const isEditMode = computed(() => !!props.asset);
 const totalSelectedAmount = computed(() => {
   return selectedTransactionIds.value.reduce((total, txnId) => {
     const txn = linkableTransactions.value.find((t) => t.id === txnId);
-    return total + (txn ? Math.abs(parseFloat(txn.amount || 0)) : 0);
+    return total + (txn ? parseFloat(txn.amount || 0) : 0);
   }, 0);
 });
 
@@ -301,15 +320,30 @@ const isFormValid = computed(() => {
 });
 
 const filteredTransactions = computed(() => {
-  if (!searchQuery.value) return linkableTransactions.value;
-  const q = searchQuery.value.toLowerCase();
-  return linkableTransactions.value.filter(
-    (txn) =>
-      (txn.description || "").toLowerCase().includes(q) ||
-      (txn.mark_name || "").toLowerCase().includes(q) ||
-      (txn.internal_report || "").toLowerCase().includes(q),
-  );
+  let result = linkableTransactions.value;
+
+  // Filter by search query
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase();
+    result = result.filter(
+      (txn) =>
+        (txn.description || "").toLowerCase().includes(q) ||
+        (txn.mark_name || "").toLowerCase().includes(q) ||
+        (txn.internal_report || "").toLowerCase().includes(q),
+    );
+  }
+
+  // Sort by date based on sortDirection
+  return result.slice().sort((a, b) => {
+    const dateA = new Date(a.txn_date).getTime();
+    const dateB = new Date(b.txn_date).getTime();
+    return sortDirection.value === "asc" ? dateA - dateB : dateB - dateA;
+  });
 });
+
+const toggleSortDirection = () => {
+  sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
+};
 
 const groupedAssetGroups = computed(() => {
   const grouped = { Tangible: [], Intangible: [], Building: [] };
@@ -342,7 +376,7 @@ const fetchLinkableTransactions = async () => {
   if (!props.companyId) return;
   isLoadingTxns.value = true;
   try {
-    const params = { company_id: props.companyId, year: props.year };
+    const params = { company_id: props.companyId };
     if (isEditMode.value) {
       params.current_asset_id = props.asset.asset_id;
     }
