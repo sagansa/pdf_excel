@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 MONTH_MAP = {
     'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04',
     'MAY': '05', 'MEI': '05', 'JUN': '06', 'JUL': '07', 
-    'AUG': '08', 'AGT': '08', 'SEP': '09', 'OCT': '10', 
+    'AUG': '08', 'AGT': '08', 'AGU': '08', 'SEP': '09', 'OCT': '10', 
     'OKT': '10', 'NOV': '11', 'DEC': '12', 'DES': '12'
 }
 
@@ -109,11 +109,17 @@ def parse_statement(pdf_path, base_year=None, password=None):
                 
                 # Flag to skip content until a new transaction date is found
                 in_summary_section = False
+                current_account_no = None
                 
                 for y, row_words in sorted_rows:
                     row_words.sort(key=lambda w: w['x0'])
                     # Construct full line text for skip checking
                     full_line_text = ' '.join([w['text'] for w in row_words]).upper()
+                    
+                    # Detect card number and update current_account_no
+                    card_match = re.search(r'(\d{4}-\d{2,4}(?:XX|XXXX)-XXXX-\d{4})', full_line_text)
+                    if card_match:
+                        current_account_no = card_match.group(1)
                     
                     # Detect end of transaction section
                     is_total_line = "TOTAL" in full_line_text and any(w['x0'] < 100 for w in row_words)
@@ -190,7 +196,7 @@ def parse_statement(pdf_path, base_year=None, password=None):
                         
                         current_transaction = {
                             'bank_code': 'BCA_CC',
-                            'account_no': None,
+                            'account_no': current_account_no,
                             'txn_date': row_txn_date,
                             'posting_date': row_posting_date or row_txn_date,
                             'transaction_details': ' '.join(row_details),
@@ -323,7 +329,7 @@ def parse_statement(pdf_path, base_year=None, password=None):
 
         rows.append({
             'bank_code': bank_code,
-            'account_no': account_no,
+            'account_no': entry.get('account_no') or account_no,
             'txn_date': txn_iso,
             'posting_date': post_iso,
             'description': description,
