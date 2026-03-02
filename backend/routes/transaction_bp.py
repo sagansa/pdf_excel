@@ -315,6 +315,132 @@ def _normalize_month(value):
         return None
     return month
 
+@transaction_bp.route('/api/transactions/manual', methods=['POST'])
+def create_manual_transaction():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+    
+    try:
+        data = request.json or {}
+        txn_date = data.get('txn_date')
+        header_description = data.get('description', 'Manual Journal')
+        company_id = data.get('company_id')
+        lines = data.get('lines', [])
+        
+        # Validation
+        if not txn_date or not lines:
+            return jsonify({'error': 'Missing required fields (date, lines)'}), 400
+
+        # Calculate totals and validate balance
+        total_debit = 0.0
+        total_credit = 0.0
+        for line in lines:
+            try:
+                amt = float(line.get('amount', 0))
+            except (ValueError, TypeError):
+                return jsonify({'error': f"Invalid amount in line for COA {line.get('coa_id')}"}), 400
+            
+            side = str(line.get('side', 'DEBIT')).upper()
+            if side == 'DEBIT':
+                total_debit += amt
+            else:
+                total_credit += amt
+        
+        # Allow small floating point difference
+        if abs(total_debit - total_credit) > 0.01:
+            return jsonify({'error': f'Journal is not balanced. Debits ({total_debit:,.2f}) != Credits ({total_credit:,.2f})'}), 400
+
+        now = datetime.now()
+        parent_txn_id = str(uuid.uuid4())
+        
+        with engine.begin() as conn:
+            mark_columns = _table_columns(conn, 'marks')
+            txn_columns = _table_columns(conn, 'transactions')
+            
+            # 1. Create Parent "Header" Transaction (0 amount or total debit, doesn't matter much as it will be excluded if children exist)
+            conn.execute(text("""
+                INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, source_file, company_id, created_at, updated_at)
+                VALUES (:id, :txn_date, :description, :amount, 'DB', 'MANUAL', 'MANUAL', :company_id, :now, :now)
+            """), {
+                'id': parent_txn_id,
+                'txn_date': txn_date,
+                'description': header_description,
+                'amount': total_debit,
+                'company_id': company_id if company_id else None,
+                'now': now
+            })
+            
+            # 2. Create Child Transactions for each line
+            for line in lines:
+                line_id = str(uuid.uuid4())
+                line_amount = float(line.get('amount', 0))
+                line_side = str(line.get('side', 'DEBIT')).upper()
+                line_coa_id = line.get('coa_id')
+                line_desc = line.get('description') or header_description
+                
+                # Create a specific Mark for this line mapping
+                mark_id = str(uuid.uuid4())
+                mark_name = f"JV: {line_desc}"
+                
+                mark_data = {
+                    'id': mark_id,
+                    'internal_report': mark_name,
+                    'personal_use': mark_name,
+                    'created_at': now,
+                    'updated_at': now
+                }
+                if 'is_asset' in mark_columns: mark_data['is_asset'] = False
+                if 'is_service' in mark_columns: mark_data['is_service'] = False
+                if 'is_salary_component' in mark_columns: mark_data['is_salary_component'] = False
+                if 'is_rental' in mark_columns: mark_data['is_rental'] = False
+                
+                insert_cols = [c for c in mark_data.keys() if c in mark_columns]
+                cols_sql = ', '.join(insert_cols)
+                vals_sql = ', '.join(f":{c}" for c in insert_cols)
+                conn.execute(text(f"INSERT INTO marks ({cols_sql}) VALUES ({vals_sql})"), mark_data)
+                
+                # Create Mapping
+                mapping_id = str(uuid.uuid4())
+                conn.execute(text("""
+                    INSERT INTO mark_coa_mapping (id, mark_id, coa_id, mapping_type, created_at, updated_at)
+                    VALUES (:id, :mark_id, :coa_id, :side, :now, :now)
+                """), {
+                    'id': mapping_id,
+                    'mark_id': mark_id,
+                    'coa_id': line_coa_id,
+                    'side': line_side,
+                    'now': now
+                })
+                
+                # Child Transaction record
+                line_db_cr = 'DB' if line_side == 'DEBIT' else 'CR'
+                
+                child_data = {
+                    'id': line_id,
+                    'parent_id': parent_txn_id,
+                    'txn_date': txn_date,
+                    'description': line_desc,
+                    'amount': line_amount,
+                    'db_cr': line_db_cr,
+                    'bank_code': 'MANUAL',
+                    'source_file': 'MANUAL',
+                    'mark_id': mark_id,
+                    'company_id': company_id if company_id else None,
+                    'now': now
+                }
+                
+                # Filter columns based on actual schema
+                child_insert_cols = [c for c in child_data.keys() if c in txn_columns]
+                c_cols_sql = ', '.join(child_insert_cols)
+                c_vals_sql = ', '.join(f":{c}" for c in child_insert_cols)
+                
+                conn.execute(text(f"INSERT INTO transactions ({c_cols_sql}) VALUES ({c_vals_sql})"), child_data)
+                
+        return jsonify({'message': 'Manual multi-line journal entry created successfully', 'id': parent_txn_id}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @transaction_bp.route('/api/transactions', methods=['GET'])
 def get_transactions():
     engine, error_msg = get_db_engine()

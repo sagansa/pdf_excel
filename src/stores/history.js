@@ -320,6 +320,15 @@ export const useHistoryStore = defineStore('history', {
         for (const txn of transactions) {
           const txnId = String(txn.id || '').trim();
           txn.is_split = txnId ? parentIds.has(txnId) : false;
+
+          // Populate coas from mark mappings for display
+          if (txn.mark_id) {
+            const mark = (markRes.data.marks || []).find(m => m.id === txn.mark_id);
+            if (mark && mark.mappings) {
+              txn.coas = mark.mappings;
+            }
+          }
+
           const normalizedDbCr = normalizeDbCr(txn.db_cr);
           if (normalizedDbCr) {
             txn.db_cr = normalizedDbCr;

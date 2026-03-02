@@ -66,11 +66,21 @@ def get_general_ledger():
                     -- Use mapping_type to determine debit/credit
                     -- DEBIT mapping = positive amount (debit)
                     -- CREDIT mapping = negative amount (credit)
-                    CASE 
+                    (CASE 
                         WHEN mcm.mapping_type = 'DEBIT' THEN t.amount
                         WHEN mcm.mapping_type = 'CREDIT' THEN -t.amount
                         ELSE 0
-                    END as signed_amount
+                    END)
+                    * (CASE 
+                        WHEN m.natural_direction IS NOT NULL 
+                             AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                             AND (
+                                (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                OR
+                                (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                             )
+                        THEN 0 ELSE 1 
+                    END) as signed_amount
                 FROM transactions t
                 INNER JOIN marks m ON t.mark_id = m.id
                 INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
@@ -265,11 +275,21 @@ def export_general_ledger():
                     coa.name as coa_name,
                     coa.category as coa_category,
                     mcm.mapping_type,
-                    CASE 
+                    (CASE 
                         WHEN mcm.mapping_type = 'DEBIT' THEN t.amount
                         WHEN mcm.mapping_type = 'CREDIT' THEN -t.amount
                         ELSE 0
-                    END as signed_amount
+                    END)
+                    * (CASE 
+                        WHEN m.natural_direction IS NOT NULL 
+                             AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                             AND (
+                                (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                OR
+                                (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                             )
+                        THEN 0 ELSE 1 
+                    END) as signed_amount
                 FROM transactions t
                 INNER JOIN marks m ON t.mark_id = m.id
                 INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
@@ -458,11 +478,21 @@ def get_general_ledger_summary():
                     coa.name as coa_name,
                     coa.category as coa_category,
                     SUM(
-                        CASE 
+                        (CASE 
                             WHEN mcm.mapping_type = 'DEBIT' THEN t.amount
                             WHEN mcm.mapping_type = 'CREDIT' THEN -t.amount
                             ELSE 0
-                        END
+                        END)
+                        * (CASE 
+                            WHEN m.natural_direction IS NOT NULL 
+                                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                                 AND (
+                                    (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                    OR
+                                    (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                 )
+                            THEN 0 ELSE 1 
+                        END)
                     ) as balance,
                     SUM(CASE WHEN mcm.mapping_type = 'DEBIT' THEN t.amount ELSE 0 END) as total_debit,
                     SUM(CASE WHEN mcm.mapping_type = 'CREDIT' THEN t.amount ELSE 0 END) as total_credit,

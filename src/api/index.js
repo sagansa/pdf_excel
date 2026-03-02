@@ -46,6 +46,9 @@ export const historyApi = {
   bulkDelete(ids) {
     return api.post('/transactions/bulk-delete', { transaction_ids: ids });
   },
+  createManualTransaction(data) {
+    return api.post('/transactions/manual', data);
+  },
   assignMark(txnId, markId) {
     return api.post(`/transactions/${txnId}/assign-mark`, { mark_id: markId });
   },
