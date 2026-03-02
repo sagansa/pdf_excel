@@ -1257,11 +1257,22 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
             SELECT 
                 mcm.coa_id,
                 SUM(
-                    CASE
+                    (CASE
                         WHEN mcm.mapping_type = 'DEBIT' THEN t.amount
                         WHEN mcm.mapping_type = 'CREDIT' THEN -t.amount
                         ELSE 0
-                    END
+                    END)
+                    * (CASE 
+                        WHEN m.natural_direction IS NOT NULL 
+                             AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                             AND (
+                                (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                OR
+                                (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                             )
+                        THEN -1 
+                        ELSE 1 
+                    END)
                 ) as total_amount
             FROM transactions t
             INNER JOIN marks m ON t.mark_id = m.id
@@ -2061,8 +2072,27 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
             SUM(
                 CASE 
                     -- Account posting sign from mapping: debit = +, credit = -
-                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'DEBIT' THEN t.amount
-                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'CREDIT' THEN -t.amount
+                    -- Reversed when db_cr opposes mark's natural_direction
+                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'DEBIT' THEN 
+                        t.amount * (CASE 
+                            WHEN m.natural_direction IS NOT NULL 
+                                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                                 AND (
+                                    (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                    OR
+                                    (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                 )
+                            THEN 0 ELSE 1 END)
+                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'CREDIT' THEN 
+                        -t.amount * (CASE 
+                            WHEN m.natural_direction IS NOT NULL 
+                                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                                 AND (
+                                    (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                    OR
+                                    (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                 )
+                            THEN 0 ELSE 1 END)
                     WHEN t.db_cr = 'DB' THEN t.amount
                     WHEN t.db_cr = 'CR' THEN -t.amount
                     ELSE 0

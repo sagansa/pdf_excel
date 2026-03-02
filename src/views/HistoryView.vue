@@ -40,6 +40,14 @@
                     Import
                 </button>
 
+                <button
+                    @click="isManualJournalModalOpen = true"
+                    class="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-2 text-sm font-bold"
+                >
+                    <i class="bi bi-journal-plus"></i>
+                    Manual Journal
+                </button>
+
                 <div class="relative" @click.stop>
                     <button
                         @click="showExportMenu = !showExportMenu"
@@ -206,6 +214,14 @@
         @imported="handleImport"
     />
 
+    <ManualJournalModal
+        :isOpen="isManualJournalModalOpen"
+        :companies="store.companies"
+        :coaList="store.coaList"
+        @close="isManualJournalModalOpen = false"
+        @saved="handleManualJournalSaved"
+    />
+
     <TransactionDetailsModal
         :isOpen="showDetails"
         :transaction="selectedTxn"
@@ -247,6 +263,7 @@ import { useReportsStore } from '../stores/reports';
 import HistoryFilters from '../components/history/HistoryFilters.vue';
 import HistoryTable from '../components/history/HistoryTable.vue';
 import ImportTransactionsModal from '../components/history/ImportTransactionsModal.vue';
+import ManualJournalModal from '../components/history/ManualJournalModal.vue';
 import TransactionDetailsModal from '../components/history/TransactionDetailsModal.vue';
 import AssignMarkModal from '../components/history/AssignMarkModal.vue';
 import SplitTransactionModal from '../components/history/SplitTransactionModal.vue';
@@ -280,6 +297,7 @@ const showAssignMark = ref(false);
 const showSplitModal = ref(false);
 const selectedTxn = ref(null);
 const isImportModalOpen = ref(false);
+const isManualJournalModalOpen = ref(false);
 const showExportMenu = ref(false);
 
 const isBulkDeleteModalOpen = ref(false);
@@ -369,6 +387,10 @@ const handleImport = async ({ file, bankCode, companyId }) => {
     } catch (e) {
         alert(`Failed to import: ${e.response?.data?.error || e.message}`);
     }
+};
+
+const handleManualJournalSaved = async () => {
+    await store.loadData();
 };
 
 const handleExport = async (format) => {
