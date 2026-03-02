@@ -1875,6 +1875,21 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     # Equity SHOULD include current year net income for the Balance Sheet to balance A = L + E
     # We've confirmed NI matches between IS and BS via verification.
     calculated_equity_total = sum(item.get('amount', 0) for item in equity)
+
+    # If there is still a residual difference, surface it explicitly as a computed equity adjustment.
+    # This keeps the report balanced while making the adjustment transparent in the UI.
+    balance_adjustment = calculated_assets_total - (calculated_liabilities_total + calculated_equity_total)
+    if abs(balance_adjustment) >= 0.01:
+        equity.append({
+            'id': f'computed_balance_adjustment_{as_of_date}_{company_id or "all"}',
+            'code': '3999',
+            'name': 'Penyesuaian Saldo Pembuka',
+            'subcategory': 'Balance Adjustment',
+            'amount': balance_adjustment,
+            'category': 'EQUITY',
+            'is_computed': True
+        })
+        calculated_equity_total += balance_adjustment
     
     # Also fix top-level totals for frontend compatibility
     total_assets = calculated_assets_total
@@ -1999,13 +2014,27 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None, rep
         current_data['previous_year_total_expenses'] = previous_year_data['total_expenses']
         current_data['previous_year_net_income'] = previous_year_data['net_income']
         
-        # Add previous_year_purchases to cogs_breakdown
+        # Add comparative values to COGS breakdown (both purchases and other COGS lines).
         if 'cogs_breakdown' in current_data and 'cogs_breakdown' in previous_year_data:
-            current_data['cogs_breakdown']['previous_year_purchases'] = previous_year_data['cogs_breakdown'].get('purchases', 0.0)
-            # Add previous_year_amount to each purchases_item
-            prev_purchases_lookup = {item['code']: item['amount'] for item in previous_year_data['cogs_breakdown'].get('purchases_items', [])}
-            for item in current_data['cogs_breakdown'].get('purchases_items', []):
-                item['previous_year_amount'] = prev_purchases_lookup.get(item['code'], 0.0)
+            prev_cogs = previous_year_data['cogs_breakdown']
+            prev_items = (prev_cogs.get('purchases_items', []) or []) + (prev_cogs.get('other_cogs_items', []) or [])
+
+            prev_cogs_lookup = {}
+            for item in prev_items:
+                code = str(item.get('code') or '').strip()
+                if not code:
+                    continue
+                prev_cogs_lookup[code] = prev_cogs_lookup.get(code, 0.0) + _to_float(item.get('amount'), 0.0)
+
+            for list_key in ('purchases_items', 'other_cogs_items'):
+                for item in current_data['cogs_breakdown'].get(list_key, []) or []:
+                    code = str(item.get('code') or '').strip()
+                    item['previous_year_amount'] = prev_cogs_lookup.get(code, 0.0)
+
+            # Keep total row consistent with the current-year side, which uses total_cogs.
+            current_data['cogs_breakdown']['previous_year_purchases'] = _to_float(
+                prev_cogs.get('total_cogs', prev_cogs.get('purchases', 0.0)), 0.0
+            )
         
         print(f"[Income Statement] Merged comparative data successfully")
         print(f"[Income Statement] Merged revenue count: {len(merged_revenue)}")
@@ -2082,7 +2111,7 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
                                     OR
                                     (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
                                  )
-                            THEN 0 ELSE 1 END)
+                            THEN -1 ELSE 1 END)
                     WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'CREDIT' THEN 
                         -t.amount * (CASE 
                             WHEN m.natural_direction IS NOT NULL 
@@ -2092,7 +2121,7 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
                                     OR
                                     (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
                                  )
-                            THEN 0 ELSE 1 END)
+                            THEN -1 ELSE 1 END)
                     WHEN t.db_cr = 'DB' THEN t.amount
                     WHEN t.db_cr = 'CR' THEN -t.amount
                     ELSE 0
