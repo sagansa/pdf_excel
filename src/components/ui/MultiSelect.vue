@@ -201,6 +201,7 @@ const selectAll = () => {
 };
 
 const clearAll = () => {
+    query.value = '';
     emit('update:modelValue', []);
 };
 </script>

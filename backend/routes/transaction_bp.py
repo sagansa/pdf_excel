@@ -1,15 +1,22 @@
 import uuid
 import os
 import re
+import json
 from flask import Blueprint, request, jsonify
 from datetime import datetime, date
 from decimal import Decimal
 from sqlalchemy import text, bindparam
+from urllib import request as urlrequest, parse as urlparse, error as urlerror
 from backend.db.session import get_db_engine, get_sagansa_engine
 
 transaction_bp = Blueprint('transaction_bp', __name__)
 VALID_SERVICE_CALCULATION_METHODS = {'BRUTO', 'NETTO', 'NONE'}
 VALID_SERVICE_TAX_PAYMENT_TIMINGS = {'same_period', 'next_period', 'next_year'}
+DEFAULT_PRESENCE_API_URL = os.environ.get('SAGANSA_PRESENCE_API_URL', 'https://superadmin.sagansa.id/api/presences')
+DEFAULT_PRESENCE_API_TOKEN = os.environ.get(
+    'SAGANSA_PRESENCE_TOKEN',
+    '1928|DvkiyXPhc5ixN0kx71TU6dai9jxaK0kIqvh5ggyJ81f4bc25'
+)
 
 
 def _table_columns(conn, table_name):
@@ -315,6 +322,338 @@ def _normalize_month(value):
         return None
     return month
 
+
+def _normalize_datetime_string(value):
+    if value in (None, ''):
+        return None
+    if isinstance(value, datetime):
+        return value.strftime('%Y-%m-%d %H:%M:%S')
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time()).strftime('%Y-%m-%d %H:%M:%S')
+
+    raw = str(value).strip()
+    if not raw:
+        return None
+
+    raw = raw.replace('T', ' ')
+    if raw.endswith('Z'):
+        raw = raw[:-1]
+
+    try:
+        parsed = datetime.fromisoformat(raw)
+        return parsed.strftime('%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        pass
+
+    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y-%m-%d'):
+        try:
+            parsed = datetime.strptime(raw[:19], fmt)
+            return parsed.strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            continue
+    return None
+
+
+def _safe_int(value, default=0):
+    if value in (None, ''):
+        return default
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_json_dumps(value):
+    try:
+        return json.dumps(value, ensure_ascii=False, separators=(',', ':'))
+    except (TypeError, ValueError):
+        return '{}'
+
+
+def _deep_get(data, path_candidates, default=None):
+    for path in path_candidates:
+        current = data
+        ok = True
+        for key in str(path).split('.'):
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            else:
+                ok = False
+                break
+        if ok and current not in (None, ''):
+            return current
+    return default
+
+
+def _extract_presence_records(payload):
+    if isinstance(payload, list):
+        return payload
+
+    if not isinstance(payload, dict):
+        return []
+
+    for key in ('data', 'presences', 'items', 'records', 'results'):
+        value = payload.get(key)
+        if isinstance(value, list):
+            return value
+        if isinstance(value, dict):
+            nested_list = value.get('data')
+            if isinstance(nested_list, list):
+                return nested_list
+
+    return []
+
+
+def _parse_work_minutes(value):
+    if value in (None, ''):
+        return 0
+
+    if isinstance(value, (int, float)):
+        return max(0, int(float(value)))
+
+    raw = str(value).strip()
+    if not raw:
+        return 0
+
+    if ':' in raw:
+        parts = raw.split(':')
+        if len(parts) >= 2:
+            try:
+                hour_val = int(parts[0])
+                min_val = int(parts[1])
+                return max(0, (hour_val * 60) + min_val)
+            except (TypeError, ValueError):
+                return 0
+
+    return max(0, _safe_int(raw, 0))
+
+
+def _presence_source_key(presence_id, user_id, presence_date, check_in_at, check_out_at, status):
+    normalized_presence_id = str(presence_id or '').strip()
+    if normalized_presence_id:
+        return f"id:{normalized_presence_id}"[:255]
+
+    signature = "|".join([
+        str(user_id or '').strip(),
+        str(presence_date or '').strip(),
+        str(check_in_at or '').strip(),
+        str(check_out_at or '').strip(),
+        str(status or '').strip()
+    ])
+    return f"sig:{signature}"[:255]
+
+
+def _minutes_between(start_dt, end_dt):
+    start_raw = _normalize_datetime_string(start_dt)
+    end_raw = _normalize_datetime_string(end_dt)
+    if not start_raw or not end_raw:
+        return 0
+    try:
+        start_obj = datetime.strptime(start_raw, '%Y-%m-%d %H:%M:%S')
+        end_obj = datetime.strptime(end_raw, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        return 0
+    diff_minutes = int((end_obj - start_obj).total_seconds() // 60)
+    return max(0, diff_minutes)
+
+
+def _normalize_presence_record(raw_record, fallback_company_id=None):
+    if not isinstance(raw_record, dict):
+        return None
+
+    presence_id = str(_deep_get(raw_record, ['id', 'presence_id', 'attendance_id'], '') or '').strip()
+    user_id = str(_deep_get(raw_record, ['user_id', 'employee_id', 'user.id', 'employee.id'], '') or '').strip()
+    creator_name = str(_deep_get(raw_record, ['creator', 'creator_name', 'user_name', 'employee_name', 'name', 'user.name', 'employee.name'], '') or '').strip()
+    user_name = creator_name or str(_deep_get(raw_record, ['user_name', 'employee_name', 'name', 'user.name', 'employee.name'], '') or '').strip()
+    store_name = str(_deep_get(raw_record, ['store', 'store_name', 'branch', 'location', 'store.name'], '') or '').strip()
+    shift_name = str(_deep_get(raw_record, ['shift_name', 'shift.name'], '') or '').strip()
+    shift_start_time = str(_deep_get(raw_record, ['shift_start_time', 'shift.start_time'], '') or '').strip()
+    shift_end_time = str(_deep_get(raw_record, ['shift_end_time', 'shift.end_time'], '') or '').strip()
+    shift_duration_hours = _safe_int(_deep_get(raw_record, ['shift_duration', 'shift.duration', 'shift_hours']), 0)
+    presence_date = _normalize_iso_date(_deep_get(raw_record, ['presence_date', 'date', 'attendance_date', 'work_date']))
+    check_in_at = _normalize_datetime_string(_deep_get(raw_record, ['check_in_at', 'check_in', 'clock_in', 'in_time']))
+    check_out_at = _normalize_datetime_string(_deep_get(raw_record, ['check_out_at', 'check_out', 'clock_out', 'out_time']))
+    status = str(_deep_get(raw_record, ['status', 'attendance_status', 'state'], '') or '').strip()
+    source_created_at = _normalize_datetime_string(_deep_get(raw_record, ['created_at', 'inserted_at']))
+    source_updated_at = _normalize_datetime_string(_deep_get(raw_record, ['updated_at', 'last_updated_at', 'modified_at']))
+    company_id = str(_deep_get(raw_record, ['company_id', 'company.id'], fallback_company_id or '') or '').strip() or None
+
+    if not presence_date and check_in_at:
+        presence_date = check_in_at[:10]
+    if not presence_date and check_out_at:
+        presence_date = check_out_at[:10]
+    if not presence_date and source_created_at:
+        presence_date = source_created_at[:10]
+
+    if not user_id and not user_name and not creator_name and not presence_date and not check_in_at and not check_out_at:
+        return None
+
+    work_minutes_raw = _deep_get(raw_record, ['work_minutes', 'working_minutes', 'duration_minutes', 'work_duration'])
+    if work_minutes_raw in (None, ''):
+        if shift_duration_hours > 0:
+            work_minutes = shift_duration_hours * 60
+        else:
+            work_minutes = _minutes_between(check_in_at, check_out_at)
+    else:
+        work_minutes = _parse_work_minutes(work_minutes_raw)
+
+    if not status:
+        if check_in_at and check_out_at:
+            status = 'present'
+        elif check_in_at:
+            status = 'checked_in'
+        elif check_out_at:
+            status = 'checked_out'
+
+    source_key = _presence_source_key(presence_id, user_id, presence_date, check_in_at, check_out_at, status)
+
+    return {
+        'source_key': source_key,
+        'sagansa_presence_id': presence_id or None,
+        'sagansa_user_id': user_id or None,
+        'user_name': user_name or None,
+        'presence_date': presence_date,
+        'check_in_at': check_in_at,
+        'check_out_at': check_out_at,
+        'status': status or None,
+        'creator_name': creator_name or user_name or None,
+        'store_name': store_name or None,
+        'shift_name': shift_name or None,
+        'shift_start_time': shift_start_time or None,
+        'shift_end_time': shift_end_time or None,
+        'shift_duration_hours': shift_duration_hours,
+        'work_minutes': work_minutes,
+        'source_created_at': source_created_at,
+        'source_updated_at': source_updated_at,
+        'company_id': company_id,
+        'raw_payload': _safe_json_dumps(raw_record)
+    }
+
+
+def _ensure_payroll_presences_table(conn):
+    if conn.dialect.name == 'sqlite':
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS payroll_presences (
+                id TEXT PRIMARY KEY,
+                source_key TEXT NOT NULL UNIQUE,
+                sagansa_presence_id TEXT,
+                sagansa_user_id TEXT,
+                user_name TEXT,
+                creator_name TEXT,
+                store_name TEXT,
+                shift_name TEXT,
+                shift_start_time TEXT,
+                shift_end_time TEXT,
+                shift_duration_hours INTEGER NOT NULL DEFAULT 0,
+                presence_date DATE,
+                check_in_at DATETIME,
+                check_out_at DATETIME,
+                status TEXT,
+                work_minutes INTEGER NOT NULL DEFAULT 0,
+                company_id TEXT,
+                source_created_at DATETIME,
+                source_updated_at DATETIME,
+                raw_payload TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_payroll_presences_date ON payroll_presences (presence_date)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_payroll_presences_user ON payroll_presences (sagansa_user_id)"))
+    else:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS payroll_presences (
+                id VARCHAR(64) PRIMARY KEY,
+                source_key VARCHAR(255) NOT NULL UNIQUE,
+                sagansa_presence_id VARCHAR(128) NULL,
+                sagansa_user_id VARCHAR(128) NULL,
+                user_name VARCHAR(255) NULL,
+                creator_name VARCHAR(255) NULL,
+                store_name VARCHAR(255) NULL,
+                shift_name VARCHAR(255) NULL,
+                shift_start_time VARCHAR(16) NULL,
+                shift_end_time VARCHAR(16) NULL,
+                shift_duration_hours INT NOT NULL DEFAULT 0,
+                presence_date DATE NULL,
+                check_in_at DATETIME NULL,
+                check_out_at DATETIME NULL,
+                status VARCHAR(64) NULL,
+                work_minutes INT NOT NULL DEFAULT 0,
+                company_id VARCHAR(64) NULL,
+                source_created_at DATETIME NULL,
+                source_updated_at DATETIME NULL,
+                raw_payload LONGTEXT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_payroll_presences_date (presence_date),
+                INDEX idx_payroll_presences_user (sagansa_user_id)
+            )
+        """))
+
+    # Backfill columns for older table versions.
+    existing_columns = _table_columns(conn, 'payroll_presences')
+    if conn.dialect.name == 'sqlite':
+        missing_defs = {
+            'creator_name': "ALTER TABLE payroll_presences ADD COLUMN creator_name TEXT",
+            'store_name': "ALTER TABLE payroll_presences ADD COLUMN store_name TEXT",
+            'shift_name': "ALTER TABLE payroll_presences ADD COLUMN shift_name TEXT",
+            'shift_start_time': "ALTER TABLE payroll_presences ADD COLUMN shift_start_time TEXT",
+            'shift_end_time': "ALTER TABLE payroll_presences ADD COLUMN shift_end_time TEXT",
+            'shift_duration_hours': "ALTER TABLE payroll_presences ADD COLUMN shift_duration_hours INTEGER NOT NULL DEFAULT 0",
+            'source_created_at': "ALTER TABLE payroll_presences ADD COLUMN source_created_at DATETIME"
+        }
+    else:
+        missing_defs = {
+            'creator_name': "ALTER TABLE payroll_presences ADD COLUMN creator_name VARCHAR(255) NULL",
+            'store_name': "ALTER TABLE payroll_presences ADD COLUMN store_name VARCHAR(255) NULL",
+            'shift_name': "ALTER TABLE payroll_presences ADD COLUMN shift_name VARCHAR(255) NULL",
+            'shift_start_time': "ALTER TABLE payroll_presences ADD COLUMN shift_start_time VARCHAR(16) NULL",
+            'shift_end_time': "ALTER TABLE payroll_presences ADD COLUMN shift_end_time VARCHAR(16) NULL",
+            'shift_duration_hours': "ALTER TABLE payroll_presences ADD COLUMN shift_duration_hours INT NOT NULL DEFAULT 0",
+            'source_created_at': "ALTER TABLE payroll_presences ADD COLUMN source_created_at DATETIME NULL"
+        }
+
+    for column_name, alter_sql in missing_defs.items():
+        if column_name not in existing_columns:
+            conn.execute(text(alter_sql))
+
+
+def _fetch_remote_presences(api_url, token, query_params=None):
+    params = {k: v for k, v in (query_params or {}).items() if v not in (None, '')}
+    url = str(api_url or '').strip()
+    if not url:
+        raise RuntimeError('Presence API URL is required')
+
+    # Tolerate common typo such as "ttps://..."
+    if url.startswith('ttps://'):
+        url = f"https://{url[len('ttps://'):]}"
+    elif url.startswith('//'):
+        url = f"https:{url}"
+    elif not (url.startswith('https://') or url.startswith('http://')):
+        url = f"https://{url.lstrip('/')}"
+
+    if params:
+        separator = '&' if '?' in url else '?'
+        url = f"{url}{separator}{urlparse.urlencode(params)}"
+
+    headers = {'Accept': 'application/json'}
+    if token:
+        headers['Authorization'] = f"Bearer {token}"
+
+    req = urlrequest.Request(url, headers=headers, method='GET')
+    try:
+        with urlrequest.urlopen(req, timeout=60) as resp:
+            raw_body = resp.read().decode('utf-8')
+        return json.loads(raw_body)
+    except urlerror.HTTPError as e:
+        err_body = e.read().decode('utf-8', errors='ignore')
+        raise RuntimeError(f"Presence API request failed ({e.code}): {err_body[:500]}")
+    except urlerror.URLError as e:
+        raise RuntimeError(f"Presence API connection failed: {e.reason}")
+    except json.JSONDecodeError:
+        raise RuntimeError('Presence API did not return valid JSON')
+
+
 @transaction_bp.route('/api/transactions/manual', methods=['POST'])
 def create_manual_transaction():
     engine, error_msg = get_db_engine()
@@ -574,7 +913,7 @@ def get_marks():
                 marks_dict[d['id']] = d
 
             mapping_query = text("""
-                SELECT mcm.mark_id, mcm.mapping_type, coa.code, coa.name
+                SELECT mcm.mark_id, mcm.coa_id, mcm.mapping_type, coa.code, coa.name
                 FROM mark_coa_mapping mcm
                 JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
             """)
@@ -585,6 +924,8 @@ def get_marks():
                 mark_id = m['mark_id']
                 if mark_id in marks_dict:
                     marks_dict[mark_id]['mappings'].append({
+                        'id': m['coa_id'],
+                        'coa_id': m['coa_id'],
                         'code': m['code'],
                         'name': m['name'],
                         'type': m['mapping_type']
@@ -1086,6 +1427,354 @@ def update_service_transaction_tax_config(txn_id):
             'service_tax_payment_date': tax_payment_date,
             'service_tax_rate': rate
         })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/payroll/presences/sync', methods=['POST'])
+def sync_payroll_presences():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    payload = request.json or {}
+    api_url = str(payload.get('api_url') or payload.get('apiUrl') or DEFAULT_PRESENCE_API_URL).strip()
+    token = str(
+        payload.get('token')
+        or payload.get('access_token')
+        or payload.get('api_token')
+        or DEFAULT_PRESENCE_API_TOKEN
+        or ''
+    ).strip()
+    company_id = str(payload.get('company_id') or '').strip() or None
+
+    year = _normalize_year(payload.get('year'))
+    month = _normalize_month(payload.get('month'))
+    start_date = _normalize_iso_date(payload.get('start_date') or payload.get('date_start'))
+    end_date = _normalize_iso_date(payload.get('end_date') or payload.get('date_end'))
+
+    if payload.get('year') not in (None, '') and year is None:
+        return jsonify({'error': 'year must be numeric (1900-3000)'}), 400
+    if payload.get('month') not in (None, '') and month is None:
+        return jsonify({'error': 'month must be numeric (1-12)'}), 400
+    if (payload.get('start_date') or payload.get('date_start')) and not start_date:
+        return jsonify({'error': 'start_date/date_start must be YYYY-MM-DD'}), 400
+    if (payload.get('end_date') or payload.get('date_end')) and not end_date:
+        return jsonify({'error': 'end_date/date_end must be YYYY-MM-DD'}), 400
+    if not token:
+        return jsonify({'error': 'Presence API token is required (payload.token or env SAGANSA_PRESENCE_TOKEN)'}), 400
+
+    remote_params = {}
+    if year is not None:
+        remote_params['year'] = year
+    if month is not None:
+        remote_params['month'] = month
+    if start_date:
+        remote_params['start_date'] = start_date
+    if end_date:
+        remote_params['end_date'] = end_date
+
+    try:
+        api_payload = _fetch_remote_presences(api_url, token, remote_params)
+        records = _extract_presence_records(api_payload)
+
+        now = datetime.now()
+        inserted = 0
+        updated = 0
+        skipped = 0
+
+        with engine.begin() as conn:
+            _ensure_payroll_presences_table(conn)
+
+            if conn.dialect.name == 'sqlite':
+                upsert_query = text("""
+                    INSERT INTO payroll_presences (
+                        id, source_key, sagansa_presence_id, sagansa_user_id, user_name, creator_name, store_name,
+                        shift_name, shift_start_time, shift_end_time, shift_duration_hours, presence_date,
+                        check_in_at, check_out_at, status, work_minutes, company_id, source_created_at, source_updated_at, raw_payload, created_at, updated_at
+                    ) VALUES (
+                        :id, :source_key, :sagansa_presence_id, :sagansa_user_id, :user_name, :creator_name, :store_name,
+                        :shift_name, :shift_start_time, :shift_end_time, :shift_duration_hours, :presence_date,
+                        :check_in_at, :check_out_at, :status, :work_minutes, :company_id, :source_created_at, :source_updated_at, :raw_payload, :created_at, :updated_at
+                    )
+                    ON CONFLICT(source_key) DO UPDATE SET
+                        sagansa_presence_id = excluded.sagansa_presence_id,
+                        sagansa_user_id = excluded.sagansa_user_id,
+                        user_name = excluded.user_name,
+                        creator_name = excluded.creator_name,
+                        store_name = excluded.store_name,
+                        shift_name = excluded.shift_name,
+                        shift_start_time = excluded.shift_start_time,
+                        shift_end_time = excluded.shift_end_time,
+                        shift_duration_hours = excluded.shift_duration_hours,
+                        presence_date = excluded.presence_date,
+                        check_in_at = excluded.check_in_at,
+                        check_out_at = excluded.check_out_at,
+                        status = excluded.status,
+                        work_minutes = excluded.work_minutes,
+                        company_id = excluded.company_id,
+                        source_created_at = excluded.source_created_at,
+                        source_updated_at = excluded.source_updated_at,
+                        raw_payload = excluded.raw_payload,
+                        updated_at = excluded.updated_at
+                """)
+            else:
+                upsert_query = text("""
+                    INSERT INTO payroll_presences (
+                        id, source_key, sagansa_presence_id, sagansa_user_id, user_name, creator_name, store_name,
+                        shift_name, shift_start_time, shift_end_time, shift_duration_hours, presence_date,
+                        check_in_at, check_out_at, status, work_minutes, company_id, source_created_at, source_updated_at, raw_payload, created_at, updated_at
+                    ) VALUES (
+                        :id, :source_key, :sagansa_presence_id, :sagansa_user_id, :user_name, :creator_name, :store_name,
+                        :shift_name, :shift_start_time, :shift_end_time, :shift_duration_hours, :presence_date,
+                        :check_in_at, :check_out_at, :status, :work_minutes, :company_id, :source_created_at, :source_updated_at, :raw_payload, :created_at, :updated_at
+                    )
+                    ON DUPLICATE KEY UPDATE
+                        sagansa_presence_id = VALUES(sagansa_presence_id),
+                        sagansa_user_id = VALUES(sagansa_user_id),
+                        user_name = VALUES(user_name),
+                        creator_name = VALUES(creator_name),
+                        store_name = VALUES(store_name),
+                        shift_name = VALUES(shift_name),
+                        shift_start_time = VALUES(shift_start_time),
+                        shift_end_time = VALUES(shift_end_time),
+                        shift_duration_hours = VALUES(shift_duration_hours),
+                        presence_date = VALUES(presence_date),
+                        check_in_at = VALUES(check_in_at),
+                        check_out_at = VALUES(check_out_at),
+                        status = VALUES(status),
+                        work_minutes = VALUES(work_minutes),
+                        company_id = VALUES(company_id),
+                        source_created_at = VALUES(source_created_at),
+                        source_updated_at = VALUES(source_updated_at),
+                        raw_payload = VALUES(raw_payload),
+                        updated_at = VALUES(updated_at)
+                """)
+
+            for record in records:
+                normalized = _normalize_presence_record(record, fallback_company_id=company_id)
+                if not normalized:
+                    skipped += 1
+                    continue
+
+                existing = conn.execute(text("""
+                    SELECT id
+                    FROM payroll_presences
+                    WHERE source_key = :source_key
+                    LIMIT 1
+                """), {'source_key': normalized['source_key']}).fetchone()
+
+                row_id = str(existing.id) if existing and getattr(existing, 'id', None) else str(uuid.uuid4())
+                params = {
+                    'id': row_id,
+                    'source_key': normalized['source_key'],
+                    'sagansa_presence_id': normalized['sagansa_presence_id'],
+                    'sagansa_user_id': normalized['sagansa_user_id'],
+                    'user_name': normalized['user_name'],
+                    'creator_name': normalized['creator_name'],
+                    'store_name': normalized['store_name'],
+                    'shift_name': normalized['shift_name'],
+                    'shift_start_time': normalized['shift_start_time'],
+                    'shift_end_time': normalized['shift_end_time'],
+                    'shift_duration_hours': normalized['shift_duration_hours'],
+                    'presence_date': normalized['presence_date'],
+                    'check_in_at': normalized['check_in_at'],
+                    'check_out_at': normalized['check_out_at'],
+                    'status': normalized['status'],
+                    'work_minutes': normalized['work_minutes'],
+                    'company_id': normalized['company_id'],
+                    'source_created_at': normalized['source_created_at'],
+                    'source_updated_at': normalized['source_updated_at'],
+                    'raw_payload': normalized['raw_payload'],
+                    'created_at': now,
+                    'updated_at': now
+                }
+
+                conn.execute(upsert_query, params)
+                if existing:
+                    updated += 1
+                else:
+                    inserted += 1
+
+        return jsonify({
+            'message': 'Payroll presences synced successfully',
+            'fetched': len(records),
+            'inserted': inserted,
+            'updated': updated,
+            'skipped': skipped
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@transaction_bp.route('/api/payroll/presences', methods=['GET'])
+def get_payroll_presences():
+    engine, error_msg = get_db_engine()
+    if engine is None:
+        return jsonify({'error': error_msg}), 500
+
+    company_id = str(request.args.get('company_id') or '').strip() or None
+    user_id = str(request.args.get('user_id') or '').strip() or None
+    search = str(request.args.get('search') or '').strip().lower()
+    year = _normalize_year(request.args.get('year'))
+    month = _normalize_month(request.args.get('month'))
+    date_start = _normalize_iso_date(request.args.get('date_start') or request.args.get('start_date'))
+    date_end = _normalize_iso_date(request.args.get('date_end') or request.args.get('end_date'))
+    limit = _safe_int(request.args.get('limit'), 300)
+    limit = min(max(limit, 1), 2000)
+
+    if request.args.get('year') not in (None, '') and year is None:
+        return jsonify({'error': 'year must be numeric (1900-3000)'}), 400
+    if request.args.get('month') not in (None, '') and month is None:
+        return jsonify({'error': 'month must be numeric (1-12)'}), 400
+    if (request.args.get('date_start') or request.args.get('start_date')) and not date_start:
+        return jsonify({'error': 'date_start/start_date must be YYYY-MM-DD'}), 400
+    if (request.args.get('date_end') or request.args.get('end_date')) and not date_end:
+        return jsonify({'error': 'date_end/end_date must be YYYY-MM-DD'}), 400
+
+    try:
+        with engine.connect() as conn:
+            _ensure_payroll_presences_table(conn)
+
+            where_clauses = []
+            params = {'limit': limit}
+
+            if company_id:
+                where_clauses.append("company_id = :company_id")
+                params['company_id'] = company_id
+            if user_id:
+                where_clauses.append("CAST(sagansa_user_id AS CHAR) = :user_id")
+                params['user_id'] = user_id
+            if year is not None:
+                if conn.dialect.name == 'sqlite':
+                    where_clauses.append("strftime('%Y', presence_date) = :year_str")
+                    params['year_str'] = str(year)
+                else:
+                    where_clauses.append("YEAR(presence_date) = :year")
+                    params['year'] = year
+            if month is not None:
+                if conn.dialect.name == 'sqlite':
+                    where_clauses.append("strftime('%m', presence_date) = :month_str")
+                    params['month_str'] = f"{month:02d}"
+                else:
+                    where_clauses.append("MONTH(presence_date) = :month")
+                    params['month'] = month
+            if date_start:
+                where_clauses.append("presence_date >= :date_start")
+                params['date_start'] = date_start
+            if date_end:
+                where_clauses.append("presence_date <= :date_end")
+                params['date_end'] = date_end
+            if search:
+                where_clauses.append("""
+                    (
+                        LOWER(COALESCE(CAST(user_name AS CHAR), '')) LIKE :search
+                        OR LOWER(COALESCE(CAST(creator_name AS CHAR), '')) LIKE :search
+                        OR LOWER(COALESCE(CAST(store_name AS CHAR), '')) LIKE :search
+                        OR LOWER(COALESCE(CAST(shift_name AS CHAR), '')) LIKE :search
+                        OR LOWER(COALESCE(CAST(sagansa_user_id AS CHAR), '')) LIKE :search
+                        OR LOWER(COALESCE(CAST(status AS CHAR), '')) LIKE :search
+                    )
+                """)
+                params['search'] = f"%{search}%"
+
+            where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+            query = text(f"""
+                SELECT
+                    id,
+                    source_key,
+                    sagansa_presence_id,
+                    sagansa_user_id,
+                    user_name,
+                    creator_name,
+                    store_name,
+                    shift_name,
+                    shift_start_time,
+                    shift_end_time,
+                    shift_duration_hours,
+                    presence_date,
+                    check_in_at,
+                    check_out_at,
+                    status,
+                    work_minutes,
+                    company_id,
+                    source_created_at,
+                    source_updated_at,
+                    raw_payload,
+                    created_at,
+                    updated_at
+                FROM payroll_presences
+                {where_sql}
+                ORDER BY presence_date DESC, check_in_at DESC, created_at DESC
+                LIMIT :limit
+            """)
+            result = conn.execute(query, params)
+
+            rows = []
+            for row in result:
+                d = dict(row._mapping)
+                for key, value in d.items():
+                    if isinstance(value, datetime):
+                        d[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                    elif isinstance(value, date):
+                        d[key] = value.strftime('%Y-%m-%d')
+                    elif isinstance(value, Decimal):
+                        d[key] = float(value)
+                d['work_minutes'] = _safe_int(d.get('work_minutes'), 0)
+                rows.append(d)
+
+            data_rows = []
+            for d in rows:
+                raw_payload = {}
+                raw_payload_text = d.get('raw_payload')
+                if raw_payload_text:
+                    try:
+                        parsed_payload = json.loads(raw_payload_text)
+                        if isinstance(parsed_payload, dict):
+                            raw_payload = parsed_payload
+                    except (TypeError, ValueError):
+                        raw_payload = {}
+
+                fallback_creator = str(_deep_get(raw_payload, ['creator', 'creator_name', 'user_name', 'employee_name', 'name']) or '').strip() or None
+                fallback_store = str(_deep_get(raw_payload, ['store', 'store_name', 'branch', 'location']) or '').strip() or None
+                fallback_shift_name = str(_deep_get(raw_payload, ['shift_name', 'shift.name']) or '').strip() or None
+                fallback_shift_start = str(_deep_get(raw_payload, ['shift_start_time', 'shift.start_time']) or '').strip() or None
+                fallback_shift_end = str(_deep_get(raw_payload, ['shift_end_time', 'shift.end_time']) or '').strip() or None
+                fallback_shift_duration = _safe_int(_deep_get(raw_payload, ['shift_duration', 'shift.duration', 'shift_hours']), 0)
+                fallback_check_in = _normalize_datetime_string(_deep_get(raw_payload, ['check_in', 'check_in_at', 'clock_in', 'in_time']))
+                fallback_check_out = _normalize_datetime_string(_deep_get(raw_payload, ['check_out', 'check_out_at', 'clock_out', 'out_time']))
+                fallback_created = _normalize_datetime_string(_deep_get(raw_payload, ['created_at', 'inserted_at']))
+                fallback_updated = _normalize_datetime_string(_deep_get(raw_payload, ['updated_at', 'modified_at', 'last_updated_at']))
+
+                source_presence_id = d.get('sagansa_presence_id')
+                normalized_id = _safe_int(source_presence_id, 0) if str(source_presence_id or '').isdigit() else (source_presence_id or d.get('source_key') or d.get('id'))
+                work_minutes = _safe_int(d.get('work_minutes'), 0)
+                shift_duration = _safe_int(d.get('shift_duration_hours'), 0)
+                if shift_duration <= 0 and fallback_shift_duration > 0:
+                    shift_duration = fallback_shift_duration
+                if shift_duration <= 0 and work_minutes > 0:
+                    shift_duration = max(1, round(work_minutes / 60))
+
+                data_rows.append({
+                    'id': normalized_id,
+                    'creator': d.get('creator_name') or d.get('user_name') or fallback_creator,
+                    'store': d.get('store_name') or fallback_store,
+                    'shift_name': d.get('shift_name') or fallback_shift_name,
+                    'shift_start_time': d.get('shift_start_time') or fallback_shift_start,
+                    'shift_end_time': d.get('shift_end_time') or fallback_shift_end,
+                    'shift_duration': shift_duration,
+                    'check_in': d.get('check_in_at') or fallback_check_in,
+                    'check_out': d.get('check_out_at') or fallback_check_out,
+                    'created_at': d.get('source_created_at') or d.get('created_at') or fallback_created,
+                    'updated_at': d.get('source_updated_at') or d.get('updated_at') or fallback_updated
+                })
+
+            return jsonify({
+                'success': True,
+                'data': data_rows,
+                'presences': data_rows,
+                'count': len(data_rows)
+            })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

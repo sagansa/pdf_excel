@@ -69,9 +69,23 @@
                     </span>
                  </td>
                  <td class="text-xs">{{ t.bank_code }}</td>
-                 <td class="text-xs truncate max-w-[180px]" :title="coaDisplayText(t)">
-                      {{ coaDisplayText(t) }}
-                      <span v-if="t.coas && t.coas.length > 1" class="ml-1 bg-indigo-100 text-indigo-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">+{{ t.coas.length - 1 }}</span>
+                 <td class="text-xs max-w-[240px]" :title="coaTitleText(t)">
+                      <div v-if="visibleCoas(t).length > 0" class="flex flex-wrap gap-1">
+                          <span
+                              v-for="coa in visibleCoas(t)"
+                              :key="coa.key"
+                              class="inline-flex items-center px-1.5 py-0.5 rounded-md border border-indigo-100 bg-indigo-50 text-indigo-700 text-[10px] font-semibold"
+                          >
+                              {{ coa.label }}
+                          </span>
+                          <span
+                              v-if="hiddenCoaCount(t) > 0"
+                              class="inline-flex items-center px-1.5 py-0.5 rounded-md border border-gray-200 bg-gray-50 text-gray-600 text-[10px] font-semibold"
+                          >
+                              +{{ hiddenCoaCount(t) }}
+                          </span>
+                      </div>
+                      <span v-else class="text-[10px] text-gray-400 italic">No COA mapping</span>
                   </td>
                   <td class="min-w-[150px]" @click.stop>
                       <div class="flex items-center gap-2">
@@ -83,9 +97,13 @@
                               placeholder="-- Unmarked --"
                               @update:model-value="onMarkSelected(t.id, $event)"
                           />
-                          <div v-else class="text-[10px] text-indigo-700 font-bold px-2 py-1 bg-indigo-50 rounded-md flex-1 flex items-center gap-1.5 border border-indigo-100">
+                          <div
+                              v-else
+                              class="text-[10px] font-bold px-2 py-1 rounded-md flex-1 flex items-center gap-1.5 border"
+                              :class="t.is_multi_marked ? 'text-indigo-700 bg-indigo-50 border-indigo-100' : 'text-amber-700 bg-amber-50 border-amber-100'"
+                          >
                              <i class="bi bi-stack"></i>
-                             Mixed Marks
+                             {{ t.is_multi_marked ? 'Mixed Marks' : 'Split (No Active Mark)' }}
                           </div>
                            <button
                                @click.stop="$emit('split-transaction', t)"
@@ -351,14 +369,41 @@ const formatAmount = (val) => {
     return new Intl.NumberFormat('id-ID').format(num || 0);
 };
 
-const coaDisplayText = (txn) => {
-    if (!txn.coas || txn.coas.length === 0) {
-        return '';
+const normalizeCoaKey = (coa) => {
+    return `${coa?.coa_id || coa?.id || ''}-${coa?.code || ''}-${coa?.name || ''}-${coa?.type || ''}`;
+};
+
+const coaRows = (txn) => {
+    const list = Array.isArray(txn?.coas) ? txn.coas : [];
+    const uniq = new Set();
+    const rows = [];
+
+    for (const coa of list) {
+        const key = normalizeCoaKey(coa);
+        if (!key || uniq.has(key)) continue;
+        uniq.add(key);
+
+        const code = coa?.code || '';
+        const name = coa?.name || '';
+        const label = code && name ? `${code} - ${name}` : (code || name || '-');
+        rows.push({ key, label });
     }
-    const firstCoa = txn.coas[0];
-    if (txn.coas.length === 1) {
-        return `${firstCoa.code} - ${firstCoa.name}`;
-    }
-    return `${firstCoa.code} - ${firstCoa.name} ...`;
+
+    return rows;
+};
+
+const visibleCoas = (txn) => {
+    return coaRows(txn).slice(0, 3);
+};
+
+const hiddenCoaCount = (txn) => {
+    const total = coaRows(txn).length;
+    return total > 3 ? total - 3 : 0;
+};
+
+const coaTitleText = (txn) => {
+    const rows = coaRows(txn);
+    if (rows.length === 0) return 'No COA mapping';
+    return rows.map(r => r.label).join(', ');
 };
 </script>

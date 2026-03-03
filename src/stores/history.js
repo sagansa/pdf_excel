@@ -21,6 +21,19 @@ const normalizeDbCr = (value) => {
     return '';
 };
 
+const normalizeId = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+};
+
+const toNumeric = (value) => {
+    if (value === null || value === undefined || value === '') return 0;
+    if (typeof value === 'number') return value;
+    const cleaned = String(value).replace(/,/g, '');
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
 export const useHistoryStore = defineStore('history', {
   state: () => ({
     allTransactions: [],
@@ -55,7 +68,8 @@ export const useHistoryStore = defineStore('history', {
     sortConfig: { key: 'txn_date', direction: 'desc' },
 
     // Selection
-    selectedTxnIds: []
+    selectedTxnIds: [],
+    filterResetToken: 0
   }),
 
   getters: {
@@ -65,6 +79,7 @@ export const useHistoryStore = defineStore('history', {
         const { year, dateStart, dateEnd, bank, company, markStatus, coaIds, search, dbCr, amountMin, amountMax } = state.filters;
        const searchLower = (search || '').toLowerCase();
        const selectedDbCr = normalizeDbCr(dbCr);
+       const selectedCoaIds = new Set((coaIds || []).map(id => String(id)));
 
         result = result.filter(t => {
             const txnDate = t.txn_date ? t.txn_date.split(' ')[0] : '';
@@ -84,22 +99,28 @@ export const useHistoryStore = defineStore('history', {
             if (markStatus && markStatus.length > 0) {
                 const hasUnmarked = markStatus.includes('unmarked');
                 const hasMarked = markStatus.includes('marked');
+                const hasMissingMark = markStatus.includes('missing_mark');
+                const hasMultiMarked = markStatus.includes('multi_marked');
                 const specificMarks = markStatus
-                    .filter(m => m !== 'marked' && m !== 'unmarked')
+                    .filter(m => !['marked', 'unmarked', 'missing_mark', 'multi_marked'].includes(m))
                     .map(m => String(m));
 
-                const txnMarkId = t.mark_id ? String(t.mark_id) : '';
-                // Keep filter behavior identical to table renderer (HistoryTable uses v-if="!t.is_split")
-                const isMixedMark = Boolean(t.is_split);
-                const isUnmarkedTxn = !txnMarkId && !isMixedMark;
-                const isMarkedTxn = Boolean(txnMarkId) || isMixedMark;
+                const txnMarkId = normalizeId(t.mark_id);
+                const relatedMarkIds = Array.isArray(t.related_mark_ids)
+                    ? t.related_mark_ids.map(id => String(id))
+                    : (txnMarkId ? [txnMarkId] : []);
+                const isMissingMarkTxn = Boolean(t.has_missing_mark);
+                const isMultiMarkedTxn = Boolean(t.is_multi_marked);
+                const hasValidMarkTxn = Boolean(txnMarkId) && !isMissingMarkTxn;
+                const isUnmarkedTxn = (!txnMarkId || isMissingMarkTxn) && !isMultiMarkedTxn;
+                const isMarkedTxn = hasValidMarkTxn || isMultiMarkedTxn;
 
                 let matches = false;
 
                 // Exclusive modes should still continue evaluating other filters (search, amount, etc).
-                if (hasUnmarked && !hasMarked && specificMarks.length === 0) {
+                if (hasUnmarked && !hasMarked && !hasMissingMark && !hasMultiMarked && specificMarks.length === 0) {
                     matches = isUnmarkedTxn;
-                } else if (hasMarked && !hasUnmarked && specificMarks.length === 0) {
+                } else if (hasMarked && !hasUnmarked && !hasMissingMark && !hasMultiMarked && specificMarks.length === 0) {
                     matches = isMarkedTxn;
                 } else {
                     // Check if transaction matches any selected mark criteria
@@ -109,7 +130,13 @@ export const useHistoryStore = defineStore('history', {
                     if (hasMarked && isMarkedTxn) {
                         matches = true;
                     }
-                    if (specificMarks.length > 0 && txnMarkId && specificMarks.includes(txnMarkId)) {
+                    if (hasMissingMark && isMissingMarkTxn) {
+                        matches = true;
+                    }
+                    if (hasMultiMarked && isMultiMarkedTxn) {
+                        matches = true;
+                    }
+                    if (specificMarks.length > 0 && relatedMarkIds.some(id => specificMarks.includes(id))) {
                         matches = true;
                     }
                 }
@@ -119,7 +146,9 @@ export const useHistoryStore = defineStore('history', {
 
             // COA Filter (multi-select)
             if (coaIds && coaIds.length > 0) {
-                if (!t.coa_id || !coaIds.includes(t.coa_id)) return false;
+                const txnCoaIds = Array.isArray(t.coa_ids) ? t.coa_ids.map(id => String(id)) : [];
+                const hasMatchingCoa = txnCoaIds.some(id => selectedCoaIds.has(id));
+                if (!hasMatchingCoa) return false;
             }
 
             // Type Filter (DB/CR)
@@ -142,10 +171,18 @@ export const useHistoryStore = defineStore('history', {
                 const desc = (t.description || '').toLowerCase();
                 const amount = (t.amount || '').toString();
                 const compName = (t.company_name || '').toLowerCase();
+                const markText = `${t.internal_report || ''} ${t.personal_use || ''} ${t.tax_report || ''}`.toLowerCase();
+                const sourceFile = (t.source_file || '').toLowerCase();
+                const coaText = Array.isArray(t.coas)
+                    ? t.coas.map(coa => `${coa.code || ''} ${coa.name || ''}`).join(' ').toLowerCase()
+                    : '';
                 
                 if (!desc.includes(searchLower) && 
                     !amount.includes(searchLower) && 
-                    !compName.includes(searchLower)) {
+                    !compName.includes(searchLower) &&
+                    !markText.includes(searchLower) &&
+                    !sourceFile.includes(searchLower) &&
+                    !coaText.includes(searchLower)) {
                     return false;
                 }
             }
@@ -155,8 +192,12 @@ export const useHistoryStore = defineStore('history', {
        // Sort
        result.sort((a, b) => {
            const dir = state.sortConfig.direction === 'asc' ? 1 : -1;
-           const valA = a[state.sortConfig.key];
-           const valB = b[state.sortConfig.key];
+           const valA = state.sortConfig.key === 'amount'
+               ? toNumeric(a[state.sortConfig.key])
+               : a[state.sortConfig.key];
+           const valB = state.sortConfig.key === 'amount'
+               ? toNumeric(b[state.sortConfig.key])
+               : b[state.sortConfig.key];
            if (valA < valB) return -1 * dir;
            if (valA > valB) return 1 * dir;
            return 0;
@@ -297,6 +338,44 @@ export const useHistoryStore = defineStore('history', {
         ]);
 
         let transactions = txnRes.data.transactions || [];
+        const marks = markRes.data.marks || [];
+        const coas = coaRes.data.coa || [];
+        const marksById = new Map(
+            marks
+                .filter(mark => normalizeId(mark.id))
+                .map(mark => [normalizeId(mark.id), mark])
+        );
+        const coaIdByCode = new Map(
+            coas
+                .filter(coa => normalizeId(coa.code) && normalizeId(coa.id))
+                .map(coa => [normalizeId(coa.code), normalizeId(coa.id)])
+        );
+        const mapCoaMapping = (mapping = {}) => {
+            const code = normalizeId(mapping.code);
+            const name = mapping.name || '';
+            const type = normalizeId(mapping.type || mapping.mapping_type);
+            const coaId = normalizeId(mapping.coa_id || mapping.id) || coaIdByCode.get(code) || '';
+            return { id: coaId || '', coa_id: coaId || '', code, name, type };
+        };
+        const collectCoasFromMarkId = (markId, bucket, idSet, uniqSet) => {
+            const normalizedMarkId = normalizeId(markId);
+            if (!normalizedMarkId) return false;
+            const mark = marksById.get(normalizedMarkId);
+            if (!mark || !Array.isArray(mark.mappings)) return false;
+
+            for (const mapping of mark.mappings) {
+                const normalized = mapCoaMapping(mapping);
+                const uniqKey = `${normalized.coa_id}|${normalized.code}|${normalized.name}|${normalized.type}`;
+                if (uniqSet.has(uniqKey)) continue;
+                uniqSet.add(uniqKey);
+                bucket.push(normalized);
+                if (normalized.coa_id) {
+                    idSet.add(normalized.coa_id);
+                }
+            }
+
+            return true;
+        };
         
         // Debug: Check if parent_id is present in any transaction
         const sampleWithParent = transactions.find(t => t.parent_id);
@@ -307,10 +386,15 @@ export const useHistoryStore = defineStore('history', {
         
         // Get all parent IDs of split transactions
         const parentIds = new Set();
+        const childrenByParentId = new Map();
         for (const txn of transactions) {
-          const parentId = String(txn.parent_id || '').trim();
+          const parentId = normalizeId(txn.parent_id);
           if (parentId) {
             parentIds.add(parentId);
+            if (!childrenByParentId.has(parentId)) {
+                childrenByParentId.set(parentId, []);
+            }
+            childrenByParentId.get(parentId).push(txn);
           }
         }
         
@@ -318,16 +402,43 @@ export const useHistoryStore = defineStore('history', {
         
         // Mark transactions that have children
         for (const txn of transactions) {
-          const txnId = String(txn.id || '').trim();
+          const txnId = normalizeId(txn.id);
+          const txnMarkId = normalizeId(txn.mark_id);
           txn.is_split = txnId ? parentIds.has(txnId) : false;
+          txn.has_missing_mark = Boolean(txnMarkId) && !marksById.has(txnMarkId);
 
-          // Populate coas from mark mappings for display
-          if (txn.mark_id) {
-            const mark = (markRes.data.marks || []).find(m => m.id === txn.mark_id);
-            if (mark && mark.mappings) {
-              txn.coas = mark.mappings;
+          // Populate COA mappings from own mark + split child marks.
+          const resolvedCoas = [];
+          const resolvedCoaIds = new Set();
+          const uniqCoas = new Set();
+          const relatedMarkIds = new Set();
+
+          const hasOwnValidMark = collectCoasFromMarkId(txnMarkId, resolvedCoas, resolvedCoaIds, uniqCoas);
+          if (hasOwnValidMark) {
+              relatedMarkIds.add(txnMarkId);
+          }
+
+          let splitMarkedCount = 0;
+          if (txn.is_split) {
+            const children = childrenByParentId.get(txnId) || [];
+            for (const childTxn of children) {
+                const childMarkId = normalizeId(childTxn.mark_id);
+                const hasChildMark = collectCoasFromMarkId(childMarkId, resolvedCoas, resolvedCoaIds, uniqCoas);
+                if (hasChildMark) {
+                    splitMarkedCount += 1;
+                    relatedMarkIds.add(childMarkId);
+                }
             }
           }
+
+          if (txn.coa_id) {
+              resolvedCoaIds.add(normalizeId(txn.coa_id));
+          }
+
+          txn.coas = resolvedCoas;
+          txn.coa_ids = Array.from(resolvedCoaIds).filter(Boolean);
+          txn.related_mark_ids = Array.from(relatedMarkIds);
+          txn.is_multi_marked = txn.is_split && splitMarkedCount > 0;
 
           const normalizedDbCr = normalizeDbCr(txn.db_cr);
           if (normalizedDbCr) {
@@ -344,8 +455,8 @@ export const useHistoryStore = defineStore('history', {
 
         this.allTransactions = transactions;
         this.companies = compRes.data.companies || [];
-        this.marks = markRes.data.marks || [];
-        this.coaList = coaRes.data.coa || [];
+        this.marks = marks;
+        this.coaList = coas;
       } catch (err) {
         this.error = "Failed to load data";
         console.error(err);
@@ -389,6 +500,7 @@ export const useHistoryStore = defineStore('history', {
             amountMax: null
         };
         this.currentPage = 1;
+        this.filterResetToken += 1;
         this.saveFilters();
     },
 
@@ -444,7 +556,40 @@ export const useHistoryStore = defineStore('history', {
             await historyApi.assignMark(id, markId);
             // Optimistic update or refetch
             const txn = this.allTransactions.find(t => t.id === id);
-            if (txn) txn.mark_id = markId;
+            if (txn) {
+                const normalizedMarkId = normalizeId(markId);
+                const matchedMark = normalizedMarkId
+                    ? this.marks.find(m => normalizeId(m.id) === normalizedMarkId)
+                    : null;
+
+                txn.mark_id = normalizedMarkId || null;
+                txn.has_missing_mark = Boolean(normalizedMarkId) && !matchedMark;
+
+                if (matchedMark && Array.isArray(matchedMark.mappings)) {
+                    const coaIdByCode = new Map(
+                        (this.coaList || [])
+                            .filter(coa => normalizeId(coa.code) && normalizeId(coa.id))
+                            .map(coa => [normalizeId(coa.code), normalizeId(coa.id)])
+                    );
+                    txn.coas = matchedMark.mappings.map(mapping => {
+                        const code = normalizeId(mapping.code);
+                        const coaId = normalizeId(mapping.coa_id || mapping.id) || coaIdByCode.get(code) || '';
+                        return {
+                            ...mapping,
+                            id: coaId || mapping.id || '',
+                            coa_id: coaId
+                        };
+                    });
+                    txn.coa_ids = txn.coas
+                        .map(mapping => normalizeId(mapping.coa_id || mapping.id))
+                        .filter(Boolean);
+                    txn.related_mark_ids = [normalizeId(matchedMark.id)].filter(Boolean);
+                } else {
+                    txn.coas = [];
+                    txn.coa_ids = txn.coa_id ? [normalizeId(txn.coa_id)] : [];
+                    txn.related_mark_ids = [];
+                }
+            }
         } catch (e) {
             console.error(e);
             throw e;
