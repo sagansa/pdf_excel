@@ -121,6 +121,12 @@ export const historyApi = {
       npwp
     });
   },
+  getPayrollPresences(params = {}) {
+    return api.get('/payroll/presences', { params });
+  },
+  syncPayrollPresences(payload = {}) {
+    return api.post('/payroll/presences/sync', payload);
+  },
   getPayrollUsers(search = '', employeesOnly = false) {
     const params = {};
     if (search) params.search = search;
