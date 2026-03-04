@@ -88,9 +88,11 @@ export const useCoaStore = defineStore('coa', {
     },
 
     // Mark-COA Mapping actions
-    async fetchMarkMappings(markId) {
+    async fetchMarkMappings(markId, reportType = 'real') {
       try {
-        const response = await api.get(`/marks/${markId}/coa-mappings`);
+        const response = await api.get(`/marks/${markId}/coa-mappings`, {
+          params: { report_type: reportType }
+        });
         return response.data.mappings || [];
       } catch (err) {
         console.error(err);
@@ -98,12 +100,13 @@ export const useCoaStore = defineStore('coa', {
       }
     },
 
-    async createMapping(markId, coaId, mappingType, notes = null) {
+    async createMapping(markId, coaId, mappingType, notes = null, reportType = 'real') {
       try {
         const response = await api.post(`/marks/${markId}/coa-mappings`, {
           coa_id: coaId,
           mapping_type: mappingType,
-          notes
+          notes,
+          report_type: reportType
         });
         return response.data;
       } catch (err) {

@@ -52,10 +52,62 @@ def _split_parent_exclusion_clause(conn, alias='t'):
     return f" AND NOT EXISTS (SELECT 1 FROM transactions t_child WHERE t_child.parent_id = {alias}.id)"
 
 
-def _coretax_filter_clause(report_type='real', alias='m'):
+def _coretax_filter_clause(conn, report_type='real', alias='m'):
     if str(report_type).strip().lower() != 'coretax':
         return ""
+
+    mark_columns = _table_columns(conn, 'marks')
+    if 'is_coretax' in mark_columns:
+        if conn.dialect.name == 'sqlite':
+            return f" AND LOWER(COALESCE(CAST({alias}.is_coretax AS TEXT), '0')) IN ('1', 'true', 'yes', 'y')"
+        return f" AND LOWER(COALESCE(CAST({alias}.is_coretax AS CHAR), '0')) IN ('1', 'true', 'yes', 'y')"
+
     return f" AND ({alias}.tax_report IS NOT NULL AND TRIM({alias}.tax_report) != '')"
+
+
+def _mapping_report_type_expr(conn, alias, fallback='real'):
+    if conn.dialect.name == 'sqlite':
+        return f"LOWER(COALESCE(CAST({alias}.report_type AS TEXT), '{fallback}'))"
+    return f"LOWER(COALESCE(CAST({alias}.report_type AS CHAR), '{fallback}'))"
+
+
+def _mark_coa_join_clause(conn, report_type='real', mark_ref='m.id', mapping_alias='mcm', join_type='INNER'):
+    mapping_columns = _table_columns(conn, 'mark_coa_mapping')
+    normalized_report_type = str(report_type or 'real').strip().lower()
+    if normalized_report_type != 'coretax':
+        normalized_report_type = 'real'
+
+    if 'report_type' not in mapping_columns:
+        return f"{join_type} JOIN mark_coa_mapping {mapping_alias} ON {mapping_alias}.mark_id = {mark_ref}"
+
+    mapping_scope_expr = _mapping_report_type_expr(conn, mapping_alias, 'real')
+
+    if normalized_report_type == 'coretax':
+        fallback_alias = f"{mapping_alias}_coretax"
+        fallback_scope_expr = _mapping_report_type_expr(conn, fallback_alias, 'real')
+        return f"""
+        {join_type} JOIN mark_coa_mapping {mapping_alias}
+            ON {mapping_alias}.mark_id = {mark_ref}
+           AND (
+                {mapping_scope_expr} = 'coretax'
+                OR (
+                    {mapping_scope_expr} = 'real'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM mark_coa_mapping {fallback_alias}
+                        WHERE {fallback_alias}.mark_id = {mark_ref}
+                          AND {fallback_scope_expr} = 'coretax'
+                          AND UPPER(COALESCE({fallback_alias}.mapping_type, '')) = UPPER(COALESCE({mapping_alias}.mapping_type, ''))
+                    )
+                )
+           )
+        """
+
+    return f"""
+    {join_type} JOIN mark_coa_mapping {mapping_alias}
+        ON {mapping_alias}.mark_id = {mark_ref}
+       AND {mapping_scope_expr} = 'real'
+    """
 
 
 def _safe_identifier(value, fallback):
@@ -343,7 +395,14 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
             txn_year_clause = "YEAR(t.txn_date) <= :report_year"
     
         txn_company_clause = "AND t.company_id = :company_id" if company_id else ""
-        coretax_clause = _coretax_filter_clause(report_type, 'm')
+        coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
+        mark_coa_join = _mark_coa_join_clause(
+            conn,
+            report_type,
+            mark_ref='t.mark_id',
+            mapping_alias='mcm',
+            join_type='INNER'
+        )
         txn_query = text(f"""
             SELECT DISTINCT
                 t.id,
@@ -354,7 +413,7 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
                 ag.tarif_rate
             FROM transactions t
             INNER JOIN marks m ON t.mark_id = m.id
-            INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
+            {mark_coa_join}
             INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
             LEFT JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
             WHERE coa.code = '5314'
@@ -428,14 +487,8 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
 
 
 def _get_inventory_balance_with_carry(conn, year, company_id=None, report_type='real'):
-    if str(report_type).strip().lower() == 'coretax':
-        return {
-            'beginning_inventory_amount': 0.0,
-            'beginning_inventory_qty': 0.0,
-            'ending_inventory_amount': 0.0,
-            'ending_inventory_qty': 0.0
-        }
-
+    # Inventory balances are shared manual adjustments (not split by report_type),
+    # so Coretax should reuse the same values as Real.
     year = int(year)
     current_query = text("""
         SELECT beginning_inventory_amount, beginning_inventory_qty,
@@ -550,7 +603,8 @@ def _resolve_rent_expense_account(conn, company_id=None, templates=None):
     }
 def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_id=None, report_type='real'):
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
     txn_columns = _table_columns(conn, 'transactions')
     contract_filter = "AND t.rental_contract_id IS NULL" if 'rental_contract_id' in txn_columns else ""
 
@@ -570,7 +624,7 @@ def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_i
             ) AS total_amount
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
-        INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        {mark_coa_join}
         INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
         WHERE t.txn_date BETWEEN :start_date AND :end_date
           AND coa.category = 'EXPENSE'
@@ -619,7 +673,7 @@ def _calculate_prorated_contract_rent_expense(conn, start_date, end_date, compan
         return 0.0
 
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 'tpay')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
     total_amount_sql = "COALESCE(c.total_amount, 0)" if 'total_amount' in contract_columns else "0"
     method_sql = "COALESCE(c.calculation_method, 'BRUTO')" if 'calculation_method' in contract_columns else "'BRUTO'"
     rate_sql = "COALESCE(c.pph42_rate, 10)" if 'pph42_rate' in contract_columns else "10"
@@ -779,7 +833,7 @@ def _calculate_service_tax_payable_as_of(conn, as_of_date, company_id=None, repo
     timing_expr = "COALESCE(t.service_tax_payment_timing, 'same_period')" if 'service_tax_payment_timing' in txn_columns else "'same_period'"
     payment_date_expr = "t.service_tax_payment_date" if 'service_tax_payment_date' in txn_columns else "NULL"
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
 
     if conn.dialect.name == 'sqlite':
         mark_is_service_expr = "LOWER(COALESCE(CAST(m.is_service AS TEXT), '0')) IN ('1', 'true', 'yes', 'y')"
@@ -874,7 +928,8 @@ def _calculate_service_tax_adjustment_for_period(conn, start_date, end_date, com
     npwp_expr = "t.service_npwp" if 'service_npwp' in txn_columns else "NULL"
     method_expr = "COALESCE(t.service_calculation_method, 'BRUTO')" if 'service_calculation_method' in txn_columns else "'BRUTO'"
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
 
     if conn.dialect.name == 'sqlite':
         mark_is_service_expr = "LOWER(COALESCE(CAST(m.is_service AS TEXT), '0')) IN ('1', 'true', 'yes', 'y')"
@@ -905,7 +960,7 @@ def _calculate_service_tax_adjustment_for_period(conn, start_date, end_date, com
             {method_expr} AS service_calculation_method
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
-        INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        {mark_coa_join}
         INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
         WHERE ({service_where_clause})
           AND coa.category = 'EXPENSE'
@@ -981,7 +1036,7 @@ def _calculate_cumulative_rental_amortization_as_of(conn, as_of_date, company_id
         return 0.0
 
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 'tpay')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
 
     query = text(f"""
         SELECT
@@ -1071,7 +1126,7 @@ def _calculate_rental_tax_breakdown(conn, as_of_date, company_id=None, report_ty
         return result_default
 
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 'tpay')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
     total_amount_sql = "COALESCE(c.total_amount, 0)" if 'total_amount' in contract_columns else "0"
     method_sql = "COALESCE(c.calculation_method, 'BRUTO')" if 'calculation_method' in contract_columns else "'BRUTO'"
     rate_sql = "COALESCE(c.pph42_rate, 10)" if 'pph42_rate' in contract_columns else "10"
@@ -1167,7 +1222,7 @@ def _calculate_rental_tax_payable_as_of(conn, as_of_date, company_id=None, repor
         return 0.0
 
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 'tpay')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
     total_amount_sql = "COALESCE(c.total_amount, 0)" if 'total_amount' in contract_columns else "0"
     method_sql = "COALESCE(c.calculation_method, 'BRUTO')" if 'calculation_method' in contract_columns else "'BRUTO'"
     rate_sql = "COALESCE(c.pph42_rate, 10)" if 'pph42_rate' in contract_columns else "10"
@@ -1251,7 +1306,8 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
 
     # 1. Get asset, liability, and equity COA balances
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
     query = text(f"""
         WITH coa_balances AS (
             SELECT 
@@ -1276,7 +1332,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
                 ) as total_amount
             FROM transactions t
             INNER JOIN marks m ON t.mark_id = m.id
-            INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+            {mark_coa_join}
             WHERE t.txn_date <= :as_of_date
                 AND (:company_id IS NULL OR t.company_id = :company_id)
                 {split_exclusion_clause}
@@ -1745,7 +1801,14 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
         # Calculate non-manual accumulated depreciation from transactions (if enabled)
         if use_mark_based_amortization:
             split_exclusion_clause_txn = _split_parent_exclusion_clause(conn, 't')
-            coretax_clause_txn = _coretax_filter_clause(report_type, 'm')
+            coretax_clause_txn = _coretax_filter_clause(conn, report_type, 'm')
+            mark_coa_join_txn = _mark_coa_join_clause(
+                conn,
+                report_type,
+                mark_ref='t.mark_id',
+                mapping_alias='mcm',
+                join_type='INNER'
+            )
             txn_query = text(f"""
                 SELECT DISTINCT
                     t.id,
@@ -1757,7 +1820,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
                     ag.tarif_rate
                 FROM transactions t
                 INNER JOIN marks m ON t.mark_id = m.id
-                INNER JOIN mark_coa_mapping mcm ON t.mark_id = mcm.mark_id
+                {mark_coa_join_txn}
                 INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
                 INNER JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
                 WHERE coa.category = 'ASSET'
@@ -2090,7 +2153,8 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
     if split_exclusion_clause is None:
         split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
     if coretax_clause is None:
-        coretax_clause = _coretax_filter_clause(report_type, 'm')
+        coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
     
     query = text(f"""
         SELECT 
@@ -2129,7 +2193,7 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
             ) as signed_amount
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
-        INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        {mark_coa_join}
         INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
         WHERE t.txn_date BETWEEN :start_date AND :end_date
             AND coa.category IN ('REVENUE', 'EXPENSE')
@@ -2342,7 +2406,8 @@ def fetch_monthly_revenue_data(conn, year, company_id=None, report_type='real'):
     Used for Coretax summary.
     """
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
     query = text(f"""
         SELECT 
             MONTH(t.txn_date) as month_num,
@@ -2367,7 +2432,7 @@ def fetch_monthly_revenue_data(conn, year, company_id=None, report_type='real'):
             ) as total_amount
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
-        INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        {mark_coa_join}
         INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
         WHERE YEAR(t.txn_date) = :year
             AND coa.category = 'REVENUE'
@@ -2419,7 +2484,7 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
 
     txn_columns = _table_columns(conn, 'transactions')
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
     user_col_expr = "t.sagansa_user_id" if 'sagansa_user_id' in txn_columns else "NULL"
     effective_date_expr = "COALESCE(t.payroll_period_month, t.txn_date)" if 'payroll_period_month' in txn_columns else "t.txn_date"
     if conn.dialect.name == 'sqlite':
@@ -2554,7 +2619,8 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None, report_typ
       - unclassified: no mapping signal
     """
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(report_type, 'm')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT')
     section_names = {
         'operating': 'Operating Activities',
         'investing': 'Investing Activities',
@@ -2587,7 +2653,7 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None, report_typ
         FROM transactions t
         LEFT JOIN companies c ON t.company_id = c.id
         LEFT JOIN marks m ON t.mark_id = m.id
-        LEFT JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        {mark_coa_join}
         LEFT JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
         WHERE t.txn_date BETWEEN :start_date AND :end_date
           AND (:company_id IS NULL OR t.company_id = :company_id)

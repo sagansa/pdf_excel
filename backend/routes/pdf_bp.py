@@ -87,6 +87,44 @@ def check_password():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+
+@pdf_bp.route('/check_upload_name', methods=['POST', 'OPTIONS'])
+@pdf_bp.route('/api/check-upload-name', methods=['POST', 'OPTIONS'])
+def check_upload_name():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    try:
+        if request.is_json:
+            payload = request.get_json(silent=True) or {}
+            raw_name = payload.get('file_name', '')
+        else:
+            raw_name = request.form.get('file_name', '')
+
+        source_file = secure_filename(raw_name or '')
+        if not source_file:
+            return jsonify({'error': 'file_name is required'}), 400
+
+        engine, error_msg = get_db_engine()
+        if engine is None:
+            return jsonify({'error': error_msg or 'Database connection failed'}), 500
+
+        with engine.connect() as conn:
+            count_row = conn.execute(text("""
+                SELECT COUNT(1) AS cnt
+                FROM transactions
+                WHERE source_file = :source_file
+            """), {'source_file': source_file}).fetchone()
+            uploaded_count = int(count_row.cnt or 0) if count_row else 0
+
+        return jsonify({
+            'source_file': source_file,
+            'exists': uploaded_count > 0,
+            'count': uploaded_count
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 @pdf_bp.route('/convert_pdf', methods=['POST', 'OPTIONS'])
 @pdf_bp.route('/api/convert', methods=['POST', 'OPTIONS'])
 def convert_pdf():

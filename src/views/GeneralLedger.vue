@@ -46,67 +46,78 @@
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-6 py-6">
-      <!-- Filters -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <form @submit.prevent="loadGeneralLedger">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Company</label>
-              <select 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
-                v-model="filters.companyId" 
-                required
-              >
-                <option value="">-- Pilih Company --</option>
-                <option v-for="company in companies" :key="company.id" :value="company.id">
-                  {{ company.name || company.id }}
-                </option>
-              </select>
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
-              <input 
-                type="date" 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
-                v-model="filters.startDate" 
-                required
-              >
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Akhir</label>
-              <input 
-                type="date" 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
-                v-model="filters.endDate" 
-                required
-              >
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">COA Code (Opsional)</label>
-              <input 
-                type="text" 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
-                v-model="filters.coaCode" 
-                placeholder="Contoh: 1101"
-              >
-            </div>
-          </div>
-          
-          <div class="mt-4">
-            <button 
-              type="submit" 
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" 
-              :disabled="loading || !filters.companyId"
+      <!-- Report Navigation Tabs -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div class="border-b border-gray-200">
+          <nav class="flex -mb-px overflow-x-auto">
+            <button
+              @click="goToReports('income-statement')"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             >
-              <i class="bi bi-search" v-if="!loading"></i>
-              <div v-if="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              {{ loading ? 'Memuat...' : 'Tampilkan Laporan' }}
+              <i class="bi bi-file-earmark-bar-graph mr-2"></i>
+              Income Statement
             </button>
-          </div>
-        </form>
+            <button
+              @click="goToReports('monthly-revenue')"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            >
+              <i class="bi bi-calendar3 mr-2"></i>
+              Monthly Revenue
+            </button>
+            <button
+              @click="goToReports('balance-sheet')"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            >
+              <i class="bi bi-file-earmark-spreadsheet mr-2"></i>
+              Balance Sheet
+            </button>
+            <button
+              @click="goToReports('cash-flow')"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            >
+              <i class="bi bi-cash-stack mr-2"></i>
+              Cash Flow
+            </button>
+            <button
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap border-indigo-600 text-indigo-600"
+            >
+              <i class="bi bi-journal-text mr-2"></i>
+              GL
+            </button>
+            <button
+              @click="goToReports('payroll-summary')"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            >
+              <i class="bi bi-people mr-2"></i>
+              Payroll Summary
+            </button>
+            <button
+              @click="goToReports('marks-report')"
+              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            >
+              <i class="bi bi-tags mr-2"></i>
+              Marks Summary
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Shared Filters -->
+      <ReportFilters
+        v-model="reportStore.filters"
+        :available-years="reportStore.availableYears"
+        :companies="companyStore.companies"
+        :is-loading="loading"
+      />
+
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <label class="block text-xs font-medium text-gray-700 mb-1">COA Code (Opsional)</label>
+        <input
+          v-model="coaCode"
+          type="text"
+          placeholder="Contoh: 1101"
+          class="w-full md:w-80 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        />
       </div>
 
       <!-- Summary Cards -->
@@ -174,7 +185,7 @@
       <div v-if="!loading && (!ledgerData.coa_groups || ledgerData.coa_groups.length === 0)" 
            class="text-center py-12">
         <i class="bi bi-journal-x text-6xl text-gray-300"></i>
-        <p class="text-gray-500 mt-4">Belum ada data. Silakan pilih filter dan klik Tampilkan Laporan.</p>
+        <p class="text-gray-500 mt-4">Belum ada data untuk filter yang dipilih.</p>
       </div>
 
       <!-- Ledger Table -->
@@ -296,19 +307,28 @@
 </template>
 
 <script>
+import ReportFilters from '../components/reports/ReportFilters.vue';
+import { useReportsStore } from '../stores/reports';
+import { useCompanyStore } from '../stores/companies';
+
 export default {
   name: 'GeneralLedger',
+  components: {
+    ReportFilters
+  },
+  setup() {
+    const reportStore = useReportsStore();
+    const companyStore = useCompanyStore();
+    return { reportStore, companyStore };
+  },
   data() {
     return {
       loading: false,
-      companies: [],
       showExportMenu: false,
-      filters: {
-        companyId: '',
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0],
-        coaCode: ''
-      },
+      coaCode: '',
+      autoLoadTimer: null,
+      filterWatchStop: null,
+      companyWatchStop: null,
       ledgerData: {
         company_id: '',
         start_date: '',
@@ -320,96 +340,168 @@ export default {
         grand_total_credit: 0,
         is_balanced: true
       }
+    };
+  },
+  async mounted() {
+    await this.bootstrap();
+  },
+  beforeUnmount() {
+    if (this.autoLoadTimer) {
+      clearTimeout(this.autoLoadTimer);
+    }
+    if (this.filterWatchStop) {
+      this.filterWatchStop();
+    }
+    if (this.companyWatchStop) {
+      this.companyWatchStop();
     }
   },
-  mounted() {
-    this.loadCompanies()
-  },
   methods: {
-    async loadCompanies() {
-      try {
-        const response = await fetch('/api/companies')
-        const data = await response.json()
-        this.companies = data.companies || data || []
-        
-        if (this.companies.length === 1 && !this.filters.companyId) {
-          this.filters.companyId = this.companies[0].id
-        }
-      } catch (error) {
-        console.error('Error loading companies:', error)
-      }
+    goToReports(tab) {
+      this.$router.push({
+        name: 'reports',
+        query: { tab }
+      });
     },
-    
-    async loadGeneralLedger() {
-      if (!this.filters.companyId) {
-        alert('Pilih company terlebih dahulu')
-        return
+    getCurrentYear() {
+      return new Date().getFullYear();
+    },
+    getYearDateRange(year) {
+      const normalizedYear = String(year);
+      return {
+        year: normalizedYear,
+        startDate: `${normalizedYear}-01-01`,
+        endDate: `${normalizedYear}-12-31`,
+        asOfDate: `${normalizedYear}-12-31`
+      };
+    },
+    syncFiltersWithAvailableYears() {
+      const availableYears = (this.reportStore.availableYears || [])
+        .map((year) => parseInt(year, 10))
+        .filter((year) => !Number.isNaN(year))
+        .sort((a, b) => b - a);
+
+      const fallbackYear = availableYears.length > 0 ? availableYears[0] : this.getCurrentYear();
+      const selectedYear = parseInt(this.reportStore.filters.year, 10);
+      const shouldResetYear = Number.isNaN(selectedYear) || !availableYears.includes(selectedYear);
+      const targetYear = shouldResetYear ? fallbackYear : selectedYear;
+      const yearRange = this.getYearDateRange(targetYear);
+
+      this.reportStore.filters = {
+        ...this.reportStore.filters,
+        year: yearRange.year,
+        startDate: shouldResetYear || !this.reportStore.filters.startDate ? yearRange.startDate : this.reportStore.filters.startDate,
+        endDate: shouldResetYear || !this.reportStore.filters.endDate ? yearRange.endDate : this.reportStore.filters.endDate,
+        asOfDate: shouldResetYear || !this.reportStore.filters.asOfDate ? yearRange.asOfDate : this.reportStore.filters.asOfDate,
+        reportType: (this.reportStore.filters.reportType || 'real').toLowerCase()
+      };
+    },
+    scheduleAutoLoad() {
+      if (!this.reportStore.filters.startDate || !this.reportStore.filters.endDate) {
+        return;
       }
-      
-      this.loading = true
+      if (this.autoLoadTimer) {
+        clearTimeout(this.autoLoadTimer);
+      }
+      this.autoLoadTimer = setTimeout(() => {
+        this.loadGeneralLedger();
+      }, 300);
+    },
+    async bootstrap() {
+      await this.companyStore.fetchCompanies();
+      await this.reportStore.loadFilters();
+      await this.reportStore.fetchAvailableYears(this.reportStore.filters.companyId || null);
+      this.syncFiltersWithAvailableYears();
+      await this.loadGeneralLedger();
+
+      this.filterWatchStop = this.$watch(
+        () => ({ ...this.reportStore.filters, coaCode: this.coaCode }),
+        async () => {
+          await this.reportStore.saveFilters();
+          this.scheduleAutoLoad();
+        },
+        { deep: true }
+      );
+
+      this.companyWatchStop = this.$watch(
+        () => this.reportStore.filters.companyId,
+        async (companyId, oldCompanyId) => {
+          if (companyId === oldCompanyId) return;
+          await this.reportStore.fetchAvailableYears(companyId || null);
+          this.syncFiltersWithAvailableYears();
+        }
+      );
+    },
+    async loadGeneralLedger() {
+      this.loading = true;
       try {
         const params = new URLSearchParams({
-          company_id: this.filters.companyId,
-          start_date: this.filters.startDate,
-          end_date: this.filters.endDate
-        })
-        
-        if (this.filters.coaCode) {
-          params.append('coa_code', this.filters.coaCode)
+          start_date: this.reportStore.filters.startDate,
+          end_date: this.reportStore.filters.endDate,
+          report_type: (this.reportStore.filters.reportType || 'real').toLowerCase()
+        });
+
+        if (this.reportStore.filters.companyId) {
+          params.append('company_id', this.reportStore.filters.companyId);
         }
-        
-        const response = await fetch(`/api/reports/general-ledger?${params}`)
-        const data = await response.json()
-        
+        if (this.coaCode && this.coaCode.trim()) {
+          params.append('coa_code', this.coaCode.trim());
+        }
+
+        const response = await fetch(`/api/reports/general-ledger?${params}`);
+        const data = await response.json();
+
         if (data.success) {
-          this.ledgerData = data.data
+          this.ledgerData = data.data;
         } else {
-          alert('Gagal memuat General Ledger: ' + (data.error || 'Unknown error'))
+          this.ledgerData = { ...this.ledgerData, coa_groups: [] };
+          console.error('Failed to load General Ledger:', data.error || 'Unknown error');
         }
       } catch (error) {
-        console.error('Error loading general ledger:', error)
-        alert('Gagal memuat General Ledger')
+        console.error('Error loading general ledger:', error);
+        this.ledgerData = { ...this.ledgerData, coa_groups: [] };
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
-    
     formatNumber(num) {
-      return new Intl.NumberFormat('id-ID').format(num)
+      return new Intl.NumberFormat('id-ID').format(num || 0);
     },
-    
     formatDate(dateStr) {
-      if (!dateStr) return '-'
-      const date = new Date(dateStr)
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
       return date.toLocaleDateString('id-ID', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
-      })
+      });
     },
-
     async handleExport(format) {
       this.showExportMenu = false;
       try {
         const params = new URLSearchParams({
-          company_id: this.filters.companyId,
-          start_date: this.filters.startDate,
-          end_date: this.filters.endDate,
-          format: format
+          start_date: this.reportStore.filters.startDate,
+          end_date: this.reportStore.filters.endDate,
+          report_type: (this.reportStore.filters.reportType || 'real').toLowerCase(),
+          format
         });
-        
-        if (this.filters.coaCode) {
-          params.append('coa_code', this.filters.coaCode);
+
+        if (this.reportStore.filters.companyId) {
+          params.append('company_id', this.reportStore.filters.companyId);
+        }
+        if (this.coaCode && this.coaCode.trim()) {
+          params.append('coa_code', this.coaCode.trim());
         }
 
         const response = await fetch(`/api/reports/general-ledger/export?${params}`);
-        
+
         if (response.ok) {
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
+          const companyLabel = this.reportStore.filters.companyId || 'all-companies';
           a.href = url;
-          a.download = `general-ledger-${this.filters.companyId}-${this.filters.startDate}-to-${this.filters.endDate}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+          a.download = `general-ledger-${companyLabel}-${this.reportStore.filters.startDate}-to-${this.reportStore.filters.endDate}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
           document.body.appendChild(a);
           a.click();
           window.URL.revokeObjectURL(url);
@@ -424,7 +516,7 @@ export default {
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>

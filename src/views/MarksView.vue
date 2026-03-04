@@ -7,26 +7,6 @@
             <p class="text-xs text-gray-500">Define marks for transaction categorization</p>
         </div>
         <div class="flex items-center gap-2">
-          <div class="flex items-center bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200 shadow-sm">
-            <button 
-              @click="fixExpenseMappings" 
-              :disabled="isFixing"
-              class="px-3 py-1.5 text-[10px] font-bold bg-white text-gray-700 hover:text-amber-600 rounded-lg transition-all flex items-center gap-1.5 shadow-sm border border-gray-100"
-              title="Fix EXPENSE mappings (CREDIT -> DEBIT)"
-            >
-              <i class="bi" :class="isFixing && currentFixType === 'EXPENSE' ? 'bi-arrow-repeat animate-spin' : 'bi-wrench-adjustable text-amber-500'"></i>
-              <span>Fix Expenses</span>
-            </button>
-            <button 
-              @click="fixRevenueMappings" 
-              :disabled="isFixing"
-              class="px-3 py-1.5 text-[10px] font-bold bg-white text-gray-700 hover:text-indigo-600 rounded-lg transition-all flex items-center gap-1.5 shadow-sm border border-gray-100"
-              title="Fix REVENUE mappings (DEBIT -> CREDIT)"
-            >
-              <i class="bi" :class="isFixing && currentFixType === 'REVENUE' ? 'bi-arrow-repeat animate-spin' : 'bi-wrench-adjustable text-indigo-500'"></i>
-              <span>Fix Revenues</span>
-            </button>
-          </div>
           <button @click="openAddModal" class="btn-primary !bg-green-600 hover:!bg-green-700">
             <i class="bi bi-plus-lg me-1"></i> Add New Mark
           </button>
@@ -44,58 +24,88 @@
                    <i class="bi bi-sort-alpha-down text-indigo-500"></i>
                  </div>
                </th>
-               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tax Report</th>
+               <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Coretax?</th>
                <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aset?</th>
                <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Jasa?</th>
                <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Salary?</th>
+               <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Sewa Tempat?</th>
                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">COA Mappings</th>
                <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
              </tr>
            </thead>
            <tbody class="bg-white divide-y divide-gray-100">
               <tr v-if="store.isLoading">
-                  <td colspan="8" class="text-center py-8">
+                  <td colspan="9" class="text-center py-8">
                       <span class="spinner-border text-indigo-500 w-6 h-6" role="status"></span>
                   </td>
               </tr>
               <tr v-else-if="store.marks.length === 0">
-                  <td colspan="8" class="text-center py-8 text-gray-400">No marks found</td>
+                  <td colspan="9" class="text-center py-8 text-gray-400">No marks found</td>
               </tr>
-              <tr v-for="m in store.sortedMarks" :key="m.id" :class="{'bg-indigo-50/30': m.is_asset || m.is_service || m.is_salary_component}" class="hover:bg-gray-50">
+              <tr v-for="m in store.sortedMarks" :key="m.id" :class="{'bg-indigo-50/30': m.is_asset || m.is_service || m.is_salary_component || m.is_rental}" class="hover:bg-gray-50">
                  <td class="px-6 py-4 text-sm text-gray-900">{{ m.internal_report }}</td>
                  <td class="px-6 py-4 text-sm text-gray-500">
                    <span :class="{'font-semibold text-indigo-700': m.is_asset || m.is_salary_component}">{{ m.personal_use }}</span>
                  </td>
-                 <td class="px-6 py-4 text-sm text-gray-500">{{ m.tax_report }}</td>
                  <td class="px-6 py-4 text-center">
-                   <span v-if="m.is_asset" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                     <i class="bi bi-check-circle-fill mr-1"></i>
-                     Aset
-                   </span>
-                   <span v-else class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                     <i class="bi bi-dash-circle mr-1"></i>
-                     Bukan
-                   </span>
+                   <button
+                     @click="toggleMarkFlag(m, 'is_coretax')"
+                     :disabled="isToggleLoading(m.id, 'is_coretax')"
+                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
+                     :class="m.is_coretax ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                   >
+                     <i v-if="isToggleLoading(m.id, 'is_coretax')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
+                     <i v-else :class="m.is_coretax ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
+                     {{ m.is_coretax ? 'Ya' : 'Tidak' }}
+                   </button>
                  </td>
                  <td class="px-6 py-4 text-center">
-                   <span v-if="m.is_service" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                     <i class="bi bi-check-circle-fill mr-1"></i>
-                     Jasa
-                   </span>
-                   <span v-else class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                     <i class="bi bi-dash-circle mr-1"></i>
-                     Bukan
-                   </span>
+                   <button
+                     @click="toggleMarkFlag(m, 'is_asset')"
+                     :disabled="isToggleLoading(m.id, 'is_asset')"
+                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
+                     :class="m.is_asset ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                   >
+                     <i v-if="isToggleLoading(m.id, 'is_asset')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
+                     <i v-else :class="m.is_asset ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
+                     {{ m.is_asset ? 'Aset' : 'Bukan' }}
+                   </button>
                  </td>
                  <td class="px-6 py-4 text-center">
-                   <span v-if="m.is_salary_component" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                     <i class="bi bi-check-circle-fill mr-1"></i>
-                     Salary
-                   </span>
-                   <span v-else class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                     <i class="bi bi-dash-circle mr-1"></i>
-                     Bukan
-                   </span>
+                   <button
+                     @click="toggleMarkFlag(m, 'is_service')"
+                     :disabled="isToggleLoading(m.id, 'is_service')"
+                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
+                     :class="m.is_service ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                   >
+                     <i v-if="isToggleLoading(m.id, 'is_service')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
+                     <i v-else :class="m.is_service ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
+                     {{ m.is_service ? 'Jasa' : 'Bukan' }}
+                   </button>
+                 </td>
+                 <td class="px-6 py-4 text-center">
+                   <button
+                     @click="toggleMarkFlag(m, 'is_salary_component')"
+                     :disabled="isToggleLoading(m.id, 'is_salary_component')"
+                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
+                     :class="m.is_salary_component ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                   >
+                     <i v-if="isToggleLoading(m.id, 'is_salary_component')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
+                     <i v-else :class="m.is_salary_component ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
+                     {{ m.is_salary_component ? 'Salary' : 'Bukan' }}
+                   </button>
+                 </td>
+                 <td class="px-6 py-4 text-center">
+                   <button
+                     @click="toggleMarkFlag(m, 'is_rental')"
+                     :disabled="isToggleLoading(m.id, 'is_rental')"
+                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
+                     :class="m.is_rental ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                   >
+                     <i v-if="isToggleLoading(m.id, 'is_rental')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
+                     <i v-else :class="m.is_rental ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
+                     {{ m.is_rental ? 'Sewa' : 'Bukan' }}
+                   </button>
                  </td>
                  <td class="px-6 py-4">
                    <div class="flex flex-col gap-1 mb-2" v-if="m.mappings && m.mappings.length > 0">
@@ -150,41 +160,45 @@
         @close="showMappingModal = false"
         @updated="handleMappingUpdated"
     />
-
-    <FixMappingsModal
-        :isOpen="showFixModal"
-        :isLoading="isFixing"
-        :isSuccess="fixSuccess"
-        :results="fixResults"
-        :fixType="currentFixType"
-        @close="handleFixModalClose"
-        @confirm="runFixMappings"
-    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useMarksStore } from '../stores/marks';
 import MarkFormModal from '../components/marks/MarkFormModal.vue';
 import CoaMappingModal from '../components/marks/CoaMappingModal.vue';
-import FixMappingsModal from '../components/marks/FixMappingsModal.vue';
-import axios from 'axios';
 
 const store = useMarksStore();
 const showModal = ref(false);
 const selectedMark = ref(null);
 const showMappingModal = ref(false);
 const selectedMarkForMapping = ref(null);
-const isFixing = ref(false);
-const showFixModal = ref(false);
-const fixSuccess = ref(false);
-const fixResults = ref({ fixed_count: 0, mappings: [] });
-const currentFixType = ref('EXPENSE');
+const togglingFlags = ref({});
 
-onMounted(() => {
-    store.fetchMarks();
-});
+store.fetchMarks();
+
+const getToggleKey = (markId, flagKey) => `${markId}:${flagKey}`;
+
+const isToggleLoading = (markId, flagKey) => {
+    return Boolean(togglingFlags.value[getToggleKey(markId, flagKey)]);
+};
+
+const toggleMarkFlag = async (mark, flagKey) => {
+    const toggleKey = getToggleKey(mark.id, flagKey);
+    if (togglingFlags.value[toggleKey]) return;
+
+    togglingFlags.value = { ...togglingFlags.value, [toggleKey]: true };
+    try {
+        await store.updateMarkFlag(mark.id, flagKey, !Boolean(mark[flagKey]));
+    } catch (error) {
+        alert('Gagal update status mark: ' + (error.response?.data?.error || error.message));
+    } finally {
+        const nextState = { ...togglingFlags.value };
+        delete nextState[toggleKey];
+        togglingFlags.value = nextState;
+    }
+};
 
 const openAddModal = () => {
     selectedMark.value = null;
@@ -221,44 +235,6 @@ const handleMarkSaved = async () => {
 const deleteMark = async (id) => {
     if(confirm("Are you sure you want to delete this mark?")) {
         await store.deleteMark(id);
-    }
-};
-
-const fixExpenseMappings = () => {
-    currentFixType.value = 'EXPENSE';
-    fixSuccess.value = false;
-    fixResults.value = { fixed_count: 0, mappings: [] };
-    showFixModal.value = true;
-};
-
-const fixRevenueMappings = () => {
-    currentFixType.value = 'REVENUE';
-    fixSuccess.value = false;
-    fixResults.value = { fixed_count: 0, mappings: [] };
-    showFixModal.value = true;
-};
-
-const handleFixModalClose = () => {
-    showFixModal.value = false;
-};
-
-const runFixMappings = async () => {
-    isFixing.value = true;
-    try {
-        const endpoint = currentFixType.value === 'EXPENSE' 
-            ? '/api/mark-coa-mappings/fix-expense-mappings' 
-            : '/api/mark-coa-mappings/fix-revenue-mappings';
-            
-        const response = await axios.post(endpoint);
-        fixResults.value = response.data;
-        fixSuccess.value = true;
-        
-        await store.fetchMarks();
-    } catch (error) {
-        alert('❌ Failed to fix mappings: ' + (error.response?.data?.error || error.message));
-        showFixModal.value = false;
-    } finally {
-        isFixing.value = false;
     }
 };
 </script>

@@ -43,6 +43,15 @@ def _parse_bool(value):
     return False
 
 
+def _normalize_mapping_report_type(value, allow_all=False):
+    normalized = str(value or '').strip().lower()
+    if normalized == 'coretax':
+        return 'coretax'
+    if allow_all and normalized == 'all':
+        return 'all'
+    return 'real'
+
+
 def _normalize_npwp(value):
     digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
     if not digits:
@@ -733,6 +742,7 @@ def create_manual_transaction():
                 if 'is_service' in mark_columns: mark_data['is_service'] = False
                 if 'is_salary_component' in mark_columns: mark_data['is_salary_component'] = False
                 if 'is_rental' in mark_columns: mark_data['is_rental'] = False
+                if 'is_coretax' in mark_columns: mark_data['is_coretax'] = False
                 
                 insert_cols = [c for c in mark_data.keys() if c in mark_columns]
                 cols_sql = ', '.join(insert_cols)
@@ -904,18 +914,30 @@ def get_marks():
                     d['is_salary_component'] = False
                 if 'is_rental' not in d:
                     d['is_rental'] = False
+                if 'is_coretax' not in d:
+                    d['is_coretax'] = False
                 d['is_asset'] = _parse_bool(d.get('is_asset'))
                 d['is_service'] = _parse_bool(d.get('is_service'))
                 d['is_salary_component'] = _parse_bool(d.get('is_salary_component'))
                 d['is_rental'] = _parse_bool(d.get('is_rental'))
+                d['is_coretax'] = _parse_bool(d.get('is_coretax'))
                 d['mappings'] = []
                 marks.append(d)
                 marks_dict[d['id']] = d
 
-            mapping_query = text("""
+            mapping_columns = _table_columns(conn, 'mark_coa_mapping')
+            mapping_scope_filter = ""
+            if 'report_type' in mapping_columns:
+                if conn.dialect.name == 'sqlite':
+                    mapping_scope_filter = "WHERE LOWER(COALESCE(CAST(mcm.report_type AS TEXT), 'real')) = 'real'"
+                else:
+                    mapping_scope_filter = "WHERE LOWER(COALESCE(CAST(mcm.report_type AS CHAR), 'real')) = 'real'"
+
+            mapping_query = text(f"""
                 SELECT mcm.mark_id, mcm.coa_id, mcm.mapping_type, coa.code, coa.name
                 FROM mark_coa_mapping mcm
                 JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+                {mapping_scope_filter}
             """)
             mapping_result = conn.execute(mapping_query)
             
@@ -948,6 +970,8 @@ def create_mark():
             mark_columns = _table_columns(conn, 'marks')
             if 'is_service' not in mark_columns:
                 return jsonify({'error': 'Kolom is_service belum tersedia. Jalankan migrasi terbaru.'}), 400
+            if 'is_coretax' not in mark_columns:
+                return jsonify({'error': 'Kolom is_coretax belum tersedia. Jalankan migrasi terbaru.'}), 400
             new_row = {
                 'id': mark_id,
                 'internal_report': data.get('internal_report', ''),
@@ -957,6 +981,7 @@ def create_mark():
                 'is_service': _parse_bool(data.get('is_service', False)),
                 'is_salary_component': _parse_bool(data.get('is_salary_component', False)),
                 'is_rental': _parse_bool(data.get('is_rental', False)),
+                'is_coretax': _parse_bool(data.get('is_coretax', False)),
                 'created_at': now,
                 'updated_at': now
             }
@@ -991,6 +1016,10 @@ def update_or_delete_mark(mark_id):
                 return jsonify({'error': 'Kolom is_service belum tersedia. Jalankan migrasi terbaru.'}), 400
             if 'is_salary_component' in data and 'is_salary_component' not in mark_columns:
                 return jsonify({'error': 'Kolom is_salary_component belum tersedia. Jalankan migrasi terbaru.'}), 400
+            if 'is_rental' in data and 'is_rental' not in mark_columns:
+                return jsonify({'error': 'Kolom is_rental belum tersedia. Jalankan migrasi terbaru.'}), 400
+            if 'is_coretax' in data and 'is_coretax' not in mark_columns:
+                return jsonify({'error': 'Kolom is_coretax belum tersedia. Jalankan migrasi terbaru.'}), 400
 
             field_map = {
                 'internal_report': 'internal_report',
@@ -999,7 +1028,8 @@ def update_or_delete_mark(mark_id):
                 'is_asset': 'is_asset',
                 'is_service': 'is_service',
                 'is_salary_component': 'is_salary_component',
-                'is_rental': 'is_rental'
+                'is_rental': 'is_rental',
+                'is_coretax': 'is_coretax'
             }
 
             params = {'id': mark_id, 'updated_at': datetime.now()}
@@ -1007,7 +1037,7 @@ def update_or_delete_mark(mark_id):
 
             for payload_key, column_name in field_map.items():
                 if payload_key in data and column_name in mark_columns:
-                    if payload_key in {'is_asset', 'is_service', 'is_salary_component', 'is_rental'}:
+                    if payload_key in {'is_asset', 'is_service', 'is_salary_component', 'is_rental', 'is_coretax'}:
                         params[payload_key] = _parse_bool(data.get(payload_key))
                     else:
                         params[payload_key] = data.get(payload_key)
@@ -2402,14 +2432,34 @@ def get_mark_coa_mappings(mark_id):
     if engine is None:
         return jsonify({'error': error_msg}), 500
     try:
+        requested_report_type = _normalize_mapping_report_type(
+            request.args.get('report_type'),
+            allow_all=True
+        )
         with engine.connect() as conn:
-            result = conn.execute(text("""
-                SELECT mcm.*, coa.code, coa.name, coa.category
+            mapping_columns = _table_columns(conn, 'mark_coa_mapping')
+            report_type_select_sql = "'real' AS report_type"
+            report_type_filter_sql = ""
+            params = {'mark_id': mark_id}
+
+            if 'report_type' in mapping_columns:
+                if conn.dialect.name == 'sqlite':
+                    report_type_expr = "LOWER(COALESCE(CAST(mcm.report_type AS TEXT), 'real'))"
+                else:
+                    report_type_expr = "LOWER(COALESCE(CAST(mcm.report_type AS CHAR), 'real'))"
+                report_type_select_sql = f"{report_type_expr} AS report_type"
+                if requested_report_type != 'all':
+                    report_type_filter_sql = f"AND {report_type_expr} = :report_type"
+                    params['report_type'] = requested_report_type
+
+            result = conn.execute(text(f"""
+                SELECT mcm.*, {report_type_select_sql}, coa.code, coa.name, coa.category
                 FROM mark_coa_mapping mcm
                 INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
                 WHERE mcm.mark_id = :mark_id
+                {report_type_filter_sql}
                 ORDER BY coa.code
-            """), {'mark_id': mark_id})
+            """), params)
             
             mappings = []
             for row in result:
@@ -2428,9 +2478,10 @@ def create_mark_coa_mapping(mark_id):
     if engine is None:
         return jsonify({'error': error_msg}), 500
     try:
-        data = request.json
+        data = request.json or {}
         coa_id = data.get('coa_id')
         mapping_type = data.get('mapping_type', 'DEBIT')
+        report_type = _normalize_mapping_report_type(data.get('report_type'))
         
         if not coa_id:
             return jsonify({'error': 'COA ID is required'}), 400
@@ -2442,132 +2493,33 @@ def create_mark_coa_mapping(mark_id):
         now = datetime.now()
         
         with engine.connect() as conn:
-            conn.execute(text("""
-                INSERT INTO mark_coa_mapping 
-                (id, mark_id, coa_id, mapping_type, notes, created_at, updated_at)
-                VALUES (:id, :mark_id, :coa_id, :mapping_type, :notes, :created_at, :updated_at)
-            """), {
+            mapping_columns = _table_columns(conn, 'mark_coa_mapping')
+            mapping_payload = {
                 'id': mapping_id,
                 'mark_id': mark_id,
                 'coa_id': coa_id,
                 'mapping_type': mapping_type,
                 'notes': data.get('notes'),
                 'created_at': now,
-                'updated_at': now
-            })
+                'updated_at': now,
+                'report_type': report_type
+            }
+            insert_columns = [column for column in mapping_payload.keys() if column in mapping_columns]
+            columns_sql = ', '.join(insert_columns)
+            values_sql = ', '.join(f":{column}" for column in insert_columns)
+            conn.execute(text(f"""
+                INSERT INTO mark_coa_mapping ({columns_sql})
+                VALUES ({values_sql})
+            """), mapping_payload)
             conn.commit()
-            return jsonify({'message': 'Mapping created successfully', 'id': mapping_id}), 201
+            return jsonify({
+                'message': 'Mapping created successfully',
+                'id': mapping_id,
+                'report_type': report_type
+            }), 201
     except Exception as e:
         if 'Duplicate entry' in str(e):
             return jsonify({'error': 'This mapping already exists'}), 409
-        return jsonify({'error': str(e)}), 500
-
-@transaction_bp.route('/api/mark-coa-mappings/fix-expense-mappings', methods=['POST'])
-def fix_expense_mappings():
-    engine, error_msg = get_db_engine()
-    if engine is None:
-        return jsonify({'error': error_msg}), 500
-    
-    try:
-        with engine.begin() as conn:
-            query = text("""
-                SELECT mcm.id, mcm.mark_id, mcm.coa_id, mcm.mapping_type, 
-                       coa.code, coa.name, coa.category, m.personal_use
-                FROM mark_coa_mapping mcm
-                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
-                INNER JOIN marks m ON mcm.mark_id = m.id
-                WHERE coa.category IN ('EXPENSE', 'COGS', 'OTHER_EXPENSE')
-                  AND mcm.mapping_type = 'CREDIT'
-            """)
-            
-            result = conn.execute(query)
-            incorrect_mappings = list(result)
-            
-            if not incorrect_mappings:
-                return jsonify({
-                    'message': 'No incorrect mappings found',
-                    'fixed_count': 0,
-                    'mappings': []
-                })
-            
-            update_query = text("""
-                UPDATE mark_coa_mapping
-                SET mapping_type = 'DEBIT'
-                WHERE id = :mapping_id
-            """)
-            
-            fixed_mappings = []
-            for mapping in incorrect_mappings:
-                conn.execute(update_query, {'mapping_id': mapping.id})
-                fixed_mappings.append({
-                    'id': mapping.id,
-                    'mark': mapping.personal_use,
-                    'coa_code': mapping.code,
-                    'coa_name': mapping.name,
-                    'old_type': 'CREDIT',
-                    'new_type': 'DEBIT'
-                })
-            
-            return jsonify({
-                'message': f'Successfully fixed {len(fixed_mappings)} expense mappings',
-                'fixed_count': len(fixed_mappings),
-                'mappings': fixed_mappings
-            })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@transaction_bp.route('/api/mark-coa-mappings/fix-revenue-mappings', methods=['POST'])
-def fix_revenue_mappings():
-    engine, error_msg = get_db_engine()
-    if engine is None:
-        return jsonify({'error': error_msg}), 500
-    
-    try:
-        with engine.begin() as conn:
-            query = text("""
-                SELECT mcm.id, mcm.mark_id, mcm.coa_id, mcm.mapping_type, 
-                       coa.code, coa.name, coa.category, m.personal_use
-                FROM mark_coa_mapping mcm
-                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
-                INNER JOIN marks m ON mcm.mark_id = m.id
-                WHERE coa.category IN ('REVENUE', 'OTHER_REVENUE')
-                  AND mcm.mapping_type = 'DEBIT'
-            """)
-            
-            result = conn.execute(query)
-            incorrect_mappings = list(result)
-            
-            if not incorrect_mappings:
-                return jsonify({
-                    'message': 'No incorrect mappings found',
-                    'fixed_count': 0,
-                    'mappings': []
-                })
-            
-            update_query = text("""
-                UPDATE mark_coa_mapping
-                SET mapping_type = 'CREDIT'
-                WHERE id = :mapping_id
-            """)
-            
-            fixed_mappings = []
-            for mapping in incorrect_mappings:
-                conn.execute(update_query, {'mapping_id': mapping.id})
-                fixed_mappings.append({
-                    'id': mapping.id,
-                    'mark': mapping.personal_use,
-                    'coa_code': mapping.code,
-                    'coa_name': mapping.name,
-                    'old_type': 'DEBIT',
-                    'new_type': 'CREDIT'
-                })
-            
-            return jsonify({
-                'message': f'Successfully fixed {len(fixed_mappings)} revenue mappings',
-                'fixed_count': len(fixed_mappings),
-                'mappings': fixed_mappings
-            })
-    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @transaction_bp.route('/api/mark-coa-mappings/<mapping_id>', methods=['DELETE'])

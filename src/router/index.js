@@ -12,6 +12,7 @@ import ProductsView from '../views/ProductsView.vue'
 import ManagementView from '../views/ManagementView.vue'
 import InitialCapitalPage from '../views/InitialCapitalPage.vue'
 import GeneralLedger from '../views/GeneralLedger.vue'
+import HrdView from '../views/HrdView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -80,6 +81,11 @@ const router = createRouter({
       path: '/general-ledger',
       name: 'general-ledger',
       component: GeneralLedger
+    },
+    {
+      path: '/hrd',
+      name: 'hrd',
+      component: HrdView
     }
   ]
 })
