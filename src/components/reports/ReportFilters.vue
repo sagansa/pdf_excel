@@ -3,7 +3,7 @@
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <h3 class="text-sm font-semibold text-gray-700 mb-3">Report Filters</h3>
       
-      <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
         <!-- Report Type Selection -->
         <div>
           <label class="block text-xs font-medium text-gray-700 mb-1">
@@ -11,7 +11,7 @@
           </label>
           <select
             :value="modelValue.reportType || 'real'"
-            @change="updateFilter('reportType', $event.target.value)"
+            @change="handleReportTypeChange($event.target.value)"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
             <option value="real">Real</option>
@@ -96,18 +96,6 @@
           </select>
         </div>
 
-        <!-- Generate Button -->
-        <div class="flex items-end">
-          <button
-            @click="$emit('generate')"
-            :disabled="!isValid || isLoading"
-            class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <span v-if="isLoading" class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-            <i v-else class="bi bi-bar-chart-fill"></i>
-            <span>{{ isLoading ? 'Generating...' : 'Generate' }}</span>
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -135,7 +123,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'generate']);
+const emit = defineEmits(['update:modelValue']);
 
 const availableYears = computed(() => {
   const fromTransactions = (props.availableYears || [])
@@ -150,14 +138,18 @@ const availableYears = computed(() => {
   return [new Date().getFullYear()];
 });
 
-const isValid = computed(() => {
-  return props.modelValue.startDate && props.modelValue.endDate && props.modelValue.asOfDate;
-});
-
 const updateFilter = (key, value) => {
   emit('update:modelValue', {
     ...props.modelValue,
     [key]: value || null
+  });
+};
+
+const handleReportTypeChange = (value) => {
+  const reportType = value || 'real';
+  emit('update:modelValue', {
+    ...props.modelValue,
+    reportType
   });
 };
 

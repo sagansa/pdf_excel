@@ -23,7 +23,27 @@
       <div class="p-6 space-y-6">
         <!-- Existing Mappings -->
         <div>
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">Current Mappings</h3>
+          <div class="flex items-center justify-between mb-3 gap-3">
+            <h3 class="text-sm font-semibold text-gray-700">Current Mappings</h3>
+            <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+              <button
+                type="button"
+                class="px-3 py-1 text-xs font-semibold rounded-md transition-colors"
+                :class="selectedReportType === 'real' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                @click="selectedReportType = 'real'"
+              >
+                Real
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1 text-xs font-semibold rounded-md transition-colors"
+                :class="selectedReportType === 'coretax' ? 'bg-white text-cyan-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                @click="selectedReportType = 'coretax'"
+              >
+                Coretax
+              </button>
+            </div>
+          </div>
           
           <div v-if="isLoading" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -33,7 +53,9 @@
           <div v-else-if="mappings.length === 0" class="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
             <i class="bi bi-link-45deg text-4xl text-gray-300"></i>
             <p class="text-gray-500 mt-2">No COA mappings yet</p>
-            <p class="text-xs text-gray-400 mt-1">Add a mapping below to link this mark to a Chart of Account</p>
+            <p class="text-xs text-gray-400 mt-1">
+              Add a mapping below to link this mark to a Chart of Account ({{ selectedReportType === 'coretax' ? 'Coretax' : 'Real' }}).
+            </p>
           </div>
 
           <div v-else class="space-y-2">
@@ -59,6 +81,12 @@
                     :class="mapping.mapping_type === 'DEBIT' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'"
                   >
                     {{ mapping.mapping_type }}
+                  </span>
+                  <span
+                    class="px-2 py-0.5 text-xs font-medium rounded-full"
+                    :class="mapping.report_type === 'coretax' ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-700'"
+                  >
+                    {{ mapping.report_type === 'coretax' ? 'CORETAX' : 'REAL' }}
                   </span>
                 </div>
                 <p v-if="mapping.notes" class="text-xs text-gray-500 mt-1">{{ mapping.notes }}</p>
@@ -211,6 +239,7 @@ const isDeleting = ref(false);
 const mappings = ref([]);
 const showDeleteModal = ref(false);
 const mappingToDelete = ref(null);
+const selectedReportType = ref('real');
 const newMapping = ref({
   coa_id: '',
   mapping_type: 'DEBIT',
@@ -235,7 +264,7 @@ const loadMappings = async () => {
   
   isLoading.value = true;
   try {
-    mappings.value = await coaStore.fetchMarkMappings(props.mark.id);
+    mappings.value = await coaStore.fetchMarkMappings(props.mark.id, selectedReportType.value);
   } catch (error) {
     console.error('Failed to load mappings:', error);
   } finally {
@@ -252,7 +281,8 @@ const handleAddMapping = async () => {
       props.mark.id,
       newMapping.value.coa_id,
       newMapping.value.mapping_type,
-      newMapping.value.notes || null
+      newMapping.value.notes || null,
+      selectedReportType.value
     );
     
     // Reload mappings
@@ -306,14 +336,26 @@ const resetForm = () => {
 // Watch for mark changes
 watch(() => props.mark, (newMark) => {
   if (newMark?.id) {
+    selectedReportType.value = 'real';
     loadMappings();
   }
 }, { immediate: true });
 
+watch(selectedReportType, () => {
+  if (props.isOpen && props.mark?.id) {
+    loadMappings();
+  }
+});
+
 // Load COA list if not already loaded
 watch(() => props.isOpen, (isOpen) => {
-  if (isOpen && coaStore.coaList.length === 0) {
+  if (!isOpen) return;
+
+  if (coaStore.coaList.length === 0) {
     coaStore.fetchCoa();
+  }
+  if (props.mark?.id) {
+    loadMappings();
   }
 });
 </script>

@@ -205,14 +205,6 @@
         />
       </div>
 
-      <!-- 7. Presences Tab -->
-      <div v-if="activeTab === 'presences'">
-        <PayrollPresencesTable
-          :key="`presences-${reportStore.filters.companyId}-${reportStore.filters.year}`"
-          :company-id="reportStore.filters.companyId"
-          :year="reportStore.filters.year"
-        />
-      </div>
     </div>
 
     <!-- Modals -->
@@ -285,7 +277,6 @@ import AmortizationAdjustments from '../components/reports/AmortizationAdjustmen
 import RentalContracts from '../components/reports/RentalContracts.vue';
 import ServiceTaxHandling from '../components/history/ServiceTaxHandling.vue';
 import PayrollSalaryHandling from '../components/history/PayrollSalaryHandling.vue';
-import PayrollPresencesTable from '../components/history/PayrollPresencesTable.vue';
 import HppBatchesTab from '../components/history/HppBatchesTab.vue';
 
 const store = useHistoryStore();
@@ -299,8 +290,7 @@ const tabs = [
   { id: 'amortization', name: 'Amortization', icon: 'bi bi-calendar-check' },
   { id: 'services', name: 'Service Tax', icon: 'bi bi-receipt-cutoff' },
   { id: 'rental', name: 'Rental Contracts', icon: 'bi bi-file-earmark-text' },
-  { id: 'payroll', name: 'Payroll', icon: 'bi bi-people' },
-  { id: 'presences', name: 'Presences', icon: 'bi bi-calendar-check' }
+  { id: 'payroll', name: 'Payroll', icon: 'bi bi-people' }
 ];
 
 const showDetails = ref(false);

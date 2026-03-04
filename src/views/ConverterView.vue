@@ -299,7 +299,28 @@ const handleSubmit = async () => {
     return;
   }
 
-  // Check for password protection first
+  const fileName = (converterStore.file?.name || "").trim();
+
+  // 1) Check whether filename has been uploaded before
+  try {
+    const uploadNameStatus = await converterStore.checkUploadName(fileName);
+    if (uploadNameStatus?.exists) {
+      const count = Number(uploadNameStatus.count || 0);
+      converterStore.error = `File "${uploadNameStatus.source_file || fileName}" sudah pernah diupload${count > 1 ? ` (${count}x)` : ""}.`;
+      return;
+    }
+  } catch (e) {
+    console.error("Failed to check existing upload name", e);
+    return;
+  }
+
+  // 2) Check password only for PDF
+  const isPdf = fileName.toLowerCase().endsWith(".pdf");
+  if (!isPdf) {
+    await executeUpload();
+    return;
+  }
+
   const checkFd = new FormData();
   checkFd.append("pdf_file", converterStore.file);
 
@@ -311,9 +332,11 @@ const handleSubmit = async () => {
     }
   } catch (e) {
     console.error("Failed to check password protection", e);
+    converterStore.error = "Gagal memeriksa password PDF. Silakan coba lagi.";
+    return;
   }
 
-  // Direct upload if no password or check failed (backend will catch it anyway)
+  // 3) Convert after upload-name and password checks pass
   await executeUpload();
 };
 

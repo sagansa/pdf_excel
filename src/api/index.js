@@ -19,6 +19,11 @@ export const converterApi = {
       },
     });
   },
+  checkUploadName(fileName) {
+    return api.post('/check-upload-name', {
+      file_name: fileName,
+    });
+  },
   checkPassword(formData) {
       return api.post('/check-password', formData, {
         headers: {

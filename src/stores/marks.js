@@ -55,6 +55,23 @@ export const useMarksStore = defineStore('marks', {
       }
     },
 
+    async updateMarkFlag(id, flagKey, value) {
+      const idx = this.marks.findIndex((mark) => mark.id === id);
+      if (idx === -1) {
+        throw new Error('Mark not found');
+      }
+
+      const previousValue = Boolean(this.marks[idx][flagKey]);
+      this.marks[idx][flagKey] = Boolean(value);
+
+      try {
+        await marksApi.updateMark(id, { [flagKey]: Boolean(value) });
+      } catch (err) {
+        this.marks[idx][flagKey] = previousValue;
+        throw err;
+      }
+    },
+
     async deleteMark(id) {
       this.isLoading = true;
       try {

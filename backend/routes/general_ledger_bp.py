@@ -7,6 +7,78 @@ from backend.db.session import get_db_engine
 
 general_ledger_bp = Blueprint('general_ledger', __name__)
 
+
+def _table_columns(conn, table_name):
+    if conn.dialect.name == 'sqlite':
+        rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+        return {str(row[1]) for row in rows}
+
+    rows = conn.execute(text("""
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = :table_name
+    """), {'table_name': table_name}).fetchall()
+    return {str(row[0]) for row in rows}
+
+
+def _coretax_filter_clause(conn, report_type, alias='m'):
+    if str(report_type).strip().lower() != 'coretax':
+        return ''
+
+    mark_columns = _table_columns(conn, 'marks')
+    if 'is_coretax' in mark_columns:
+        if conn.dialect.name == 'sqlite':
+            return f" AND LOWER(COALESCE(CAST({alias}.is_coretax AS TEXT), '0')) IN ('1', 'true', 'yes', 'y')"
+        return f" AND LOWER(COALESCE(CAST({alias}.is_coretax AS CHAR), '0')) IN ('1', 'true', 'yes', 'y')"
+
+    return f" AND ({alias}.tax_report IS NOT NULL AND TRIM({alias}.tax_report) != '')"
+
+
+def _mapping_report_type_expr(conn, alias, fallback='real'):
+    if conn.dialect.name == 'sqlite':
+        return f"LOWER(COALESCE(CAST({alias}.report_type AS TEXT), '{fallback}'))"
+    return f"LOWER(COALESCE(CAST({alias}.report_type AS CHAR), '{fallback}'))"
+
+
+def _mark_coa_join_clause(conn, report_type='real', mark_ref='m.id', mapping_alias='mcm', join_type='INNER'):
+    mapping_columns = _table_columns(conn, 'mark_coa_mapping')
+    normalized_report_type = str(report_type or 'real').strip().lower()
+    if normalized_report_type != 'coretax':
+        normalized_report_type = 'real'
+
+    if 'report_type' not in mapping_columns:
+        return f"{join_type} JOIN mark_coa_mapping {mapping_alias} ON {mapping_alias}.mark_id = {mark_ref}"
+
+    mapping_scope_expr = _mapping_report_type_expr(conn, mapping_alias, 'real')
+
+    if normalized_report_type == 'coretax':
+        fallback_alias = f"{mapping_alias}_coretax"
+        fallback_scope_expr = _mapping_report_type_expr(conn, fallback_alias, 'real')
+        return f"""
+        {join_type} JOIN mark_coa_mapping {mapping_alias}
+            ON {mapping_alias}.mark_id = {mark_ref}
+           AND (
+                {mapping_scope_expr} = 'coretax'
+                OR (
+                    {mapping_scope_expr} = 'real'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM mark_coa_mapping {fallback_alias}
+                        WHERE {fallback_alias}.mark_id = {mark_ref}
+                          AND {fallback_scope_expr} = 'coretax'
+                          AND UPPER(COALESCE({fallback_alias}.mapping_type, '')) = UPPER(COALESCE({mapping_alias}.mapping_type, ''))
+                    )
+                )
+           )
+        """
+
+    return f"""
+    {join_type} JOIN mark_coa_mapping {mapping_alias}
+        ON {mapping_alias}.mark_id = {mark_ref}
+       AND {mapping_scope_expr} = 'real'
+    """
+
 @general_ledger_bp.route('/api/reports/general-ledger', methods=['GET'])
 def get_general_ledger():
     """
@@ -23,9 +95,7 @@ def get_general_ledger():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     coa_code = request.args.get('coa_code')  # Optional: filter by specific COA
-    
-    if not company_id:
-        return jsonify({'error': 'company_id is required'}), 400
+    report_type = request.args.get('report_type', 'real')
     
     if not start_date or not end_date:
         return jsonify({'error': 'start_date and end_date are required'}), 400
@@ -34,11 +104,17 @@ def get_general_ledger():
         with engine.connect() as conn:
             # Build query
             coa_filter = ""
+            company_filter = ""
+            coretax_filter = _coretax_filter_clause(conn, report_type, 'm')
+            mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
             params = {
-                'company_id': company_id,
                 'start_date': start_date,
                 'end_date': end_date
             }
+
+            if company_id:
+                company_filter = "AND t.company_id = :company_id"
+                params['company_id'] = company_id
             
             if coa_code:
                 coa_filter = "AND coa.code = :coa_code"
@@ -58,7 +134,7 @@ def get_general_ledger():
                     t.amount,
                     t.db_cr,
                     m.id as mark_id,
-                    m.personal_use as mark_name,
+                    COALESCE(NULLIF(TRIM(m.personal_use), ''), NULLIF(TRIM(m.internal_report), ''), NULLIF(TRIM(m.tax_report), ''), '(Unnamed Mark)') as mark_name,
                     coa.code as coa_code,
                     coa.name as coa_name,
                     coa.category as coa_category,
@@ -83,10 +159,11 @@ def get_general_ledger():
                     END) as signed_amount
                 FROM transactions t
                 INNER JOIN marks m ON t.mark_id = m.id
-                INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+                {mark_coa_join}
                 INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
                 WHERE t.txn_date BETWEEN :start_date AND :end_date
-                  AND t.company_id = :company_id
+                  {company_filter}
+                  {coretax_filter}
                   {coa_filter}
                 ORDER BY t.txn_date, t.id, mcm.mapping_type
             """)
@@ -212,6 +289,7 @@ def get_general_ledger():
                     'company_id': company_id,
                     'start_date': start_date,
                     'end_date': end_date,
+                    'report_type': report_type,
                     'coa_groups': coa_groups_list,
                     'total_accounts': len(coa_groups_list),
                     'total_transactions': len(transactions),
@@ -240,9 +318,7 @@ def export_general_ledger():
     end_date = request.args.get('end_date')
     coa_code = request.args.get('coa_code')  # Optional: filter by specific COA
     format_type = request.args.get('format', 'excel')  # excel or pdf
-    
-    if not company_id:
-        return jsonify({'error': 'company_id is required'}), 400
+    report_type = request.args.get('report_type', 'real')
     
     if not start_date or not end_date:
         return jsonify({'error': 'start_date and end_date are required'}), 400
@@ -252,11 +328,17 @@ def export_general_ledger():
         with engine.connect() as conn:
             # Build query
             coa_filter = ""
+            company_filter = ""
+            coretax_filter = _coretax_filter_clause(conn, report_type, 'm')
+            mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
             params = {
-                'company_id': company_id,
                 'start_date': start_date,
                 'end_date': end_date
             }
+
+            if company_id:
+                company_filter = "AND t.company_id = :company_id"
+                params['company_id'] = company_id
             
             if coa_code:
                 coa_filter = "AND coa.code = :coa_code"
@@ -270,7 +352,7 @@ def export_general_ledger():
                     t.amount,
                     t.db_cr,
                     m.id as mark_id,
-                    m.personal_use as mark_name,
+                    COALESCE(NULLIF(TRIM(m.personal_use), ''), NULLIF(TRIM(m.internal_report), ''), NULLIF(TRIM(m.tax_report), ''), '(Unnamed Mark)') as mark_name,
                     coa.code as coa_code,
                     coa.name as coa_name,
                     coa.category as coa_category,
@@ -292,10 +374,11 @@ def export_general_ledger():
                     END) as signed_amount
                 FROM transactions t
                 INNER JOIN marks m ON t.mark_id = m.id
-                INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+                {mark_coa_join}
                 INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
                 WHERE t.txn_date BETWEEN :start_date AND :end_date
-                  AND t.company_id = :company_id
+                  {company_filter}
+                  {coretax_filter}
                   {coa_filter}
                 ORDER BY t.txn_date, t.id, mcm.mapping_type
             """)
@@ -379,7 +462,7 @@ def export_general_ledger():
                     coa_groups[coa_code]['ending_balance'] = coa_groups[coa_code]['running_balance']
         
         if format_type == 'excel':
-            return export_to_excel(coa_groups, company_id, start_date, end_date)
+            return export_to_excel(coa_groups, company_id or 'all', start_date, end_date)
         else:
             return jsonify({'error': 'PDF export not yet implemented'}), 400
     
@@ -463,16 +546,25 @@ def get_general_ledger_summary():
     company_id = request.args.get('company_id')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
-    
-    if not company_id:
-        return jsonify({'error': 'company_id is required'}), 400
+    report_type = request.args.get('report_type', 'real')
     
     if not start_date or not end_date:
         return jsonify({'error': 'start_date and end_date are required'}), 400
     
     try:
         with engine.connect() as conn:
-            query = text("""
+            company_filter = ""
+            coretax_filter = _coretax_filter_clause(conn, report_type, 'm')
+            mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
+            params = {
+                'start_date': start_date,
+                'end_date': end_date
+            }
+            if company_id:
+                company_filter = "AND t.company_id = :company_id"
+                params['company_id'] = company_id
+
+            query = text(f"""
                 SELECT 
                     coa.code as coa_code,
                     coa.name as coa_name,
@@ -499,20 +591,17 @@ def get_general_ledger_summary():
                     COUNT(DISTINCT t.id) as transaction_count
                 FROM transactions t
                 INNER JOIN marks m ON t.mark_id = m.id
-                INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+                {mark_coa_join}
                 INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
                 WHERE t.txn_date BETWEEN :start_date AND :end_date
-                  AND t.company_id = :company_id
+                  {company_filter}
+                  {coretax_filter}
                 GROUP BY coa.code, coa.name, coa.category
                 HAVING balance != 0
                 ORDER BY coa.code
             """)
             
-            result = conn.execute(query, {
-                'company_id': company_id,
-                'start_date': start_date,
-                'end_date': end_date
-            })
+            result = conn.execute(query, params)
             
             summary = []
             for row in result:
@@ -533,6 +622,7 @@ def get_general_ledger_summary():
                     'company_id': company_id,
                     'start_date': start_date,
                     'end_date': end_date,
+                    'report_type': report_type,
                     'accounts': summary,
                     'total_accounts': len(summary)
                 }

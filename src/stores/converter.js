@@ -19,6 +19,23 @@ export const useConverterStore = defineStore('converter', {
       this.pdfPassword = null;
       this.error = null;
       this.successMessage = null;
+      this.isPasswordProtected = false;
+      this.requiresPassword = false;
+    },
+
+    async checkUploadName(fileName) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        const response = await converterApi.checkUploadName(fileName);
+        return response.data;
+      } catch (err) {
+        const errorMsg = err.response?.data?.error || err.message || 'Failed to check uploaded file name';
+        this.error = errorMsg;
+        throw err;
+      } finally {
+        this.isLoading = false;
+      }
     },
 
     async uploadFile(formData) {
@@ -41,12 +58,16 @@ export const useConverterStore = defineStore('converter', {
     
     async checkPassword(formData) {
         this.isLoading = true;
+        this.error = null;
         try {
             const response = await converterApi.checkPassword(formData);
+            this.isPasswordProtected = Boolean(response.data?.password_protected);
             return response.data;
         } catch (err) {
-            console.error(err);
-            return { password_protected: false };
+            const errorMsg = err.response?.data?.error || err.message || 'Failed to check PDF password protection';
+            this.isPasswordProtected = false;
+            this.error = errorMsg;
+            throw err;
         } finally {
             this.isLoading = false;
         }

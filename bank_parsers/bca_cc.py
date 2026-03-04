@@ -269,8 +269,8 @@ def parse_statement(pdf_path, base_year=None, password=None):
     rows = []
     
     for entry in transactions:
-        raw_txn = entry.get('txn_date', '').strip()
-        raw_post = entry.get('posting_date', '').strip()
+        raw_txn = str(entry.get('txn_date') or '').strip()
+        raw_post = str(entry.get('posting_date') or '').strip()
         
         # Determine month number
         month_num = None
@@ -312,18 +312,18 @@ def parse_statement(pdf_path, base_year=None, password=None):
             # Maybe the amount was 0 or failed parse.
             # If description provided but amount missing, might be info text.
             # But let's verify if amount is essentially 0
-            raw_amount = entry.get('amount', '').replace('.', '').replace(',', '')
+            raw_amount = str(entry.get('amount') or '').replace('.', '').replace(',', '')
             if raw_amount.isdigit() and int(raw_amount) == 0:
                  amount_value = '0.00'
-                 db_cr = entry.get('db_cr', '')
+                 db_cr = str(entry.get('db_cr') or '').strip().upper()
             else:
                  amount_value = ''
-                 db_cr = entry.get('db_cr', '').strip().upper()
+                 db_cr = str(entry.get('db_cr') or '').strip().upper()
         else:
             # Default to DB for positive amounts in BCA CC unless CR is found
             db_cr_raw = entry.get('db_cr') or ''
             amount_raw = entry.get('amount') or ''
-            db_cr = db_cr_raw.strip().upper() or ('CR' if 'CR' in amount_raw.upper() else 'DB')
+            db_cr = str(db_cr_raw).strip().upper() or ('CR' if 'CR' in str(amount_raw).upper() else 'DB')
             amount_dec = abs(amount_dec)
             amount_value = _format_amount(amount_dec)
 
@@ -452,9 +452,23 @@ def _convert_cc_date_absolute(raw: str, year: int):
     return ''
 
 
-def _parse_decimal(value: str):
+def _parse_decimal(value):
+    if value is None:
+        return None
+
+    if isinstance(value, Decimal):
+        return value
+
+    if isinstance(value, (int, float)):
+        try:
+            return Decimal(str(value))
+        except (InvalidOperation, ValueError):
+            return None
+
+    value = str(value)
     if not value:
         return None
+
     # Remove Currency symbol matches if any
     cleaned = value.strip().replace('\u00a0', '').replace(' ', '').replace('CR', '').replace('DB', '')
     cleaned = re.sub(r'IDR|RP', '', cleaned, flags=re.IGNORECASE)

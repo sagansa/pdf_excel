@@ -51,7 +51,7 @@
         <div class="border-b border-gray-200">
           <nav class="flex -mb-px">
             <button
-              @click="activeTab = 'income-statement'"
+              @click="handleTabClick('income-statement')"
               class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
               :class="activeTab === 'income-statement' 
                 ? 'border-indigo-600 text-indigo-600' 
@@ -61,7 +61,7 @@
               Income Statement
             </button>
             <button
-              @click="activeTab = 'monthly-revenue'"
+              @click="handleTabClick('monthly-revenue')"
               class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
               :class="activeTab === 'monthly-revenue' 
                 ? 'border-indigo-600 text-indigo-600' 
@@ -71,7 +71,7 @@
               Monthly Revenue
             </button>
             <button
-              @click="activeTab = 'balance-sheet'"
+              @click="handleTabClick('balance-sheet')"
               class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
               :class="activeTab === 'balance-sheet'
                 ? 'border-indigo-600 text-indigo-600' 
@@ -81,7 +81,7 @@
               Balance Sheet
             </button>
             <button
-              @click="activeTab = 'cash-flow'"
+              @click="handleTabClick('cash-flow')"
               class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
               :class="activeTab === 'cash-flow'
                 ? 'border-indigo-600 text-indigo-600'
@@ -99,7 +99,7 @@
               GL
             </button>
             <button
-              @click="activeTab = 'payroll-summary'"
+              @click="handleTabClick('payroll-summary')"
               class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
               :class="activeTab === 'payroll-summary'
                 ? 'border-indigo-600 text-indigo-600'
@@ -109,7 +109,7 @@
               Payroll Summary
             </button>
             <button
-              @click="activeTab = 'marks-report'"
+              @click="handleTabClick('marks-report')"
               class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
               :class="activeTab === 'marks-report'
                 ? 'border-indigo-600 text-indigo-600'
@@ -128,7 +128,6 @@
         :available-years="store.availableYears"
         :companies="companies"
         :is-loading="store.isLoading"
-        @generate="generateReport"
       />
 
       <!-- Error Message -->
@@ -195,7 +194,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useReportsStore } from '../stores/reports';
 import { useCompanyStore } from '../stores/companies';
 import { useCoaStore } from '../stores/coa';
@@ -211,11 +211,43 @@ import COADetailModal from '../components/reports/COADetailModal.vue';
 const store = useReportsStore();
 const companyStore = useCompanyStore();
 const coaStore = useCoaStore();
+const route = useRoute();
+const router = useRouter();
 
 const activeTab = ref('income-statement');
 const refreshKey = ref(0);
 const showCoaModal = ref(false);
 const selectedCoa = ref(null);
+const isHydratingFilters = ref(true);
+const autoGenerateTimer = ref(null);
+const reportTabs = new Set([
+  'income-statement',
+  'monthly-revenue',
+  'balance-sheet',
+  'cash-flow',
+  'payroll-summary',
+  'marks-report'
+]);
+
+const normalizeTab = (tab) => {
+  const tabValue = String(tab || '').trim();
+  return reportTabs.has(tabValue) ? tabValue : 'income-statement';
+};
+
+const handleTabClick = async (tab) => {
+  const nextTab = normalizeTab(tab);
+  activeTab.value = nextTab;
+  try {
+    await router.replace({
+      query: {
+        ...route.query,
+        tab: nextTab
+      }
+    });
+  } catch (error) {
+    console.error('Failed to update report tab query:', error);
+  }
+};
 
   const openCoaDetail = async (coaItem) => {
     if (!coaItem || !coaItem.code) return;
@@ -240,10 +272,22 @@ const selectedCoa = ref(null);
     }
   };
 
-// Add watcher for persistence
+const scheduleGenerateReport = () => {
+  if (autoGenerateTimer.value) {
+    clearTimeout(autoGenerateTimer.value);
+  }
+  autoGenerateTimer.value = setTimeout(() => {
+    generateReport();
+  }, 300);
+};
+
+// Add watcher for persistence + auto refresh
 watch(() => store.filters, (newFilters) => {
   console.log('ReportsView: Filters changed:', newFilters);
   store.saveFilters();
+  if (isHydratingFilters.value) return;
+  if (!newFilters.startDate || !newFilters.endDate || !newFilters.asOfDate) return;
+  scheduleGenerateReport();
 }, { deep: true });
 
 // Also watch specific year changes
@@ -292,7 +336,7 @@ const syncFiltersWithAvailableYears = () => {
     startDate: shouldResetYear || !store.filters.startDate ? yearRange.startDate : store.filters.startDate,
     endDate: shouldResetYear || !store.filters.endDate ? yearRange.endDate : store.filters.endDate,
     asOfDate: shouldResetYear || !store.filters.asOfDate ? yearRange.asOfDate : store.filters.asOfDate,
-    reportType: store.filters.reportType || 'real'
+    reportType: (store.filters.reportType || 'real').toLowerCase()
   };
   
   console.log('After sync:', store.filters);
@@ -309,7 +353,8 @@ const generateReport = async () => {
     year: store.filters.year,
     startDate: store.filters.startDate,
     endDate: store.filters.endDate,
-    asOfDate: store.filters.asOfDate
+    asOfDate: store.filters.asOfDate,
+    reportType: store.filters.reportType
   });
 
   try {
@@ -344,9 +389,16 @@ const handleExport = async (format) => {
 };
 
 const navigateToGeneralLedger = () => {
-  // Navigate to General Ledger page
-  window.location.href = '/general-ledger';
+  router.push({ name: 'general-ledger' });
 };
+
+watch(
+  () => route.query.tab,
+  (tabFromQuery) => {
+    activeTab.value = normalizeTab(tabFromQuery);
+  },
+  { immediate: true }
+);
 
 onMounted(async () => {
   console.log('ReportsView: onMounted started');
@@ -366,6 +418,7 @@ onMounted(async () => {
   
   // Auto-generate report with filters
   await generateReport();
+  isHydratingFilters.value = false;
 });
 
 watch(
@@ -376,4 +429,10 @@ watch(
     syncFiltersWithAvailableYears();
   }
 );
+
+onBeforeUnmount(() => {
+  if (autoGenerateTimer.value) {
+    clearTimeout(autoGenerateTimer.value);
+  }
+});
 </script>

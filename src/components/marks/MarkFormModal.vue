@@ -12,8 +12,25 @@
         <textarea v-model="form.personal_use" rows="2" class="input-base" placeholder="e.g. Family Vacation"></textarea>
       </div>
       <div class="space-y-1">
-        <label class="label-base">Tax Report Description</label>
-        <textarea v-model="form.tax_report" rows="2" class="input-base" placeholder="e.g. Tax Deductible Donation"></textarea>
+        <label class="label-base">Tax Report Description (Opsional)</label>
+        <textarea v-model="form.tax_report" rows="2" class="input-base" placeholder="Keterangan pajak opsional"></textarea>
+      </div>
+
+      <div class="flex items-center gap-2 p-3 bg-cyan-50 rounded-lg border border-cyan-100">
+        <input
+          type="checkbox"
+          id="is_coretax"
+          v-model="form.is_coretax"
+          class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 h-5 w-5"
+        />
+        <div class="flex-1">
+          <label for="is_coretax" class="text-sm font-semibold text-gray-900 cursor-pointer">
+            Masukkan ke Coretax
+          </label>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Cukup centang ini jika mark ingin dihitung saat filter report type = Coretax
+          </p>
+        </div>
       </div>
 
       <div class="flex items-center gap-2 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
@@ -124,6 +141,7 @@ const form = reactive({
     internal_report: '',
     personal_use: '',
     tax_report: '',
+    is_coretax: false,
     is_asset: false,
     is_service: false,
     is_salary_component: false,
@@ -138,6 +156,7 @@ watch(() => props.markToEdit, (newVal) => {
         form.internal_report = newVal.internal_report || '';
         form.personal_use = newVal.personal_use || '';
         form.tax_report = newVal.tax_report || '';
+        form.is_coretax = Boolean(newVal.is_coretax === 1 || newVal.is_coretax === true);
         // Handle both integer (0/1) and boolean values for is_asset
         form.is_asset = Boolean(newVal.is_asset === 1 || newVal.is_asset === true);
         form.is_service = Boolean(newVal.is_service === 1 || newVal.is_service === true);
@@ -149,6 +168,7 @@ watch(() => props.markToEdit, (newVal) => {
         form.internal_report = '';
         form.personal_use = '';
         form.tax_report = '';
+        form.is_coretax = false;
         form.is_asset = false;
         form.is_service = false;
         form.is_salary_component = false;
@@ -166,6 +186,7 @@ watch(() => props.isOpen, (isOpen) => {
         form.internal_report = mark.internal_report || '';
         form.personal_use = mark.personal_use || '';
         form.tax_report = mark.tax_report || '';
+        form.is_coretax = Boolean(mark.is_coretax === 1 || mark.is_coretax === true);
         form.is_asset = Boolean(mark.is_asset === 1 || mark.is_asset === true);
         form.is_service = Boolean(mark.is_service === 1 || mark.is_service === true);
         form.is_salary_component = Boolean(mark.is_salary_component === 1 || mark.is_salary_component === true);
@@ -187,6 +208,7 @@ const handleSubmit = async () => {
         // Create a copy of form data and ensure is_asset is properly converted
         const formData = {
             ...form,
+            is_coretax: Boolean(form.is_coretax),
             is_asset: Boolean(form.is_asset),
             is_service: Boolean(form.is_service),
             is_salary_component: Boolean(form.is_salary_component),

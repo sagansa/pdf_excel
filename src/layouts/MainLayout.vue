@@ -40,6 +40,18 @@
         </router-link>
 
         <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
+            <p class="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">HRD</p>
+        </div>
+        <div class="pt-4 pb-2 flex justify-center" v-if="isSidebarCollapsed">
+            <i class="bi bi-three-dots text-gray-300"></i>
+        </div>
+
+        <router-link to="/hrd" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'HRD' : ''">
+          <i class="bi bi-calendar-check text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Presences</span>
+        </router-link>
+
+        <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
             <p class="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</p>
         </div>
         <div class="pt-4 pb-2 flex justify-center" v-if="isSidebarCollapsed">
@@ -168,6 +180,7 @@ const pageTitle = computed(() => {
         case 'chart-of-accounts': return 'Chart of Accounts';
         case 'products': return 'Product Management';
         case 'reports': return 'Financial Reports';
+        case 'hrd': return 'HRD Presences';
         case 'settings': return 'System Settings';
         default: return 'StatementX';
     }

@@ -24,7 +24,8 @@ export const useReportsStore = defineStore('reports', {
       startDate: '',
       endDate: '',
       asOfDate: '',
-      companyId: null
+      companyId: null,
+      reportType: 'real'
     }
   }),
 
@@ -50,7 +51,11 @@ export const useReportsStore = defineStore('reports', {
 
   actions: {
     setFilters(filters) {
-      this.filters = { ...this.filters, ...filters };
+      this.filters = {
+        ...this.filters,
+        ...filters,
+        reportType: filters?.reportType || this.filters.reportType || 'real'
+      };
       this.saveFilters();
     },
 
@@ -58,18 +63,14 @@ export const useReportsStore = defineStore('reports', {
       try {
         const res = await filterApi.getFilters('reports');
         if (res.data.filters && Object.keys(res.data.filters).length > 0) {
-          this.filters = { ...this.filters, ...res.data.filters };
+          this.filters = {
+            ...this.filters,
+            ...res.data.filters,
+            reportType: res.data.filters.reportType || 'real'
+          };
         }
       } catch (e) {
         console.error("Failed to load reports filters:", e);
-      }
-    },
-
-    async saveFilters() {
-      try {
-        await filterApi.saveFilters('reports', this.filters);
-      } catch (e) {
-        console.error("Failed to save reports filters:", e);
       }
     },
 
@@ -236,7 +237,8 @@ export const useReportsStore = defineStore('reports', {
       this.isLoading = true;
       this.error = null;
       try {
-        const { startDate, endDate, companyId, asOfDate, year, reportType } = this.filters;
+        const { startDate, endDate, companyId, asOfDate, year } = this.filters;
+        const reportType = (this.filters.reportType || 'real').toLowerCase();
         // Parallel fetch for all core reports
         await Promise.all([
           this.fetchIncomeStatement(startDate, endDate, companyId, reportType),
@@ -427,6 +429,7 @@ export const useReportsStore = defineStore('reports', {
       try {
         const filtersToSave = {
           ...this.filters,
+          reportType: this.filters.reportType || 'real',
           savedAt: new Date().toISOString()
         };
         await filterApi.saveFilters('reports', filtersToSave);
@@ -434,7 +437,7 @@ export const useReportsStore = defineStore('reports', {
         return true;
       } catch (e) {
         console.error("Failed to save filters:", e);
-        throw e;
+        return false;
       }
     }
   }
