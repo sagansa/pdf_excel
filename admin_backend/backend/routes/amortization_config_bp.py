@@ -3,7 +3,6 @@ from flask import Blueprint, request, jsonify
 from backend.errors import BadRequestError, NotFoundError
 from backend.routes.accounting_utils import require_db_engine, serialize_result_rows
 from backend.routes.amortization_config_helpers import (
-    DEFAULT_AMORTIZATION_SETTINGS,
     build_settings_to_save,
     merge_asset_groups,
     merge_settings_payload,
@@ -110,15 +109,9 @@ def get_amortization_coa_codes():
     with engine.connect() as conn:
         result = conn.execute(amortization_coa_codes_query())
         coa_rows = serialize_result_rows(result)
-        coa_codes = []
-        coa_details = []
-        for d in coa_rows:
-            coa_codes.append(d['code'])
-            coa_details.append(d)
-
         return jsonify({
-            'coa_codes': coa_codes,
-            'coa_details': coa_details
+            'coa_codes': [row['code'] for row in coa_rows],
+            'coa_details': coa_rows
         })
 
 @amortization_config_bp.route('/api/amortization-settings', methods=['GET'])
@@ -181,10 +174,7 @@ def get_mark_amortization_mappings():
     engine = require_db_engine()
     with engine.connect() as conn:
         result = conn.execute(mark_amortization_mappings_query())
-        mappings = [
-            serialize_mapping_row(row)
-            for row in serialize_result_rows(result)
-        ]
+        mappings = [serialize_mapping_row(row._mapping) for row in result]
 
         return jsonify({'mappings': mappings})
 

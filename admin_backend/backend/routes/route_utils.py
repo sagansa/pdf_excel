@@ -4,7 +4,7 @@ from urllib import error as urlerror
 from urllib import parse as urlparse
 from urllib import request as urlrequest
 
-from backend.routes.accounting_utils import serialize_db_value
+from backend.routes.accounting_utils import normalize_iso_date_value
 
 
 def _parse_bool(value):
@@ -18,18 +18,7 @@ def _parse_bool(value):
 
 
 def _normalize_iso_date(value):
-    if value in (None, ''):
-        return None
-    if isinstance(value, datetime):
-        return serialize_db_value(value, datetime_format='%Y-%m-%d')
-    if isinstance(value, date):
-        return serialize_db_value(value)
-    if isinstance(value, str):
-        try:
-            return datetime.strptime(value[:10], '%Y-%m-%d').date().isoformat()
-        except ValueError:
-            return None
-    return None
+    return normalize_iso_date_value(value)
 
 
 def _normalize_db_cr(value, default='DB'):

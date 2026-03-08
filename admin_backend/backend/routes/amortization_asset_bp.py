@@ -2,8 +2,7 @@ import uuid
 from flask import Blueprint, request, jsonify
 from datetime import date
 from backend.errors import BadRequestError, NotFoundError
-from backend.routes.accounting_utils import require_db_engine
-from backend.routes.amortization_helpers import serialize_decimal_row_with_dates
+from backend.routes.accounting_utils import require_db_engine, serialize_row_values
 from backend.routes.amortization_queries import (
     delete_amortization_asset_query,
     insert_amortization_asset_query,
@@ -49,7 +48,7 @@ def get_pending_amortization_transactions():
         transactions = []
 
         for row in result:
-            d = serialize_decimal_row_with_dates(row._mapping)
+            d = serialize_row_values(row._mapping, datetime_format='%Y-%m-%d')
             transactions.append(d)
 
         return jsonify({

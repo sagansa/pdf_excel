@@ -1,12 +1,21 @@
-import os
 import re
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 import pandas as pd
 import pdfplumber
 
 from bank_parsers import mandiri
+from bank_parsers.parser_common import (
+    collect_page_text,
+    conversion_timestamp,
+    ensure_pdf_file,
+    format_amount,
+    parse_decimal_id_amount,
+    parse_decimal_us_amount,
+    source_file_name,
+    validate_pdf_document,
+)
 
 # e-Statement (Livin email) patterns
 ES_DATE_LINE_PATTERN = re.compile(r'^\s*(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})(?:\s+(.*))?$')
@@ -113,44 +122,17 @@ def _to_iso_date(date_str: str) -> str:
 
 
 def _parse_decimal_id(value: str):
-    if not value:
-        return None
-    cleaned = str(value).strip().replace('\u00a0', '').replace(' ', '')
-    if not cleaned:
-        return None
-
-    sign = -1 if cleaned.startswith('-') else 1
-    cleaned = cleaned.lstrip('+-')
-    if not cleaned:
-        return None
-
-    try:
-        # ID style: 1.234.567,89
-        cleaned = cleaned.replace('.', '').replace(',', '.')
-        dec = Decimal(cleaned)
-    except InvalidOperation:
-        return None
-    return dec * sign
+    return parse_decimal_id_amount(value)
 
 
 def _parse_decimal_us(value: str):
-    if not value:
-        return None
-    cleaned = str(value).strip().replace('\u00a0', '').replace(' ', '')
-    if not cleaned:
-        return None
-    try:
-        # US style: 1,234,567.89
-        dec = Decimal(cleaned.replace(',', ''))
-    except InvalidOperation:
-        return None
-    return dec
+    return parse_decimal_us_amount(value)
 
 
 def _format_decimal(dec: Decimal | None) -> str:
     if dec is None:
         return ''
-    return format(abs(dec), '.2f')
+    return format_amount(abs(dec))
 
 
 def _add_detail_line(txn: dict | None, line: str) -> None:
@@ -446,28 +428,25 @@ def _parse_e_statement(lines: list[str], account_no: str, conversion_timestamp: 
 
 
 def parse_statement(pdf_path):
-    if not pdf_path.lower().endswith('.pdf'):
-        raise ValueError('Invalid file format. Please provide a PDF file')
+    ensure_pdf_file(pdf_path)
 
-    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    source_file = os.path.basename(pdf_path)
+    current_conversion_timestamp = conversion_timestamp()
+    source_file = source_file_name(pdf_path)
 
     try:
         lines = []
-        full_text_parts = []
         with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text() or ''
-                if text:
-                    full_text_parts.append(text)
-                    lines.extend([ln.rstrip() for ln in text.split('\n')])
+            validate_pdf_document(pdf, 'Mandiri email statement')
+            full_text_parts = collect_page_text(pdf)
+            for text in full_text_parts:
+                lines.extend([ln.rstrip() for ln in text.split('\n')])
 
         full_text = '\n'.join(full_text_parts)
         full_text_lower = full_text.lower()
 
         # First path: Rekening Koran / Statement of Account format
         if 'rekening koran / statement of account' in full_text_lower:
-            rk_transactions = _parse_rekening_koran(lines, full_text, source_file, conversion_timestamp)
+            rk_transactions = _parse_rekening_koran(lines, full_text, source_file, current_conversion_timestamp)
             if rk_transactions:
                 rows = []
                 currency = _extract_currency(full_text) or 'IDR'
@@ -483,7 +462,7 @@ def parse_statement(pdf_path):
                         'db_cr': txn.get('db_cr', ''),
                         'balance': txn.get('balance', ''),
                         'currency': currency,
-                        'created_at': txn.get('created_at', conversion_timestamp),
+                        'created_at': txn.get('created_at', current_conversion_timestamp),
                         'source_file': source_file
                     })
                 columns = [
@@ -494,7 +473,7 @@ def parse_statement(pdf_path):
 
         # Second path: e-Statement email style
         account_no = _extract_account_number(full_text)
-        es_transactions = _parse_e_statement(lines, account_no, conversion_timestamp)
+        es_transactions = _parse_e_statement(lines, account_no, current_conversion_timestamp)
         if es_transactions:
             rows = []
             currency = _extract_currency(full_text) or 'IDR'
@@ -506,25 +485,24 @@ def parse_statement(pdf_path):
                     'txn_date': txn_date,
                     'posting_date': txn_date,
                     'description': txn.get('description', ''),
-                    'amount': txn.get('amount', ''),
-                    'db_cr': txn.get('db_cr', ''),
-                    'balance': txn.get('balance', ''),
-                    'currency': currency,
-                    'created_at': txn.get('created_at', conversion_timestamp),
-                    'source_file': source_file
-                })
+                        'amount': txn.get('amount', ''),
+                        'db_cr': txn.get('db_cr', ''),
+                        'balance': txn.get('balance', ''),
+                        'currency': currency,
+                        'created_at': txn.get('created_at', current_conversion_timestamp),
+                        'source_file': source_file
+                    })
             columns = [
                 'bank_code', 'account_no', 'txn_date', 'posting_date', 'description',
                 'amount', 'db_cr', 'balance', 'currency', 'created_at', 'source_file'
             ]
             return pd.DataFrame(rows, columns=columns)
 
-    except Exception as e:
-        raise ValueError(f'Error processing Mandiri email PDF: {str(e)}')
+    except Exception as exc:
+        raise ValueError(f'Error processing Mandiri email PDF: {exc}')
 
     # Final fallback for unseen layouts
     try:
         return mandiri.parse_statement(pdf_path)
-    except Exception:
+    except ValueError:
         raise ValueError('No transaction data found in Mandiri email PDF.')
-

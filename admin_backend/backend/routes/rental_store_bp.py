@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 from backend.db.schema import get_table_columns
 from backend.errors import BadRequestError, NotFoundError
-from backend.routes.rental_helpers import require_db_engine, serialize_row
+from backend.routes.accounting_utils import require_db_engine, serialize_result_rows
 from backend.routes.rental_queries import build_stores_query
 
 rental_store_bp = Blueprint('rental_store_bp', __name__)
@@ -29,7 +29,7 @@ def get_stores():
             build_stores_query(store_name_expr, store_code_expr, location_join),
             {'company_id': company_id}
         )
-        stores = [serialize_row(row) for row in result]
+        stores = serialize_result_rows(result, datetime_format='%Y-%m-%dT%H:%M:%S')
     return jsonify({'stores': stores})
 
 

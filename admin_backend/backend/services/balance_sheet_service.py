@@ -17,27 +17,28 @@ from backend.services.equity_bridges import (
     apply_service_tax_payable_bridge,
     prepend_initial_capital,
 )
-from backend.services.report_common import (
+from backend.services.report_sql_fragments import (
     _coretax_filter_clause,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
 )
 
 logger = logging.getLogger(__name__)
-def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='real'):
-    """
-    Helper function to fetch balance sheet data.
-    Returns calculated values and lists of items.
-    """
-    as_of_date_obj = datetime.strptime(as_of_date, '%Y-%m-%d').date()
 
-    # 1. Get asset, liability, and equity COA balances
+
+def _build_balance_sheet_query(conn, report_type):
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
     coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
-    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
-    query = text(f"""
+    mark_coa_join = _mark_coa_join_clause(
+        conn,
+        report_type,
+        mark_ref='m.id',
+        mapping_alias='mcm',
+        join_type='INNER',
+    )
+    return text(f"""
         WITH coa_balances AS (
-            SELECT 
+            SELECT
                 mcm.coa_id,
                 SUM(
                     (CASE
@@ -45,16 +46,16 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
                         WHEN mcm.mapping_type = 'CREDIT' THEN -t.amount
                         ELSE 0
                     END)
-                    * (CASE 
-                        WHEN m.natural_direction IS NOT NULL 
+                    * (CASE
+                        WHEN m.natural_direction IS NOT NULL
                              AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
                              AND (
                                 (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
                                 OR
                                 (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
                              )
-                        THEN -1 
-                        ELSE 1 
+                        THEN -1
+                        ELSE 1
                     END)
                 ) as total_amount
             FROM transactions t
@@ -81,9 +82,83 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
         ORDER BY coa.code
     """)
 
-    result = conn.execute(query, {
+
+def _append_balance_row(row_data, asset_items, liabilities_current, liabilities_non_current, equity):
+    amount = float(row_data['total_amount']) if row_data['total_amount'] else 0.0
+
+    if row_data['category'] == 'ASSET':
+        add_or_update_asset_item(
+            asset_items,
+            row_data['id'],
+            row_data['code'],
+            row_data['name'],
+            row_data.get('subcategory'),
+            amount,
+        )
+        return
+
+    if row_data['category'] == 'LIABILITY':
+        add_or_update_liability_item(
+            liabilities_current,
+            liabilities_non_current,
+            row_data['id'],
+            row_data['code'],
+            row_data['name'],
+            row_data.get('subcategory'),
+            amount,
+            force_current=bool(row_data['code'] and row_data['code'].startswith('2')),
+        )
+        return
+
+    if row_data['category'] == 'EQUITY':
+        equity.append({
+            'id': row_data['id'],
+            'code': row_data['code'],
+            'name': row_data['name'],
+            'subcategory': row_data['subcategory'],
+            'amount': amount,
+            'category': row_data['category'],
+        })
+
+
+def _split_asset_sections(asset_items):
+    assets_current = []
+    assets_non_current = []
+    for item in sorted(asset_items.values(), key=lambda value: str(value.get('code') or '')):
+        normalized_item = dict(item)
+        is_current = normalized_item.pop('is_current', False)
+        if is_current:
+            assets_current.append(normalized_item)
+        else:
+            assets_non_current.append(normalized_item)
+    return assets_current, assets_non_current
+
+
+def _append_balance_adjustment(equity, as_of_date, company_id, adjustment_amount):
+    if abs(adjustment_amount) < 0.01:
+        return 0.0
+
+    equity.append({
+        'id': f'computed_balance_adjustment_{as_of_date}_{company_id or "all"}',
+        'code': '3999',
+        'name': 'Penyesuaian Saldo Pembuka',
+        'subcategory': 'Balance Adjustment',
+        'amount': adjustment_amount,
+        'category': 'EQUITY',
+        'is_computed': True,
+    })
+    return adjustment_amount
+
+
+def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='real'):
+    """
+    Helper function to fetch balance sheet data.
+    Returns calculated values and lists of items.
+    """
+    as_of_date_obj = datetime.strptime(as_of_date, '%Y-%m-%d').date()
+    result = conn.execute(_build_balance_sheet_query(conn, report_type), {
         'as_of_date': as_of_date,
-        'company_id': company_id
+        'company_id': company_id,
     })
 
     asset_items = {}
@@ -92,50 +167,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     equity = []
 
     for row in result:
-        d = dict(row._mapping)
-        amount = float(d['total_amount']) if d['total_amount'] else 0
-
-        if d['category'] == 'ASSET':
-            add_or_update_asset_item(
-                asset_items,
-                d['id'],
-                d['code'],
-                d['name'],
-                d.get('subcategory'),
-                amount
-            )
-        elif d['category'] == 'LIABILITY':
-            if d['code'] and d['code'].startswith('2'):
-                add_or_update_liability_item(
-                    liabilities_current,
-                    liabilities_non_current,
-                    d['id'],
-                    d['code'],
-                    d['name'],
-                    d.get('subcategory'),
-                    amount,
-                    force_current=True
-                )
-            else:
-                add_or_update_liability_item(
-                    liabilities_current,
-                    liabilities_non_current,
-                    d['id'],
-                    d['code'],
-                    d['name'],
-                    d.get('subcategory'),
-                    amount,
-                    force_current=False
-                )
-        elif d['category'] == 'EQUITY':
-            equity.append({
-                'id': d['id'],
-                'code': d['code'],
-                'name': d['name'],
-                'subcategory': d['subcategory'],
-                'amount': amount,
-                'category': d['category']
-            })
+        _append_balance_row(row._mapping, asset_items, liabilities_current, liabilities_non_current, equity)
 
     service_tax_payable_computed = apply_service_tax_payable_bridge(
         conn, liabilities_current, liabilities_non_current, as_of_date, company_id, report_type
@@ -152,16 +184,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     apply_ending_inventory_bridge(conn, asset_items, as_of_date_obj, company_id)
     apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_date, company_id, report_type)
 
-    # Build ordered asset sections.
-    assets_current = []
-    assets_non_current = []
-    for item in sorted(asset_items.values(), key=lambda x: str(x.get('code') or '')):
-        normalized_item = dict(item)
-        is_current = normalized_item.pop('is_current', False)
-        if is_current:
-            assets_current.append(normalized_item)
-        else:
-            assets_non_current.append(normalized_item)
+    assets_current, assets_non_current = _split_asset_sections(asset_items)
 
     # Calculate totals from arrays (more reliable than incremental calculation).
     calculated_assets_total = sum(item.get('amount', 0) for item in assets_current + assets_non_current)
@@ -174,17 +197,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     # If there is still a residual difference, surface it explicitly as a computed equity adjustment.
     # This keeps the report balanced while making the adjustment transparent in the UI.
     balance_adjustment = calculated_assets_total - (calculated_liabilities_total + calculated_equity_total)
-    if abs(balance_adjustment) >= 0.01:
-        equity.append({
-            'id': f'computed_balance_adjustment_{as_of_date}_{company_id or "all"}',
-            'code': '3999',
-            'name': 'Penyesuaian Saldo Pembuka',
-            'subcategory': 'Balance Adjustment',
-            'amount': balance_adjustment,
-            'category': 'EQUITY',
-            'is_computed': True
-        })
-        calculated_equity_total += balance_adjustment
+    calculated_equity_total += _append_balance_adjustment(equity, as_of_date, company_id, balance_adjustment)
     
     # Also fix top-level totals for frontend compatibility
     total_assets = calculated_assets_total

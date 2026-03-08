@@ -3,24 +3,254 @@ from datetime import datetime
 
 from sqlalchemy import text
 
-from backend.services.report_adjustments import (
+from backend.services.rental_adjustments import (
     _calculate_prorated_contract_rent_expense,
-    _calculate_service_tax_adjustment_for_period,
     _fetch_non_contract_rent_expense_items,
     _resolve_rent_expense_account,
 )
-from backend.services.report_common import (
-    RENT_EXPENSE_CODES,
-    _calculate_dynamic_5314_total,
+from backend.services.report_amortization_common import _calculate_dynamic_5314_total
+from backend.services.report_inventory_common import _get_inventory_balance_with_carry
+from backend.services.report_sql_fragments import (
     _coretax_filter_clause,
-    _get_inventory_balance_with_carry,
-    _is_cogs_expense_item,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
+)
+from backend.services.report_value_utils import (
+    RENT_EXPENSE_CODES,
+    _is_cogs_expense_item,
     _to_float,
 )
+from backend.services.service_tax_adjustments import _calculate_service_tax_adjustment_for_period
 
 logger = logging.getLogger(__name__)
+
+
+def _previous_period(start_date, end_date):
+    start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+    return (
+        start_date_obj.replace(year=start_date_obj.year - 1).strftime('%Y-%m-%d'),
+        end_date_obj.replace(year=end_date_obj.year - 1).strftime('%Y-%m-%d'),
+    )
+
+
+def _merge_comparative_items(current_items, previous_items):
+    prev_lookup = {item['code']: item['amount'] for item in previous_items}
+    curr_lookup = {item['code']: item for item in current_items}
+    previous_item_lookup = {item['code']: item for item in previous_items}
+
+    merged_items = []
+    for code in sorted(set(prev_lookup.keys()) | set(curr_lookup.keys())):
+        if code in curr_lookup:
+            item = curr_lookup[code].copy()
+            item['previous_year_amount'] = prev_lookup.get(code, 0.0)
+        else:
+            item = previous_item_lookup[code].copy()
+            item['amount'] = 0.0
+            item['previous_year_amount'] = prev_lookup.get(code, 0.0)
+        merged_items.append(item)
+    return merged_items
+
+
+def _merge_comparative_cogs(current_data, previous_year_data):
+    if 'cogs_breakdown' not in current_data or 'cogs_breakdown' not in previous_year_data:
+        return
+
+    prev_cogs = previous_year_data['cogs_breakdown']
+    prev_items = (prev_cogs.get('purchases_items', []) or []) + (prev_cogs.get('other_cogs_items', []) or [])
+
+    prev_cogs_lookup = {}
+    for item in prev_items:
+        code = str(item.get('code') or '').strip()
+        if not code:
+            continue
+        prev_cogs_lookup[code] = prev_cogs_lookup.get(code, 0.0) + _to_float(item.get('amount'), 0.0)
+
+    for list_key in ('purchases_items', 'other_cogs_items'):
+        for item in current_data['cogs_breakdown'].get(list_key, []) or []:
+            code = str(item.get('code') or '').strip()
+            item['previous_year_amount'] = prev_cogs_lookup.get(code, 0.0)
+
+    current_data['cogs_breakdown']['previous_year_purchases'] = _to_float(
+        prev_cogs.get('total_cogs', prev_cogs.get('purchases', 0.0)), 0.0
+    )
+
+
+def _apply_comparative_data(current_data, previous_year_data):
+    current_data['revenue'] = _merge_comparative_items(current_data['revenue'], previous_year_data['revenue'])
+    current_data['expenses'] = _merge_comparative_items(current_data['expenses'], previous_year_data['expenses'])
+    current_data['previous_year_total_revenue'] = previous_year_data['total_revenue']
+    current_data['previous_year_total_expenses'] = previous_year_data['total_expenses']
+    current_data['previous_year_net_income'] = previous_year_data['net_income']
+    _merge_comparative_cogs(current_data, previous_year_data)
+    logger.debug(
+        "[Income Statement] Merged comparative data revenue_count=%s expense_count=%s",
+        len(current_data['revenue']),
+        len(current_data['expenses']),
+    )
+
+
+def _build_income_statement_query(conn, report_type, split_exclusion_clause, coretax_clause):
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
+    return text(f"""
+        SELECT
+            coa.code,
+            coa.name,
+            coa.category,
+            coa.subcategory,
+            SUM(
+                CASE
+                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'DEBIT' THEN
+                        t.amount * (CASE
+                            WHEN m.natural_direction IS NOT NULL
+                                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                                 AND (
+                                    (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                    OR
+                                    (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                 )
+                            THEN -1 ELSE 1 END)
+                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'CREDIT' THEN
+                        -t.amount * (CASE
+                            WHEN m.natural_direction IS NOT NULL
+                                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                                 AND (
+                                    (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                    OR
+                                    (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                 )
+                            THEN -1 ELSE 1 END)
+                    WHEN t.db_cr = 'DB' THEN t.amount
+                    WHEN t.db_cr = 'CR' THEN -t.amount
+                    ELSE 0
+                END
+            ) as signed_amount
+        FROM transactions t
+        INNER JOIN marks m ON t.mark_id = m.id
+        {mark_coa_join}
+        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        WHERE t.txn_date BETWEEN :start_date AND :end_date
+            AND coa.category IN ('REVENUE', 'EXPENSE')
+            AND (:company_id IS NULL OR t.company_id = :company_id)
+            {split_exclusion_clause}
+                {coretax_clause}
+        GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory
+        ORDER BY coa.code
+    """)
+
+
+def _merge_expense_item(expenses, item):
+    for existing in expenses:
+        if str(existing.get('code') or '') == str(item.get('code') or ''):
+            existing['amount'] = _to_float(existing.get('amount'), 0.0) + _to_float(item.get('amount'), 0.0)
+            return
+    expenses.append(item)
+
+
+def _process_income_statement_rows(result):
+    revenue = []
+    expenses = []
+    rent_expense_templates = {}
+    total_revenue = 0.0
+    total_expenses = 0.0
+    fallback_5314_from_ledger = 0.0
+
+    for row in result:
+        d = row._mapping
+        signed_amount = float(d['signed_amount']) if d['signed_amount'] else 0.0
+        amount = -signed_amount if d['category'] == 'REVENUE' else signed_amount
+
+        item = {
+            'code': d['code'],
+            'name': d['name'],
+            'subcategory': d['subcategory'],
+            'amount': amount,
+            'category': d['category'],
+        }
+
+        if d['category'] == 'REVENUE':
+            revenue.append(item)
+            total_revenue += amount
+            continue
+
+        if d['code'] == '5314':
+            fallback_5314_from_ledger += amount
+            continue
+
+        if d['code'] in RENT_EXPENSE_CODES:
+            rent_expense_templates[d['code']] = {
+                'code': d['code'],
+                'name': d['name'],
+                'subcategory': d['subcategory'],
+                'amount': 0.0,
+                'category': 'EXPENSE',
+            }
+            continue
+
+        _merge_expense_item(expenses, item)
+        total_expenses += amount
+
+    return {
+        'revenue': revenue,
+        'expenses': expenses,
+        'rent_expense_templates': rent_expense_templates,
+        'total_revenue': total_revenue,
+        'total_expenses': total_expenses,
+        'fallback_5314_from_ledger': fallback_5314_from_ledger,
+    }
+
+
+def _build_cogs_breakdown(expenses, start_date, beginning_inv, ending_inv):
+    purchases = 0.0
+    purchases_items = []
+    other_cogs_items = []
+
+    cogs_items = [expense for expense in expenses if _is_cogs_expense_item(expense)]
+    for item in cogs_items:
+        item_code = str(item.get('code') or '').strip()
+        if item_code == '5001':
+            purchases += _to_float(item.get('amount'), 0.0)
+            purchases_items.append(item)
+        else:
+            other_cogs_items.append(item)
+
+    total_other_cogs = sum(item['amount'] for item in other_cogs_items)
+    total_cogs = beginning_inv + purchases + total_other_cogs - ending_inv
+
+    return {
+        'beginning_inventory': beginning_inv,
+        'purchases': purchases,
+        'purchases_items': purchases_items,
+        'other_cogs_items': other_cogs_items,
+        'total_other_cogs': total_other_cogs,
+        'product_cogs': 0.0,
+        'ending_inventory': ending_inv,
+        'total_cogs': total_cogs,
+        'year': datetime.strptime(start_date, '%Y-%m-%d').year,
+        'previous_year_purchases': 0.0,
+    }
+
+
+def _build_cogs_detail_items(cogs_breakdown):
+    cogs_detail_items = []
+    purchases_items = cogs_breakdown.get('purchases_items', [])
+    other_cogs_items = cogs_breakdown.get('other_cogs_items', [])
+    cogs_breakdown['purchases_items'] = purchases_items + other_cogs_items
+    cogs_breakdown['purchases'] = cogs_breakdown.get('total_cogs', 0.0)
+
+    beginning_inv = cogs_breakdown.get('beginning_inventory', 0.0)
+    ending_inv = cogs_breakdown.get('ending_inventory', 0.0)
+    if beginning_inv and ending_inv and beginning_inv != ending_inv:
+        inventory_adjustment = beginning_inv - ending_inv
+        cogs_detail_items.append({
+            'code': 'INV_ADJ',
+            'name': 'Penyesuaian Persediaan',
+            'subcategory': 'Inventory Adjustment',
+            'amount': float(inventory_adjustment),
+            'description': f'Perubahan persediaan: Awal Rp {beginning_inv:,.0f} - Akhir Rp {ending_inv:,.0f}',
+            'type': 'inventory_adjustment',
+        })
+    return cogs_detail_items
 def fetch_income_statement_data(conn, start_date, end_date, company_id=None, report_type='real', comparative=False):
     """
     Helper function to fetch income statement data.
@@ -37,13 +267,7 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None, rep
     # For comparative, also fetch previous year data
     previous_year_data = None
     if comparative:
-        # Calculate previous year period
-        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-        
-        prev_start_date = start_date_obj.replace(year=start_date_obj.year - 1).strftime('%Y-%m-%d')
-        prev_end_date = end_date_obj.replace(year=end_date_obj.year - 1).strftime('%Y-%m-%d')
-        
+        prev_start_date, prev_end_date = _previous_period(start_date, end_date)
         logger.debug(
             "[Income Statement] Fetching previous year start=%s end=%s",
             prev_start_date,
@@ -75,120 +299,13 @@ def fetch_income_statement_data(conn, start_date, end_date, company_id=None, rep
     
     # If comparative, merge the data
     if comparative and previous_year_data:
-        # Create lookup for previous year data
-        prev_revenue_lookup = {item['code']: item['amount'] for item in previous_year_data['revenue']}
-        prev_expenses_lookup = {item['code']: item['amount'] for item in previous_year_data['expenses']}
-        
-        # Create lookup for current year data
-        curr_revenue_lookup = {item['code']: item for item in current_data['revenue']}
-        curr_expenses_lookup = {item['code']: item for item in current_data['expenses']}
-        
-        logger.debug(
-            "[Income Statement] Comparative revenue codes prev=%s curr=%s",
-            list(prev_revenue_lookup.keys()),
-            list(curr_revenue_lookup.keys())
-        )
-        
-        # Merge revenue: include all codes from both years
-        all_revenue_codes = set(prev_revenue_lookup.keys()) | set(curr_revenue_lookup.keys())
-        merged_revenue = []
-        
-        for code in all_revenue_codes:
-            if code in curr_revenue_lookup:
-                item = curr_revenue_lookup[code].copy()
-                item['previous_year_amount'] = prev_revenue_lookup.get(code, 0.0)
-            else:
-                # Only exists in previous year
-                item = previous_year_data['revenue'][[i for i, x in enumerate(previous_year_data['revenue']) if x['code'] == code][0]].copy()
-                item['amount'] = 0.0  # No current year amount
-                item['previous_year_amount'] = prev_revenue_lookup.get(code, 0.0)
-            merged_revenue.append(item)
-        
-        # Sort by code
-        merged_revenue.sort(key=lambda x: x['code'])
-        current_data['revenue'] = merged_revenue
-        
-        # Merge expenses: include all codes from both years
-        all_expense_codes = set(prev_expenses_lookup.keys()) | set(curr_expenses_lookup.keys())
-        merged_expenses = []
-        
-        for code in all_expense_codes:
-            if code in curr_expenses_lookup:
-                item = curr_expenses_lookup[code].copy()
-                item['previous_year_amount'] = prev_expenses_lookup.get(code, 0.0)
-            else:
-                # Only exists in previous year
-                item = previous_year_data['expenses'][[i for i, x in enumerate(previous_year_data['expenses']) if x['code'] == code][0]].copy()
-                item['amount'] = 0.0  # No current year amount
-                item['previous_year_amount'] = prev_expenses_lookup.get(code, 0.0)
-            merged_expenses.append(item)
-        
-        # Sort by code
-        merged_expenses.sort(key=lambda x: x['code'])
-        current_data['expenses'] = merged_expenses
-        
-        # Add previous year totals
-        current_data['previous_year_total_revenue'] = previous_year_data['total_revenue']
-        current_data['previous_year_total_expenses'] = previous_year_data['total_expenses']
-        current_data['previous_year_net_income'] = previous_year_data['net_income']
-        
-        # Add comparative values to COGS breakdown (both purchases and other COGS lines).
-        if 'cogs_breakdown' in current_data and 'cogs_breakdown' in previous_year_data:
-            prev_cogs = previous_year_data['cogs_breakdown']
-            prev_items = (prev_cogs.get('purchases_items', []) or []) + (prev_cogs.get('other_cogs_items', []) or [])
-
-            prev_cogs_lookup = {}
-            for item in prev_items:
-                code = str(item.get('code') or '').strip()
-                if not code:
-                    continue
-                prev_cogs_lookup[code] = prev_cogs_lookup.get(code, 0.0) + _to_float(item.get('amount'), 0.0)
-
-            for list_key in ('purchases_items', 'other_cogs_items'):
-                for item in current_data['cogs_breakdown'].get(list_key, []) or []:
-                    code = str(item.get('code') or '').strip()
-                    item['previous_year_amount'] = prev_cogs_lookup.get(code, 0.0)
-
-            # Keep total row consistent with the current-year side, which uses total_cogs.
-            current_data['cogs_breakdown']['previous_year_purchases'] = _to_float(
-                prev_cogs.get('total_cogs', prev_cogs.get('purchases', 0.0)), 0.0
-            )
-        
-        logger.debug(
-            "[Income Statement] Merged comparative data revenue_count=%s expense_count=%s",
-            len(merged_revenue),
-            len(merged_expenses)
-        )
+        _apply_comparative_data(current_data, previous_year_data)
     
     # Build COGS detail items for frontend display
-    cogs_detail_items = []
     if current_data.get('cogs_breakdown'):
-        # Combine purchases_items and other_cogs_items for Purchase Breakdown display
-        purchases_items = current_data.get('cogs_breakdown', {}).get('purchases_items', [])
-        other_cogs_items = current_data.get('cogs_breakdown', {}).get('other_cogs_items', [])
-        
-        # Add all COGS items to purchases_items for unified display
-        all_cogs_items = purchases_items + other_cogs_items
-        
-        # Update purchases_items in current_data for frontend Purchase Breakdown
-        current_data['cogs_breakdown']['purchases_items'] = all_cogs_items
-        current_data['cogs_breakdown']['purchases'] = current_data.get('cogs_breakdown', {}).get('total_cogs', 0.0)
-        
-        # Add inventory adjustment if applicable
-        if current_data.get('cogs_breakdown', {}).get('beginning_inventory') and current_data.get('cogs_breakdown', {}).get('ending_inventory'):
-            beginning_inv = current_data.get('cogs_breakdown', {}).get('beginning_inventory', 0.0)
-            ending_inv = current_data.get('cogs_breakdown', {}).get('ending_inventory', 0.0)
-            
-            if beginning_inv != ending_inv:
-                inventory_adjustment = beginning_inv - ending_inv
-                cogs_detail_items.append({
-                    'code': 'INV_ADJ',
-                    'name': 'Penyesuaian Persediaan',
-                    'subcategory': 'Inventory Adjustment',
-                    'amount': float(inventory_adjustment),
-                    'description': f'Perubahan persediaan: Awal Rp {beginning_inv:,.0f} - Akhir Rp {ending_inv:,.0f}',
-                    'type': 'inventory_adjustment'
-                })
+        cogs_detail_items = _build_cogs_detail_items(current_data['cogs_breakdown'])
+    else:
+        cogs_detail_items = []
     
     # Add COGS detail to current data
     current_data['cogs_detail'] = cogs_detail_items
@@ -211,116 +328,23 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
         split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
     if coretax_clause is None:
         coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
-    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
-    
-    query = text(f"""
-        SELECT 
-            coa.code,
-            coa.name,
-            coa.category,
-            coa.subcategory,
-            SUM(
-                CASE 
-                    -- Account posting sign from mapping: debit = +, credit = -
-                    -- Reversed when db_cr opposes mark's natural_direction
-                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'DEBIT' THEN 
-                        t.amount * (CASE 
-                            WHEN m.natural_direction IS NOT NULL 
-                                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
-                                 AND (
-                                    (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
-                                    OR
-                                    (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
-                                 )
-                            THEN -1 ELSE 1 END)
-                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'CREDIT' THEN 
-                        -t.amount * (CASE 
-                            WHEN m.natural_direction IS NOT NULL 
-                                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
-                                 AND (
-                                    (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
-                                    OR
-                                    (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
-                                 )
-                            THEN -1 ELSE 1 END)
-                    WHEN t.db_cr = 'DB' THEN t.amount
-                    WHEN t.db_cr = 'CR' THEN -t.amount
-                    ELSE 0
-                END
-            ) as signed_amount
-        FROM transactions t
-        INNER JOIN marks m ON t.mark_id = m.id
-        {mark_coa_join}
-        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
-        WHERE t.txn_date BETWEEN :start_date AND :end_date
-            AND coa.category IN ('REVENUE', 'EXPENSE')
-            AND (:company_id IS NULL OR t.company_id = :company_id)
-            {split_exclusion_clause}
-                {coretax_clause}
-        GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory
-        ORDER BY coa.code
-    """)
-    
-    result = conn.execute(query, {
+    result = conn.execute(_build_income_statement_query(conn, report_type, split_exclusion_clause, coretax_clause), {
         'start_date': start_date,
         'end_date': end_date,
         'company_id': company_id
     })
-    
-    revenue = []
-    expenses = []
-    rent_expense_templates = {}
-    total_revenue = 0
-    total_expenses = 0
-    fallback_5314_from_ledger = 0.0
-
-    def merge_expense_item(item):
-        for existing in expenses:
-            if str(existing.get('code') or '') == str(item.get('code') or ''):
-                existing['amount'] = _to_float(existing.get('amount'), 0.0) + _to_float(item.get('amount'), 0.0)
-                return
-        expenses.append(item)
-    
-    for row in result:
-        d = dict(row._mapping)
-        signed_amount = float(d['signed_amount']) if d['signed_amount'] else 0
-        # Revenue effect is inverse of account posting sign; expense follows posting sign.
-        amount = -signed_amount if d['category'] == 'REVENUE' else signed_amount
-        
-        item = {
-            'code': d['code'],
-            'name': d['name'],
-            'subcategory': d['subcategory'],
-            'amount': amount,
-            'category': d['category'] 
-        }
-        
-        if d['category'] == 'REVENUE':
-            revenue.append(item)
-            total_revenue += amount
-        else:  # EXPENSE
-            # Skip ledger 5314 in the expense list; we'll inject dynamic 5314 later.
-            if d['code'] == '5314':
-                fallback_5314_from_ledger += amount
-                continue
-
-            if d['code'] in RENT_EXPENSE_CODES:
-                rent_expense_templates[d['code']] = {
-                    'code': d['code'],
-                    'name': d['name'],
-                    'subcategory': d['subcategory'],
-                    'amount': 0.0,
-                    'category': 'EXPENSE'
-                }
-                continue
-
-            merge_expense_item(item)
-            total_expenses += amount
+    parsed = _process_income_statement_rows(result)
+    revenue = parsed['revenue']
+    expenses = parsed['expenses']
+    rent_expense_templates = parsed['rent_expense_templates']
+    total_revenue = parsed['total_revenue']
+    total_expenses = parsed['total_expenses']
+    fallback_5314_from_ledger = parsed['fallback_5314_from_ledger']
 
     # Rent expense (5315/5105) is not recognized from full payment amount.
     # For linked rental contracts, recognize only the prorated amount that overlaps the report period.
     for rent_item in _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_id, report_type):
-        merge_expense_item(rent_item)
+        _merge_expense_item(expenses, rent_item)
         total_expenses += _to_float(rent_item.get('amount'), 0.0)
 
     prorated_rent_expense = _calculate_prorated_contract_rent_expense(conn, start_date, end_date, company_id, report_type)
@@ -333,7 +357,7 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
             'amount': prorated_rent_expense,
             'category': 'EXPENSE'
         }
-        merge_expense_item(rent_item)
+        _merge_expense_item(expenses, rent_item)
         total_expenses += prorated_rent_expense
     
     # 2.4.1 Calculate service withholding tax adjustments (gross-up).
@@ -341,7 +365,7 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
     try:
         service_tax_adjustments = _calculate_service_tax_adjustment_for_period(conn, start_date, end_date, company_id, report_type)
         for adj in service_tax_adjustments:
-            merge_expense_item(adj)
+            _merge_expense_item(expenses, adj)
             total_expenses += _to_float(adj.get('amount'), 0.0)
     except Exception as e:
         logger.error(f"Failed to calculate service tax adjustments: {e}")
@@ -382,41 +406,8 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
 
     # Identify 'Purchases' and 'Other COGS' from expenses.
     # Use robust COGS detection (subcategory normalization + 50xx code fallback).
-    purchases = 0
-    purchases_items = []
-    other_cogs_items = []
-
-    cogs_items = [e for e in expenses if _is_cogs_expense_item(e)]
-
-    for item in cogs_items:
-        item_code = str(item.get('code') or '').strip()
-        if item_code == '5001':
-            purchases += _to_float(item.get('amount'), 0.0)
-            purchases_items.append(item)
-        else:
-            other_cogs_items.append(item)
-    
-    total_other_cogs = sum(item['amount'] for item in other_cogs_items)
-    calculate_hpp = beginning_inv + purchases + total_other_cogs - ending_inv
-    
-    # Note: product_cogs from hpp_batch_products is NOT included in COGS calculation
-    # to avoid double counting, as the transactions are already captured in purchases (COA 5001)
-    product_cogs = 0.0
-    previous_year_purchases = 0.0
-    
-    # Provide a specific breakdown for the UI
-    cogs_breakdown = {
-        'beginning_inventory': beginning_inv,
-        'purchases': purchases,
-        'purchases_items': purchases_items,
-        'other_cogs_items': other_cogs_items,
-        'total_other_cogs': total_other_cogs,
-        'product_cogs': product_cogs,
-        'ending_inventory': ending_inv,
-        'total_cogs': calculate_hpp,
-        'year': year,
-        'previous_year_purchases': previous_year_purchases
-    }
+    cogs_breakdown = _build_cogs_breakdown(expenses, start_date, beginning_inv, ending_inv)
+    calculate_hpp = cogs_breakdown['total_cogs']
 
     # Filter out COGS items and inject dynamic 5314 amount.
     final_expenses = [
@@ -456,4 +447,3 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
         },
         'net_income': total_revenue - total_expenses_calculated - calculate_hpp
     }
-

@@ -1,7 +1,7 @@
 import json
 from datetime import date, datetime
 
-from backend.routes.accounting_utils import serialize_db_value, serialize_row_values
+from backend.routes.accounting_utils import serialize_row_values
 
 
 TYPE_LABELS = {
@@ -19,21 +19,6 @@ def as_bool(value):
     if isinstance(value, str):
         return value.strip().lower() in {'1', 'true', 'yes', 'y', 'on'}
     return False
-
-
-def serialize_decimal_date_row(row_dict):
-    data = serialize_row_values(row_dict)
-    if 'amortization_date' in data:
-        data['amortization_date'] = serialize_db_value(
-            row_dict['amortization_date'],
-            datetime_format='%Y-%m-%d',
-        )
-    return data
-
-
-def serialize_decimal_row_with_dates(row_dict):
-    return serialize_row_values(row_dict, datetime_format='%Y-%m-%d')
-
 
 def load_amortization_defaults(settings_rows):
     defaults = {
@@ -135,7 +120,10 @@ def calculate_amortization(amount, start_date_val, report_year, tarif_rate, allo
 
 
 def build_manual_item_payload(row_dict, report_year, allow_partial_year):
-    data = serialize_decimal_date_row(row_dict)
+    data = serialize_row_values(
+        row_dict,
+        field_datetime_formats={'amortization_date': '%Y-%m-%d'},
+    )
     amount = float(data.get('amount', 0))
     purchase_year = purchase_year_for_row(data.get('amortization_date'), report_year)
     if not data.get('asset_group_id') and data.get('year') != report_year:
@@ -173,7 +161,7 @@ def build_manual_item_payload(row_dict, report_year, allow_partial_year):
 
 
 def build_registered_asset_payload(row_dict, report_year, default_rate, default_life, allow_partial_year):
-    data = serialize_decimal_row_with_dates(row_dict)
+    data = serialize_row_values(row_dict, datetime_format='%Y-%m-%d')
     asset_type = data.get('asset_type') or 'Tangible'
     tarif_rate = data.get('tarif_rate') or default_rate
     base_amount = float(data.get('acquisition_cost', 0))

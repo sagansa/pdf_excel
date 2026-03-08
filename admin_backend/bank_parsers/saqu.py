@@ -1,10 +1,17 @@
-import os
 import re
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
 
 import pandas as pd
 import pdfplumber
+from bank_parsers.parser_common import (
+    collect_page_text,
+    conversion_timestamp,
+    ensure_pdf_file,
+    format_amount,
+    parse_decimal_amount,
+    source_file_name,
+    validate_pdf_document,
+)
 
 # Month mapping for Indonesian months
 MONTH_MAP = {
@@ -34,32 +41,26 @@ def parse_statement(pdf_path, password=None):
         pdf_path: Path to PDF file
         password: Password for encrypted PDF (optional)
     """
-    if not pdf_path.lower().endswith('.pdf'):
-        raise ValueError("Invalid file format. Please provide a PDF file")
+    ensure_pdf_file(pdf_path)
 
-    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_conversion_timestamp = conversion_timestamp()
     transactions = []
     
     try:
         with pdfplumber.open(pdf_path, password=password) as pdf:
-            full_text = []
-            for page in pdf.pages:
-                text = page.extract_text()
-                if text:
-                    full_text.append(text)
-            
-            combined_text = '\n'.join(full_text)
+            validate_pdf_document(pdf, 'SAQU statement')
+            combined_text = '\n'.join(collect_page_text(pdf))
             
             # Extract transactions from all sections
-            transactions = _extract_transactions(combined_text, conversion_timestamp)
+            transactions = _extract_transactions(combined_text, current_conversion_timestamp)
     
-    except Exception as e:
-        raise ValueError(f"Error processing PDF: {str(e)}")
+    except Exception as exc:
+        raise ValueError(f"Error processing PDF: {exc}")
     
     if not transactions:
         raise ValueError("No transaction data found in the PDF. Please ensure this is a valid SAQU statement")
     
-    source_file = os.path.basename(pdf_path)
+    source_file = source_file_name(pdf_path)
     
     # Convert to DataFrame
     standard_rows = []
@@ -74,7 +75,7 @@ def parse_statement(pdf_path, password=None):
             'db_cr': txn.get('db_cr', ''),
             'balance': '',  # SAQU doesn't show running balance per transaction
             'currency': 'IDR',
-            'created_at': conversion_timestamp,
+            'created_at': current_conversion_timestamp,
             'source_file': source_file
         })
     
@@ -165,14 +166,11 @@ def _parse_transaction_line(line, account_no, conversion_timestamp):
     
     # Parse amount and determine DB/CR
     is_credit = amount_str.startswith('+')
-    amount_clean = amount_str.replace('+', '').replace('Rp', '').replace('.', '').replace(',', '.')
-    
-    try:
-        amount_decimal = Decimal(amount_clean)
-        amount_value = format(abs(amount_decimal), '.2f')
-        db_cr = 'CR' if is_credit else 'DB'
-    except (InvalidOperation, ValueError):
+    amount_decimal = parse_decimal_amount(amount_str)
+    if amount_decimal is None:
         return None
+    amount_value = format_amount(abs(amount_decimal))
+    db_cr = 'CR' if is_credit else 'DB'
     
     return {
         'account_no': account_no,
@@ -203,5 +201,5 @@ def _parse_date(date_str):
         
         # Format as YYYY-MM-DD HH:MM:SS
         return f"{year}-{month}-{day} 00:00:00"
-    except Exception:
+    except (ValueError, AttributeError):
         return ''

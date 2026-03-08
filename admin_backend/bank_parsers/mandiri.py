@@ -1,10 +1,18 @@
-import os
 import re
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 import pandas as pd
 import pdfplumber
+from bank_parsers.parser_common import (
+    collect_page_text,
+    conversion_timestamp,
+    ensure_pdf_file,
+    format_amount,
+    parse_decimal_amount,
+    source_file_name,
+    validate_pdf_document,
+)
 
 DATE_PATTERN = re.compile(r'^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}$')
 DATE_LINE_PATTERN = re.compile(r'^\s*(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})(.*)$')
@@ -124,21 +132,18 @@ def _finalize_transaction(transaction: dict) -> dict:
     }
 
 def parse_statement(pdf_path):
-    if not pdf_path.lower().endswith('.pdf'):
-        raise ValueError("Invalid file format. Please provide a PDF file")
+    ensure_pdf_file(pdf_path)
 
-    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_conversion_timestamp = conversion_timestamp()
     transactions = []
-    full_text_parts = []
 
     try:
         lines = []
         with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text()
-                if text:
-                    full_text_parts.append(text)
-                    lines.extend([ln.rstrip() for ln in text.split('\n')])
+            validate_pdf_document(pdf, 'Mandiri statement')
+            full_text_parts = collect_page_text(pdf)
+            for text in full_text_parts:
+                lines.extend([ln.rstrip() for ln in text.split('\n')])
 
         in_table = False
         current_transaction = None
@@ -187,7 +192,7 @@ def parse_statement(pdf_path):
                         'amount': '',
                         'balance': '',
                         'time_value': None,
-                        'created_at': conversion_timestamp
+                        'created_at': current_conversion_timestamp
                     }
                     pending_details.clear()
                 elif DATE_LINE_PATTERN.match(line):
@@ -198,7 +203,7 @@ def parse_statement(pdf_path):
                         'amount': '',
                         'balance': '',
                         'time_value': None,
-                        'created_at': conversion_timestamp
+                        'created_at': current_conversion_timestamp
                     }
                     pending_details.clear()
                     match = DATE_LINE_PATTERN.match(line)
@@ -221,7 +226,7 @@ def parse_statement(pdf_path):
                     'amount': '',
                     'balance': '',
                     'time_value': None,
-                    'created_at': conversion_timestamp
+                    'created_at': current_conversion_timestamp
                 }
                 pending_details.clear()
                 continue
@@ -239,7 +244,7 @@ def parse_statement(pdf_path):
                         'amount': '',
                         'balance': '',
                         'time_value': None,
-                        'created_at': conversion_timestamp
+                        'created_at': current_conversion_timestamp
                     }
                 elif current_transaction is None:
                     current_transaction = {
@@ -249,7 +254,7 @@ def parse_statement(pdf_path):
                         'amount': '',
                         'balance': '',
                         'time_value': None,
-                        'created_at': conversion_timestamp
+                        'created_at': current_conversion_timestamp
                     }
                     pending_details.clear()
                 current_transaction['date_lines'].append(_to_iso_date(date_line_match.group(1)))
@@ -304,8 +309,8 @@ def parse_statement(pdf_path):
             if finalized:
                 transactions.append(finalized)
 
-    except Exception as e:
-        raise ValueError(f"Error processing PDF: {str(e)}")
+    except Exception as exc:
+        raise ValueError(f"Error processing PDF: {exc}")
 
     if not transactions:
         raise ValueError("No transaction data found in the PDF. Please ensure this is a valid Mandiri statement")
@@ -314,7 +319,7 @@ def parse_statement(pdf_path):
     account_no = _extract_account_number(full_text)
     currency = _extract_currency(full_text) or 'IDR'
     bank_code = 'MANDIRI'
-    source_file = os.path.basename(pdf_path)
+    source_file = source_file_name(pdf_path)
 
     standard_rows = []
 
@@ -332,7 +337,7 @@ def parse_statement(pdf_path):
                 except ValueError:
                     continue
 
-        amount_dec = _parse_decimal(entry.get('amount', ''))
+        amount_dec = parse_decimal_amount(entry.get('amount', ''))
         if amount_dec is None:
             amount_value = ''
             db_cr = ''
@@ -340,7 +345,7 @@ def parse_statement(pdf_path):
             db_cr = 'DB' if amount_dec < 0 else 'CR'
             amount_value = _format_decimal(amount_dec)
 
-        balance_dec = _parse_decimal(entry.get('balance', ''))
+        balance_dec = parse_decimal_amount(entry.get('balance', ''))
         balance_value = _format_decimal(balance_dec) if balance_dec is not None else ''
 
         standard_rows.append({
@@ -353,7 +358,7 @@ def parse_statement(pdf_path):
             'db_cr': db_cr,
             'balance': balance_value,
             'currency': currency,
-            'created_at': entry.get('created_at', conversion_timestamp),
+            'created_at': entry.get('created_at', current_conversion_timestamp),
             'source_file': source_file
         })
 
@@ -375,52 +380,7 @@ def _extract_currency(text: str) -> str:
         return match.group(1).upper()
     return ''
 
-
-def _parse_decimal(value: str):
-    if not value:
-        return None
-    cleaned = value.strip().replace('\u00a0', '').replace(' ', '')
-    if not cleaned:
-        return None
-    # Detect sign for DB/CR determination
-    sign = -1 if cleaned.startswith('-') else 1
-    cleaned = cleaned.lstrip('+-')
-    if not cleaned:
-        return None
-    
-    try:
-        # If both dots and commas exist: 1.234.567,89 (ID) or 1,234,567.89 (US)
-        if '.' in cleaned and ',' in cleaned:
-            if cleaned.rfind(',') > cleaned.rfind('.'):
-                # ID format: 1.234,56
-                cleaned = cleaned.replace('.', '').replace(',', '.')
-            else:
-                # US format: 1,234.56
-                cleaned = cleaned.replace(',', '')
-        elif ',' in cleaned: 
-            # Only commas: 1,234,567 (US) or 1234,56 (ID decimal)
-            if len(cleaned.split(',')[-1]) == 2:
-                # 1234,56
-                cleaned = cleaned.replace(',', '.')
-            else:
-                # 1,234,567
-                cleaned = cleaned.replace(',', '')
-        elif '.' in cleaned:
-            # Only dots: 1.234.567 (ID) or 1234.56 (Standard)
-            if len(cleaned.split('.')[-1]) == 2:
-                # 1234.56
-                pass 
-            else:
-                # 1.234.567
-                cleaned = cleaned.replace('.', '')
-        
-        dec = Decimal(cleaned)
-    except InvalidOperation:
-        return None
-    return dec * sign  # Return with sign for DB/CR detection
-
-
 def _format_decimal(dec: Decimal | None) -> str:
     if dec is None:
         return ''
-    return format(abs(dec), '.2f')  # Always format as positive
+    return format_amount(abs(dec))  # Always format as positive
