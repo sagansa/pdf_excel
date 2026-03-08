@@ -1,5 +1,28 @@
-# Vue 3 + Vite
+# Admin Split Structure
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+This project is now split into:
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+- `admin_frontend` for Vue + Vite UI
+- `admin_backend` for Flask API and database migrations
+
+## Run Frontend
+
+```bash
+cd admin_frontend
+npm run dev
+```
+
+## Run Backend
+
+```bash
+cd admin_backend
+python3 server.py
+```
+
+## Production Procfile
+
+Root `Procfile` now runs backend from `admin_backend`:
+
+```bash
+web: cd admin_backend && gunicorn server:app
+```
