@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import text
 
 from backend.errors import BadRequestError, NotFoundError
-from backend.routes.rental_helpers import require_db_engine, serialize_row
+from backend.routes.accounting_utils import require_db_engine, serialize_result_rows
 from backend.routes.rental_queries import build_locations_query
 
 rental_location_bp = Blueprint('rental_location_bp', __name__)
@@ -17,7 +17,7 @@ def get_locations():
     engine = require_db_engine()
     with engine.connect() as conn:
         result = conn.execute(build_locations_query(), {'company_id': company_id})
-        locations = [serialize_row(row) for row in result]
+        locations = serialize_result_rows(result, datetime_format='%Y-%m-%dT%H:%M:%S')
     return jsonify({'locations': locations})
 
 

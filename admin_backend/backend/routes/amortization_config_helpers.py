@@ -1,6 +1,8 @@
 import json
+from copy import deepcopy
 
 from backend.routes.accounting_utils import serialize_row_values
+from backend.routes.route_utils import _parse_bool
 
 
 DEFAULT_AMORTIZATION_SETTINGS = {
@@ -19,9 +21,26 @@ DEFAULT_AMORTIZATION_SETTINGS = {
     'rental_cash_coa': '1101',
 }
 
+
+def _parse_setting_value(setting_type, raw_value, json_default):
+    if setting_type == 'boolean':
+        return str(raw_value).lower() == 'true'
+    if setting_type == 'json':
+        try:
+            return json.loads(raw_value)
+        except Exception:
+            return json_default
+    if setting_type == 'number':
+        try:
+            return float(raw_value)
+        except Exception:
+            return 0
+    return raw_value
+
+
 def serialize_mapping_row(row_dict):
     serialized = serialize_row_values(row_dict)
-    serialized['is_deductible_50_percent'] = bool(serialized.get('is_deductible_50_percent'))
+    serialized['is_deductible_50_percent'] = _parse_bool(serialized.get('is_deductible_50_percent'))
     return serialized
 
 
@@ -47,37 +66,14 @@ def merge_asset_groups(rows, company_id):
 
 
 def parse_amortization_settings(rows):
-    settings = {
-        'default_asset_useful_life': 5,
-        'default_amortization_rate': 20.0,
-        'allow_partial_year': True,
-        'accumulated_depreciation_coa_codes': {
-            'Building': '1524',
-            'Tangible': '1530',
-            'LandRights': '1534',
-            'Intangible': '1601'
-        }
-    }
+    settings = deepcopy(DEFAULT_AMORTIZATION_SETTINGS)
 
     for row in rows:
-        name = row.setting_name
-        value = row.setting_value
-        setting_type = row.setting_type
-
-        if setting_type == 'boolean':
-            settings[name] = str(value).lower() == 'true'
-        elif setting_type == 'json':
-            try:
-                settings[name] = json.loads(value)
-            except Exception:
-                settings[name] = {}
-        elif setting_type == 'number':
-            try:
-                settings[name] = float(value)
-            except Exception:
-                settings[name] = 0
-        else:
-            settings[name] = value
+        settings[row.setting_name] = _parse_setting_value(
+            row.setting_type,
+            row.setting_value,
+            {},
+        )
 
     return settings
 
@@ -85,23 +81,14 @@ def parse_amortization_settings(rows):
 def merge_settings_payload(rows, payload):
     existing_settings = {}
     for row in rows:
-        if row.setting_type == 'boolean':
-            parsed = str(row.setting_value).lower() == 'true'
-        elif row.setting_type == 'number':
-            try:
-                parsed = float(row.setting_value)
-            except Exception:
-                parsed = 0
-        elif row.setting_type == 'json':
-            try:
-                parsed = json.loads(row.setting_value)
-            except Exception:
-                parsed = []
-        else:
-            parsed = row.setting_value
-        existing_settings[row.setting_name] = parsed
+        existing_settings[row.setting_name] = _parse_setting_value(
+            row.setting_type,
+            row.setting_value,
+            [],
+        )
 
-    merged_settings = {**DEFAULT_AMORTIZATION_SETTINGS, **existing_settings}
+    merged_settings = deepcopy(DEFAULT_AMORTIZATION_SETTINGS)
+    merged_settings.update(existing_settings)
     for key in DEFAULT_AMORTIZATION_SETTINGS:
         if key in payload:
             merged_settings[key] = payload.get(key)

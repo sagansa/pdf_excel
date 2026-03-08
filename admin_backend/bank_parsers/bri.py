@@ -1,7 +1,13 @@
 import pandas as pd
-import os
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
+
+from bank_parsers.parser_common import (
+    conversion_timestamp,
+    ensure_csv_file,
+    parse_decimal_amount,
+    source_file_name,
+)
 
 def parse_statement(csv_path):
     """
@@ -16,14 +22,10 @@ def parse_statement(csv_path):
     Returns:
         pandas.DataFrame with standardized columns
     """
-    if not os.path.exists(csv_path):
-        raise ValueError("CSV file not found")
-        
-    if not csv_path.lower().endswith('.csv'):
-        raise ValueError("Invalid file format. Please provide a CSV file")
+    ensure_csv_file(csv_path)
     
-    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    source_file = os.path.basename(csv_path)
+    current_conversion_timestamp = conversion_timestamp()
+    source_file = source_file_name(csv_path)
     
     try:
         # Auto-detect delimiter by reading first line
@@ -100,7 +102,7 @@ def parse_statement(csv_path):
                 'db_cr': db_cr,
                 'balance': balance_str,
                 'currency': currency,
-                'created_at': conversion_timestamp,
+                'created_at': current_conversion_timestamp,
                 'source_file': source_file
             })
         
@@ -108,8 +110,8 @@ def parse_statement(csv_path):
         
         return pd.DataFrame(standard_rows, columns=columns)
         
-    except Exception as e:
-        raise ValueError(f"Error processing CSV: {str(e)}")
+    except Exception as exc:
+        raise ValueError(f"Error processing CSV: {exc}")
 
 
 def _parse_date(date_str: str) -> str:
@@ -139,16 +141,12 @@ def _parse_decimal(value: str) -> Decimal:
     """Parse decimal value from string, handling BRI format"""
     if not value or value == '.00' or value.lower() == 'nan':
         return Decimal('0')
-    
-    cleaned = value.strip().replace(' ', '')
-    
-    # Remove any non-numeric characters except period and minus
-    cleaned = ''.join(c for c in cleaned if c.isdigit() or c in '.-')
-    
+
+    cleaned = ''.join(c for c in value.strip().replace(' ', '') if c.isdigit() or c in '.-')
     if not cleaned or cleaned == '.':
         return Decimal('0')
-    
-    try:
-        return Decimal(cleaned)
-    except (InvalidOperation, ValueError):
+
+    parsed = parse_decimal_amount(cleaned)
+    if parsed is None:
         return Decimal('0')
+    return parsed

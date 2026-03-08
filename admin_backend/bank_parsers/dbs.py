@@ -1,8 +1,19 @@
 import pdfplumber
 import pandas as pd
 import re
-import os
 from datetime import datetime
+
+from bank_parsers.parser_common import (
+    append_debug_log,
+    collect_page_text,
+    conversion_timestamp,
+    ensure_pdf_file,
+    format_amount,
+    parse_decimal_amount,
+    reset_debug_log,
+    source_file_name,
+    validate_pdf_document,
+)
 
 # Define Month Map for DBS
 MONTH_MAP_DBS = {
@@ -12,9 +23,9 @@ MONTH_MAP_DBS = {
 }
 
 def parse_statement(pdf_path, password=None, target_year=None):
-    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ensure_pdf_file(pdf_path)
+    current_conversion_timestamp = conversion_timestamp()
     transactions = []
-    header_found = False
     current_transaction = None
     last_y = 0
     MAX_Y_GAP = 15  # Maximum vertical space to consider a line a continuation
@@ -29,6 +40,8 @@ def parse_statement(pdf_path, password=None, target_year=None):
     try:
         # Open PDF with password if provided
         with pdfplumber.open(pdf_path, password=password) as pdf:
+            validate_pdf_document(pdf, 'DBS statement')
+            full_text_parts = collect_page_text(pdf)
             for page in pdf.pages:
                 # Reset vertical tracking for each page
                 last_y = 0
@@ -72,7 +85,8 @@ def parse_statement(pdf_path, password=None, target_year=None):
                                 if 1 <= day <= 31 and 1 <= month <= 12:
                                     row_date = f"{month:02d}/{day:02d}"
                                     break
-                            except: pass
+                            except ValueError:
+                                pass
                         
                         # Match DD-MMM (e.g. 05-OCT or 05 OCT)
                         if re.match(r'^\d{1,2}-[A-Z]{3}$', text):
@@ -83,20 +97,21 @@ def parse_statement(pdf_path, password=None, target_year=None):
                                  if m_str in MONTH_MAP_DBS:
                                      row_date = f"{day:02d}/{MONTH_MAP_DBS[m_str]:02d}"
                                      break
-                             except: pass
+                             except ValueError:
+                                 pass
 
                     if row_date:
                         # If a new date is found, save the previous transaction if it exists
                         if current_transaction:
                             transactions.append(current_transaction)
-                        
+
                         current_transaction = {
                             'Transaction Date': row_date,
                             'Posting Date': '',
                             'Transaction Details': '',
                             'Amount': '',
                             'DB/CR': 'DB',
-                            'created_at': conversion_timestamp
+                            'created_at': current_conversion_timestamp
                         }
                         
                         # Process fields for the current row
@@ -162,18 +177,19 @@ def parse_statement(pdf_path, password=None, target_year=None):
                     transactions.append(current_transaction)
                     current_transaction = None
     
-    except Exception as e:
-        raise ValueError(f"Error processing PDF: {str(e)}")
+    except Exception as exc:
+        raise ValueError(f"Error processing PDF: {exc}")
     
     if not transactions:
         raise ValueError("No transaction data found in the PDF. Please ensure this is a valid DBS statement")
 
-    full_text = '\n'.join([page.extract_text() or '' for page in pdf.pages])
+    full_text = '\n'.join(full_text_parts)
     
-    # Debug logging
-    with open('debug_dbs.log', 'w') as f:
-        f.write(f"Starting DBS parse - target_year: {target_year}\n")
-        f.write(f"Full text snippet (first 1000 chars): {full_text[:1000]}\n")
+    reset_debug_log(
+        'debug_dbs.log',
+        f"Starting DBS parse - target_year: {target_year}",
+        f"Full text snippet (first 1000 chars): {full_text[:1000]}",
+    )
     
     account_no = _extract_account_number(full_text)
     currency = _extract_currency(full_text) or 'IDR'
@@ -182,12 +198,14 @@ def parse_statement(pdf_path, password=None, target_year=None):
     st_day, st_month, st_year = _extract_statement_date(full_text)
     extracted_year = target_year or st_year or datetime.now().year
     
-    with open('debug_dbs.log', 'a') as f:
-        f.write(f"Extracted statement info: day={st_day}, month={st_month}, year={st_year}\n")
-        f.write(f"Final extracted_year: {extracted_year}\n")
+    append_debug_log(
+        'debug_dbs.log',
+        f"Extracted statement info: day={st_day}, month={st_month}, year={st_year}",
+        f"Final extracted_year: {extracted_year}",
+    )
     
     bank_code = 'DBS'
-    source_file = os.path.basename(pdf_path)
+    source_file = source_file_name(pdf_path)
 
     rows = []
     current_year = extracted_year
@@ -202,7 +220,7 @@ def parse_statement(pdf_path, password=None, target_year=None):
         if raw_date and '/' in raw_date:
             try:
                 month_num = int(raw_date.split('/')[0])  # MM/DD format
-            except:
+            except (ValueError, IndexError):
                 pass
         
         # Adjust starting year logic
@@ -213,16 +231,20 @@ def parse_statement(pdf_path, password=None, target_year=None):
                 # If transaction month is greater than statement month, it's from previous year
                 if month_num > st_month:
                     current_year -= 1
-                    with open('debug_dbs.log', 'a') as f:
-                        f.write(f"First txn month {month_num} > statement month {st_month}, adjusting year to {current_year}\n")
+                    append_debug_log(
+                        'debug_dbs.log',
+                        f"First txn month {month_num} > statement month {st_month}, adjusting year to {current_year}",
+                    )
             else:
                 # Fallback: only subtract if it's Oct-Dec AND we don't have a clear year info
                 # This is less reliable but keeps some safety if statement date is missed.
                 # HOWEVER, if target_year is provided, we should be careful.
                 if target_year is None and month_num >= 10:
                     current_year -= 1
-                    with open('debug_dbs.log', 'a') as f:
-                        f.write(f"No statement month, but month {month_num} >= 10, adjusting year to {current_year}\n")
+                    append_debug_log(
+                        'debug_dbs.log',
+                        f"No statement month, but month {month_num} >= 10, adjusting year to {current_year}",
+                    )
             
             first_transaction = False
         
@@ -231,13 +253,17 @@ def parse_statement(pdf_path, password=None, target_year=None):
             # Detect year boundary: 
             # 1. Going forward (Ascending): month jumps from large (10-12) to small (1-3)
             if month_num <= 3 and last_month >= 10:
-                with open('debug_dbs.log', 'a') as f:
-                    f.write(f"Year rollover detected (ASCENDING): last_month={last_month}, month_num={month_num}, incrementing year from {current_year} to {current_year+1}\n")
+                append_debug_log(
+                    'debug_dbs.log',
+                    f"Year rollover detected (ASCENDING): last_month={last_month}, month_num={month_num}, incrementing year from {current_year} to {current_year+1}",
+                )
                 current_year += 1
             # 2. Going backward (Descending): month jumps from small (1-3) to large (10-12)
             elif month_num >= 10 and last_month <= 3:
-                with open('debug_dbs.log', 'a') as f:
-                    f.write(f"Year rollover detected (DESCENDING): last_month={last_month}, month_num={month_num}, decrementing year from {current_year} to {current_year-1}\n")
+                append_debug_log(
+                    'debug_dbs.log',
+                    f"Year rollover detected (DESCENDING): last_month={last_month}, month_num={month_num}, decrementing year from {current_year} to {current_year-1}",
+                )
                 current_year -= 1
         
         if month_num is not None:
@@ -245,18 +271,20 @@ def parse_statement(pdf_path, password=None, target_year=None):
         
         txn_iso = _convert_dbs_date(raw_date, current_year)
         
-        with open('debug_dbs.log', 'a') as f:
-            f.write(f"Processing: raw_date={raw_date}, month={month_num}, current_year={current_year}, result={txn_iso}\n")
+        append_debug_log(
+            'debug_dbs.log',
+            f"Processing: raw_date={raw_date}, month={month_num}, current_year={current_year}, result={txn_iso}",
+        )
         
         description = entry.get('Transaction Details', '').strip()
         
         amount_val = entry.get('Amount', '').strip()
-        amount_dec = _parse_decimal(amount_val)
+        amount_dec = parse_decimal_amount(amount_val)
         
         db_cr = entry.get('DB/CR', 'DB').strip().upper() 
         
         if amount_dec is not None:
-             amount_str = format(abs(amount_dec), '.2f')
+             amount_str = format_amount(abs(amount_dec))
         else:
              amount_str = ''
 
@@ -270,7 +298,7 @@ def parse_statement(pdf_path, password=None, target_year=None):
             'db_cr': db_cr,
             'balance': '',
             'currency': currency,
-            'created_at': entry.get('created_at', conversion_timestamp),
+            'created_at': entry.get('created_at', current_conversion_timestamp),
             'source_file': source_file
         })
 
@@ -325,14 +353,6 @@ def _convert_dbs_date(raw: str, year: int) -> str:
             month = int(raw[:2])
             day = int(raw[3:])
             return f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)} 00:00:00"
-    except:
+    except ValueError:
         pass
     return ''
-
-def _parse_decimal(value: str):
-    if not value: return None
-    cleaned = value.replace(',', '').replace('CR', '').strip()
-    try:
-        return float(cleaned)
-    except:
-        return None

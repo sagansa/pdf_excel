@@ -1,8 +1,16 @@
-import os
 import re
 from datetime import datetime
 import pandas as pd
 import pdfplumber
+from bank_parsers.parser_common import (
+    collect_page_text,
+    conversion_timestamp,
+    ensure_pdf_file,
+    format_amount,
+    parse_decimal_amount,
+    source_file_name,
+    validate_pdf_document,
+)
 
 # Month abbreviation mapping for date conversion
 MONTH_ABBR = {
@@ -35,34 +43,19 @@ def convert_date_format(date_str):
             year = f"20{year}"
         
         return f"{day}/{month}/{year}" if year else f"{day}/{month}"
-    except Exception:
+    except ValueError:
         return date_str
 
 def parse_statement(pdf_path, password=None):
-    if not os.path.exists(pdf_path):
-        raise ValueError("PDF file not found")
-        
-    if not pdf_path.lower().endswith('.pdf'):
-        raise ValueError("Invalid file format. Please provide a PDF file")
+    ensure_pdf_file(pdf_path)
         
     transactions = []
-    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_conversion_timestamp = conversion_timestamp()
     
     try:
         with pdfplumber.open(pdf_path, password=password) as pdf:
-            if not pdf.pages:
-                raise ValueError("PDF file is empty or corrupted. Please ensure the file is a valid Mandiri credit card statement")
-            
-            # Additional validation for PDF integrity
-            try:
-                # Try to access PDF metadata to verify basic PDF structure
-                _ = pdf.metadata
-                # Verify that pages are accessible and contain content
-                for page in pdf.pages:
-                    if not hasattr(page, 'extract_words'):
-                        raise ValueError("PDF file appears to be corrupted. Unable to extract content from pages.")
-            except Exception as e:
-                raise ValueError(f"PDF file validation failed. The file may be corrupted: {str(e)}")
+            validate_pdf_document(pdf, 'Mandiri credit card statement')
+            full_text_parts = collect_page_text(pdf)
 
             # Define header and footer markers
             header_markers_en = ['Transaction Date', 'Posting Date', 'Description', 'Amount (IDR)']
@@ -127,7 +120,7 @@ def parse_statement(pdf_path, password=None):
                     # If we hit SUB-TOTAL, finalize current transaction and look for next header (for supplementary cards)
                     if 'SUB-TOTAL' in line_upper:
                         if current_transaction:
-                            current_transaction['created_at'] = conversion_timestamp
+                            current_transaction['created_at'] = current_conversion_timestamp
                             transactions.append(current_transaction)
                             current_transaction = None
                         header_found = False
@@ -193,7 +186,7 @@ def parse_statement(pdf_path, password=None):
                     # If we found a transaction date, start a new transaction
                     if transaction_date:
                         if current_transaction:
-                            current_transaction['created_at'] = conversion_timestamp
+                            current_transaction['created_at'] = current_conversion_timestamp
                             transactions.append(current_transaction)
                         
                         current_transaction = {
@@ -202,7 +195,7 @@ def parse_statement(pdf_path, password=None):
                             'transaction_details': ' '.join(transaction_details),
                             'amount': amount,
                             'db_cr': db_cr,
-                            'created_at': conversion_timestamp
+                            'created_at': current_conversion_timestamp
                         }
                     
                     # If no date found and we have a current transaction, it's a continuation line
@@ -221,27 +214,27 @@ def parse_statement(pdf_path, password=None):
                 if current_transaction:
                     details_upper = current_transaction['transaction_details'].upper()
                     if 'INTEREST' in details_upper or 'BUNGA' in details_upper:
-                        current_transaction['created_at'] = conversion_timestamp
+                        current_transaction['created_at'] = current_conversion_timestamp
                         transactions.append(current_transaction)
                         current_transaction = None
 
             # Add the very last transaction if exists after all pages
             if current_transaction:
-                current_transaction['created_at'] = conversion_timestamp
+                current_transaction['created_at'] = current_conversion_timestamp
                 transactions.append(current_transaction)
                     
-    except Exception as e:
-        raise ValueError(f"Error processing PDF: {str(e)}")
+    except Exception as exc:
+        raise ValueError(f"Error processing PDF: {exc}")
     
     if not transactions:
         raise ValueError("No transaction data found in the PDF. Please ensure this is a valid Mandiri credit card statement")
 
-    full_text = '\n'.join([page.extract_text() or '' for page in pdf.pages])
+    full_text = '\n'.join(full_text_parts)
     account_no = _extract_account_number(full_text)
     currency = _extract_currency(full_text) or 'IDR'
     extracted_year = _extract_year(full_text) or datetime.now().year
     bank_code = 'MANDIRI_CC'
-    source_file = os.path.basename(pdf_path)
+    source_file = source_file_name(pdf_path)
 
     rows = []
     current_year = extracted_year
@@ -254,7 +247,7 @@ def parse_statement(pdf_path, password=None):
         description = entry.get('transaction_details', '').strip()
         
         amount_val = entry.get('amount', '').strip()
-        amount_dec = _parse_decimal(amount_val)
+        amount_dec = parse_decimal_amount(amount_val)
         
         db_cr = entry.get('db_cr', 'DB').strip().upper()
 
@@ -263,7 +256,7 @@ def parse_statement(pdf_path, password=None):
              # Mandiri CC: DB is usually regular charge (positive in statement but 'DB' logical). 
              # BCA CC logic treats charges as 'DB' but amount is positive string.
              # We store absolute string. DB/CR column handles the sign logic for app.
-             amount_str = format(abs(amount_dec), '.2f')
+             amount_str = format_amount(abs(amount_dec))
         else:
              amount_str = ''
 
@@ -277,7 +270,7 @@ def parse_statement(pdf_path, password=None):
             'db_cr': db_cr,
             'balance': '',
             'currency': currency,
-            'created_at': entry.get('created_at', conversion_timestamp),
+            'created_at': entry.get('created_at', current_conversion_timestamp),
             'source_file': source_file
         })
 
@@ -328,44 +321,5 @@ def _convert_mandiri_cc_date(raw: str, last_month: int | None, current_year: int
         
         last_month = month
         return f"{date_year}-{str(month).zfill(2)}-{str(day).zfill(2)} 00:00:00", last_month, current_year
-    except:
+    except (ValueError, IndexError):
         return '', last_month, current_year
-
-from decimal import Decimal, InvalidOperation
-def _parse_decimal(value: str):
-    if not value: return None
-    # Remove non-numeric characters except dots, commas, and minus
-    cleaned = re.sub(r'[^0-9.,-]', '', value).strip()
-    if not cleaned: return None
-    
-    try:
-        # If both dots and commas exist: 1.234.567,89 (ID) or 1,234,567.89 (US)
-        if '.' in cleaned and ',' in cleaned:
-            if cleaned.rfind(',') > cleaned.rfind('.'):
-                # ID format: 1.234,56
-                cleaned = cleaned.replace('.', '').replace(',', '.')
-            else:
-                # US format: 1,234.56
-                cleaned = cleaned.replace(',', '')
-        elif ',' in cleaned: 
-            # Only commas: 1,234,567 (US) or 1234,56 (ID decimal)
-            if len(cleaned.split(',')[-1]) == 2:
-                # 1234,56
-                cleaned = cleaned.replace(',', '.')
-            else:
-                # 1,234,567
-                cleaned = cleaned.replace(',', '')
-        elif '.' in cleaned:
-            # Only dots: 1.234.567 (ID) or 1234.56 (Standard)
-            # If the last part has exactly 2 digits, assume it's decimal point
-            parts = cleaned.split('.')
-            if len(parts[-1]) == 2:
-                # 1234.56
-                pass 
-            else:
-                # 1.234.567
-                cleaned = cleaned.replace('.', '')
-        
-        return float(cleaned)
-    except:
-        return None

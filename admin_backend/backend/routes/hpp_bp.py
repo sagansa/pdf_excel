@@ -6,11 +6,10 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import text
 
 from backend.errors import BadRequestError, NotFoundError
+from backend.routes.accounting_utils import serialize_result_rows, serialize_row_values
 from backend.routes.hpp_helpers import (
     normalize_product_payload,
     require_db_engine,
-    serialize_row,
-    serialize_rows,
 )
 from backend.routes.hpp_queries import (
     delete_batch_by_id as q_delete_batch_by_id,
@@ -42,7 +41,7 @@ def get_products():
     company_id = request.args.get('company_id')
     with engine.connect() as conn:
         result = conn.execute(*q_get_products(company_id))
-        return jsonify({'products': serialize_rows(result)})
+        return jsonify({'products': serialize_result_rows(result)})
 
 @hpp_bp.route('/api/products', methods=['POST'])
 def create_product():
@@ -106,7 +105,7 @@ def get_batches():
         result = conn.execute(*q_get_batches(company_id))
         batches = []
         for row in result:
-            batch = serialize_row(row)
+            batch = serialize_row_values(row._mapping)
             batch['unit_prices'] = [
                 {
                     'product_name': unit_price['product_name'],
@@ -126,12 +125,12 @@ def get_batch_details(batch_id):
         if not batch_res:
             raise NotFoundError('Batch not found')
 
-        batch_data = serialize_row(batch_res)
-        transactions = serialize_rows(
+        batch_data = serialize_row_values(batch_res._mapping)
+        transactions = serialize_result_rows(
             conn.execute(*q_get_batch_transactions(batch_id)),
-            date_format='%Y-%m-%d',
+            datetime_format='%Y-%m-%d',
         )
-        products = serialize_rows(conn.execute(*q_get_batch_products(batch_id)))
+        products = serialize_result_rows(conn.execute(*q_get_batch_products(batch_id)))
 
         return jsonify({
             'batch': batch_data,
@@ -258,5 +257,5 @@ def get_linkable_transactions():
     with engine.connect() as conn:
         result = conn.execute(*q_get_linkable_transactions(company_id, start_date, end_date))
         return jsonify({
-            'transactions': serialize_rows(result, date_format='%Y-%m-%d')
+            'transactions': serialize_result_rows(result, datetime_format='%Y-%m-%d')
         })

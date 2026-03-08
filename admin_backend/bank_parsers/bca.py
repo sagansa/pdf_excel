@@ -1,63 +1,34 @@
 import re
-import os
 import pdfplumber
 import pandas as pd
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+
+from bank_parsers.parser_common import (
+    append_debug_log,
+    collect_page_text,
+    conversion_timestamp,
+    ensure_pdf_file,
+    format_amount,
+    parse_decimal_amount,
+    source_file_name,
+    validate_pdf_document,
+)
 
 def parse_statement(pdf_path):
-    if not os.path.exists(pdf_path):
-        raise ValueError("PDF file not found")
-        
-    if not pdf_path.lower().endswith('.pdf'):
-        raise ValueError("Invalid file format. Please provide a PDF file")
+    ensure_pdf_file(pdf_path)
         
     transactions = []
     current_transaction = None
     header_found = False
     
-    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    full_text_parts = []
+    current_conversion_timestamp = conversion_timestamp()
 
     try:
         with pdfplumber.open(pdf_path) as pdf:
-            if not pdf.pages:
-                raise ValueError("PDF file is empty or corrupted. Please ensure the file is a valid BCA statement")
-            
-            # Additional validation for PDF integrity
-            try:
-                # Try to access PDF metadata to verify basic PDF structure
-                _ = pdf.metadata
-                # Verify that pages are accessible and contain content
-                for page in pdf.pages:
-                    if not hasattr(page, 'extract_words'):
-                        raise ValueError("PDF file appears to be corrupted. Unable to extract content from pages.")
-            except Exception as e:
-                raise ValueError(f"PDF file validation failed. The file may be corrupted: {str(e)}")
+            validate_pdf_document(pdf, 'BCA statement')
+            full_text_parts = collect_page_text(pdf)
 
-                
             for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    full_text_parts.append(page_text)
-
-                # Debug table structure
-                table_settings = {
-                    "vertical_strategy": "text",
-                    "horizontal_strategy": "text",
-                    "min_words_vertical": 3,
-                    "min_words_horizontal": 2,
-                    "snap_tolerance": 3,
-                    "snap_x_tolerance": 2,
-                    "snap_y_tolerance": 3,
-                    "join_tolerance": 3,
-                    "edge_min_length": 3,
-                    "min_words_horizontal": 2
-                }
-                
-                # Get table structure for debugging
-                tables = page.debug_tablefinder(table_settings)
-                
                 # Extract text with position information
                 words = page.extract_words(
                     keep_blank_chars=True,
@@ -114,14 +85,14 @@ def parse_statement(pdf_path):
                             continue
                         
                         # Enhanced date pattern matching for DD/MM format
-                        date_match = re.match(r'^s*([0-3][0-9]/[0-1][0-9])s*', line)
+                        date_match = re.match(r'^\s*([0-3][0-9]/[0-1][0-9])\s*', line)
                         
                         if date_match and len(date_match.group(1)) == 5:  # Ensure exact DD/MM format
                             # Validate date components
                             day, month = map(int, date_match.group(1).split('/'))
                             if 1 <= day <= 31 and 1 <= month <= 12:
                                 if current_transaction:
-                                    process_transaction(transactions, current_transaction, conversion_timestamp)
+                                    process_transaction(transactions, current_transaction, current_conversion_timestamp)
                                 
                                 # Initialize new transaction with date
                                 current_transaction = {
@@ -196,16 +167,15 @@ def parse_statement(pdf_path):
                                             current_transaction['db_cr'] = 'DB'
                                     elif x >= 500:  # Saldo field
                                         current_transaction['saldo'] = text[:20]
-                    except (IndexError, ValueError) as e:
-                        # Log the error and continue with next row
-                        print(f"Error processing row: {str(e)}")
+                    except (IndexError, ValueError) as exc:
+                        append_debug_log('debug_bca_rows.log', f"row parse error: {exc}")
                         continue
                 
                 if current_transaction:
-                    process_transaction(transactions, current_transaction, conversion_timestamp)
+                    process_transaction(transactions, current_transaction, current_conversion_timestamp)
                     current_transaction = None
-    except Exception as e:
-        raise ValueError(f"Error processing PDF: {str(e)}")
+    except Exception as exc:
+        raise ValueError(f"Error processing PDF: {exc}")
     
     if not transactions:
         raise ValueError("No transaction data found in the PDF. Please ensure this is a valid BCA statement")
@@ -215,7 +185,7 @@ def parse_statement(pdf_path):
     currency = _extract_currency(full_text) or 'IDR'
     base_year = _extract_period_year(full_text) or datetime.now().year
     bank_code = 'BCA'
-    source_file = os.path.basename(pdf_path)
+    source_file = source_file_name(pdf_path)
 
     standard_rows = []
     current_year = base_year
@@ -260,7 +230,7 @@ def parse_statement(pdf_path):
             'db_cr': db_cr,
             'balance': balance_value,
             'currency': currency,
-            'created_at': entry.get('created_at', conversion_timestamp),
+            'created_at': entry.get('created_at', current_conversion_timestamp),
             'source_file': source_file
         })
 
@@ -308,22 +278,7 @@ def _extract_period_year(text: str) -> int | None:
 def _normalize_amount(value: str) -> str:
     if not value:
         return ''
-
-    cleaned = value
-    cleaned = cleaned.replace('CR', '').replace('DB', '').replace('Rp', '')
-    cleaned = cleaned.replace(' ', '').replace('\u00a0', '')
-    # BCA uses comma as thousand separator and period as decimal separator
-    # Remove commas (thousand separator), keep periods (decimal separator)
-    cleaned = cleaned.replace(',', '')
-
-    if cleaned.count('.') > 1:
-        parts = cleaned.split('.')
-        integer = ''.join(parts[:-1])
-        decimal = parts[-1]
-        cleaned = integer + '.' + decimal
-
-    try:
-        dec = Decimal(cleaned)
-        return format(dec, '.2f')
-    except InvalidOperation:
+    dec = parse_decimal_amount(value)
+    if dec is None:
         return value.strip()
+    return format_amount(dec)

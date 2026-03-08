@@ -1,6 +1,4 @@
-from datetime import date, datetime
-
-from backend.routes.accounting_utils import serialize_db_value
+from backend.routes.accounting_utils import normalize_iso_date_value
 from backend.routes.route_utils import _normalize_iso_date, _safe_int, _to_float
 
 
@@ -163,10 +161,4 @@ def build_remaining_storage_store_options(rows):
 
 
 def to_iso_date(value):
-    if isinstance(value, datetime):
-        return serialize_db_value(value, datetime_format='%Y-%m-%d')
-    if isinstance(value, date):
-        return serialize_db_value(value)
-    if value in (None, ''):
-        return None
-    return str(value)[:10]
+    return normalize_iso_date_value(value, allow_raw_fallback=True)

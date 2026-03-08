@@ -2,36 +2,29 @@ from datetime import date, datetime
 
 from sqlalchemy import text
 
-from backend.services.report_common import (
+from backend.services.report_sql_fragments import (
     _coretax_filter_clause,
     _mark_coa_join_clause,
-    _parse_date,
     _split_parent_exclusion_clause,
+)
+from backend.services.report_value_utils import (
+    _parse_date,
     _to_float,
 )
 
 
-def fetch_cash_flow_data(conn, start_date, end_date, company_id=None, report_type='real'):
-    """
-    Fetch cash flow report using direct method from transaction cash movements.
-    Classification heuristic:
-      - operating: revenue/expense mappings
-      - investing: non-current asset mappings
-      - financing: liability/equity mappings
-      - unclassified: no mapping signal
-    """
-    split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
-    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT')
-    section_names = {
-        'operating': 'Operating Activities',
-        'investing': 'Investing Activities',
-        'financing': 'Financing Activities',
-        'unclassified': 'Unclassified'
-    }
-    ordered_sections = ['operating', 'investing', 'financing', 'unclassified']
+SECTION_NAMES = {
+    'operating': 'Operating Activities',
+    'investing': 'Investing Activities',
+    'financing': 'Financing Activities',
+    'unclassified': 'Unclassified',
+}
+ORDERED_SECTIONS = ['operating', 'investing', 'financing', 'unclassified']
 
-    transactions_query = text(f"""
+
+def _build_cash_flow_transactions_query(conn, report_type, split_exclusion_clause, coretax_clause):
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT')
+    return text(f"""
         SELECT
             t.id,
             t.txn_date,
@@ -67,100 +60,121 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None, report_typ
         ORDER BY t.txn_date ASC, t.id ASC
     """)
 
-    rows = conn.execute(transactions_query, {
-        'start_date': start_date,
-        'end_date': end_date,
-        'company_id': company_id
-    })
 
-    sections = {
+def _build_cash_balance_query(date_field, split_exclusion_clause, coretax_clause):
+    return text(f"""
+        SELECT
+            COALESCE(SUM(
+                CASE
+                    WHEN t.db_cr = 'DB' THEN t.amount
+                    WHEN t.db_cr = 'CR' THEN -t.amount
+                    ELSE 0
+                END
+            ), 0) AS cash_balance
+        FROM transactions t
+        LEFT JOIN marks m ON t.mark_id = m.id
+        WHERE t.txn_date {date_field}
+          AND (:company_id IS NULL OR t.company_id = :company_id)
+          {split_exclusion_clause}
+          {coretax_clause}
+    """)
+
+
+def _empty_cash_flow_sections():
+    return {
         key: {
-            'name': section_names[key],
+            'name': SECTION_NAMES[key],
             'inflow_total': 0.0,
             'outflow_total': 0.0,
             'net_cash': 0.0,
             'count': 0,
-            'items': []
+            'items': [],
         }
-        for key in ordered_sections
+        for key in ORDERED_SECTIONS
     }
 
-    for row in rows:
-        amount = abs(_to_float(row.amount, 0.0))
-        db_cr = str(row.db_cr or '').upper().strip()
-        signed_amount = amount if db_cr == 'DB' else (-amount if db_cr == 'CR' else 0.0)
-        inflow = signed_amount if signed_amount > 0 else 0.0
-        outflow = abs(signed_amount) if signed_amount < 0 else 0.0
 
-        if int(row.investing_flag or 0) == 1:
-            section_key = 'investing'
-        elif int(row.financing_flag or 0) == 1:
-            section_key = 'financing'
-        elif int(row.operating_flag or 0) == 1:
-            section_key = 'operating'
-        else:
-            section_key = 'unclassified'
+def _classify_cash_flow_section(row):
+    if int(row.investing_flag or 0) == 1:
+        return 'investing'
+    if int(row.financing_flag or 0) == 1:
+        return 'financing'
+    if int(row.operating_flag or 0) == 1:
+        return 'operating'
+    return 'unclassified'
 
-        section = sections[section_key]
-        section['inflow_total'] += inflow
-        section['outflow_total'] += outflow
-        section['count'] += 1
-        section['items'].append({
-            'id': str(row.id),
-            'txn_date': row.txn_date.isoformat() if isinstance(row.txn_date, (datetime, date)) else str(row.txn_date or ''),
-            'description': row.description,
-            'amount': amount,
-            'db_cr': db_cr,
-            'signed_amount': signed_amount,
-            'company_id': row.company_id,
-            'company_name': row.company_name,
-            'mark_name': row.personal_use or row.internal_report
-        })
 
-    for key in ordered_sections:
+def _cash_flow_row_amounts(row):
+    amount = abs(_to_float(row.amount, 0.0))
+    db_cr = str(row.db_cr or '').upper().strip()
+    signed_amount = amount if db_cr == 'DB' else (-amount if db_cr == 'CR' else 0.0)
+    inflow = signed_amount if signed_amount > 0 else 0.0
+    outflow = abs(signed_amount) if signed_amount < 0 else 0.0
+    return amount, db_cr, signed_amount, inflow, outflow
+
+
+def _append_cash_flow_row(sections, row):
+    amount, db_cr, signed_amount, inflow, outflow = _cash_flow_row_amounts(row)
+    section = sections[_classify_cash_flow_section(row)]
+    section['inflow_total'] += inflow
+    section['outflow_total'] += outflow
+    section['count'] += 1
+    section['items'].append({
+        'id': str(row.id),
+        'txn_date': row.txn_date.isoformat() if isinstance(row.txn_date, (datetime, date)) else str(row.txn_date or ''),
+        'description': row.description,
+        'amount': amount,
+        'db_cr': db_cr,
+        'signed_amount': signed_amount,
+        'company_id': row.company_id,
+        'company_name': row.company_name,
+        'mark_name': row.personal_use or row.internal_report,
+    })
+
+
+def _finalize_cash_flow_sections(sections):
+    for key in ORDERED_SECTIONS:
         section = sections[key]
         section['net_cash'] = section['inflow_total'] - section['outflow_total']
         section['inflow_total'] = round(section['inflow_total'], 2)
         section['outflow_total'] = round(section['outflow_total'], 2)
         section['net_cash'] = round(section['net_cash'], 2)
 
-    opening_query = text(f"""
-        SELECT
-            COALESCE(SUM(
-                CASE
-                    WHEN t.db_cr = 'DB' THEN t.amount
-                    WHEN t.db_cr = 'CR' THEN -t.amount
-                    ELSE 0
-                END
-            ), 0) AS opening_cash
-        FROM transactions t
-        LEFT JOIN marks m ON t.mark_id = m.id
-        WHERE t.txn_date < :start_date
-          AND (:company_id IS NULL OR t.company_id = :company_id)
-          {split_exclusion_clause}
-          {coretax_clause}
-    """)
-    opening_row = conn.execute(opening_query, {'start_date': start_date, 'company_id': company_id}).fetchone()
-    opening_cash = _to_float(opening_row.opening_cash if opening_row else 0.0, 0.0)
 
-    closing_query = text(f"""
-        SELECT
-            COALESCE(SUM(
-                CASE
-                    WHEN t.db_cr = 'DB' THEN t.amount
-                    WHEN t.db_cr = 'CR' THEN -t.amount
-                    ELSE 0
-                END
-            ), 0) AS closing_cash
-        FROM transactions t
-        LEFT JOIN marks m ON t.mark_id = m.id
-        WHERE t.txn_date <= :end_date
-          AND (:company_id IS NULL OR t.company_id = :company_id)
-          {split_exclusion_clause}
-          {coretax_clause}
-    """)
-    closing_row = conn.execute(closing_query, {'end_date': end_date, 'company_id': company_id}).fetchone()
-    closing_cash = _to_float(closing_row.closing_cash if closing_row else 0.0, 0.0)
+def _calculate_cash_balance(conn, query, balance_date, company_id):
+    row = conn.execute(query, {'balance_date': balance_date, 'company_id': company_id}).fetchone()
+    return _to_float(row.cash_balance if row else 0.0, 0.0)
+
+
+def fetch_cash_flow_data(conn, start_date, end_date, company_id=None, report_type='real'):
+    """
+    Fetch cash flow report using direct method from transaction cash movements.
+    Classification heuristic:
+      - operating: revenue/expense mappings
+      - investing: non-current asset mappings
+      - financing: liability/equity mappings
+      - unclassified: no mapping signal
+    """
+    split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
+    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
+    rows = conn.execute(_build_cash_flow_transactions_query(conn, report_type, split_exclusion_clause, coretax_clause), {
+        'start_date': start_date,
+        'end_date': end_date,
+        'company_id': company_id
+    })
+
+    sections = _empty_cash_flow_sections()
+
+    for row in rows:
+        _append_cash_flow_row(sections, row)
+
+    _finalize_cash_flow_sections(sections)
+
+    opening_query = _build_cash_balance_query('< :balance_date', split_exclusion_clause, coretax_clause)
+    opening_cash = _calculate_cash_balance(conn, opening_query, start_date, company_id)
+
+    closing_query = _build_cash_balance_query('<= :balance_date', split_exclusion_clause, coretax_clause)
+    closing_cash = _calculate_cash_balance(conn, closing_query, end_date, company_id)
 
     operating_net = sections['operating']['net_cash']
     investing_net = sections['investing']['net_cash']
@@ -175,7 +189,7 @@ def fetch_cash_flow_data(conn, start_date, end_date, company_id=None, report_typ
             'end_date': end_date
         },
         'sections': sections,
-        'section_order': ordered_sections,
+        'section_order': ORDERED_SECTIONS,
         'summary': {
             'opening_cash': round(opening_cash, 2),
             'operating_net': round(operating_net, 2),

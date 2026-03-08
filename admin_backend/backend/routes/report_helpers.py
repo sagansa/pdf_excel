@@ -42,7 +42,7 @@ def get_coa_or_404(conn, coa_id):
     ).fetchone()
     if not coa_row:
         raise NotFoundError('COA not found')
-    return dict(coa_row._mapping)
+    return serialize_row_values(coa_row._mapping)
 
 
 def resolve_coa_detail_period(coa_category, as_of_date, start_date, end_date):

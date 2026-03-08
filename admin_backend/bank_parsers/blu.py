@@ -1,10 +1,16 @@
-import os
 import re
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
 
 import pandas as pd
 import pdfplumber
+from bank_parsers.parser_common import (
+    conversion_timestamp,
+    ensure_pdf_file,
+    format_amount,
+    parse_decimal_amount,
+    source_file_name,
+    validate_pdf_document,
+)
 
 
 def parse_statement(pdf_path):
@@ -17,16 +23,14 @@ def parse_statement(pdf_path):
     - Bilingual (Indonesian/English)
     - Amount format: Rp0,00 (comma as decimal separator)
     """
-    if not pdf_path.lower().endswith('.pdf'):
-        raise ValueError("Invalid file format. Please provide a PDF file")
+    ensure_pdf_file(pdf_path)
 
-    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_conversion_timestamp = conversion_timestamp()
     transactions = []
     
     try:
         with pdfplumber.open(pdf_path) as pdf:
-            if len(pdf.pages) == 0:
-                raise ValueError("PDF has no pages")
+            validate_pdf_document(pdf, 'BLU statement')
             
             # Extract text from first page
             text = pdf.pages[0].extract_text()
@@ -35,17 +39,13 @@ def parse_statement(pdf_path):
             
             # Extract account number and transactions
             account_no = _extract_account_number(text)
-            transactions = _extract_transactions(text, account_no, conversion_timestamp)
+            transactions = _extract_transactions(text, account_no, current_conversion_timestamp)
     
-    except Exception as e:
-        raise ValueError(f"Error processing PDF: {str(e)}")
+    except Exception as exc:
+        raise ValueError(f"Error processing PDF: {exc}")
     
     # BLU might have no transactions (as in sample)
-    if not transactions:
-        # Return empty DataFrame with correct structure
-        print("Warning: No transactions found in BLU statement")
-    
-    source_file = os.path.basename(pdf_path)
+    source_file = source_file_name(pdf_path)
     
     # Convert to DataFrame
     standard_rows = []
@@ -60,7 +60,7 @@ def parse_statement(pdf_path):
             'db_cr': txn.get('db_cr', ''),
             'balance': txn.get('balance', ''),
             'currency': 'IDR',
-            'created_at': conversion_timestamp,
+            'created_at': current_conversion_timestamp,
             'source_file': source_file
         })
     
@@ -182,15 +182,7 @@ def _parse_date(date_str):
 
 def _parse_amount(amount_str):
     """Parse BLU amount format: Rp1.234,56."""
-    try:
-        # Remove Rp prefix
-        cleaned = amount_str.replace('Rp', '').strip()
-        # Remove thousands separator (.)
-        cleaned = cleaned.replace('.', '')
-        # Replace decimal separator (,) with period
-        cleaned = cleaned.replace(',', '.')
-        
-        amount_decimal = Decimal(cleaned)
-        return format(abs(amount_decimal), '.2f')
-    except (InvalidOperation, ValueError):
+    amount_decimal = parse_decimal_amount(amount_str)
+    if amount_decimal is None:
         return '0.00'
+    return format_amount(abs(amount_decimal))

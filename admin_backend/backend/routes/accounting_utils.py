@@ -43,18 +43,44 @@ def serialize_db_value(value, datetime_format='%Y-%m-%d %H:%M:%S'):
     return value
 
 
-def serialize_row_values(row_dict, datetime_format='%Y-%m-%d %H:%M:%S'):
+def serialize_row_values(row_dict, datetime_format='%Y-%m-%d %H:%M:%S', field_datetime_formats=None):
+    field_datetime_formats = field_datetime_formats or {}
     return {
-        key: serialize_db_value(value, datetime_format=datetime_format)
+        key: serialize_db_value(
+            value,
+            datetime_format=field_datetime_formats.get(key, datetime_format),
+        )
         for key, value in dict(row_dict).items()
     }
 
 
-def serialize_result_rows(rows, datetime_format='%Y-%m-%d %H:%M:%S'):
+def serialize_result_rows(rows, datetime_format='%Y-%m-%d %H:%M:%S', field_datetime_formats=None):
     return [
-        serialize_row_values(row._mapping, datetime_format=datetime_format)
+        serialize_row_values(
+            row._mapping,
+            datetime_format=datetime_format,
+            field_datetime_formats=field_datetime_formats,
+        )
         for row in rows
     ]
+
+
+def normalize_iso_date_value(value, allow_raw_fallback=False):
+    if value in (None, ''):
+        return None
+    if isinstance(value, datetime):
+        return serialize_db_value(value, datetime_format='%Y-%m-%d')
+    if isinstance(value, date):
+        return serialize_db_value(value)
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        try:
+            return datetime.strptime(raw[:10], '%Y-%m-%d').date().isoformat()
+        except ValueError:
+            return raw[:10] if allow_raw_fallback else None
+    return str(value)[:10] if allow_raw_fallback else None
 
 
 def fetch_inventory_balance_row(conn, year, company_id):
@@ -69,7 +95,7 @@ def fetch_inventory_balance_row(conn, year, company_id):
         'company_id': company_id
     })
     row = result.fetchone()
-    return dict(row._mapping) if row else None
+    return serialize_row_values(row._mapping) if row else None
 
 
 def serialize_inventory_balance(row_dict):

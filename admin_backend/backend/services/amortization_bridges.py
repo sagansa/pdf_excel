@@ -3,14 +3,16 @@ import logging
 
 from sqlalchemy import text
 
-from backend.services.report_adjustments import _calculate_cumulative_rental_amortization_as_of
-from backend.services.report_common import (
-    _calculate_accumulated_amortization,
+from backend.services.rental_adjustments import _calculate_cumulative_rental_amortization_as_of
+from backend.services.report_amortization_common import _calculate_accumulated_amortization
+from backend.services.report_sql_fragments import (
     _coretax_filter_clause,
     _mark_coa_join_clause,
+    _split_parent_exclusion_clause,
+)
+from backend.services.report_value_utils import (
     _parse_bool,
     _parse_date,
-    _split_parent_exclusion_clause,
 )
 from backend.services.equity_bridges import add_or_update_asset_item, resolve_prepaid_asset_code
 
@@ -221,7 +223,7 @@ def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_da
                 FROM chart_of_accounts
                 WHERE code IN :codes
             """), {'codes': tuple(all_codes)}):
-                coa_lookup[row.code] = dict(row._mapping)
+                coa_lookup[row.code] = row._mapping
 
         for code, amount in asset_totals.items():
             coa_info = coa_lookup.get(code, {})

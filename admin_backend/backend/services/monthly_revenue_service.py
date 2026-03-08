@@ -1,6 +1,6 @@
 from sqlalchemy import text
 
-from backend.services.report_common import (
+from backend.services.report_sql_fragments import (
     _coretax_filter_clause,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
@@ -57,7 +57,7 @@ def fetch_monthly_revenue_data(conn, year, company_id=None, report_type='real'):
     monthly_data = {i: 0.0 for i in range(1, 13)}
     
     for row in result:
-        d = dict(row._mapping)
+        d = row._mapping
         if d['month_num']:
             monthly_data[int(d['month_num'])] = float(d['total_amount']) if d['total_amount'] else 0.0
             
@@ -66,5 +66,3 @@ def fetch_monthly_revenue_data(conn, year, company_id=None, report_type='real'):
         {'month': m, 'revenue': monthly_data[m]} 
         for m in range(1, 13)
     ]
-
-

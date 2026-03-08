@@ -1,16 +1,8 @@
 import json
 
-from backend.routes.accounting_utils import require_db_engine, serialize_db_value, serialize_row_values
+from backend.routes.accounting_utils import require_db_engine
 
 RENT_CFG_PREFIX = '[RENT_CFG]'
-
-
-def serialize_value(value):
-    return serialize_db_value(value, datetime_format='%Y-%m-%dT%H:%M:%S')
-
-
-def serialize_row(row):
-    return serialize_row_values(row._mapping, datetime_format='%Y-%m-%dT%H:%M:%S')
 
 
 def normalize_ids(values):

@@ -1,9 +1,19 @@
 import pdfplumber
 import pandas as pd
 import re
-import os
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+
+from bank_parsers.parser_common import (
+    append_debug_log,
+    collect_page_text,
+    conversion_timestamp,
+    ensure_pdf_file,
+    format_amount,
+    parse_decimal_amount,
+    reset_debug_log,
+    source_file_name,
+    validate_pdf_document,
+)
 
 # Month abbreviation to number mapping
 MONTH_MAP = {
@@ -23,46 +33,27 @@ def convert_date_format(date_str):
         if month in MONTH_MAP:
             return f"{day.zfill(2)}/{MONTH_MAP[month]}"
         return date_str
-    except Exception:
+    except ValueError:
         return date_str
 
 def parse_statement(pdf_path, base_year=None, password=None):
-    if not os.path.exists(pdf_path):
-        raise ValueError("PDF file not found")
-        
-    if not pdf_path.lower().endswith('.pdf'):
-        raise ValueError("Invalid file format. Please provide a PDF file")
+    ensure_pdf_file(pdf_path)
         
     transactions = []
-    full_text_parts = []
-    conversion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_conversion_timestamp = conversion_timestamp()
     
-    # Initialize debug log
-    with open('debug_bca.log', 'w') as f:
-        f.write(f"START PARSE {datetime.now()}\n")
-        f.write(f"base_year: {base_year}\n")
+    reset_debug_log(
+        'debug_bca.log',
+        f"START PARSE {datetime.now()}",
+        f"base_year: {base_year}",
+    )
     try:
         with pdfplumber.open(pdf_path, password=password) as pdf:
-            if not pdf.pages:
-                raise ValueError("PDF file is empty or corrupted. Please ensure the file is a valid BCA credit card statement")
-            
-            # Additional validation for PDF integrity
-            try:
-                # Try to access PDF metadata to verify basic PDF structure
-                _ = pdf.metadata
-                # Verify that pages are accessible and contain content
-                for page in pdf.pages:
-                    if not hasattr(page, 'extract_words'):
-                        raise ValueError("PDF file appears to be corrupted. Unable to extract content from pages.")
-            except Exception as e:
-                raise ValueError(f"PDF file validation failed. The file may be corrupted: {str(e)}")
+            validate_pdf_document(pdf, 'BCA credit card statement')
+            full_text_parts = collect_page_text(pdf)
 
             current_transaction = None
             for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    full_text_parts.append(page_text)
-                
                 # Extract text with position information
                 words = page.extract_words(
                     keep_blank_chars=True,
@@ -70,8 +61,7 @@ def parse_statement(pdf_path, base_year=None, password=None):
                     y_tolerance=3
                 )
                 
-                # Expanded footer and header markers and noise reduction
-                # Expanded footer and header markers and noise reduction
+                # Expanded footer and header markers and noise reduction.
                 skip_markers = [
                     'TAGIHAN SEBELUMNYA', 'REKENING KARTU KREDIT', 'INFORMASI KARTU KREDIT',
                     'TANGGAL JATUH TEMPO', 'TAGIHAN BARU', 'PEMBAYARAN MINIMUM',
@@ -127,7 +117,7 @@ def parse_statement(pdf_path, base_year=None, password=None):
                     
                     if is_total_line or is_summary_line:
                          if current_transaction:
-                             current_transaction['created_at'] = conversion_timestamp
+                             current_transaction['created_at'] = current_conversion_timestamp
                              transactions.append(current_transaction)
                              current_transaction = None
                          in_summary_section = True
@@ -153,8 +143,7 @@ def parse_statement(pdf_path, base_year=None, password=None):
                         x = word['x0']
                         y_pos = word['top']
                         if text.strip():
-                            with open('debug_bca.log', 'a') as f:
-                                f.write(f"  Word: '{text}' at x={x:.2f}, y={y_pos:.2f}\n")
+                            append_debug_log('debug_bca.log', f"  Word: '{text}' at x={x:.2f}, y={y_pos:.2f}")
                         
                         # Transaction date (0 < x < 125)
                         if 0 < x < 125:
@@ -191,7 +180,7 @@ def parse_statement(pdf_path, base_year=None, password=None):
                     if row_txn_date:
                         # New transaction starts
                         if current_transaction:
-                            current_transaction['created_at'] = conversion_timestamp
+                            current_transaction['created_at'] = current_conversion_timestamp
                             transactions.append(current_transaction)
                         
                         current_transaction = {
@@ -204,7 +193,7 @@ def parse_statement(pdf_path, base_year=None, password=None):
                             'db_cr': row_db_cr,
                             'balance': None,
                             'currency': None,
-                            'created_at': conversion_timestamp
+                            'created_at': current_conversion_timestamp
                         }
                     elif current_transaction and row_details and not in_summary_section:
                         # Continuation line
@@ -235,22 +224,16 @@ def parse_statement(pdf_path, base_year=None, password=None):
 
             # Add the last transaction after all pages
             if current_transaction:
-                current_transaction['created_at'] = conversion_timestamp
+                current_transaction['created_at'] = current_conversion_timestamp
                 transactions.append(current_transaction)
 
-    except Exception as e:
-        raise ValueError(f"Error processing PDF: {str(e)}")
+    except Exception as exc:
+        raise ValueError(f"Error processing PDF: {exc}")
     
     if not transactions:
         return pd.DataFrame(columns=['bank_code', 'account_no', 'txn_date', 'posting_date', 'description', 'amount', 'db_cr', 'balance', 'currency', 'created_at', 'source_file'])
 
     full_text = '\n'.join(full_text_parts)
-    # Debug logging moved to start
-    # with open('debug_bca.log', 'w') as f:
-    #     f.write(f"START PARSE {datetime.now()}\n")
-    #     f.write(f"base_year: {base_year}\n")
-    #     f.write(f"Full text snippet: {full_text[:1000]}\n")
-
     account_no = _extract_account_number(full_text)
     currency = _extract_currency(full_text) or 'IDR'
     
@@ -259,12 +242,14 @@ def parse_statement(pdf_path, base_year=None, password=None):
     extracted_year = st_year or datetime.now().year
     current_year = base_year or extracted_year
     
-    with open('debug_bca.log', 'a') as f:
-        f.write(f"Statement date: {st_day}/{st_month}/{st_year}\n")
-        f.write(f"Initial year set to: {current_year}\n")
+    append_debug_log(
+        'debug_bca.log',
+        f"Statement date: {st_day}/{st_month}/{st_year}",
+        f"Initial year set to: {current_year}",
+    )
 
     bank_code = 'BCA_CC'
-    source_file = os.path.basename(pdf_path)
+    source_file = source_file_name(pdf_path)
 
     rows = []
     
@@ -337,7 +322,7 @@ def parse_statement(pdf_path, base_year=None, password=None):
             'db_cr': db_cr or '',
             'balance': '',
             'currency': currency,
-            'created_at': entry.get('created_at', conversion_timestamp),
+            'created_at': entry.get('created_at', current_conversion_timestamp),
             'source_file': source_file
         })
 
@@ -453,77 +438,8 @@ def _convert_cc_date_absolute(raw: str, year: int):
 
 
 def _parse_decimal(value):
-    if value is None:
-        return None
-
-    if isinstance(value, Decimal):
-        return value
-
-    if isinstance(value, (int, float)):
-        try:
-            return Decimal(str(value))
-        except (InvalidOperation, ValueError):
-            return None
-
-    value = str(value)
-    if not value:
-        return None
-
-    # Remove Currency symbol matches if any
-    cleaned = value.strip().replace('\u00a0', '').replace(' ', '').replace('CR', '').replace('DB', '')
-    cleaned = re.sub(r'IDR|RP', '', cleaned, flags=re.IGNORECASE)
-    
-    if not cleaned:
-        return None
-        
-    sign = -1 if cleaned.startswith('-') else 1
-    cleaned = cleaned.lstrip('+-')
-    
-    # Determine format:
-    # 1. 1.000,00 (Indonesian/German) -> dot is thousand, comma is decimal
-    # 2. 1,000.00 (US/UK) -> comma is thousand, dot is decimal
-    # 3. 1000 (Plain)
-    
-    commas = cleaned.count(',')
-    dots = cleaned.count('.')
-    
-    try:
-        if ',' in cleaned and '.' in cleaned:
-            # Both present
-            last_comma = cleaned.rfind(',')
-            last_dot = cleaned.rfind('.')
-            
-            if last_comma > last_dot:
-                # Comma is later, so comma is decimal (INDONESIAN)
-                cleaned = cleaned.replace('.', '').replace(',', '.')
-            else:
-                # Dot is later, so dot is decimal (US)
-                cleaned = cleaned.replace(',', '')
-        elif ',' in cleaned:
-            # Only commas. Check if comma looks like decimal separator (2 digits after?)
-            # or if multiple commas (thousands)
-            if commas == 1 and len(cleaned) - cleaned.rfind(',') == 3:
-                # likely decimal "100,00"
-                cleaned = cleaned.replace(',', '.')
-            else:
-                # likely thousands "10,000" -> 10000
-                cleaned = cleaned.replace(',', '')
-        elif '.' in cleaned:
-             # Only dots. 
-             if dots == 1 and len(cleaned) - cleaned.rfind('.') == 3:
-                 # likely decimal "100.00"
-                 pass # Standard
-             elif dots >= 1:
-                 # likely thousands "1.000.000"
-                 cleaned = cleaned.replace('.', '')
-             
-        dec = Decimal(cleaned)
-        return dec * sign
-    except (InvalidOperation, ValueError):
-        return None
+    return parse_decimal_amount(value)
 
 
 def _format_amount(dec: Decimal) -> str:
-    if dec is None:
-        return ''
-    return format(dec, '.2f')
+    return format_amount(dec)

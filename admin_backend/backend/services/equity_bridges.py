@@ -4,12 +4,12 @@ from sqlalchemy import text
 
 from backend.db.schema import get_table_columns
 from backend.services.income_statement_service import fetch_income_statement_data
-from backend.services.report_adjustments import (
-    _calculate_rental_tax_breakdown,
+from backend.services.rental_adjustments import _calculate_rental_tax_breakdown
+from backend.services.report_value_utils import _is_current_asset
+from backend.services.service_tax_adjustments import (
     _calculate_service_tax_payable_as_of,
     _resolve_service_tax_payable_account,
 )
-from backend.services.report_common import _is_current_asset
 
 logger = logging.getLogger(__name__)
 

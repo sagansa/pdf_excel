@@ -6,11 +6,10 @@ from sqlalchemy import bindparam, text
 
 from backend.db.schema import get_table_columns
 from backend.errors import BadRequestError, NotFoundError
+from backend.routes.accounting_utils import require_db_engine, serialize_result_rows
 from backend.routes.rental_helpers import (
     merge_notes_with_cfg,
     normalize_ids,
-    require_db_engine,
-    serialize_row,
     split_notes_and_cfg,
 )
 from backend.routes.rental_queries import (
@@ -70,7 +69,7 @@ def get_contracts():
             ),
             {'company_id': company_id, 'status': status}
         )
-        contracts = [serialize_row(row) for row in result]
+        contracts = serialize_result_rows(result, datetime_format='%Y-%m-%dT%H:%M:%S')
         has_method_col = 'calculation_method' in contract_columns
         has_rate_col = 'pph42_rate' in contract_columns
         has_timing_col = 'pph42_payment_timing' in contract_columns
@@ -108,7 +107,7 @@ def get_expiring_contracts():
             params = {'company_id': company_id, 'days': days}
 
         result = conn.execute(query, params)
-        contracts = [serialize_row(row) for row in result]
+        contracts = serialize_result_rows(result, datetime_format='%Y-%m-%dT%H:%M:%S')
     return jsonify({'contracts': contracts, 'days': days})
 
 
@@ -344,7 +343,7 @@ def get_contract_transactions(contract_id):
     engine = require_db_engine()
     with engine.connect() as conn:
         result = conn.execute(build_contract_transactions_query(), {'contract_id': contract_id})
-        transactions = [serialize_row(row) for row in result]
+        transactions = serialize_result_rows(result, datetime_format='%Y-%m-%dT%H:%M:%S')
     return jsonify({'transactions': transactions})
 
 
@@ -425,7 +424,7 @@ def get_linkable_transactions():
             'company_id': company_id,
             'current_contract_id': current_contract_id
         })
-        transactions = [serialize_row(row) for row in result]
+        transactions = serialize_result_rows(result, datetime_format='%Y-%m-%dT%H:%M:%S')
 
     return jsonify({'transactions': transactions})
 
