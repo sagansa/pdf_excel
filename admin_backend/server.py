@@ -9,25 +9,25 @@ load_dotenv(BASE_DIR / ".env")
 
 from migrate import run_migrations
 from backend.error_handlers import register_error_handlers
-from backend.routes.service_bp import service_bp
-from backend.routes.company_bp import company_bp
-from backend.routes.coa_bp import coa_bp
-from backend.routes.report_bp import report_bp
-from backend.routes.inventory_bp import inventory_bp
-from backend.routes.amortization_item_bp import amortization_item_bp
-from backend.routes.amortization_asset_bp import amortization_asset_bp
-from backend.routes.amortization_config_bp import amortization_config_bp
-from backend.routes.pdf_bp import pdf_bp
-from backend.routes.rental_location_bp import rental_location_bp
-from backend.routes.rental_store_bp import rental_store_bp
-from backend.routes.rental_contract_bp import rental_contract_bp
-from backend.routes.hpp_bp import hpp_bp
-from backend.routes.initial_capital_bp import initial_capital_bp
-from backend.routes.general_ledger_bp import general_ledger_bp
-from backend.routes.remaining_storage_bp import remaining_storage_bp
-from backend.routes.history_bp import history_bp
-from backend.routes.payroll_bp import payroll_bp
-from backend.routes.mark_bp import mark_bp
+from backend.routes.transactions.service_bp import service_bp
+from backend.routes.master_data.company_bp import company_bp
+from backend.routes.master_data.coa_bp import coa_bp
+from backend.routes.reporting.report_bp import report_bp
+from backend.routes.inventory.inventory_bp import inventory_bp
+from backend.routes.amortization.amortization_item_bp import amortization_item_bp
+from backend.routes.amortization.amortization_asset_bp import amortization_asset_bp
+from backend.routes.amortization.amortization_config_bp import amortization_config_bp
+from backend.routes.uploads.pdf_bp import pdf_bp
+from backend.routes.rental.rental_location_bp import rental_location_bp
+from backend.routes.rental.rental_store_bp import rental_store_bp
+from backend.routes.rental.rental_contract_bp import rental_contract_bp
+from backend.routes.inventory.hpp_bp import hpp_bp
+from backend.routes.master_data.initial_capital_bp import initial_capital_bp
+from backend.routes.reporting.general_ledger_bp import general_ledger_bp
+from backend.routes.inventory.remaining_storage_bp import remaining_storage_bp
+from backend.routes.transactions.history_bp import history_bp
+from backend.routes.transactions.payroll_bp import payroll_bp
+from backend.routes.master_data.mark_bp import mark_bp
 
 app = Flask(__name__)
 register_error_handlers(app)
