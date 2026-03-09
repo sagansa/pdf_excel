@@ -42,6 +42,18 @@ DEFAULT_REMAINING_STORAGE_API_TOKEN = os.environ.get(
     'SAGANSA_REMAINING_STORAGE_TOKEN',
     ''
 )
+DEFAULT_STOCK_MONITORING_API_URL = os.environ.get(
+    'SAGANSA_STOCK_MONITORING_API_URL',
+    'https://superadmin.sagansa.id/api/stock-monitorings-simplified'
+)
+DEFAULT_STOCK_MONITORING_API_TOKEN = os.environ.get(
+    'SAGANSA_STOCK_MONITORING_TOKEN',
+    ''
+)
+DEFAULT_STORES_NOT_REPORTED_API_URL = os.environ.get(
+    'SAGANSA_STORES_NOT_REPORTED_API_URL',
+    'https://superadmin.sagansa.id/api/stores-not-reported'
+)
 
 
 def _require_remaining_storage_token(token):
@@ -68,6 +80,41 @@ def _handle_remaining_storage_remote_error(exc):
         raise ServiceUnavailableError(message, code='remaining_storage_remote_unavailable')
 
     raise ApiError(message, status_code=502, code='remaining_storage_remote_error')
+
+
+def _fetch_stock_monitoring_simplified(api_url, token, selected_date=None):
+    """Fetch simplified stock monitoring data from API."""
+    query_params = {}
+    if selected_date:
+        query_params['date'] = selected_date
+
+    try:
+        response = _fetch_remote_json(
+            api_url=api_url,
+            token=token,
+            query_params=query_params,
+            resource_name='Stock Monitoring Simplified API'
+        )
+        return response if isinstance(response, list) else []
+    except Exception as exc:
+        raise _handle_remaining_storage_remote_error(exc)
+
+
+def _fetch_stores_not_reported(api_url, token, selected_date):
+    """Fetch stores that haven't reported on a specific date."""
+    query_params = {'date': selected_date}
+
+    try:
+        response = _fetch_remote_json(
+            api_url=api_url,
+            token=token,
+            query_params=query_params,
+            resource_name='Stores Not Reported API'
+        )
+        data = response.get('data', []) if isinstance(response, dict) else response
+        return data if isinstance(data, list) else []
+    except Exception as exc:
+        raise _handle_remaining_storage_remote_error(exc)
 
 
 def _fetch_all_remote_remaining_storages(api_url, token, selected_date=None):
@@ -572,5 +619,60 @@ def get_dashboard_remaining_storage():
             'missing_report_store_count': len(missing_report_stores)
         },
         'items': limited_rows,
+        'missing_report_stores': missing_report_stores
+    })
+
+
+@remaining_storage_bp.route('/api/dashboard/stock-monitoring-simplified', methods=['GET'])
+def get_dashboard_stock_monitoring_simplified():
+    """Get simplified stock monitoring data and stores not reported."""
+    api_url = str(request.args.get('api_url') or DEFAULT_STOCK_MONITORING_API_URL).strip()
+    token = str(
+        request.args.get('token')
+        or request.args.get('access_token')
+        or request.args.get('api_token')
+        or DEFAULT_STOCK_MONITORING_API_TOKEN
+        or ''
+    ).strip()
+    
+    stores_not_reported_url = str(request.args.get('stores_not_reported_url') or DEFAULT_STORES_NOT_REPORTED_API_URL).strip()
+
+    raw_date = request.args.get('date')
+    if raw_date in (None, ''):
+        selected_date = (date.today() - timedelta(days=1)).isoformat()
+    else:
+        selected_date = _normalize_iso_date(raw_date)
+    if raw_date not in (None, '') and not selected_date:
+        raise BadRequestError('date must use YYYY-MM-DD format')
+
+    # Fetch simplified stock monitoring data
+    monitoring_data = _fetch_stock_monitoring_simplified(
+        api_url=api_url,
+        token=token if token else None,
+        selected_date=selected_date
+    )
+
+    # Fetch stores not reported
+    missing_report_stores = _fetch_stores_not_reported(
+        api_url=stores_not_reported_url,
+        token=token if token else None,
+        selected_date=selected_date
+    )
+
+    # Calculate summary
+    total_monitored = len(monitoring_data)
+    low_count = sum(1 for item in monitoring_data if (item.get('total_stock') or 0) < (item.get('quantity_low') or 0))
+    safe_count = sum(1 for item in monitoring_data if (item.get('total_stock') or 0) >= (item.get('quantity_low') or 0))
+
+    return jsonify({
+        'success': True,
+        'summary': {
+            'total_monitored': total_monitored,
+            'low_count': low_count,
+            'safe_count': safe_count,
+            'selected_date': selected_date,
+            'missing_report_store_count': len(missing_report_stores)
+        },
+        'items': monitoring_data,
         'missing_report_stores': missing_report_stores
     })

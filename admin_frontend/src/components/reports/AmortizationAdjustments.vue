@@ -11,7 +11,7 @@
         <div class="flex items-center gap-3">
           <i class="bi bi-exclamation-triangle-fill amortization-alert__icon"></i>
           <div>
-            <h4 class="text-sm font-bold amortization-alert__title">
+            <h4 class="text-xs font-bold amortization-alert__title">
               {{ pendingTransactions.length }} transaksi aset belum terdaftar
             </h4>
             <p class="mt-0.5 text-xs amortization-alert__text">
@@ -38,7 +38,7 @@
           <h3 class="amortization-workspace__title">
             Calculated Asset Amortization
           </h3>
-          <p class="mt-1 text-sm amortization-workspace__subtitle">
+          <p class="mt-1 text-xs amortization-workspace__subtitle">
             Automatic calculation based on registered assets. Total:
             {{ formatCurrency(calculatedTotalAmortization) }}
           </p>
@@ -111,23 +111,23 @@
                 :key="item.asset_id"
                 class="amortization-row"
               >
-                <td class="px-4 py-3 text-xs text-slate-600 font-mono">
+                <td class="px-3 py-2 text-xs text-muted font-mono">
                   {{ formatDate(item.txn_date || item.acquisition_date) }}
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-3 py-2">
                   <div class="flex flex-col gap-0.5 max-w-[250px]">
                     <!-- Notes as Main Title (Bold) if exists -->
                     <div
                       v-if="item.notes || item.amortization_notes"
-                      class="text-sm font-bold text-slate-800 break-words leading-tight"
+                      class="text-xs font-bold text-theme break-words leading-tight"
                     >
                       {{ item.notes || item.amortization_notes }}
                     </div>
                     <!-- Description/Asset Name as Subtitle (Italic) -->
                     <div
-                      class="text-xs text-slate-500 italic break-words leading-tight"
+                      class="text-xs text-muted italic break-words leading-tight"
                       :class="{
-                        'font-semibold text-slate-700 not-italic text-sm': !(
+                        'font-semibold text-theme not-italic text-xs': !(
                           item.notes || item.amortization_notes
                         ),
                       }"
@@ -136,20 +136,20 @@
                     </div>
                   </div>
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-3 py-2">
                   <div class="flex flex-col">
-                    <span class="text-xs font-medium text-slate-700">{{
+                    <span class="text-xs font-medium text-theme">{{
                       getCalculatedGroupLabel(item)
                     }}</span>
-                    <span class="text-[10px] text-slate-500">{{
+                    <span class="text-[10px] text-muted">{{
                       getDeductibleLabel(item)
                     }}</span>
                   </div>
                 </td>
-                <td class="px-4 py-3 text-sm text-right text-slate-600">
+                <td class="px-3 py-2 text-xs text-right text-muted">
                   {{ formatCurrency(item.acquisition_cost, false) }}
                 </td>
-                <td class="px-4 py-3 text-sm text-right text-slate-500">
+                <td class="px-3 py-2 text-xs text-right text-muted">
                   {{
                     formatCurrency(
                       item.accumulated_depreciation_prev_year || 0,
@@ -158,7 +158,7 @@
                   }}
                 </td>
 
-                <td class="px-4 py-3 text-center">
+                <td class="px-3 py-2 text-center">
                   <div class="flex flex-col items-center gap-1">
                     <span
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800"
@@ -168,11 +168,11 @@
                   </div>
                 </td>
                 <td
-                  class="px-4 py-3 text-sm text-right font-bold text-indigo-700"
+                  class="px-3 py-2 text-xs text-right font-bold text-theme"
                 >
                   {{ formatCurrency(item.annual_amortization, false) }}
                 </td>
-                <td class="px-4 py-3 text-sm text-right text-slate-600">
+                <td class="px-3 py-2 text-xs text-right text-muted">
                   {{
                     formatCurrency(
                       item.total_accumulated_depreciation || 0,
@@ -181,24 +181,24 @@
                   }}
                 </td>
                 <td
-                  class="px-4 py-3 text-sm text-right font-bold text-slate-800"
+                  class="px-3 py-2 text-xs text-right font-bold text-theme"
                 >
                   {{ formatCurrency(item.book_value_end_year || 0, false) }}
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-3 py-2">
                   <div class="flex items-center justify-center gap-2">
                     <!-- Manual Asset Actions -->
                     <template v-if="item.is_manual_asset">
                       <button
                         @click="editItem(item)"
-                        class="text-gray-400 hover:text-indigo-600 transition-colors"
+                        class="text-muted hover:text-theme transition-colors"
                         title="Edit"
                       >
                         <i class="bi bi-pencil-square"></i>
                       </button>
                       <button
                         @click="confirmDelete(item)"
-                        class="text-gray-400 hover:text-red-600 transition-colors"
+                        class="text-muted hover:text-danger transition-colors"
                         title="Delete"
                       >
                         <i class="bi bi-trash"></i>
@@ -208,7 +208,7 @@
                     <template v-else-if="item.is_from_ledger">
                       <button
                         @click="openTransactionDetail(item)"
-                        class="text-gray-400 hover:text-teal-600 transition-colors"
+                        class="text-muted hover:text-theme transition-colors"
                         title="View Details"
                       >
                         <i class="bi bi-eye"></i>
@@ -218,14 +218,14 @@
                     <template v-else-if="item.asset_id">
                       <button
                         @click="editRegisteredAsset(item)"
-                        class="text-gray-400 hover:text-indigo-600 transition-colors"
+                        class="text-muted hover:text-theme transition-colors"
                         title="Edit Asset"
                       >
                         <i class="bi bi-pencil-square"></i>
                       </button>
                       <button
                         @click="confirmDeleteAsset(item)"
-                        class="text-gray-400 hover:text-red-600 transition-colors"
+                        class="text-muted hover:text-danger transition-colors"
                         title="Delete Asset"
                       >
                         <i class="bi bi-trash"></i>
@@ -233,7 +233,7 @@
                     </template>
                     <span
                       v-else
-                      class="text-slate-300 pointer-events-none"
+                      class="text-muted pointer-events-none"
                       title="No actions available"
                     >
                       <i class="bi bi-dash text-xs"></i>
@@ -246,20 +246,19 @@
               <tr class="font-bold">
                 <td
                   colspan="3"
-                  class="px-4 py-3 text-right text-sm uppercase tracking-wider"
-                  style="color: var(--color-text)"
+                  class="px-3 py-2 text-right text-xs uppercase tracking-wider text-theme"
                 >
                   Total Calculated Amortization
                 </td>
-                <td class="px-4 py-3 text-right text-sm" style="color: var(--color-text)">
+                <td class="px-3 py-2 text-right text-xs text-theme">
                   {{ formatCurrency(totalOriginalCost, false) }}
                 </td>
                 <td colspan="2"></td>
-                <td class="px-4 py-3 text-right text-sm" style="color: var(--color-text)">
+                <td class="px-3 py-2 text-right text-xs text-theme">
                   {{ formatCurrency(calculatedTotalAmortization, false) }}
                 </td>
                 <td></td>
-                <td class="px-4 py-3 text-right text-sm" style="color: var(--color-text)">
+                <td class="px-3 py-2 text-right text-xs text-theme">
                   {{ formatCurrency(totalBookValueEnd, false) }}
                 </td>
                 <td></td>
@@ -279,10 +278,10 @@
           <h3 class="amortization-workspace__title">
             Manual & Transaction Adjustments
           </h3>
-          <p class="mt-1 text-sm amortization-workspace__subtitle">
+          <p class="mt-1 text-xs amortization-workspace__subtitle">
             Manual and transactional adjustments. Total:
             {{ formatCurrency(manualTotalAmortization) }}
-            <span v-if="manualItems.length > 0" style="color: var(--color-primary)"
+            <span v-if="manualItems.length > 0" class="text-theme"
               >({{ manualItems.length }} entries)</span
             >
           </p>
@@ -296,7 +295,7 @@
           <button
             @click="openAddModal"
             :disabled="!companyId"
-            class="btn-primary gap-2 px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            class="btn-primary gap-2 px-4 py-2 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <i class="bi bi-plus-lg"></i>
             Add Entry
@@ -304,7 +303,7 @@
           <button
             @click="generateJournalEntries"
             :disabled="!companyId || manualItems.length === 0"
-            class="btn-secondary gap-2 px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            class="btn-secondary gap-2 px-4 py-2 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <i class="bi bi-journal-text"></i>
             Generate Journals
@@ -319,7 +318,7 @@
           class="amortization-empty-state"
         >
           <i class="bi bi-calendar-check text-4xl text-muted"></i>
-          <p class="mt-3 text-sm text-muted">
+          <p class="mt-3 text-xs text-muted">
             No manual amortization entries yet
           </p>
           <p class="mt-1 text-xs text-muted">
@@ -390,7 +389,7 @@
                 class="amortization-row"
                 :class="{ 'opacity-80 amortization-row--muted': !item.is_manual }"
               >
-                <td class="px-4 py-3 text-xs text-slate-600 font-mono">
+                <td class="px-3 py-2 text-xs text-muted font-mono">
                   {{
                     formatDate(
                       item.amortization_date ||
@@ -400,18 +399,18 @@
                     )
                   }}
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-3 py-2">
                   <div class="flex flex-col gap-0.5 max-w-[250px]">
                     <div
                       v-if="item.notes"
-                      class="text-sm font-bold text-slate-800 break-words leading-tight"
+                      class="text-xs font-bold text-theme break-words leading-tight"
                     >
                       {{ item.notes }}
                     </div>
                     <div
-                      class="text-xs text-slate-500 italic break-words leading-tight"
+                      class="text-xs text-muted italic break-words leading-tight"
                       :class="{
-                        'font-semibold text-slate-700 not-italic text-sm':
+                        'font-semibold text-theme not-italic text-xs':
                           !item.notes,
                       }"
                     >
@@ -425,33 +424,33 @@
                     </div>
                   </div>
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-3 py-2">
                   <div class="flex flex-col">
                     <template v-if="item.asset_group_id">
-                      <span class="text-xs font-medium text-slate-700">{{
+                      <span class="text-xs font-medium text-theme">{{
                         getGroupName(item.asset_group_id)
                       }}</span>
-                      <span class="text-[10px] text-slate-500">{{
+                      <span class="text-[10px] text-muted">{{
                         getDeductibleLabel(item)
                       }}</span>
                     </template>
                     <template v-else>
-                      <span class="text-xs font-medium text-slate-700">{{
+                      <span class="text-xs font-medium text-theme">{{
                         item.coa_code
                       }}</span>
                       <span
-                        class="text-[10px] text-slate-500 truncate max-w-[120px]"
+                        class="text-[10px] text-muted truncate max-w-[120px]"
                         >{{ item.coa_name }}</span
                       >
                     </template>
                   </div>
                 </td>
                 <td
-                  class="px-4 py-3 text-sm text-right font-medium text-slate-600"
+                  class="px-3 py-2 text-xs text-right text-muted"
                 >
                   {{ formatCurrency(item.amount, false) }}
                 </td>
-                <td class="px-4 py-3 text-sm text-right text-slate-400">
+                <td class="px-3 py-2 text-xs text-right text-muted">
                   {{
                     item.asset_group_id
                       ? formatCurrency(
@@ -461,7 +460,7 @@
                       : "-"
                   }}
                 </td>
-                <td class="px-4 py-3 text-center">
+                <td class="px-3 py-2 text-center">
                   <span
                     v-if="
                       item.multiplier !== null && item.multiplier !== undefined
@@ -470,10 +469,10 @@
                   >
                     {{ item.multiplier }}
                   </span>
-                  <span v-else class="text-slate-400">-</span>
+                  <span v-else class="text-muted">-</span>
                 </td>
                 <td
-                  class="px-4 py-3 text-sm text-right font-bold text-indigo-700"
+                  class="px-3 py-2 text-xs text-right font-bold text-theme"
                 >
                   {{
                     formatCurrency(
@@ -483,7 +482,7 @@
                   }}
                 </td>
                 <td
-                  class="px-4 py-3 text-sm text-right font-medium text-slate-600"
+                  class="px-3 py-2 text-xs text-right text-muted"
                 >
                   {{
                     formatCurrency(
@@ -492,7 +491,7 @@
                     )
                   }}
                 </td>
-                <td class="px-4 py-3 text-sm text-right text-slate-400">
+                <td class="px-3 py-2 text-xs text-right text-muted">
                   {{
                     item.book_value_end_year !== undefined
                       ? formatCurrency(item.book_value_end_year, false)
@@ -501,19 +500,19 @@
                         : "-"
                   }}
                 </td>
-                <td class="px-4 py-3 text-sm text-center">
+                <td class="px-3 py-2 text-xs text-center">
                   <div class="flex items-center justify-center gap-2">
                     <template v-if="item.is_manual">
                       <button
                         @click="editItem(item)"
-                        class="text-gray-400 hover:text-indigo-600 transition-colors"
+                        class="text-muted hover:text-theme transition-colors"
                         title="Edit"
                       >
                         <i class="bi bi-pencil-square"></i>
                       </button>
                       <button
                         @click="confirmDelete(item)"
-                        class="text-gray-400 hover:text-red-600 transition-colors"
+                        class="text-muted hover:text-danger transition-colors"
                         title="Delete"
                       >
                         <i class="bi bi-trash"></i>
@@ -522,7 +521,7 @@
                     <template v-else>
                       <button
                         @click="openTransactionDetail(item)"
-                        class="text-gray-400 hover:text-teal-600 transition-colors"
+                        class="text-muted hover:text-theme transition-colors"
                         title="View Details"
                       >
                         <i class="bi bi-eye"></i>
@@ -533,27 +532,27 @@
               </tr>
             </tbody>
             <tfoot class="amortization-table-foot">
-              <tr class="font-bold" style="color: var(--color-text)">
+              <tr class="font-bold">
                 <td
                   colspan="3"
-                  class="px-4 py-3 text-sm text-right uppercase tracking-wider"
+                  class="px-3 py-2 text-xs text-right uppercase tracking-wider text-theme"
                 >
                   Total Manual Adjustments
                 </td>
-                <td class="px-4 py-3 text-sm text-right">
+                <td class="px-3 py-2 text-xs text-right text-theme">
                   {{ formatCurrency(manualTotalCalculated, false) }}
                 </td>
-                <td class="px-4 py-3 text-sm text-right">
+                <td class="px-3 py-2 text-xs text-right text-theme">
                   {{ formatCurrency(manualTotalAccumPrev, false) }}
                 </td>
-                <td class="px-4 py-3 text-center">-</td>
-                <td class="px-4 py-3 text-sm text-right">
+                <td class="px-3 py-2 text-center text-theme">-</td>
+                <td class="px-3 py-2 text-xs text-right text-theme">
                   {{ formatCurrency(manualTotalAmortization, false) }}
                 </td>
-                <td class="px-4 py-3 text-sm text-right">
+                <td class="px-3 py-2 text-xs text-right text-theme">
                   {{ formatCurrency(manualTotalAccumTotal, false) }}
                 </td>
-                <td class="px-4 py-3 text-sm text-right">
+                <td class="px-3 py-2 text-xs text-right text-theme">
                   {{ formatCurrency(manualTotalBookValue, false) }}
                 </td>
                 <td></td>
@@ -567,24 +566,24 @@
     <!-- Final Total Summary -->
     <div class="amortization-summary">
       <div>
-        <h3 class="text-lg font-bold opacity-80 uppercase tracking-wider">
+        <h3 class="text-lg font-bold text-theme uppercase tracking-wider">
           Total Amortization Breakdown
         </h3>
       </div>
       <div class="flex gap-12">
         <div class="text-right">
-          <span class="text-xs uppercase opacity-70"
+          <span class="text-xs uppercase text-muted"
             >Total Amortization (Curr)</span
           >
-          <div class="text-3xl font-black text-indigo-100">
+          <div class="text-3xl font-black text-theme">
             {{ formatCurrency(grandTotalAmortization) }}
           </div>
         </div>
-        <div class="text-right border-l border-indigo-700/50 pl-12">
-          <span class="text-xs uppercase opacity-70"
+        <div class="text-right border-l border-theme/50 pl-12">
+          <span class="text-xs uppercase text-muted"
             >Total Book Value (End)</span
           >
-          <div class="text-3xl font-black text-indigo-100">
+          <div class="text-3xl font-black text-theme">
             {{ formatCurrency(grandTotalBookValue) }}
           </div>
         </div>
@@ -600,12 +599,12 @@
         class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
       >
         <div
-          class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between"
+          class="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between"
         >
-          <h3 class="text-lg font-bold text-slate-800">
+          <h3 class="text-lg font-bold text-theme">
             {{ editingItem ? "Edit" : "Add" }} Amortization Entry
           </h3>
-          <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
+          <button @click="closeModal" class="text-muted hover:text-theme transition-colors">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
@@ -613,12 +612,12 @@
         <div class="p-6 space-y-4">
           <!-- Asset Mark Selection -->
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">
-              Asset Mark <span class="text-red-500">*</span>
+            <label class="block text-xs font-semibold text-theme mb-1">
+              Asset Mark <span class="text-danger">*</span>
             </label>
             <select
               v-model="form.mark_id"
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+              class="input-base w-full"
             >
               <option value="">Select Asset Mark</option>
               <option
@@ -627,7 +626,7 @@
                 :value="mark.id"
               >
                 {{ mark.personal_use }}
-                <span v-if="mark.asset_type" class="text-gray-500">
+                <span v-if="mark.asset_type" class="text-muted">
                   ({{ mark.asset_type }})
                 </span>
               </option>
@@ -636,25 +635,25 @@
 
           <!-- Date -->
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">
+            <label class="block text-xs font-semibold text-theme mb-1">
               Amortization Date
             </label>
             <input
               v-model="form.amortization_date"
               type="date"
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+              class="input-base w-full"
             />
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <!-- Asset Group -->
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">
+              <label class="block text-xs font-semibold text-theme mb-1">
                 Asset Group
               </label>
               <select
                 v-model="form.asset_group_id"
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+                class="input-base w-full"
               >
                 <option value="">None (One-time adjustment)</option>
                 <optgroup
@@ -675,12 +674,12 @@
 
             <!-- Deductible Level -->
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">
+              <label class="block text-xs font-semibold text-theme mb-1">
                 Deductible Level
               </label>
               <select
                 v-model="form.use_half_rate"
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+                class="input-base w-full"
               >
                 <option :value="false">100% Deductible</option>
                 <option :value="true">50% Deductible</option>
@@ -701,32 +700,32 @@
 
           <!-- Description -->
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">
-              Description <span class="text-red-500">*</span>
+            <label class="block text-xs font-semibold text-theme mb-1">
+              Description <span class="text-danger">*</span>
             </label>
             <input
               v-model="form.description"
               type="text"
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+              class="input-base w-full"
               placeholder="e.g., Amortization of intangible assets - Q1 2025"
             />
           </div>
 
           <!-- Amount -->
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">
-              Original Cost / Amount (Rp) <span class="text-red-500">*</span>
+            <label class="block text-xs font-semibold text-theme mb-1">
+              Original Cost / Amount (Rp) <span class="text-danger">*</span>
             </label>
             <div class="relative">
               <span
-                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium"
+                class="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs font-medium"
                 >Rp</span
               >
               <input
                 :value="formatDisplayNumber(form.amount)"
                 type="text"
                 inputmode="decimal"
-                class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+                class="input-base w-full"
                 placeholder="0"
                 @input="updateAmountField($event.target.value)"
               />
@@ -735,31 +734,31 @@
 
           <!-- Notes -->
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1"
+            <label class="block text-xs font-semibold text-theme mb-1"
               >Notes</label
             >
             <textarea
               v-model="form.notes"
               rows="3"
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+              class="input-base w-full"
               placeholder="Additional information about this amortization..."
             ></textarea>
           </div>
         </div>
 
         <div
-          class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-3"
+          class="bg-surface-muted border-t border-border px-6 py-4 flex items-center justify-end gap-3"
         >
           <button
             @click="closeModal"
-            class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium text-sm transition-all"
+            class="btn-secondary px-4 py-2 font-medium text-xs transition-all"
           >
             Cancel
           </button>
           <button
             @click="saveItem"
             :disabled="!isFormValid || isSaving"
-            class="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-6 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
+            class="btn-primary px-6 py-2 font-medium text-xs transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <i class="bi bi-check-lg" v-if="!isSaving"></i>
             <i class="bi bi-arrow-repeat spin" v-else></i>
@@ -774,22 +773,22 @@
       v-if="showDeleteModal"
       class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+      <div class="surface-card rounded-lg shadow-xl max-w-md w-full">
         <div class="p-6">
           <div class="flex items-center gap-3 mb-4">
             <div
-              class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center"
+              class="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center"
             >
-              <i class="bi bi-exclamation-triangle text-red-600 text-xl"></i>
+              <i class="bi bi-exclamation-triangle text-danger text-xl"></i>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-slate-800">Delete Entry?</h3>
-              <p class="text-sm text-slate-500">
+              <h3 class="text-lg font-bold text-theme">Delete Entry?</h3>
+              <p class="text-xs text-muted">
                 This action cannot be undone.
               </p>
             </div>
           </div>
-          <p class="text-sm text-slate-600 mb-6">
+          <p class="text-xs text-muted mb-6">
             Are you sure you want to delete the amortization entry for
             <strong>{{ itemToDelete?.description }}</strong> ({{
               formatCurrency(itemToDelete?.amount)
@@ -798,14 +797,14 @@
           <div class="flex items-center justify-end gap-3">
             <button
               @click="showDeleteModal = false"
-              class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium text-sm transition-all"
+              class="btn-secondary px-4 py-2 font-medium text-xs transition-all"
             >
               Cancel
             </button>
             <button
               @click="deleteItem"
               :disabled="isDeleting"
-              class="bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white px-6 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
+              class="btn-danger px-6 py-2 font-medium text-xs transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <i class="bi bi-trash" v-if="!isDeleting"></i>
               <i class="bi bi-arrow-repeat spin" v-else></i>
@@ -821,14 +820,14 @@
       v-if="showTransactionDetailModal"
       class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+      <div class="surface-card rounded-lg shadow-xl max-w-lg w-full">
         <div
-          class="bg-teal-50 border-b border-teal-200 px-6 py-4 flex items-center justify-between"
+          class="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between"
         >
-          <h3 class="text-lg font-bold text-teal-900">Transaction Details</h3>
+          <h3 class="text-lg font-bold text-theme">Transaction Details</h3>
           <button
             @click="closeTransactionDetailModal"
-            class="text-gray-400 hover:text-gray-600"
+            class="text-muted hover:text-theme transition-colors"
           >
             <i class="bi bi-x-lg"></i>
           </button>
@@ -837,37 +836,37 @@
         <div v-if="selectedTransaction" class="p-6 space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-gray-500 mb-1"
+              <label class="block text-xs font-semibold text-muted mb-1"
                 >Transaction Date</label
               >
-              <p class="text-sm text-gray-900">
+              <p class="text-xs text-theme">
                 {{ selectedTransaction.txn_date }}
               </p>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 mb-1"
+              <label class="block text-xs font-semibold text-muted mb-1"
                 >Amount</label
               >
-              <p class="text-sm font-bold text-gray-900">
+              <p class="text-xs font-bold text-theme">
                 {{ formatCurrency(selectedTransaction.amount) }}
               </p>
             </div>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-gray-500 mb-1"
+            <label class="block text-xs font-semibold text-muted mb-1"
               >Description</label
             >
-            <p class="text-sm text-gray-900">
+            <p class="text-xs text-theme">
               {{ selectedTransaction.description }}
             </p>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-gray-500 mb-1"
+            <label class="block text-xs font-semibold text-muted mb-1"
               >Asset Mark</label
             >
-            <p class="text-sm text-gray-900">
+            <p class="text-xs text-theme">
               {{
                 selectedTransaction.mark_name ||
                 selectedTransaction.coa_name ||
@@ -877,10 +876,10 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-gray-500 mb-1"
+            <label class="block text-xs font-semibold text-muted mb-1"
               >Notes</label
             >
-            <p class="text-sm text-gray-900 italic">
+            <p class="text-xs text-theme italic">
               {{
                 selectedTransaction.notes ||
                 selectedTransaction.amortization_notes ||
@@ -889,20 +888,20 @@
             </p>
           </div>
 
-          <div class="border-t border-gray-200 pt-4">
-            <h4 class="text-sm font-semibold text-gray-700 mb-3">
+          <div class="border-t border-border pt-4">
+            <h4 class="text-xs font-semibold text-theme mb-3">
               Amortization Settings
             </h4>
 
             <div class="space-y-3">
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-xs font-semibold text-gray-500 mb-1"
+                  <label class="block text-xs font-semibold text-muted mb-1"
                     >Asset Group</label
                   >
                   <select
                     v-model="selectedTransaction.asset_group_id"
-                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    class="input-base w-full"
                   >
                     <option value="">Select Group...</option>
                     <optgroup
@@ -921,12 +920,12 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold text-gray-500 mb-1"
+                  <label class="block text-xs font-semibold text-muted mb-1"
                     >Deductible Level</label
                   >
                   <select
                     v-model="selectedTransaction.use_half_rate"
-                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    class="input-base w-full"
                   >
                     <option :value="false">100% Deductible</option>
                     <option :value="true">50% Deductible</option>
@@ -935,24 +934,24 @@
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-1"
+                <label class="block text-xs font-semibold text-muted mb-1"
                   >Amortization Start Date</label
                 >
                 <input
                   type="date"
                   v-model="selectedTransaction.amortization_start_date"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  class="input-base w-full"
                 />
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-gray-500 mb-1"
+                <label class="block text-xs font-semibold text-muted mb-1"
                   >Notes</label
                 >
                 <textarea
                   v-model="selectedTransaction.notes"
                   rows="2"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  class="input-base w-full"
                   placeholder="Additional notes about amortization..."
                 ></textarea>
               </div>
@@ -961,17 +960,17 @@
         </div>
 
         <div
-          class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3"
+          class="bg-surface-muted border-t border-border px-6 py-4 flex items-center justify-end gap-3"
         >
           <button
             @click="closeTransactionDetailModal"
-            class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium text-sm transition-all"
+            class="btn-secondary px-4 py-2 font-medium text-xs transition-all"
           >
             Cancel
           </button>
           <button
             @click="saveSelectedTransactionGroup"
-            class="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-lg font-medium text-sm transition-all"
+            class="btn-primary px-6 py-2 font-medium text-xs transition-all"
           >
             Save Changes
           </button>
@@ -1587,9 +1586,10 @@ onMounted(() => {
   animation: spin 1s linear infinite;
 }
 
+/* Alert Box */
 .amortization-alert {
   @apply rounded-2xl p-4 shadow-sm;
-  background: rgba(180, 83, 9, 0.10);
+  background: rgba(180, 83, 9, 0.08);
   border: 1px solid rgba(180, 83, 9, 0.18);
 }
 
@@ -1615,6 +1615,7 @@ onMounted(() => {
   filter: brightness(1.03);
 }
 
+/* Panel & Workspace */
 .amortization-panel {
   @apply overflow-hidden rounded-2xl;
   background: var(--color-surface);
@@ -1623,23 +1624,17 @@ onMounted(() => {
 }
 
 .amortization-workspace {
-  background:
-    linear-gradient(180deg, rgba(15, 118, 110, 0.04), transparent 140px),
-    var(--color-surface);
+  background: var(--color-surface);
 }
 
 .amortization-workspace__header {
   @apply flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-start lg:justify-between;
-  background: linear-gradient(
-    180deg,
-    rgba(15, 118, 110, 0.05),
-    rgba(15, 118, 110, 0.015)
-  );
+  background: var(--color-surface-muted);
   border-bottom: 1px solid var(--color-border);
 }
 
 .amortization-workspace__title {
-  @apply text-xl font-bold;
+  @apply text-lg font-bold;
   color: var(--color-text);
 }
 
@@ -1648,7 +1643,7 @@ onMounted(() => {
 }
 
 .amortization-workspace__body {
-  @apply p-6;
+  @apply p-0;
   background: var(--color-surface);
 }
 
@@ -1668,35 +1663,36 @@ onMounted(() => {
 }
 
 .amortization-pill {
-  @apply rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+  @apply rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider;
+  background: rgba(15, 118, 110, 0.10);
+  color: var(--color-primary);
+  border: 1px solid rgba(15, 118, 110, 0.20);
 }
 
+/* Table Styles */
 .amortization-table-shell {
-  @apply overflow-hidden rounded-2xl;
-  background: color-mix(in srgb, var(--color-surface) 90%, black 10%);
-  border: 1px solid color-mix(in srgb, var(--color-border) 88%, black 12%);
+  border: 1px solid var(--color-border);
 }
 
 .amortization-table-head {
-  background: color-mix(in srgb, var(--color-surface-muted) 82%, black 18%);
+  background: var(--color-surface-muted);
   border-bottom: 1px solid var(--color-border);
 }
 
 .amortization-table-head__cell {
-  @apply px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em];
+  @apply px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em];
   color: var(--color-text-muted);
 }
 
 .amortization-table-body {
-  background: color-mix(in srgb, var(--color-surface) 95%, black 5%);
+  @apply divide-y;
+  background: var(--color-surface);
+  border-color: var(--color-border);
 }
 
 .amortization-row {
   background: transparent;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease;
+  transition: background-color 160ms ease;
 }
 
 .amortization-row:hover {
@@ -1708,20 +1704,38 @@ onMounted(() => {
 }
 
 .amortization-table-foot {
-  background: color-mix(in srgb, var(--color-surface-muted) 78%, black 22%);
+  background: var(--color-surface-muted);
   border-top: 1px solid var(--color-border);
 }
 
+.amortization-table-foot__cell {
+  @apply px-3 py-2 text-xs font-bold;
+  color: var(--color-text);
+}
+
+/* Empty State */
 .amortization-empty-state {
   @apply flex flex-col items-center justify-center rounded-2xl px-6 py-12 text-center;
-  background: color-mix(in srgb, var(--color-surface-muted) 76%, black 24%);
+  background: var(--color-surface-muted);
   border: 1px dashed var(--color-border);
 }
 
+/* Summary Card */
 .amortization-summary {
-  @apply flex items-center justify-between rounded-2xl p-6 text-white;
-  background: linear-gradient(135deg, #0f3d47, #12304f);
-  box-shadow: var(--shadow-card);
+  @apply rounded-2xl px-3 py-2;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+}
+
+.amortization-summary__title {
+  @apply text-[10px] uppercase font-semibold;
+  color: var(--color-text-muted);
+}
+
+.amortization-summary__value {
+  @apply text-lg font-bold;
+  font-family: var(--font-mono);
+  color: var(--color-text);
 }
 
 @keyframes spin {
