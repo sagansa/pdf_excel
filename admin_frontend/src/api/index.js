@@ -142,6 +142,9 @@ export const historyApi = {
   getDashboardRemainingStorage(params = {}) {
     return api.get('/dashboard/remaining-storage', { params });
   },
+  getDashboardStockMonitoringSimplified(params = {}) {
+    return api.get('/dashboard/stock-monitoring-simplified', { params });
+  },
   getPayrollUsers(search = '', employeesOnly = false) {
     const params = {};
     if (search) params.search = search;
