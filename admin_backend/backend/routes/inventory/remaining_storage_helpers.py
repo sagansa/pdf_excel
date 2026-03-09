@@ -50,6 +50,14 @@ def normalize_stock_card_for(value):
     return raw
 
 
+def is_remaining_storage_value(value):
+    normalized = normalize_stock_card_for(value)
+    return normalized in {
+        'remaining storage',
+        'remaining storages',
+    }
+
+
 def normalize_remaining_storage_row(item):
     if not isinstance(item, dict):
         return {

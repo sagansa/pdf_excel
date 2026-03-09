@@ -1,16 +1,19 @@
 import logging
+import os
 import uuid
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy import text
 
-from backend.errors import BadRequestError, NotFoundError
+from backend.db.schema import get_table_columns
+from backend.errors import BadRequestError, NotFoundError, ServiceUnavailableError
 from backend.routes.accounting_utils import serialize_result_rows, serialize_row_values
 from backend.routes.inventory.hpp_helpers import (
     normalize_product_payload,
     require_db_engine,
 )
+from backend.routes.route_utils import _fetch_remote_json
 from backend.routes.inventory.hpp_queries import (
     delete_batch_by_id as q_delete_batch_by_id,
     delete_batch_products as q_delete_batch_products,
@@ -34,6 +37,144 @@ from backend.routes.inventory.hpp_queries import (
 
 hpp_bp = Blueprint('hpp_bp', __name__)
 logger = logging.getLogger(__name__)
+
+DEFAULT_STOCK_MONITORING_API_URL = os.environ.get(
+    'SAGANSA_STOCK_MONITORING_API_URL',
+    'https://superadmin.sagansa.id/api/stock-monitorings'
+)
+DEFAULT_STOCK_MONITORING_API_TOKEN = os.environ.get(
+    'SAGANSA_STOCK_MONITORING_TOKEN',
+    os.environ.get('SAGANSA_REMAINING_STORAGE_TOKEN', '')
+)
+
+
+def _transform_monitoring_row(row):
+    if not isinstance(row, dict):
+        return None
+
+    unit = row.get('unit') if isinstance(row.get('unit'), dict) else {}
+    details = row.get('details')
+    if not isinstance(details, list):
+        details = row.get('stock_monitoring_details')
+    if not isinstance(details, list):
+        details = []
+
+    transformed_details = []
+    detail_labels = []
+    for detail in details:
+        if not isinstance(detail, dict):
+            continue
+        product = detail.get('product') if isinstance(detail.get('product'), dict) else {}
+        product_name = product.get('name') or detail.get('product_name') or 'Unknown product'
+        product_unit = None
+        if isinstance(product.get('unit'), dict):
+            product_unit = product['unit'].get('unit') or product['unit'].get('name')
+        coefficient = detail.get('coefficient')
+        transformed_details.append({
+            'product_id': str(detail.get('product_id') or '') or None,
+            'product_name': product_name,
+            'product_unit': product_unit,
+            'coefficient': float(coefficient or 0) if coefficient not in (None, '') else None,
+        })
+        if coefficient not in (None, '', 0, 0.0, '0'):
+            detail_labels.append(f"{product_name} x {float(coefficient):g}")
+        else:
+            detail_labels.append(product_name)
+
+    return {
+        'id': str(row.get('id') or ''),
+        'name': row.get('name'),
+        'code': None,
+        'category': row.get('category'),
+        'unit_id': str(row.get('unit_id') or '') or None,
+        'unit_name': unit.get('unit') or unit.get('name') or unit.get('nickname'),
+        'quantity_low': row.get('quantity_low'),
+        'default_currency': 'USD',
+        'default_price': 0.0,
+        'details': transformed_details,
+        'details_summary': ', '.join(detail_labels),
+    }
+
+
+def _fetch_stock_monitoring_index(category=None):
+    api_url = DEFAULT_STOCK_MONITORING_API_URL.strip()
+    token = str(DEFAULT_STOCK_MONITORING_API_TOKEN or '').strip()
+    if not token:
+        return {}
+
+    params = {'per_page': 200}
+    if category:
+        params['category'] = category
+
+    try:
+        payload = _fetch_remote_json(
+            api_url=api_url,
+            token=token,
+            query_params=params,
+            resource_name='StockMonitoring API'
+        )
+    except Exception as exc:
+        logger.warning("Failed to fetch stock monitoring index for HPP enrichment: %s", exc)
+        return {}
+
+    paginated = payload.get('data') if isinstance(payload, dict) else None
+    rows = []
+    if isinstance(paginated, dict):
+        rows = paginated.get('data') or []
+    elif isinstance(payload, list):
+        rows = payload
+
+    items = {}
+    for row in rows:
+        transformed = _transform_monitoring_row(row)
+        if transformed and transformed['id']:
+            items[transformed['id']] = transformed
+    return items
+
+
+@hpp_bp.route('/api/hpp-items', methods=['GET'])
+def get_hpp_items():
+    category = (request.args.get('category') or 'storage').strip().lower()
+    api_url = str(request.args.get('api_url') or DEFAULT_STOCK_MONITORING_API_URL).strip()
+    token = str(
+        request.args.get('token')
+        or request.args.get('access_token')
+        or request.args.get('api_token')
+        or DEFAULT_STOCK_MONITORING_API_TOKEN
+        or ''
+    ).strip()
+
+    if not token:
+        raise BadRequestError('Stock monitoring API token is required')
+
+    params = {'per_page': 200}
+    if category:
+      params['category'] = category
+
+    try:
+        payload = _fetch_remote_json(
+            api_url=api_url,
+            token=token,
+            query_params=params,
+            resource_name='StockMonitoring API'
+        )
+    except RuntimeError as exc:
+        raise ServiceUnavailableError(str(exc), code='stock_monitoring_unavailable')
+
+    paginated = payload.get('data') if isinstance(payload, dict) else None
+    rows = []
+    if isinstance(paginated, dict):
+        rows = paginated.get('data') or []
+    elif isinstance(payload, list):
+        rows = payload
+
+    items = []
+    for row in rows:
+        transformed = _transform_monitoring_row(row)
+        if transformed:
+            items.append(transformed)
+
+    return jsonify({'items': items})
 
 @hpp_bp.route('/api/products', methods=['GET'])
 def get_products():
@@ -102,13 +243,24 @@ def get_batches():
     engine = require_db_engine()
     company_id = request.args.get('company_id')
     with engine.connect() as conn:
-        result = conn.execute(*q_get_batches(company_id))
+        monitoring_index = _fetch_stock_monitoring_index()
+        result = conn.execute(*q_get_batches(conn, company_id))
         batches = []
         for row in result:
             batch = serialize_row_values(row._mapping)
             batch['unit_prices'] = [
                 {
-                    'product_name': unit_price['product_name'],
+                    'stock_monitoring_id': unit_price.get('stock_monitoring_id'),
+                    'item_name': (
+                        monitoring_index.get(str(unit_price.get('stock_monitoring_id') or ''), {}).get('name')
+                        or unit_price.get('item_name')
+                    ),
+                    'product_name': (
+                        monitoring_index.get(str(unit_price.get('stock_monitoring_id') or ''), {}).get('name')
+                        or unit_price.get('product_name')
+                        or unit_price.get('item_name')
+                    ),
+                    'details_summary': monitoring_index.get(str(unit_price.get('stock_monitoring_id') or ''), {}).get('details_summary'),
                     'unit_price': unit_price['unit_price'],
                 }
                 for unit_price in q_get_batch_unit_prices(conn, batch['id'])
@@ -121,6 +273,7 @@ def get_batch_details(batch_id):
     engine = require_db_engine()
 
     with engine.connect() as conn:
+        monitoring_index = _fetch_stock_monitoring_index()
         batch_res = conn.execute(*q_get_batch_by_id(batch_id)).fetchone()
         if not batch_res:
             raise NotFoundError('Batch not found')
@@ -130,12 +283,20 @@ def get_batch_details(batch_id):
             conn.execute(*q_get_batch_transactions(batch_id)),
             datetime_format='%Y-%m-%d',
         )
-        products = serialize_result_rows(conn.execute(*q_get_batch_products(batch_id)))
+        items = serialize_result_rows(conn.execute(*q_get_batch_products(conn, batch_id)))
+        for item in items:
+            monitoring = monitoring_index.get(str(item.get('stock_monitoring_id') or ''))
+            if monitoring:
+                item['item_name'] = monitoring.get('name') or item.get('item_name')
+                item['product_name'] = monitoring.get('name') or item.get('product_name')
+                item['details'] = monitoring.get('details') or []
+                item['details_summary'] = monitoring.get('details_summary')
 
         return jsonify({
             'batch': batch_data,
             'transactions': transactions,
-            'products': products,
+            'items': items,
+            'products': items,
         })
 
 @hpp_bp.route('/api/hpp-batches', methods=['POST'])
@@ -146,7 +307,10 @@ def save_batch():
     memo = data.get('memo', '')
     batch_date = data.get('batch_date')
     transaction_ids = data.get('transaction_ids') or []
-    products = [normalize_product_payload(item) for item in (data.get('products') or [])]
+    raw_items = data.get('items')
+    if raw_items is None:
+        raw_items = data.get('products') or []
+    items = [normalize_product_payload(item) for item in raw_items]
     batch_id = data.get('id')
 
     logger.info(
@@ -160,8 +324,8 @@ def save_batch():
         raise BadRequestError('Company ID is required')
     if not transaction_ids:
         raise BadRequestError('At least one transaction must be selected')
-    if any(not item.get('product_id') for item in products):
-        raise BadRequestError('Each product must include product_id')
+    if any(not item.get('stock_monitoring_id') for item in items):
+        raise BadRequestError('Each batch item must include stock_monitoring_id')
 
     if not batch_date:
         logger.debug("[COGS Batch] No batch_date provided, calculating from selected transactions")
@@ -179,12 +343,18 @@ def save_batch():
 
     with engine.begin() as conn:
         total_idr_amount = q_get_total_transaction_amount(conn, transaction_ids)
-        total_foreign_value = sum(item['quantity'] * item['foreign_price'] for item in products)
+        total_foreign_value = sum(item['quantity'] * item['foreign_price'] for item in items)
+        hpp_batch_product_columns = get_table_columns(conn, 'hpp_batch_products')
+        if 'stock_monitoring_id' not in hpp_batch_product_columns:
+            raise BadRequestError(
+                'HPP batch schema is not ready. Run migration '
+                '046_add_stock_monitoring_id_to_hpp_batch_products.sql first.'
+            )
 
         is_new = not batch_id
         if is_new:
             batch_id = str(uuid.uuid4())
-            conn.execute(q_insert_batch(), {
+            conn.execute(q_insert_batch(conn), {
                 'id': batch_id,
                 'company_id': company_id,
                 'memo': memo,
@@ -193,7 +363,7 @@ def save_batch():
             })
         else:
             logger.info("[COGS Batch] Updating batch id=%s batch_date=%s", batch_id, batch_date)
-            result = conn.execute(q_update_batch(), {
+            result = conn.execute(q_update_batch(conn), {
                 'id': batch_id,
                 'company_id': company_id,
                 'memo': memo,
@@ -208,7 +378,7 @@ def save_batch():
             conn.execute(q_insert_batch_transaction(), {'batch_id': batch_id, 'txn_id': transaction_id})
 
         conn.execute(q_delete_batch_products(), {'batch_id': batch_id})
-        for item in products:
+        for item in items:
             item_foreign_value = item['quantity'] * item['foreign_price']
             calculated_total_idr = (
                 total_idr_amount * (item_foreign_value / total_foreign_value)
@@ -218,10 +388,11 @@ def save_batch():
                 calculated_total_idr / item['quantity']
                 if item['quantity'] > 0 else 0.0
             )
-            conn.execute(q_insert_batch_product(), {
+            conn.execute(q_insert_batch_product(conn), {
                 'id': str(uuid.uuid4()),
                 'batch_id': batch_id,
-                'product_id': item['product_id'],
+                'stock_monitoring_id': item['stock_monitoring_id'],
+                'product_id': item['stock_monitoring_id'],
                 'qty': item['quantity'],
                 'currency': item['foreign_currency'],
                 'price': item['foreign_price'],

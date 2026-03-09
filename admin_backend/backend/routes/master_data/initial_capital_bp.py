@@ -32,6 +32,7 @@ def _serialize_initial_capital_row(row):
 
     data = serialize_row_values(row._mapping)
     data['amount'] = float(data.get('amount') or 0.0)
+    data['previous_retained_earnings_amount'] = float(data.get('previous_retained_earnings_amount') or 0.0)
     data['start_year'] = int(data['start_year']) if data.get('start_year') else datetime.now().year
     return data
 
@@ -58,9 +59,11 @@ def save_initial_capital():
     amount_raw = data.get('amount')
     if amount_raw is None:
         raise BadRequestError('amount is required')
+    previous_retained_earnings_raw = data.get('previous_retained_earnings_amount', 0)
 
     try:
         amount = float(amount_raw)
+        previous_retained_earnings_amount = float(previous_retained_earnings_raw or 0)
         start_year = int(data.get('start_year')) if data.get('start_year') else datetime.now().year
     except (TypeError, ValueError) as exc:
         raise BadRequestError(f'Invalid data format: {exc}')
@@ -77,6 +80,7 @@ def save_initial_capital():
         params = {
             'company_id': company_id,
             'amount': amount,
+            'previous_retained_earnings_amount': previous_retained_earnings_amount,
             'start_year': start_year,
             'description': description,
         }

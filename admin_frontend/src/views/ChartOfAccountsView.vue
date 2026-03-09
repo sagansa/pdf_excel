@@ -1,110 +1,52 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
-    <!-- Header -->
-    <div class="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-      <div class="max-w-7xl mx-auto px-6 py-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Chart of Accounts</h1>
-            <p class="text-sm text-gray-500 mt-1">Daftar Akun Keuangan (CoreTax 2025)</p>
-          </div>
-          <button
-            @click="showCreateModal = true"
-            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
-          >
-            <i class="bi bi-plus-circle"></i>
-            <span>Tambah Akun</span>
-          </button>
-        </div>
-      </div>
-    </div>
+  <div class="space-y-6">
+    <PageHeader
+      eyebrow="Chart of Accounts"
+      icon="bi bi-journal-richtext"
+      title="Financial account registry"
+      subtitle="Kelola akun aset, liabilitas, ekuitas, revenue, dan expense dari satu register."
+    >
+      <template #actions>
+        <button
+          @click="showCreateModal = true"
+          class="btn-primary gap-2"
+        >
+          <i class="bi bi-plus-circle"></i>
+          <span>Tambah Akun</span>
+        </button>
+      </template>
+    </PageHeader>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-6 py-6">
+    <div class="space-y-6">
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-              <i class="bi bi-cash-stack text-green-600 text-lg"></i>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">Assets</p>
-              <p class="text-xl font-bold text-gray-900">{{ coaByCategory.ASSET.length }}</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-              <i class="bi bi-credit-card text-red-600 text-lg"></i>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">Liabilities</p>
-              <p class="text-xl font-bold text-gray-900">{{ coaByCategory.LIABILITY.length }}</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-              <i class="bi bi-bank text-blue-600 text-lg"></i>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">Equity</p>
-              <p class="text-xl font-bold text-gray-900">{{ coaByCategory.EQUITY.length }}</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-              <i class="bi bi-graph-up-arrow text-purple-600 text-lg"></i>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">Revenue</p>
-              <p class="text-xl font-bold text-gray-900">{{ coaByCategory.REVENUE.length }}</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-              <i class="bi bi-graph-down-arrow text-orange-600 text-lg"></i>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">Expenses</p>
-              <p class="text-xl font-bold text-gray-900">{{ coaByCategory.EXPENSE.length }}</p>
-            </div>
-          </div>
-        </div>
+        <StatCard icon="bi bi-cash-stack" label="Assets" :value="coaByCategory.ASSET.length" tone="success" />
+        <StatCard icon="bi bi-credit-card" label="Liabilities" :value="coaByCategory.LIABILITY.length" tone="danger" />
+        <StatCard icon="bi bi-bank" label="Equity" :value="coaByCategory.EQUITY.length" tone="info" />
+        <StatCard icon="bi bi-graph-up-arrow" label="Revenue" :value="coaByCategory.REVENUE.length" tone="accent" />
+        <StatCard icon="bi bi-graph-down-arrow" label="Expenses" :value="coaByCategory.EXPENSE.length" tone="warning" />
       </div>
 
       <!-- Filter & Search -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      <SectionCard content-class="mb-6" body-class="p-4">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Category</label>
-            <select v-model="filterCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-              <option value="">All Categories</option>
-              <option value="ASSET">Asset</option>
-              <option value="LIABILITY">Liability</option>
-              <option value="EQUITY">Equity</option>
-              <option value="REVENUE">Revenue</option>
-              <option value="EXPENSE">Expense</option>
-            </select>
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-xs font-medium text-gray-700 mb-1">Search</label>
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search by code or name..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          <FormField label="Category" label-class="!text-xs">
+            <SelectInput
+              v-model="filterCategory"
+              :options="categoryOptions"
+              placeholder="All Categories"
             />
-          </div>
+          </FormField>
+          <FormField label="Search" label-class="!text-xs" wrapper-class="md:col-span-2">
+            <TextInput
+              v-model="searchQuery"
+              placeholder="Search by code or name..."
+              leading-icon="bi bi-search"
+            />
+          </FormField>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- COA Table -->
       <CoaTable
@@ -144,6 +86,12 @@ import { useCoaStore } from '../stores/coa';
 import CoaTable from '../components/coa/CoaTable.vue';
 import CoaFormModal from '../components/coa/CoaFormModal.vue';
 import ConfirmModal from '../components/ui/ConfirmModal.vue';
+import FormField from '../components/ui/FormField.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import SectionCard from '../components/ui/SectionCard.vue';
+import SelectInput from '../components/ui/SelectInput.vue';
+import StatCard from '../components/ui/StatCard.vue';
+import TextInput from '../components/ui/TextInput.vue';
 
 const store = useCoaStore();
 
@@ -157,6 +105,13 @@ const isDeleting = ref(false);
 // Filter states
 const filterCategory = ref('');
 const searchQuery = ref('');
+const categoryOptions = [
+  { value: 'ASSET', label: 'Asset' },
+  { value: 'LIABILITY', label: 'Liability' },
+  { value: 'EQUITY', label: 'Equity' },
+  { value: 'REVENUE', label: 'Revenue' },
+  { value: 'EXPENSE', label: 'Expense' }
+];
 
 // Computed
 const coaByCategory = computed(() => store.coaByCategory);

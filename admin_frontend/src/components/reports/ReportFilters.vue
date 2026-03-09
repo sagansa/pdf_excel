@@ -1,108 +1,78 @@
 <template>
-  <div class="space-y-4">
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <h3 class="text-sm font-semibold text-gray-700 mb-3">Report Filters</h3>
-      
-      <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
-        <!-- Report Type Selection -->
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">
-            Report Type
-          </label>
-          <select
-            :value="modelValue.reportType || 'real'"
-            @change="handleReportTypeChange($event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="real">Real</option>
-            <option value="coretax">Coretax</option>
-          </select>
-        </div>
-
-        <!-- Year Selection -->
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">
-            Year
-          </label>
-          <select
-            :value="modelValue.year || new Date().getFullYear()"
-            @change="handleYearChange($event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
-          </select>
-        </div>
-
-        <!-- Start Date -->
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">
-            Period: Start <span class="text-red-500">*</span>
-          </label>
-          <input
-            :value="modelValue.startDate"
-            @input="updateFilter('startDate', $event.target.value)"
-            type="date"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <!-- End Date -->
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">
-            Period: End <span class="text-red-500">*</span>
-          </label>
-          <input
-            :value="modelValue.endDate"
-            @input="updateFilter('endDate', $event.target.value)"
-            type="date"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <!-- As Of Date (for Balance Sheet) -->
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">
-            As of Date <span class="text-red-500">*</span>
-          </label>
-          <input
-            :value="modelValue.asOfDate"
-            @input="updateFilter('asOfDate', $event.target.value)"
-            type="date"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <!-- Company Filter -->
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">
-            Company
-          </label>
-          <select
-            :value="modelValue.companyId"
-            @change="updateFilter('companyId', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="">All Companies</option>
-            <option
-              v-for="company in companies"
-              :key="company.id"
-              :value="company.id"
-            >
-              {{ company.name }}
-            </option>
-          </select>
-        </div>
-
+  <SectionCard body-class="p-4">
+    <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <div>
+        <h3 class="text-sm font-semibold text-theme">Report Filters</h3>
+        <p class="mt-1 text-xs text-muted">Set company, period, and report mode before generating reports.</p>
       </div>
+      <span class="stat-pill !px-2.5 !py-1 text-[10px]">Auto refresh enabled</span>
     </div>
-  </div>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-6">
+      <FormField label="Report Type" label-class="!text-xs">
+        <SelectInput
+          :model-value="modelValue.reportType || 'real'"
+          :options="reportTypeOptions"
+          size="md"
+          @update:model-value="handleReportTypeChange"
+        />
+      </FormField>
+
+      <FormField label="Year" label-class="!text-xs">
+        <SelectInput
+          :model-value="modelValue.year || currentYear"
+          :options="yearOptions"
+          size="md"
+          @update:model-value="handleYearChange"
+        />
+      </FormField>
+
+      <FormField label="Period: Start" label-class="!text-xs">
+        <TextInput
+          :model-value="modelValue.startDate"
+          type="date"
+          size="md"
+          @update:model-value="updateFilter('startDate', $event)"
+        />
+      </FormField>
+
+      <FormField label="Period: End" label-class="!text-xs">
+        <TextInput
+          :model-value="modelValue.endDate"
+          type="date"
+          size="md"
+          @update:model-value="updateFilter('endDate', $event)"
+        />
+      </FormField>
+
+      <FormField label="As of Date" label-class="!text-xs">
+        <TextInput
+          :model-value="modelValue.asOfDate"
+          type="date"
+          size="md"
+          @update:model-value="updateFilter('asOfDate', $event)"
+        />
+      </FormField>
+
+      <FormField label="Company" label-class="!text-xs">
+        <SelectInput
+          :model-value="modelValue.companyId"
+          :options="companyOptions"
+          placeholder="All Companies"
+          size="md"
+          @update:model-value="updateFilter('companyId', $event)"
+        />
+      </FormField>
+    </div>
+  </SectionCard>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import FormField from '../ui/FormField.vue';
+import SectionCard from '../ui/SectionCard.vue';
+import SelectInput from '../ui/SelectInput.vue';
+import TextInput from '../ui/TextInput.vue';
 
 const props = defineProps({
   modelValue: {
@@ -125,18 +95,32 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
-const availableYears = computed(() => {
+const currentYear = new Date().getFullYear();
+
+const reportTypeOptions = [
+  { value: 'real', label: 'Real' },
+  { value: 'coretax', label: 'Coretax' }
+];
+
+const yearOptions = computed(() => {
   const fromTransactions = (props.availableYears || [])
     .map((year) => parseInt(year, 10))
     .filter((year) => !Number.isNaN(year))
     .sort((a, b) => b - a);
 
-  if (fromTransactions.length > 0) {
-    return fromTransactions;
-  }
-
-  return [new Date().getFullYear()];
+  const normalizedYears = fromTransactions.length > 0 ? fromTransactions : [currentYear];
+  return normalizedYears.map((year) => ({
+    value: String(year),
+    label: String(year)
+  }));
 });
+
+const companyOptions = computed(() => (
+  (props.companies || []).map((company) => ({
+    value: company.id,
+    label: company.name
+  }))
+));
 
 const updateFilter = (key, value) => {
   emit('update:modelValue', {
@@ -146,27 +130,20 @@ const updateFilter = (key, value) => {
 };
 
 const handleReportTypeChange = (value) => {
-  const reportType = value || 'real';
   emit('update:modelValue', {
     ...props.modelValue,
-    reportType
+    reportType: value || 'real'
   });
 };
 
 const handleYearChange = (year) => {
   const selectedYear = String(year);
-  const startDate = `${selectedYear}-01-01`;
-  const endDate = `${selectedYear}-12-31`;
-  const asOfDate = `${selectedYear}-12-31`;
-  
-  const newFilters = {
+  emit('update:modelValue', {
     ...props.modelValue,
     year: selectedYear,
-    startDate: startDate,
-    endDate: endDate,
-    asOfDate: asOfDate
-  };
-
-  emit('update:modelValue', newFilters);
+    startDate: `${selectedYear}-01-01`,
+    endDate: `${selectedYear}-12-31`,
+    asOfDate: `${selectedYear}-12-31`
+  });
 };
 </script>

@@ -76,7 +76,7 @@ export const useHistoryStore = defineStore('history', {
     // Derived state: Filtered transactions
     filteredTransactions(state) {
        let result = [...state.allTransactions];
-        const { year, dateStart, dateEnd, bank, company, markStatus, coaIds, search, dbCr, amountMin, amountMax } = state.filters;
+       const { year, dateStart, dateEnd, bank, company, markStatus, coaIds, search, dbCr, amountMin, amountMax } = state.filters;
        const searchLower = (search || '').toLowerCase();
        const selectedDbCr = normalizeDbCr(dbCr);
        const selectedCoaIds = new Set((coaIds || []).map(id => String(id)));
@@ -91,7 +91,7 @@ export const useHistoryStore = defineStore('history', {
             if (dateEnd && txnDate > dateEnd) return false;
 
             // Property Filters
-            if (bank && t.bank_code !== bank) return false;
+            if (bank && String(t.bank_code || '').trim() !== String(bank).trim()) return false;
             // Note: company filter value checks ID
             if (company && t.company_id !== company) return false;
 
@@ -508,7 +508,11 @@ export const useHistoryStore = defineStore('history', {
         try {
             const res = await filterApi.getFilters('history');
             if (res.data.filters && Object.keys(res.data.filters).length > 0) {
-                this.filters = { ...this.filters, ...res.data.filters };
+                const nextFilters = { ...this.filters, ...res.data.filters };
+                nextFilters.bank = nextFilters.bank || '';
+                nextFilters.markStatus = Array.isArray(nextFilters.markStatus) ? nextFilters.markStatus : [];
+                nextFilters.coaIds = Array.isArray(nextFilters.coaIds) ? nextFilters.coaIds : [];
+                this.filters = nextFilters;
             }
         } catch (e) {
             console.error("Failed to load history filters:", e);
@@ -691,9 +695,9 @@ export const useHistoryStore = defineStore('history', {
         try {
             // Prepare filters
             const params = {
-                bank: this.filters.bank,
                 company_id: this.filters.company,
-                search: this.filters.search
+                search: this.filters.search,
+                bank: this.filters.bank || undefined
             };
 
             // Handle dates

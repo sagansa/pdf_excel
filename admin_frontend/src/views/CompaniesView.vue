@@ -1,51 +1,59 @@
 <template>
   <div class="max-w-4xl mx-auto space-y-6">
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-       <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+    <PageHeader
+      eyebrow="Company Directory"
+      icon="bi bi-buildings-fill"
+      title="Manage registered companies"
+      subtitle="Tambah, edit, dan tinjau entitas perusahaan yang dipakai untuk mapping dan reporting."
+      :badges="headerBadges"
+    />
+
+    <TableShell>
+      <template #toolbar>
+       <div class="px-6 py-4 border-b flex justify-between items-center surface-header">
         <div>
-            <h3 class="text-lg font-bold text-gray-900">Manage Companies</h3>
-            <p class="text-xs text-gray-500">Add or edit company entities</p>
+            <h3 class="text-lg font-bold text-theme">Manage Companies</h3>
+            <p class="text-xs text-muted">Add or edit company entities</p>
         </div>
-        <button @click="openAddModal" class="btn-primary !bg-green-600 hover:!bg-green-700">
+        <button @click="openAddModal" class="btn-primary gap-2">
           <i class="bi bi-plus-lg me-1"></i> Add Company
         </button>
       </div>
+      </template>
 
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+        <table class="min-w-full table-compact">
+          <thead>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Company Name</th>
-              <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left">Company Name</th>
+              <th class="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-100">
+          <tbody class="divide-y" style="border-color: var(--color-border)">
              <tr v-if="store.isLoading">
                  <td colspan="2" class="text-center py-8">
-                     <span class="spinner-border text-indigo-500 w-6 h-6" role="status"></span>
+                     <span class="spinner-border w-6 h-6" style="color: var(--color-primary)" role="status"></span>
                  </td>
              </tr>
              <tr v-else-if="store.companies.length === 0">
-                 <td colspan="2" class="text-center py-8 text-gray-400">No companies found</td>
+                 <td colspan="2" class="text-center py-8 text-muted">No companies found</td>
              </tr>
-             <tr v-for="c in store.companies" :key="c.id" class="hover:bg-gray-50">
-                <td class="px-6 py-4 text-sm font-medium text-gray-900">
+             <tr v-for="c in store.companies" :key="c.id" class="surface-row">
+                <td class="px-6 py-4 text-sm font-medium text-theme">
                     {{ c.name }} 
-                    <span v-if="c.short_name" class="ml-2 text-xs text-gray-400 font-normal">[{{ c.short_name }}]</span>
+                    <span v-if="c.short_name" class="ml-2 text-xs text-muted font-normal">[{{ c.short_name }}]</span>
                 </td>
                 <td class="px-6 py-4 text-right text-sm font-medium">
-                  <button @click="openEditModal(c)" class="text-indigo-600 hover:text-indigo-900 me-3">
+                  <button @click="openEditModal(c)" class="action-link action-link--primary me-3">
                     <i class="bi bi-pencil-square"></i>
                   </button>
-                  <button @click="deleteCompany(c.id)" class="text-red-600 hover:text-red-900">
+                  <button @click="deleteCompany(c.id)" class="action-link action-link--danger">
                     <i class="bi bi-trash3"></i>
                   </button>
                 </td>
              </tr>
           </tbody>
         </table>
-      </div>
-    </div>
+    </TableShell>
 
     <CompanyFormModal 
         :isOpen="showModal" 
@@ -60,10 +68,13 @@
 import { ref, onMounted } from 'vue';
 import { useCompanyStore } from '../stores/companies';
 import CompanyFormModal from '../components/companies/CompanyFormModal.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import TableShell from '../components/ui/TableShell.vue';
 
 const store = useCompanyStore();
 const showModal = ref(false);
 const selectedCompany = ref(null);
+const headerBadges = [{ icon: 'bi bi-diagram-3', label: 'Master data' }];
 
 onMounted(() => {
     store.fetchCompanies();
@@ -85,3 +96,30 @@ const deleteCompany = async (id) => {
     }
 };
 </script>
+
+<style scoped>
+.surface-header {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.surface-row {
+  transition: background-color 160ms ease;
+}
+
+.surface-row:hover {
+  background: rgba(15, 118, 110, 0.05);
+}
+
+.action-link {
+  transition: color 160ms ease;
+}
+
+.action-link--primary {
+  color: var(--color-primary);
+}
+
+.action-link--danger {
+  color: var(--color-danger);
+}
+</style>

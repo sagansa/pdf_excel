@@ -1,58 +1,83 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-       <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-        <div>
-            <h3 class="text-lg font-bold text-gray-900">Manage Reporting Marks</h3>
-            <p class="text-xs text-gray-500">Define marks for transaction categorization</p>
+    <PageHeader
+      eyebrow="Reporting Marks"
+      icon="bi bi-tags-fill"
+      title="Transaction classification rules"
+      subtitle="Definisikan mark untuk kategorisasi transaksi dan mapping COA."
+      :badges="headerBadges"
+    />
+
+    <TableShell>
+      <template #toolbar>
+       <div class="marks-toolbar">
+        <div class="marks-toolbar__meta">
+          <div class="marks-toolbar__icon">
+            <i class="bi bi-tags-fill"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="text-xl font-bold text-theme">Manage Reporting Marks</h3>
+              <span class="stat-pill !px-2.5 !py-1 text-[10px]">
+                {{ totalMarks }} marks
+              </span>
+              <span class="stat-pill !px-2.5 !py-1 text-[10px]">
+                {{ unmappedCount }} unmapped
+              </span>
+            </div>
+            <p class="mt-2 max-w-2xl text-sm text-muted">
+              Define marks for transaction categorization, keep mapping coverage visible, and jump straight into COA maintenance without leaving the table.
+            </p>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button @click="openAddModal" class="btn-primary !bg-green-600 hover:!bg-green-700">
-            <i class="bi bi-plus-lg me-1"></i> Add New Mark
+        <div class="marks-toolbar__actions">
+          <button @click="openAddModal" class="btn-primary gap-2">
+            <i class="bi bi-plus-lg"></i>
+            <span>Add New Mark</span>
           </button>
         </div>
       </div>
+      </template>
 
-       <div class="overflow-x-auto">
-         <table class="min-w-full divide-y divide-gray-200">
-           <thead class="bg-gray-50">
+         <table class="min-w-full table-compact">
+           <thead>
              <tr>
-               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Internal Report</th>
-               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+               <th class="px-6 py-3 text-left">Internal Report</th>
+               <th class="px-6 py-3 text-left">
                  <div class="flex items-center gap-1">
                    <span>Personal Use</span>
-                   <i class="bi bi-sort-alpha-down text-indigo-500"></i>
+                   <i class="bi bi-sort-alpha-down" style="color: var(--color-primary)"></i>
                  </div>
                </th>
-               <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Coretax?</th>
-               <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aset?</th>
-               <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Jasa?</th>
-               <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Salary?</th>
-               <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Sewa Tempat?</th>
-               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">COA Mappings</th>
-               <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+               <th class="px-6 py-3 text-center">Coretax?</th>
+               <th class="px-6 py-3 text-center">Aset?</th>
+               <th class="px-6 py-3 text-center">Jasa?</th>
+               <th class="px-6 py-3 text-center">Salary?</th>
+               <th class="px-6 py-3 text-center">Sewa Tempat?</th>
+               <th class="px-6 py-3 text-left">COA Mappings</th>
+               <th class="px-6 py-3 text-right">Actions</th>
              </tr>
            </thead>
-           <tbody class="bg-white divide-y divide-gray-100">
+           <tbody class="divide-y" style="border-color: var(--color-border)">
               <tr v-if="store.isLoading">
                   <td colspan="9" class="text-center py-8">
-                      <span class="spinner-border text-indigo-500 w-6 h-6" role="status"></span>
+                      <span class="spinner-border w-6 h-6" style="color: var(--color-primary)" role="status"></span>
                   </td>
               </tr>
               <tr v-else-if="store.marks.length === 0">
-                  <td colspan="9" class="text-center py-8 text-gray-400">No marks found</td>
+                  <td colspan="9" class="text-center py-8 text-muted">No marks found</td>
               </tr>
-              <tr v-for="m in store.sortedMarks" :key="m.id" :class="{'bg-indigo-50/30': m.is_asset || m.is_service || m.is_salary_component || m.is_rental}" class="hover:bg-gray-50">
-                 <td class="px-6 py-4 text-sm text-gray-900">{{ m.internal_report }}</td>
-                 <td class="px-6 py-4 text-sm text-gray-500">
-                   <span :class="{'font-semibold text-indigo-700': m.is_asset || m.is_salary_component}">{{ m.personal_use }}</span>
+              <tr v-for="m in store.sortedMarks" :key="m.id" :class="{'mark-row--highlight': m.is_asset || m.is_service || m.is_salary_component || m.is_rental}" class="mark-row">
+                 <td class="px-6 py-4 text-sm text-theme">{{ m.internal_report }}</td>
+                 <td class="px-6 py-4 text-sm text-muted">
+                   <span :class="{'font-semibold': m.is_asset || m.is_salary_component}" :style="m.is_asset || m.is_salary_component ? 'color: var(--color-primary)' : ''">{{ m.personal_use }}</span>
                  </td>
                  <td class="px-6 py-4 text-center">
                    <button
                      @click="toggleMarkFlag(m, 'is_coretax')"
                      :disabled="isToggleLoading(m.id, 'is_coretax')"
                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_coretax ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                     :class="m.is_coretax ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200' : 'mark-flag-off'"
                    >
                      <i v-if="isToggleLoading(m.id, 'is_coretax')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
                      <i v-else :class="m.is_coretax ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
@@ -64,7 +89,7 @@
                      @click="toggleMarkFlag(m, 'is_asset')"
                      :disabled="isToggleLoading(m.id, 'is_asset')"
                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_asset ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                     :class="m.is_asset ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'mark-flag-off'"
                    >
                      <i v-if="isToggleLoading(m.id, 'is_asset')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
                      <i v-else :class="m.is_asset ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
@@ -76,7 +101,7 @@
                      @click="toggleMarkFlag(m, 'is_service')"
                      :disabled="isToggleLoading(m.id, 'is_service')"
                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_service ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                     :class="m.is_service ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'mark-flag-off'"
                    >
                      <i v-if="isToggleLoading(m.id, 'is_service')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
                      <i v-else :class="m.is_service ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
@@ -88,7 +113,7 @@
                      @click="toggleMarkFlag(m, 'is_salary_component')"
                      :disabled="isToggleLoading(m.id, 'is_salary_component')"
                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_salary_component ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                     :class="m.is_salary_component ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'mark-flag-off'"
                    >
                      <i v-if="isToggleLoading(m.id, 'is_salary_component')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
                      <i v-else :class="m.is_salary_component ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
@@ -100,7 +125,7 @@
                      @click="toggleMarkFlag(m, 'is_rental')"
                      :disabled="isToggleLoading(m.id, 'is_rental')"
                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_rental ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                     :class="m.is_rental ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' : 'mark-flag-off'"
                    >
                      <i v-if="isToggleLoading(m.id, 'is_rental')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
                      <i v-else :class="m.is_rental ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
@@ -127,25 +152,24 @@
                    </div>
                    <button
                      @click="openMappingModal(m)"
-                     class="text-[10px] px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded transition-colors flex items-center justify-center gap-1 w-full"
+                     class="mark-mapping-button"
                    >
                      <i class="bi bi-link-45deg"></i>
                      <span>Manage COA</span>
                    </button>
                  </td>
                  <td class="px-6 py-4 text-right text-sm font-medium">
-                   <button @click="openEditModal(m)" class="text-indigo-600 hover:text-indigo-900 me-3">
+                   <button @click="openEditModal(m)" class="action-link action-link--primary me-3">
                      <i class="bi bi-pencil-square"></i>
                    </button>
-                   <button @click="deleteMark(m.id)" class="text-red-600 hover:text-red-900">
+                   <button @click="deleteMark(m.id)" class="action-link action-link--danger">
                      <i class="bi bi-trash3"></i>
                    </button>
                  </td>
               </tr>
            </tbody>
          </table>
-       </div>
-    </div>
+    </TableShell>
 
     <MarkFormModal 
         :isOpen="showModal" 
@@ -164,10 +188,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useMarksStore } from '../stores/marks';
 import MarkFormModal from '../components/marks/MarkFormModal.vue';
 import CoaMappingModal from '../components/marks/CoaMappingModal.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import TableShell from '../components/ui/TableShell.vue';
 
 const store = useMarksStore();
 const showModal = ref(false);
@@ -175,6 +201,14 @@ const selectedMark = ref(null);
 const showMappingModal = ref(false);
 const selectedMarkForMapping = ref(null);
 const togglingFlags = ref({});
+const totalMarks = computed(() => store.sortedMarks.length);
+const unmappedCount = computed(() => (
+    (store.sortedMarks || []).filter(mark => !mark.mappings || mark.mappings.length === 0).length
+));
+const headerBadges = [
+    { icon: 'bi bi-link-45deg', label: 'COA mapping' },
+    { icon: 'bi bi-funnel', label: 'Reporting flags' }
+];
 
 store.fetchMarks();
 
@@ -238,3 +272,75 @@ const deleteMark = async (id) => {
     }
 };
 </script>
+
+<style scoped>
+.surface-header {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.marks-toolbar {
+  @apply flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between;
+}
+
+.marks-toolbar__meta {
+  @apply flex items-start gap-4;
+}
+
+.marks-toolbar__icon {
+  @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg;
+  background:
+    linear-gradient(135deg, rgba(45, 182, 163, 0.18), rgba(15, 118, 110, 0.08)),
+    var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+.marks-toolbar__actions {
+  @apply flex shrink-0 items-center lg:ml-auto;
+}
+
+.marks-toolbar__actions .btn-primary {
+  @apply min-h-[44px] px-5;
+}
+
+.mark-row {
+  transition: background-color 160ms ease;
+}
+
+.mark-row:hover {
+  background: rgba(15, 118, 110, 0.05);
+}
+
+.mark-row--highlight {
+  background: rgba(15, 118, 110, 0.06);
+}
+
+.mark-flag-off {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.mark-mapping-button {
+  @apply flex w-full items-center justify-center gap-1 rounded px-2 py-1 text-[10px] transition-colors;
+  background: rgba(15, 118, 110, 0.10);
+  color: var(--color-primary);
+}
+
+.mark-mapping-button:hover {
+  background: rgba(15, 118, 110, 0.16);
+}
+
+.action-link {
+  transition: color 160ms ease;
+}
+
+.action-link--primary {
+  color: var(--color-primary);
+}
+
+.action-link--danger {
+  color: var(--color-danger);
+}
+</style>

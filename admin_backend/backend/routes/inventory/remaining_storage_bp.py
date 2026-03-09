@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request
 
 from backend.db.schema import get_table_columns
 from backend.db.session import get_sagansa_engine
-from backend.errors import ApiError, BadRequestError, NotFoundError
+from backend.errors import ApiError, BadRequestError, NotFoundError, ServiceUnavailableError
 from backend.routes.accounting_utils import serialize_result_rows
 from backend.routes.inventory.remaining_storage_helpers import (
     build_remaining_storage_store_options,
@@ -13,6 +13,7 @@ from backend.routes.inventory.remaining_storage_helpers import (
     extract_detail_stock_card_rows,
     extract_remaining_storage_detail_item,
     extract_remaining_storage_rows,
+    is_remaining_storage_value,
     normalize_detail_stock_card_item,
     normalize_remaining_storage_row,
     normalize_stock_card_for,
@@ -21,8 +22,7 @@ from backend.routes.inventory.remaining_storage_helpers import (
 )
 from backend.routes.inventory.remaining_storage_queries import (
     build_all_store_query,
-    build_monitoring_query,
-    build_reported_store_query,
+    build_monitoring_definition_query,
 )
 from backend.routes.route_utils import (
     _fetch_remote_json,
@@ -56,6 +56,66 @@ def _require_sagansa_engine():
     return engine
 
 
+def _handle_remaining_storage_remote_error(exc):
+    message = str(exc or 'RemainingStorage API request failed').strip()
+    lowered = message.lower()
+
+    if 'request failed (400)' in lowered or 'request failed (401)' in lowered or 'request failed (403)' in lowered:
+        raise BadRequestError(message, code='remaining_storage_remote_error')
+    if 'request failed (404)' in lowered:
+        raise NotFoundError(message, code='remaining_storage_remote_not_found')
+    if 'connection failed' in lowered:
+        raise ServiceUnavailableError(message, code='remaining_storage_remote_unavailable')
+
+    raise ApiError(message, status_code=502, code='remaining_storage_remote_error')
+
+
+def _fetch_all_remote_remaining_storages(api_url, token, selected_date=None):
+    base_query_params = {'per_page': 200}
+    if selected_date:
+        base_query_params['date'] = selected_date
+
+    try:
+        meta_payload = _fetch_remote_json(
+            api_url=api_url,
+            token=token,
+            query_params={**base_query_params, 'page': 1},
+            resource_name='RemainingStorage API'
+        )
+    except RuntimeError as exc:
+        _handle_remaining_storage_remote_error(exc)
+
+    first_rows, meta_info = extract_remaining_storage_rows(meta_payload)
+    last_page = max(1, _safe_int(meta_info.get('last_page'), 1))
+
+    all_rows = []
+
+    def append_rows(raw_rows):
+        for item in raw_rows:
+            normalized = normalize_remaining_storage_row(item)
+            if not is_remaining_storage_value(normalized.get('for')):
+                continue
+            all_rows.append(normalized)
+
+    append_rows(first_rows)
+
+    for remote_page in range(2, last_page + 1):
+        try:
+            page_payload = _fetch_remote_json(
+                api_url=api_url,
+                token=token,
+                query_params={**base_query_params, 'page': remote_page},
+                resource_name='RemainingStorage API'
+            )
+        except RuntimeError as exc:
+            _handle_remaining_storage_remote_error(exc)
+
+        raw_rows, _ = extract_remaining_storage_rows(page_payload)
+        append_rows(raw_rows)
+
+    return all_rows
+
+
 @remaining_storage_bp.route('/api/remaining-storages', methods=['GET'])
 @remaining_storage_bp.route('/api/remaining-storages/', methods=['GET'])
 def get_remaining_storages():
@@ -87,12 +147,16 @@ def get_remaining_storages():
     if date_filter:
         base_query_params['date'] = date_filter
 
-    meta_payload = _fetch_remote_json(
-        api_url=api_url,
-        token=token,
-        query_params={**base_query_params, 'page': 1, 'per_page': 1},
-        resource_name='RemainingStorage API'
-    )
+    try:
+        meta_payload = _fetch_remote_json(
+            api_url=api_url,
+            token=token,
+            query_params={**base_query_params, 'page': 1, 'per_page': 1},
+            resource_name='RemainingStorage API'
+        )
+    except RuntimeError as exc:
+        _handle_remaining_storage_remote_error(exc)
+
     _, meta_info = extract_remaining_storage_rows(meta_payload)
     remote_last_page = max(1, _safe_int(meta_info.get('last_page'), 1))
 
@@ -107,21 +171,25 @@ def get_remaining_storages():
     scanned_page_count = 0
     for remote_page in remote_pages:
         scanned_page_count += 1
-        page_payload = _fetch_remote_json(
-            api_url=api_url,
-            token=token,
-            query_params={
-                **base_query_params,
-                'page': remote_page,
-                'per_page': remote_per_page
-            },
-            resource_name='RemainingStorage API'
-        )
+        try:
+            page_payload = _fetch_remote_json(
+                api_url=api_url,
+                token=token,
+                query_params={
+                    **base_query_params,
+                    'page': remote_page,
+                    'per_page': remote_per_page
+                },
+                resource_name='RemainingStorage API'
+            )
+        except RuntimeError as exc:
+            _handle_remaining_storage_remote_error(exc)
+
         raw_rows, _ = extract_remaining_storage_rows(page_payload)
         for item in raw_rows:
             normalized = normalize_remaining_storage_row(item)
             normalized_for = normalize_stock_card_for(normalized.get('for'))
-            if normalized_for != 'remaining storage':
+            if not is_remaining_storage_value(normalized_for):
                 continue
             if store_keyword:
                 haystack = str(normalized.get('store_name') or '').strip().lower()
@@ -179,16 +247,20 @@ def get_remaining_storage_details(stock_card_id):
 
     _require_remaining_storage_token(token)
 
-    show_payload = _fetch_remote_json(
-        api_url=f"{str(api_url).rstrip('/')}/{stock_card_id}",
-        token=token,
-        resource_name='RemainingStorage API detail'
-    )
+    try:
+        show_payload = _fetch_remote_json(
+            api_url=f"{str(api_url).rstrip('/')}/{stock_card_id}",
+            token=token,
+            resource_name='RemainingStorage API detail'
+        )
+    except RuntimeError as exc:
+        _handle_remaining_storage_remote_error(exc)
+
     detail_item = extract_remaining_storage_detail_item(show_payload)
     normalized = normalize_remaining_storage_row(detail_item)
 
     normalized_for = normalize_stock_card_for(normalized.get('for'))
-    if normalized_for != 'remaining storage':
+    if not is_remaining_storage_value(normalized_for):
         raise NotFoundError('Stock card is not remaining_storage')
 
     api_root = derive_api_root_from_remaining_storage_url(api_url)
@@ -220,6 +292,8 @@ def get_remaining_storage_details(stock_card_id):
                     or first_detail.get('store_nickname')
                     or normalized.get('store_name')
                 )
+        except RuntimeError:
+            pass
         except Exception:
             pass
 
@@ -228,6 +302,16 @@ def get_remaining_storage_details(stock_card_id):
 
 @remaining_storage_bp.route('/api/dashboard/remaining-storage', methods=['GET'])
 def get_dashboard_remaining_storage():
+    api_url = str(request.args.get('api_url') or DEFAULT_REMAINING_STORAGE_API_URL).strip()
+    token = str(
+        request.args.get('token')
+        or request.args.get('access_token')
+        or request.args.get('api_token')
+        or DEFAULT_REMAINING_STORAGE_API_TOKEN
+        or ''
+    ).strip()
+    _require_remaining_storage_token(token)
+
     engine = _require_sagansa_engine()
 
     raw_date = request.args.get('date')
@@ -240,6 +324,35 @@ def get_dashboard_remaining_storage():
 
     limit = _safe_int(request.args.get('limit'), 12)
     limit = min(max(limit, 1), 100)
+
+    remote_rows = _fetch_all_remote_remaining_storages(
+        api_url=api_url,
+        token=token,
+        selected_date=selected_date,
+    )
+
+    remote_product_totals = {}
+    remote_product_dates = {}
+    reported_store_ids = set()
+
+    for row in remote_rows:
+        store_id = str(row.get('store_id') or '').strip()
+        if store_id:
+            reported_store_ids.add(store_id)
+
+        row_date = to_iso_date(row.get('date')) or selected_date
+        for detail in row.get('details') or []:
+            product_id = detail.get('product_id')
+            if product_id in (None, ''):
+                continue
+
+            key = str(product_id)
+            quantity_value = _to_float(detail.get('quantity'), 0.0)
+            remote_product_totals[key] = remote_product_totals.get(key, 0.0) + quantity_value
+            if row_date:
+                previous_date = remote_product_dates.get(key)
+                if previous_date is None or row_date > previous_date:
+                    remote_product_dates[key] = row_date
 
     with engine.connect() as conn:
         sm_columns = get_table_columns(conn, 'stock_monitorings')
@@ -300,11 +413,7 @@ def get_dashboard_remaining_storage():
             store_name_column = 'name'
         else:
             store_name_column = None
-
-        stock_card_columns = get_table_columns(conn, 'stock_cards')
-        stock_date_column = 'date' if 'date' in stock_card_columns else 'created_at'
-        has_for_column = 'for' in stock_card_columns
-        has_store_column = 'store_id' in stock_card_columns
+        store_status_column = 'status' if 'status' in stores_columns else None
 
         product_unit_select = (
             f"pu.`{unit_column}` AS product_unit_name"
@@ -316,43 +425,23 @@ def get_dashboard_remaining_storage():
             if 'category' in sm_columns else
             ''
         )
-        remaining_for_filter = (
-            "LOWER(REPLACE(REPLACE(TRIM(sc.`for`), '_', ' '), '-', ' ')) = 'remaining storage'"
-            if has_for_column else
-            "1 = 1"
-        )
-        date_filter_sql = (
-            f"AND DATE(sc.`{stock_date_column}`) = :selected_date"
-            if selected_date else
-            ''
-        )
-
-        monitoring_query = build_monitoring_query(
+        monitoring_query = build_monitoring_definition_query(
             smd_table=smd_table,
             smd_monitoring_fk=smd_monitoring_fk,
             coefficient_expr=coefficient_expr,
             product_unit_select=product_unit_select,
             category_filter=category_filter,
-            remaining_for_filter=remaining_for_filter,
-            date_filter_sql=date_filter_sql,
-            stock_date_column=stock_date_column,
         )
-        rows_raw = conn.execute(monitoring_query, {'selected_date': selected_date}).fetchall()
+        rows_raw = conn.execute(monitoring_query).fetchall()
 
         all_store_query = build_all_store_query(
             store_name_column=store_name_column,
             stores_columns=stores_columns,
-            has_store_column=has_store_column,
+            has_store_column=True,
+            status_column=store_status_column,
+            excluded_status=8,
         )
         all_store_rows = conn.execute(all_store_query).fetchall() if all_store_query is not None else []
-
-        if selected_date and has_store_column:
-            reported_store_rows = conn.execute(
-                build_reported_store_query(remaining_for_filter, stock_date_column),
-                {'selected_date': selected_date}
-            ).fetchall()
-        else:
-            reported_store_rows = []
 
         grouped = {}
         for row in rows_raw:
@@ -383,14 +472,15 @@ def get_dashboard_remaining_storage():
             if unit_name and not group_item['unit_name']:
                 group_item['unit_name'] = unit_name
 
-            remaining_raw = d.get('remaining_quantity')
-            has_remaining_quantity = remaining_raw not in (None, '')
-            remaining_quantity = _to_float(remaining_raw, 0.0)
+            product_id = d.get('product_id')
+            product_key = str(product_id) if product_id not in (None, '') else ''
+            has_remaining_quantity = bool(product_key) and product_key in remote_product_totals
+            remaining_quantity = remote_product_totals.get(product_key, 0.0)
             coefficient_value = _to_float(d.get('coefficient_value'), 1.0)
             weighted_quantity = remaining_quantity * coefficient_value if has_remaining_quantity else 0.0
             group_item['total_stock'] += weighted_quantity
 
-            stock_card_date = to_iso_date(d.get('stock_card_date'))
+            stock_card_date = remote_product_dates.get(product_key)
             if stock_card_date and (
                 group_item['latest_stock_card_date'] is None
                 or stock_card_date > group_item['latest_stock_card_date']
@@ -464,13 +554,8 @@ def get_dashboard_remaining_storage():
                 'store_name': row_store_name
             })
 
-        reported_store_ids = {
-            str(row.get('store_id') or '').strip()
-            for row in serialize_result_rows(reported_store_rows)
-            if str(row.get('store_id') or '').strip()
-        }
         missing_report_stores = []
-        if selected_date and has_store_column:
+        if selected_date:
             for store in all_stores:
                 if store['store_id'] not in reported_store_ids:
                     missing_report_stores.append(store)

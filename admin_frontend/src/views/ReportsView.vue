@@ -1,18 +1,17 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
-    <!-- Header -->
-    <div class="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-      <div class="max-w-7xl mx-auto px-6 py-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Financial Reports</h1>
-            <p class="text-sm text-gray-500 mt-1">Laporan Keuangan Berdasarkan CoreTax 2025</p>
-          </div>
-          <div class="flex items-center gap-2 relative">
+  <div class="space-y-6">
+    <PageHeader
+      eyebrow="Reporting Studio"
+      icon="bi bi-file-earmark-bar-graph-fill"
+      title="Financial reports with a cleaner analysis shell"
+      subtitle="Income statement, balance sheet, revenue, cash flow, and payroll summary in one reporting workspace."
+    >
+      <template #actions>
+      <div class="flex items-center gap-2 relative">
             <button
               v-if="store.hasIncomeStatement"
               @click="showExportMenu = !showExportMenu"
-              class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+              class="btn-secondary gap-2 text-sm"
             >
               <i class="bi bi-download"></i>
               <span>Export</span>
@@ -22,105 +21,89 @@
             <!-- Export Dropdown -->
             <div 
               v-if="showExportMenu" 
-              class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50"
+              class="reports-menu absolute right-0 top-full mt-2 w-48 py-1 z-50"
             >
               <button
                 @click="handleExport('excel')"
-                class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                class="reports-menu__item"
               >
                 <i class="bi bi-file-earmark-spreadsheet text-green-600"></i>
                 Excel (.xlsx)
               </button>
               <button
                 @click="handleExport('xml')"
-                class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                class="reports-menu__item"
               >
                 <i class="bi bi-file-earmark-code text-orange-600"></i>
                 CoreTax XML
               </button>
             </div>
-          </div>
-        </div>
       </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-6 py-6">
+    <div class="space-y-6">
       <!-- Report Type Tabs -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div class="border-b border-gray-200">
-          <nav class="flex -mb-px">
+      <SectionCard body-class="p-3">
+        <div class="reports-tab-wrap">
             <button
               @click="handleTabClick('income-statement')"
-              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
-              :class="activeTab === 'income-statement' 
-                ? 'border-indigo-600 text-indigo-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="reports-tab"
+              :class="{ 'reports-tab--active': activeTab === 'income-statement' }"
             >
               <i class="bi bi-file-earmark-bar-graph mr-2"></i>
               Income Statement
             </button>
             <button
               @click="handleTabClick('monthly-revenue')"
-              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
-              :class="activeTab === 'monthly-revenue' 
-                ? 'border-indigo-600 text-indigo-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="reports-tab"
+              :class="{ 'reports-tab--active': activeTab === 'monthly-revenue' }"
             >
               <i class="bi bi-calendar3 mr-2"></i>
               Monthly Revenue
             </button>
             <button
               @click="handleTabClick('balance-sheet')"
-              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
-              :class="activeTab === 'balance-sheet'
-                ? 'border-indigo-600 text-indigo-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="reports-tab"
+              :class="{ 'reports-tab--active': activeTab === 'balance-sheet' }"
             >
               <i class="bi bi-file-earmark-spreadsheet mr-2"></i>
               Balance Sheet
             </button>
             <button
               @click="handleTabClick('cash-flow')"
-              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
-              :class="activeTab === 'cash-flow'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="reports-tab"
+              :class="{ 'reports-tab--active': activeTab === 'cash-flow' }"
             >
               <i class="bi bi-cash-stack mr-2"></i>
               Cash Flow
             </button>
             <button
               @click="navigateToGeneralLedger()"
-              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
-              :class="'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="reports-tab"
             >
               <i class="bi bi-journal-text mr-2"></i>
               GL
             </button>
             <button
               @click="handleTabClick('payroll-summary')"
-              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
-              :class="activeTab === 'payroll-summary'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="reports-tab"
+              :class="{ 'reports-tab--active': activeTab === 'payroll-summary' }"
             >
               <i class="bi bi-people mr-2"></i>
               Payroll Summary
             </button>
             <button
               @click="handleTabClick('marks-report')"
-              class="px-6 py-3 text-sm font-medium border-b-2 transition-colors"
-              :class="activeTab === 'marks-report'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              class="reports-tab"
+              :class="{ 'reports-tab--active': activeTab === 'marks-report' }"
             >
               <i class="bi bi-tags mr-2"></i>
               Marks Summary
             </button>
-          </nav>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- Filters -->
       <ReportFilters
@@ -131,19 +114,19 @@
       />
 
       <!-- Error Message -->
-      <div v-if="store.error" class="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+      <div v-if="store.error" class="mt-6 reports-error rounded-2xl p-4">
         <div class="flex items-center gap-2">
-          <i class="bi bi-exclamation-triangle-fill text-red-600"></i>
-          <p class="text-sm text-red-800">{{ store.error }}</p>
+          <i class="bi bi-exclamation-triangle-fill" style="color: var(--color-danger)"></i>
+          <p class="text-sm" style="color: var(--color-danger)">{{ store.error }}</p>
         </div>
       </div>
 
       <!-- Loading and Content Area -->
       <div class="mt-6 relative min-h-[400px]">
         <!-- Global Loading Overlay (Subtle) -->
-        <div v-if="store.isLoading" class="absolute inset-0 bg-white/50 backdrop-blur-sm z-20 flex flex-col items-center justify-center rounded-lg border border-gray-200">
-          <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-          <p class="text-sm text-gray-500 mt-4">Generating all reports...</p>
+        <div v-if="store.isLoading" class="absolute inset-0 reports-loading z-20 flex flex-col items-center justify-center rounded-2xl">
+          <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2" style="border-color: var(--color-primary)"></div>
+          <p class="text-sm text-muted mt-4">Generating all reports...</p>
         </div>
 
         <!-- Report Content -->
@@ -207,6 +190,8 @@ import CashFlow from '../components/reports/CashFlow.vue';
 import PayrollSalarySummary from '../components/reports/PayrollSalarySummary.vue';
 import MarksReport from '../components/reports/MarksReport.vue';
 import COADetailModal from '../components/reports/COADetailModal.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import SectionCard from '../components/ui/SectionCard.vue';
 
 const store = useReportsStore();
 const companyStore = useCompanyStore();
@@ -436,3 +421,60 @@ onBeforeUnmount(() => {
   }
 });
 </script>
+
+<style scoped>
+.reports-tab-wrap {
+  @apply flex gap-2 overflow-x-auto;
+}
+
+.reports-tab {
+  @apply inline-flex items-center whitespace-nowrap rounded-2xl px-4 py-2.5 text-sm font-medium transition-all;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.reports-tab:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.reports-tab--active {
+  background: rgba(15, 118, 110, 0.12);
+  border-color: rgba(15, 118, 110, 0.18);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+.reports-menu {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.reports-menu__item {
+  @apply flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors;
+  color: var(--color-text);
+}
+
+.reports-menu__item:hover {
+  background: var(--color-surface-muted);
+}
+
+.reports-error {
+  background: rgba(185, 28, 28, 0.08);
+  border: 1px solid rgba(185, 28, 28, 0.18);
+}
+
+.reports-loading {
+  background: rgba(255, 253, 248, 0.72);
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(10px);
+}
+
+:global(html.dark) .reports-loading {
+  background: rgba(15, 21, 28, 0.72);
+}
+</style>

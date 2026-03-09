@@ -4,8 +4,14 @@ from backend.routes.accounting_utils import (
 from backend.routes.route_utils import _to_float
 
 def normalize_product_payload(item):
+    reference_id = (
+        item.get('stock_monitoring_id')
+        or item.get('item_id')
+        or item.get('product_id')
+    )
+
     return {
-        'product_id': item.get('product_id'),
+        'stock_monitoring_id': reference_id,
         'quantity': _to_float(item.get('quantity')),
         'foreign_currency': item.get('foreign_currency') or 'USD',
         'foreign_price': _to_float(item.get('foreign_price')),

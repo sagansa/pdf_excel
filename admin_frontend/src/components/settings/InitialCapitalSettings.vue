@@ -98,6 +98,31 @@
                     Enter the capital amount according to company establishment documents
                   </p>
                 </div>
+
+                <div>
+                  <label for="previousRetainedEarningsAmount" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="bi bi-bar-chart-line text-indigo-600 mr-2"></i>
+                    Laba Ditahan Tahun Sebelumnya
+                  </label>
+                  <div class="relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span class="text-gray-500 sm:text-sm">Rp</span>
+                    </div>
+                    <input 
+                      type="number" 
+                      class="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
+                      id="previousRetainedEarningsAmount" 
+                      v-model="formData.previousRetainedEarningsAmount"
+                      placeholder="0"
+                      step="0.01"
+                      min="0"
+                    >
+                  </div>
+                  <p class="mt-2 text-sm text-gray-500">
+                    <i class="bi bi-lightbulb mr-1"></i>
+                    Gunakan untuk menjembatani laba ditahan historis sebelum migrasi ke aplikasi ini.
+                  </p>
+                </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -183,6 +208,13 @@
                         Rp {{ formatNumber(currentData.amount) }}
                       </div>
                     </div>
+
+                    <div class="border-b border-gray-200 pb-3">
+                      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Laba Ditahan Tahun Sebelumnya</div>
+                      <div class="text-lg font-semibold text-emerald-600">
+                        Rp {{ formatNumber(currentData.previousRetainedEarningsAmount) }}
+                      </div>
+                    </div>
                     
                     <div class="border-b border-gray-200 pb-3">
                       <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Start Year</div>
@@ -236,11 +268,13 @@ export default {
       companies: [],
       formData: {
         amount: 0,
+        previousRetainedEarningsAmount: 0,
         startYear: new Date().getFullYear(),
         description: ''
       },
       currentData: {
         amount: 0,
+        previousRetainedEarningsAmount: 0,
         startYear: 0,
         description: '',
         updatedAt: ''
@@ -298,6 +332,7 @@ export default {
         this.hasData = false
         this.formData = {
           amount: 0,
+          previousRetainedEarningsAmount: 0,
           startYear: new Date().getFullYear(),
           description: ''
         }
@@ -316,6 +351,7 @@ export default {
           this.hasData = true
           this.currentData = {
             amount: data.setting.amount,
+            previousRetainedEarningsAmount: data.setting.previous_retained_earnings_amount || 0,
             startYear: data.setting.start_year,
             description: data.setting.description || '',
             updatedAt: data.setting.updated_at
@@ -325,6 +361,7 @@ export default {
           this.hasData = false
           this.formData = {
             amount: 0,
+            previousRetainedEarningsAmount: 0,
             startYear: new Date().getFullYear(),
             description: ''
           }
@@ -355,6 +392,7 @@ export default {
           body: JSON.stringify({
             company_id: this.selectedCompanyId,
             amount: parseFloat(this.formData.amount),
+            previous_retained_earnings_amount: parseFloat(this.formData.previousRetainedEarningsAmount || 0),
             start_year: parseInt(this.formData.startYear),
             description: this.formData.description
           })
@@ -401,11 +439,13 @@ export default {
           this.hasData = false
           this.formData = {
             amount: 0,
+            previousRetainedEarningsAmount: 0,
             startYear: new Date().getFullYear(),
             description: ''
           }
           this.currentData = {
             amount: 0,
+            previousRetainedEarningsAmount: 0,
             startYear: 0,
             description: '',
             updatedAt: ''
@@ -425,6 +465,7 @@ export default {
     resetForm() {
       this.formData = {
         amount: this.currentData.amount,
+        previousRetainedEarningsAmount: this.currentData.previousRetainedEarningsAmount,
         startYear: this.currentData.startYear,
         description: this.currentData.description
       }

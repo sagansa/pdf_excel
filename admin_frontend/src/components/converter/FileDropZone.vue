@@ -1,32 +1,23 @@
 <template>
   <div 
-    class="relative group border-2 border-dashed rounded-2xl p-10 transition-all duration-300 cursor-pointer overflow-hidden"
-    :class="[
-      isDark
-        ? 'border-slate-600 hover:border-indigo-400 bg-slate-800/50 hover:bg-slate-800'
-        : 'border-gray-200 hover:border-indigo-400 bg-gray-50/50 hover:bg-white',
-      isDragging
-        ? (isDark ? 'border-indigo-400 bg-indigo-500/10' : 'border-indigo-400 bg-indigo-50')
-        : ''
-    ]"
+    class="file-dropzone group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed p-10 transition-all duration-300"
+    :class="{ 'file-dropzone--dragging': isDragging }"
     @dragover.prevent="onDragOver"
     @dragleave.prevent="onDragLeave"
     @drop.prevent="onDrop"
     @click="triggerFileInput"
   >
     <div
-      class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-      :class="isDark ? 'bg-gradient-to-b from-indigo-500/10 to-transparent' : 'bg-gradient-to-b from-indigo-50/20 to-transparent'"
+      class="file-dropzone__overlay absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
     ></div>
     <div class="relative text-center">
       <div
-        class="w-16 h-16 rounded-2xl shadow-sm border flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"
-        :class="isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-100'"
+        class="file-dropzone__icon mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border shadow-sm transition-transform group-hover:scale-110"
       >
-        <i class="bi bi-file-earmark-arrow-up text-3xl text-indigo-500"></i>
+        <i class="bi bi-file-earmark-arrow-up text-3xl"></i>
       </div>
-      <p class="text-sm font-semibold" :class="isDark ? 'text-slate-200' : 'text-gray-700'">Drag & drop your PDF or CSV here</p>
-      <p class="text-xs mt-1" :class="isDark ? 'text-slate-400' : 'text-gray-500'">or click to browse from your computer</p>
+      <p class="text-sm font-semibold text-theme">Drag & drop your PDF or CSV here</p>
+      <p class="mt-1 text-xs text-muted">or click to browse from your computer</p>
       
       <div v-if="selectedFileName" class="text-center font-bold text-indigo-500 text-sm py-2">
         {{ selectedFileName }}
@@ -82,3 +73,30 @@ const onDrop = (event) => {
     handleFile(file);
 };
 </script>
+
+<style scoped>
+.file-dropzone {
+  border-color: var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.file-dropzone:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+
+.file-dropzone--dragging {
+  border-color: var(--color-primary);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.file-dropzone__overlay {
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.08), transparent);
+}
+
+.file-dropzone__icon {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-primary);
+}
+</style>

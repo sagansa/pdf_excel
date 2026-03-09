@@ -335,6 +335,19 @@ export const useReportsStore = defineStore('reports', {
       }
     },
 
+    async fetchAutoInventoryBalances(year, companyId) {
+      try {
+        const res = await reportsApi.getAutoInventoryBalances(year, companyId);
+        return {
+          beginning: res.data.beginning || {},
+          ending: res.data.ending || {},
+        };
+      } catch (e) {
+        console.error("Failed to fetch auto inventory balances:", e);
+        return { beginning: {}, ending: {} };
+      }
+    },
+
     async saveInventoryBalances(data) {
       try {
         await reportsApi.saveInventoryBalances(data);

@@ -292,6 +292,10 @@ export const reportsApi = {
     const params = { year, company_id: companyId };
     return api.get('/inventory-balances', { params });
   },
+  getAutoInventoryBalances(year, companyId) {
+    const params = { year, company_id: companyId };
+    return api.get('/inventory-balances/auto', { params });
+  },
   saveInventoryBalances(data) {
     return api.post('/inventory-balances', data);
   },
@@ -430,6 +434,11 @@ export const productApi = {
 };
 
 export const hppApi = {
+  getItems(category = 'storage') {
+    const params = {};
+    if (category) params.category = category;
+    return api.get('/hpp-items', { params });
+  },
   getBatches(companyId) {
     const params = companyId ? { company_id: companyId } : {};
     return api.get('/hpp-batches', { params });

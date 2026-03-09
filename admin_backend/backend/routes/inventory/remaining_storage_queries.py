@@ -62,13 +62,54 @@ def build_monitoring_query(
     """)
 
 
-def build_all_store_query(store_name_column=None, stores_columns=None, has_store_column=False):
+def build_monitoring_definition_query(
+    smd_table,
+    smd_monitoring_fk,
+    coefficient_expr,
+    product_unit_select,
+    category_filter,
+):
+    return text(f"""
+        SELECT
+            sm.id AS monitoring_id,
+            sm.name AS monitoring_name,
+            sm.quantity_low,
+            sm.category,
+            smd.id AS monitoring_detail_id,
+            smd.`product_id` AS product_id,
+            {coefficient_expr} AS coefficient_value,
+            p.name AS product_name,
+            {product_unit_select}
+        FROM stock_monitorings sm
+        LEFT JOIN {smd_table} smd
+            ON smd.`{smd_monitoring_fk}` = sm.id
+        LEFT JOIN products p
+            ON p.id = smd.`product_id`
+        LEFT JOIN units pu
+            ON pu.id = p.unit_id
+        {category_filter}
+        ORDER BY sm.name ASC, p.name ASC
+    """)
+
+
+def build_all_store_query(
+    store_name_column=None,
+    stores_columns=None,
+    has_store_column=False,
+    status_column=None,
+    excluded_status=None,
+):
+    status_filter = ''
+    if status_column and excluded_status is not None:
+        status_filter = f"WHERE (s.`{status_column}` IS NULL OR s.`{status_column}` <> {int(excluded_status)})"
+
     if store_name_column:
         return text(f"""
             SELECT
                 CAST(s.id AS CHAR) AS store_id,
                 NULLIF(TRIM(s.`{store_name_column}`), '') AS store_name
             FROM stores s
+            {status_filter}
             ORDER BY s.`{store_name_column}` ASC
         """)
     if stores_columns:
@@ -77,8 +118,9 @@ def build_all_store_query(store_name_column=None, stores_columns=None, has_store
                 CAST(s.id AS CHAR) AS store_id,
                 CAST(s.id AS CHAR) AS store_name
             FROM stores s
+            {status_filter}
             ORDER BY s.id ASC
-        """)
+        """.replace('{status_filter}', status_filter))
     if has_store_column:
         return text("""
             SELECT DISTINCT
