@@ -48,13 +48,9 @@ export const useHppBatchStore = defineStore('hppBatch', {
     async saveBatch(data) {
       this.isLoading = true;
       try {
-        console.log('Store: Saving batch with data:', data);
         const response = await hppApi.saveBatch(data);
-        console.log('Store: Batch saved response:', response.data);
-        // Refresh batches if we have a company ID context? Actually better to let the component decide when to refresh
         return response.data;
       } catch (err) {
-        console.error('Store: Error saving batch:', err);
         this.error = err.response?.data?.error || err.message || 'Unknown error';
         throw err;
       } finally {

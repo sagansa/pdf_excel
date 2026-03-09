@@ -5,16 +5,16 @@
     <!-- Pending Transactions Alert (Compact) -->
     <div
       v-if="pendingTransactions?.length > 0"
-      class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 shadow-sm"
+      class="amortization-alert"
     >
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <i class="bi bi-exclamation-triangle-fill text-amber-500 text-xl"></i>
+          <i class="bi bi-exclamation-triangle-fill amortization-alert__icon"></i>
           <div>
-            <h4 class="text-sm font-bold text-amber-900">
+            <h4 class="text-sm font-bold amortization-alert__title">
               {{ pendingTransactions.length }} transaksi aset belum terdaftar
             </h4>
-            <p class="text-xs text-amber-700 mt-0.5">
+            <p class="mt-0.5 text-xs amortization-alert__text">
               Terdapat transaksi yang ditandai sebagai Aset namun belum
               didaftarkan untuk diamortisasi.
             </p>
@@ -22,7 +22,7 @@
         </div>
         <button
           @click="showAddAssetModal = true"
-          class="text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg px-4 py-2 transition-colors inline-flex items-center gap-2 shrink-0"
+          class="amortization-alert__button"
         >
           <i class="bi bi-plus-circle-fill"></i> Daftarkan Aset Baru
         </button>
@@ -31,89 +31,85 @@
     <!-- Calculated Asset Amortization (Automatic) -->
     <div
       v-if="calculatedItems.length > 0"
-      class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6"
+      class="amortization-panel amortization-workspace mb-6"
     >
-      <div
-        class="bg-indigo-50 border-b border-indigo-100 px-6 py-4 flex items-center justify-between"
-      >
+      <div class="amortization-workspace__header">
         <div>
-          <h3 class="text-lg font-bold text-indigo-900">
+          <h3 class="amortization-workspace__title">
             Calculated Asset Amortization
           </h3>
-          <p class="text-xs text-indigo-700 mt-0.5">
+          <p class="mt-1 text-sm amortization-workspace__subtitle">
             Automatic calculation based on registered assets. Total:
             {{ formatCurrency(calculatedTotalAmortization) }}
           </p>
         </div>
-        <div
-          class="bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider"
-        >
+        <div class="amortization-pill">
           Automatic
         </div>
       </div>
 
-      <div class="p-6">
-        <div class="overflow-x-auto">
+      <div class="amortization-workspace__body">
+        <div class="overflow-x-auto amortization-table-shell">
           <table class="w-full">
-            <thead class="bg-indigo-50/30 border-b border-indigo-100">
+            <thead class="amortization-table-head">
               <tr>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-indigo-700 uppercase min-w-[120px]"
+                  class="amortization-table-head__cell min-w-[120px]"
                 >
                   Tx Date
                 </th>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-indigo-700 uppercase min-w-[200px]"
+                  class="amortization-table-head__cell min-w-[200px]"
                 >
                   Asset Name
                 </th>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-indigo-700 uppercase min-w-[120px]"
+                  class="amortization-table-head__cell min-w-[120px]"
                 >
                   Group / Deductible
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Original Cost (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Accum. Depr (Prev) (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-center text-xs font-medium text-indigo-700 uppercase w-[60px]"
+                  class="amortization-table-head__cell w-[60px] text-center"
                 >
                   Mult.
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Amortization (Curr) (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Total Accum. Depr (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Book Value (End) (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-center text-xs font-medium text-indigo-700 uppercase w-[80px]"
+                  class="amortization-table-head__cell w-[80px] text-center"
                 >
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody class="amortization-table-body divide-y">
               <tr
                 v-for="item in calculatedItems"
                 :key="item.asset_id"
-                class="hover:bg-indigo-50/20"
+                class="amortization-row"
               >
                 <td class="px-4 py-3 text-xs text-slate-600 font-mono">
                   {{ formatDate(item.txn_date || item.acquisition_date) }}
@@ -246,23 +242,24 @@
                 </td>
               </tr>
             </tbody>
-            <tfoot class="bg-indigo-50/50 border-t-2 border-indigo-100">
+            <tfoot class="amortization-table-foot">
               <tr class="font-bold">
                 <td
                   colspan="3"
-                  class="px-4 py-3 text-sm text-indigo-900 text-right uppercase tracking-wider"
+                  class="px-4 py-3 text-right text-sm uppercase tracking-wider"
+                  style="color: var(--color-text)"
                 >
                   Total Calculated Amortization
                 </td>
-                <td class="px-4 py-3 text-sm text-right text-indigo-900">
+                <td class="px-4 py-3 text-right text-sm" style="color: var(--color-text)">
                   {{ formatCurrency(totalOriginalCost, false) }}
                 </td>
                 <td colspan="2"></td>
-                <td class="px-4 py-3 text-sm text-right text-indigo-900">
+                <td class="px-4 py-3 text-right text-sm" style="color: var(--color-text)">
                   {{ formatCurrency(calculatedTotalAmortization, false) }}
                 </td>
                 <td></td>
-                <td class="px-4 py-3 text-sm text-right text-indigo-900">
+                <td class="px-4 py-3 text-right text-sm" style="color: var(--color-text)">
                   {{ formatCurrency(totalBookValueEnd, false) }}
                 </td>
                 <td></td>
@@ -275,33 +272,31 @@
 
     <!-- Amortization Items List (Manual & Transactions) -->
     <div
-      class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6"
+      class="amortization-panel amortization-workspace mb-6"
     >
-      <div
-        class="bg-indigo-50 border-b border-indigo-100 px-6 py-4 flex items-center justify-between"
-      >
+      <div class="amortization-workspace__header">
         <div>
-          <h3 class="text-lg font-bold text-indigo-900">
+          <h3 class="amortization-workspace__title">
             Manual & Transaction Adjustments
           </h3>
-          <p class="text-xs text-indigo-700 mt-0.5">
+          <p class="mt-1 text-sm amortization-workspace__subtitle">
             Manual and transactional adjustments. Total:
             {{ formatCurrency(manualTotalAmortization) }}
-            <span v-if="manualItems.length > 0" class="text-indigo-600"
+            <span v-if="manualItems.length > 0" style="color: var(--color-primary)"
               >({{ manualItems.length }} entries)</span
             >
           </p>
         </div>
         <div class="flex items-center gap-3">
           <div
-            class="bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider"
+            class="amortization-pill"
           >
             Manual/Tx
           </div>
           <button
             @click="openAddModal"
             :disabled="!companyId"
-            class="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
+            class="btn-primary gap-2 px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <i class="bi bi-plus-lg"></i>
             Add Entry
@@ -309,7 +304,7 @@
           <button
             @click="generateJournalEntries"
             :disabled="!companyId || manualItems.length === 0"
-            class="bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
+            class="btn-secondary gap-2 px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <i class="bi bi-journal-text"></i>
             Generate Journals
@@ -317,83 +312,83 @@
         </div>
       </div>
 
-      <div class="p-6">
+      <div class="amortization-workspace__body">
         <!-- Empty State -->
         <div
           v-if="manualItems.length === 0"
-          class="text-center py-12 bg-slate-50 rounded-lg border border-dashed border-slate-200"
+          class="amortization-empty-state"
         >
-          <i class="bi bi-calendar-check text-4xl text-slate-300"></i>
-          <p class="text-slate-500 mt-3 text-sm">
+          <i class="bi bi-calendar-check text-4xl text-muted"></i>
+          <p class="mt-3 text-sm text-muted">
             No manual amortization entries yet
           </p>
-          <p class="text-slate-400 text-xs mt-1">
+          <p class="mt-1 text-xs text-muted">
             Click "Add Entry" to create a new amortization record
           </p>
         </div>
 
-        <div v-if="manualItems.length > 0" class="overflow-x-auto">
+        <div v-if="manualItems.length > 0" class="overflow-x-auto amortization-table-shell">
           <table class="w-full">
-            <thead class="bg-indigo-50/30 border-b border-indigo-100">
+            <thead class="amortization-table-head">
               <tr>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-indigo-700 uppercase min-w-[120px]"
+                  class="amortization-table-head__cell min-w-[120px]"
                 >
                   Tx Date
                 </th>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-indigo-700 uppercase min-w-[200px]"
+                  class="amortization-table-head__cell min-w-[200px]"
                 >
                   Asset Name
                 </th>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-indigo-700 uppercase min-w-[120px]"
+                  class="amortization-table-head__cell min-w-[120px]"
                 >
                   Group / Deductible
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Original Cost (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Accum. Depr (Prev) (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-center text-xs font-medium text-indigo-700 uppercase w-[60px]"
+                  class="amortization-table-head__cell w-[60px] text-center"
                 >
                   Mult.
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Amortization (Curr) (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Total Accum. Depr (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-medium text-indigo-700 uppercase w-[110px]"
+                  class="amortization-table-head__cell w-[110px] text-right"
                 >
                   Book Value (End) (Rp)
                 </th>
                 <th
-                  class="px-4 py-3 text-center text-xs font-medium text-indigo-700 uppercase w-[80px]"
+                  class="amortization-table-head__cell w-[80px] text-center"
                 >
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody class="amortization-table-body divide-y">
               <tr
                 v-for="item in manualItems"
                 :key="item.id"
-                class="hover:bg-indigo-50/20"
-                :class="{ 'opacity-80 bg-slate-50': !item.is_manual }"
+                class="amortization-row"
+                :class="{ 'opacity-80 amortization-row--muted': !item.is_manual }"
               >
                 <td class="px-4 py-3 text-xs text-slate-600 font-mono">
                   {{
@@ -423,7 +418,8 @@
                       {{ item.description }}
                       <span
                         v-if="!item.is_manual"
-                        class="ml-1 text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded uppercase font-bold shrink-0"
+                        class="ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase shrink-0"
+                        style="background: rgba(15, 118, 110, 0.12); color: var(--color-primary)"
                         >Transaction</span
                       >
                     </div>
@@ -536,8 +532,8 @@
                 </td>
               </tr>
             </tbody>
-            <tfoot class="bg-indigo-50/50 border-t-2 border-indigo-100">
-              <tr class="font-bold text-indigo-900">
+            <tfoot class="amortization-table-foot">
+              <tr class="font-bold" style="color: var(--color-text)">
                 <td
                   colspan="3"
                   class="px-4 py-3 text-sm text-right uppercase tracking-wider"
@@ -569,9 +565,7 @@
     </div>
 
     <!-- Final Total Summary -->
-    <div
-      class="bg-indigo-900 rounded-lg p-6 shadow-lg flex items-center justify-between text-white"
-    >
+    <div class="amortization-summary">
       <div>
         <h3 class="text-lg font-bold opacity-80 uppercase tracking-wider">
           Total Amortization Breakdown
@@ -729,10 +723,12 @@
                 >Rp</span
               >
               <input
-                v-model.number="form.amount"
-                type="number"
+                :value="formatDisplayNumber(form.amount)"
+                type="text"
+                inputmode="decimal"
                 class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
                 placeholder="0"
+                @input="updateAmountField($event.target.value)"
               />
             </div>
           </div>
@@ -1397,6 +1393,32 @@ const generateJournalEntries = async () => {
   }
 };
 
+const parseFormattedNumber = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return 0;
+
+  const normalized = raw
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(/,/g, ".")
+    .replace(/[^\d.-]/g, "");
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatDisplayNumber = (value) => {
+  const numeric = Number(value || 0);
+  return numeric.toLocaleString("id-ID", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+};
+
+const updateAmountField = (value) => {
+  form.value.amount = parseFormattedNumber(value);
+};
+
 const formatCurrency = (amount, includeSymbol = true) => {
   if (amount === null || amount === undefined)
     return includeSymbol ? "Rp 0" : "0";
@@ -1563,6 +1585,143 @@ onMounted(() => {
 <style scoped>
 .spin {
   animation: spin 1s linear infinite;
+}
+
+.amortization-alert {
+  @apply rounded-2xl p-4 shadow-sm;
+  background: rgba(180, 83, 9, 0.10);
+  border: 1px solid rgba(180, 83, 9, 0.18);
+}
+
+.amortization-alert__icon {
+  @apply text-xl;
+  color: var(--color-warning);
+}
+
+.amortization-alert__title {
+  color: var(--color-text);
+}
+
+.amortization-alert__text {
+  color: var(--color-text-muted);
+}
+
+.amortization-alert__button {
+  @apply inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold text-white transition-colors;
+  background: linear-gradient(135deg, var(--color-warning), #d97706);
+}
+
+.amortization-alert__button:hover {
+  filter: brightness(1.03);
+}
+
+.amortization-panel {
+  @apply overflow-hidden rounded-2xl;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+.amortization-workspace {
+  background:
+    linear-gradient(180deg, rgba(15, 118, 110, 0.04), transparent 140px),
+    var(--color-surface);
+}
+
+.amortization-workspace__header {
+  @apply flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-start lg:justify-between;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 118, 110, 0.05),
+    rgba(15, 118, 110, 0.015)
+  );
+  border-bottom: 1px solid var(--color-border);
+}
+
+.amortization-workspace__title {
+  @apply text-xl font-bold;
+  color: var(--color-text);
+}
+
+.amortization-workspace__subtitle {
+  color: var(--color-text-muted);
+}
+
+.amortization-workspace__body {
+  @apply p-6;
+  background: var(--color-surface);
+}
+
+.amortization-panel__header {
+  @apply flex items-center justify-between px-6 py-4;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.amortization-panel__title {
+  @apply text-lg font-bold;
+  color: var(--color-text);
+}
+
+.amortization-panel__subtitle {
+  color: var(--color-text-muted);
+}
+
+.amortization-pill {
+  @apply rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+}
+
+.amortization-table-shell {
+  @apply overflow-hidden rounded-2xl;
+  background: color-mix(in srgb, var(--color-surface) 90%, black 10%);
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, black 12%);
+}
+
+.amortization-table-head {
+  background: color-mix(in srgb, var(--color-surface-muted) 82%, black 18%);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.amortization-table-head__cell {
+  @apply px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em];
+  color: var(--color-text-muted);
+}
+
+.amortization-table-body {
+  background: color-mix(in srgb, var(--color-surface) 95%, black 5%);
+}
+
+.amortization-row {
+  background: transparent;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.amortization-row:hover {
+  background: rgba(15, 118, 110, 0.05);
+}
+
+.amortization-row--muted {
+  background: rgba(148, 163, 184, 0.05);
+}
+
+.amortization-table-foot {
+  background: color-mix(in srgb, var(--color-surface-muted) 78%, black 22%);
+  border-top: 1px solid var(--color-border);
+}
+
+.amortization-empty-state {
+  @apply flex flex-col items-center justify-center rounded-2xl px-6 py-12 text-center;
+  background: color-mix(in srgb, var(--color-surface-muted) 76%, black 24%);
+  border: 1px dashed var(--color-border);
+}
+
+.amortization-summary {
+  @apply flex items-center justify-between rounded-2xl p-6 text-white;
+  background: linear-gradient(135deg, #0f3d47, #12304f);
+  box-shadow: var(--shadow-card);
 }
 
 @keyframes spin {

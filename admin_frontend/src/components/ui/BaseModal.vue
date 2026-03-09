@@ -4,7 +4,7 @@
       
       <!-- Backdrop -->
       <div 
-        class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+        class="fixed inset-0 modal-backdrop transition-opacity" 
         aria-hidden="true"
         @click="close"
       ></div>
@@ -14,7 +14,7 @@
        <!-- Modal Panel -->
        <div 
          :class="[
-           'inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:w-full',
+           'inline-block align-bottom modal-panel text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:w-full',
            size === 'sm' ? 'sm:max-w-sm' : '',
            size === 'md' ? 'sm:max-w-md' : '',
            size === 'lg' ? 'sm:max-w-lg' : '',
@@ -22,18 +22,18 @@
            !size || size === '2xl' ? 'sm:max-w-5xl' : ''
          ]"
        >
-        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-           <h3 class="text-lg font-bold text-gray-900"><slot name="title"></slot></h3>
-           <button @click="close" class="text-gray-400 hover:text-gray-600 transition-colors">
+        <div class="px-6 py-4 modal-header flex justify-between items-center">
+           <h3 class="text-lg font-bold text-theme"><slot name="title"></slot></h3>
+           <button @click="close" class="btn-ghost rounded-xl p-2">
              <i class="bi bi-x-lg"></i>
            </button>
         </div>
         
-        <div class="bg-white">
+        <div class="modal-body">
           <slot></slot>
         </div>
         
-        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3" v-if="$slots.footer">
+        <div class="px-6 py-4 modal-footer flex justify-end gap-3" v-if="$slots.footer">
            <slot name="footer"></slot>
         </div>
       </div>
@@ -57,3 +57,34 @@ const close = () => {
   emit('close');
 };
 </script>
+
+<style scoped>
+.modal-backdrop {
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.modal-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.modal-header,
+.modal-footer {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-body {
+  background: var(--color-surface);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--color-border);
+}
+</style>

@@ -1,137 +1,144 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <div>
-        <h3 class="text-xl font-bold text-gray-900">Upload History Summary</h3>
-        <p class="text-xs text-gray-500">Overview of all files uploaded to the system</p>
-      </div>
-      
-      <div class="flex items-center gap-3">
-        <!-- Filters -->
-        <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200 shadow-sm">
-          <i class="bi bi-funnel text-gray-400 text-xs"></i>
-          
-          <select v-model="filterBank" class="text-xs border-0 focus:ring-0 bg-transparent py-0 pr-8">
-            <option value="">All Banks</option>
-            <option v-for="bank in availableBanks" :key="bank" :value="bank">{{ formatBankCode(bank) }}</option>
-          </select>
-          
-          <div class="h-4 w-px bg-gray-200 mx-1"></div>
-          
-          <select v-model="filterYear" class="text-xs border-0 focus:ring-0 bg-transparent py-0 pr-8">
-            <option value="">All Years</option>
-            <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
-          </select>
-        </div>
-
-        <button 
-          @click="store.fetchUploadSummary()" 
+    <PageHeader
+      eyebrow="Upload Summary"
+      icon="bi bi-cloud-arrow-up-fill"
+      title="Uploaded file history and transaction totals"
+      subtitle="Pantau file yang pernah diunggah, periode datanya, dan lakukan pembersihan jika diperlukan."
+    >
+      <template #actions>
+        <button
+          @click="store.fetchUploadSummary()"
           class="btn-secondary flex items-center gap-2 py-2"
           :disabled="store.isLoading"
         >
           <i class="bi bi-arrow-clockwise" :class="{ 'animate-spin': store.isLoading }"></i>
           <span>Refresh</span>
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
-    <!-- Summary Table -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th 
-                @click="toggleSort('source_file')"
-                class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors group"
-              >
-                <div class="flex items-center gap-2">
-                  Source File
-                  <i v-if="sortBy === 'source_file'" class="bi" :class="sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up-alt'"></i>
-                  <i v-else class="bi bi-hash text-gray-300 opacity-0 group-hover:opacity-100"></i>
-                </div>
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Bank</th>
-              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Txns</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Period</th>
-              <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Totals</th>
-              <th 
-                @click="toggleSort('last_upload')"
-                class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors group"
-              >
-                <div class="flex items-center gap-2">
-                  Last Upload
-                  <i v-if="sortBy === 'last_upload'" class="bi" :class="sortDir === 'asc' ? 'bi-sort-numeric-down' : 'bi-sort-numeric-up-alt'"></i>
-                  <i v-else class="bi bi-clock text-gray-300 opacity-0 group-hover:opacity-100"></i>
-                </div>
-              </th>
-              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-100">
-            <tr v-if="store.isLoading && store.uploadSummary.length === 0">
-              <td colspan="7" class="text-center py-12">
-                <span class="spinner-border text-indigo-500 w-8 h-8" role="status"></span>
-              </td>
-            </tr>
-            <tr v-else-if="filteredAndSortedSummary.length === 0">
-              <td colspan="7" class="text-center py-12 text-gray-400 italic">
-                {{ store.uploadSummary.length === 0 ? 'No upload history found' : 'No matches found for active filters' }}
-              </td>
-            </tr>
-            <tr v-for="item in filteredAndSortedSummary" :key="item.source_file + item.bank_code" class="hover:bg-gray-50 transition-colors">
-              <td class="px-6 py-4">
-                <div class="flex items-center gap-2">
-                  <i class="bi bi-file-earmark-pdf text-red-500 text-lg"></i>
-                  <span class="text-sm font-semibold text-gray-900 truncate max-w-xs" :title="item.source_file">
-                    {{ item.source_file }}
-                  </span>
-                </div>
-              </td>
-              <td class="px-6 py-4 text-xs font-medium uppercase">
-                <div class="flex flex-col gap-1">
-                  <span class="text-gray-900 border-b border-gray-100 pb-0.5">{{ formatBankCode(item.bank_code) }}</span>
-                </div>
-              </td>
-              <td class="px-6 py-4 text-center">
-                <span class="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-indigo-100">
-                  {{ item.transaction_count }}
+    <SectionCard
+      title="Filters"
+      subtitle="Saring histori upload berdasarkan bank dan tahun periode."
+      body-class="p-4"
+    >
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <FormField label="Bank">
+          <SelectInput
+            v-model="filterBank"
+            :options="bankOptions"
+            placeholder="All Banks"
+          />
+        </FormField>
+
+        <FormField label="Year">
+          <SelectInput
+            v-model="filterYear"
+            :options="yearOptions"
+            placeholder="All Years"
+          />
+        </FormField>
+      </div>
+    </SectionCard>
+
+    <TableShell>
+      <table class="min-w-full upload-table">
+        <thead class="upload-table-head">
+          <tr>
+            <th
+              @click="toggleSort('source_file')"
+              class="cursor-pointer px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted transition-colors hover:bg-[var(--color-surface-raised)] group"
+            >
+              <div class="flex items-center gap-2">
+                Source File
+                <i v-if="sortBy === 'source_file'" class="bi" :class="sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up-alt'"></i>
+                <i v-else class="bi bi-hash text-muted opacity-0 group-hover:opacity-100"></i>
+              </div>
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted">Bank</th>
+            <th class="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted">Txns</th>
+            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted">Period</th>
+            <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted">Totals</th>
+            <th
+              @click="toggleSort('last_upload')"
+              class="cursor-pointer px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted transition-colors hover:bg-[var(--color-surface-raised)] group"
+            >
+              <div class="flex items-center gap-2">
+                Last Upload
+                <i v-if="sortBy === 'last_upload'" class="bi" :class="sortDir === 'asc' ? 'bi-sort-numeric-down' : 'bi-sort-numeric-up-alt'"></i>
+                <i v-else class="bi bi-clock text-muted opacity-0 group-hover:opacity-100"></i>
+              </div>
+            </th>
+            <th class="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y" style="border-color: var(--color-border)">
+          <tr v-if="store.isLoading && store.uploadSummary.length === 0">
+            <td colspan="7" class="py-12 text-center">
+              <span class="spinner-border h-8 w-8" style="color: var(--color-primary)" role="status"></span>
+            </td>
+          </tr>
+          <tr v-else-if="filteredAndSortedSummary.length === 0">
+            <td colspan="7" class="py-12 text-center text-muted italic">
+              {{ store.uploadSummary.length === 0 ? 'No upload history found' : 'No matches found for active filters' }}
+            </td>
+          </tr>
+          <tr v-for="item in filteredAndSortedSummary" :key="item.source_file + item.bank_code" class="upload-row">
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-2">
+                <i class="bi bi-file-earmark-pdf text-red-500 text-lg"></i>
+                <span class="max-w-xs truncate text-sm font-semibold text-theme" :title="item.source_file">
+                  {{ item.source_file }}
                 </span>
-              </td>
-              <td class="px-6 py-4 text-xs text-gray-500 font-mono">
-                <div class="flex flex-col">
-                  <span>{{ formatDate(item.start_date) }}</span>
-                  <span class="text-[10px] text-gray-400 text-center">to</span>
-                  <span>{{ formatDate(item.end_date) }}</span>
-                </div>
-              </td>
-              <td class="px-6 py-4 text-right font-mono whitespace-nowrap">
-                <div class="flex flex-col gap-0.5">
-                  <div class="text-red-500 text-[10px]">DB: {{ formatAmount(item.total_debit) }}</div>
-                  <div class="text-green-600 text-[10px]">CR: {{ formatAmount(item.total_credit) }}</div>
-                </div>
-              </td>
-              <td class="px-6 py-4 text-[10px] text-gray-400">
-                {{ formatDateTime(item.last_upload) }}
-              </td>
-              <td class="px-6 py-4 text-center">
-                <button 
-                  @click="openDeleteModal(item)"
-                  class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                  :title="'Delete transactions from ' + item.source_file"
-                  :disabled="store.isLoading"
-                >
-                  <i class="bi bi-trash"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-xs font-medium uppercase">
+              <span class="border-b pb-0.5 text-theme upload-border">{{ formatBankCode(item.bank_code) }}</span>
+            </td>
+            <td class="px-6 py-4 text-center">
+              <span class="upload-badge">
+                {{ item.transaction_count }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-xs text-muted mono">
+              <div class="flex flex-col">
+                <span>{{ formatDate(item.start_date) }}</span>
+                <span class="text-[10px] text-center text-muted">to</span>
+                <span>{{ formatDate(item.end_date) }}</span>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-right mono whitespace-nowrap">
+              <div class="flex flex-col gap-0.5">
+                <div class="text-[10px] text-red-500">DB: {{ formatAmount(item.total_debit) }}</div>
+                <div class="text-[10px] text-green-600">CR: {{ formatAmount(item.total_credit) }}</div>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-[10px] text-muted mono">
+              {{ formatDateTime(item.last_upload) }}
+            </td>
+            <td class="px-6 py-4 text-center">
+              <button
+                @click="openDeleteModal(item)"
+                class="upload-delete"
+                :title="'Delete transactions from ' + item.source_file"
+                :disabled="store.isLoading"
+              >
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-    <!-- Delete Modal -->
-    <DeleteSummaryModal 
+      <template #footer>
+        <div class="px-6 py-3 text-xs text-muted">
+          Showing {{ filteredAndSortedSummary.length }} row{{ filteredAndSortedSummary.length !== 1 ? 's' : '' }}
+        </div>
+      </template>
+    </TableShell>
+
+    <DeleteSummaryModal
       :show="showDeleteModal"
       :item="itemToDelete"
       :is-loading="store.isLoading"
@@ -142,21 +149,20 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue';
-import { useHistoryStore } from '../stores/history';
+import { computed, onMounted, ref } from 'vue';
 import DeleteSummaryModal from '../components/history/DeleteSummaryModal.vue';
+import FormField from '../components/ui/FormField.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import SectionCard from '../components/ui/SectionCard.vue';
+import SelectInput from '../components/ui/SelectInput.vue';
+import TableShell from '../components/ui/TableShell.vue';
+import { useHistoryStore } from '../stores/history';
 
 const store = useHistoryStore();
-
-// Filter State
 const filterBank = ref('');
 const filterYear = ref('');
-
-// Sort State
 const sortBy = ref('last_upload');
 const sortDir = ref('desc');
-
-// Delete Logic State
 const showDeleteModal = ref(false);
 const itemToDelete = ref(null);
 
@@ -164,7 +170,6 @@ onMounted(() => {
   store.fetchUploadSummary();
 });
 
-// Available filter options
 const availableBanks = computed(() => {
   const banks = new Set(
     store.uploadSummary
@@ -173,6 +178,13 @@ const availableBanks = computed(() => {
   );
   return Array.from(banks).sort();
 });
+
+const bankOptions = computed(() => (
+  availableBanks.value.map(bank => ({
+    value: bank,
+    label: formatBankCode(bank)
+  }))
+));
 
 const availableYears = computed(() => {
   const years = new Set();
@@ -183,40 +195,39 @@ const availableYears = computed(() => {
   return Array.from(years).sort().reverse();
 });
 
-// Filtering and Sorting Computed
-const filteredAndSortedSummary = computed(() => {
-  let result = [...store.uploadSummary];
+const yearOptions = computed(() => (
+  availableYears.value.map(year => ({ value: year, label: year }))
+));
 
-  // Apply Filtering
-  if (filterBank.value) {
-    result = result.filter(item => item.bank_code === filterBank.value);
-  }
-  if (filterYear.value) {
-    result = result.filter(item => {
+const filteredAndSortedSummary = computed(() => {
+  const result = [...store.uploadSummary];
+
+  const filtered = result.filter(item => {
+    if (filterBank.value && item.bank_code !== filterBank.value) return false;
+    if (filterYear.value) {
       const startYear = item.start_date ? item.start_date.split('-')[0] : '';
       const endYear = item.end_date ? item.end_date.split('-')[0] : '';
-      return startYear === filterYear.value || endYear === filterYear.value;
-    });
-  }
+      if (startYear !== filterYear.value && endYear !== filterYear.value) return false;
+    }
+    return true;
+  });
 
-  // Apply Sorting
-  result.sort((a, b) => {
+  filtered.sort((a, b) => {
     const dir = sortDir.value === 'asc' ? 1 : -1;
     let valA = a[sortBy.value];
     let valB = b[sortBy.value];
 
-    // Handle alpha vs chrono
     if (sortBy.value === 'source_file') {
       valA = (valA || '').toLowerCase();
       valB = (valB || '').toLowerCase();
     }
-    
+
     if (valA < valB) return -1 * dir;
     if (valA > valB) return 1 * dir;
     return 0;
   });
 
-  return result;
+  return filtered;
 });
 
 const toggleSort = (key) => {
@@ -240,13 +251,12 @@ const closeDeleteModal = () => {
 
 const confirmDelete = async () => {
   if (!itemToDelete.value) return;
-  
   try {
     const item = itemToDelete.value;
     await store.deleteBySourceFile(item.source_file, item.bank_code);
     closeDeleteModal();
   } catch (err) {
-    alert('Failed to delete transactions: ' + (err.response?.data?.error || err.message));
+    alert(`Failed to delete transactions: ${err.response?.data?.error || err.message}`);
   }
 };
 
@@ -261,9 +271,7 @@ const formatDateTime = (dateTimeStr) => {
   return `${parts[0]} ${parts[1]}`;
 };
 
-const formatAmount = (amount) => {
-  return new Intl.NumberFormat('id-ID').format(amount);
-};
+const formatAmount = (amount) => new Intl.NumberFormat('id-ID').format(amount);
 
 const formatBankCode = (bankCode) => {
   const value = (bankCode || '').toString();
@@ -271,3 +279,39 @@ const formatBankCode = (bankCode) => {
   return value.replace('_CC', ' Credit Card');
 };
 </script>
+
+<style scoped>
+.upload-table-head {
+  background: var(--color-surface-muted);
+}
+
+.upload-row {
+  transition: background-color 160ms ease;
+}
+
+.upload-row:hover {
+  background: rgba(15, 118, 110, 0.05);
+}
+
+.upload-border {
+  border-color: var(--color-border);
+}
+
+.upload-badge {
+  @apply rounded-lg px-2.5 py-1 text-xs font-bold;
+  background: rgba(15, 118, 110, 0.10);
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  color: var(--color-primary);
+}
+
+.upload-delete {
+  @apply rounded-lg border border-transparent p-2 transition-colors;
+  color: var(--color-text-muted);
+}
+
+.upload-delete:hover {
+  color: var(--color-danger);
+  background: rgba(185, 28, 28, 0.08);
+  border-color: rgba(185, 28, 28, 0.18);
+}
+</style>

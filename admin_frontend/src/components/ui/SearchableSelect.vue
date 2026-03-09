@@ -5,9 +5,10 @@
     class="relative"
   >
     <div class="relative">
-      <div class="relative w-full cursor-default overflow-hidden rounded-lg bg-gray-50/50 border border-gray-200 text-left focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-opacity-50 transition-all">
+      <div class="ui-input-shell">
         <ComboboxInput
-          class="w-full border-none py-2 pl-3 pr-14 text-xs leading-5 text-gray-900 placeholder-gray-400 focus:placeholder-transparent focus:ring-0 bg-transparent outline-none"
+          class="w-full border-none bg-transparent py-2 pl-3 pr-14 text-xs leading-5 outline-none focus:placeholder-transparent focus:ring-0"
+          style="color: var(--color-text)"
           :class="{ 'text-orange-500 italic': isMissingMark(selectedValue) }"
           :displayValue="(val) => getLabel(val)"
           @change="query = $event.target.value"
@@ -18,12 +19,12 @@
             v-if="selectedValue"
             type="button"
             @click.stop="selectedValue = ''"
-            class="p-1 hover:bg-gray-200 rounded-full transition-colors"
+            class="ui-clear-button"
           >
-            <i class="bi bi-x text-xs text-gray-400 hover:text-gray-600"></i>
+            <i class="bi bi-x text-xs"></i>
           </button>
           <ComboboxButton class="flex items-center">
-            <i class="bi bi-chevron-down text-[10px] text-gray-400"></i>
+            <i class="bi bi-chevron-down text-[10px] text-muted"></i>
           </ComboboxButton>
         </div>
       </div>
@@ -35,9 +36,9 @@
         @after-leave="query = ''"
       >
         <ComboboxOptions
-          class="absolute z-30 mt-1 max-h-60 min-w-[200px] w-full overflow-auto rounded-xl bg-white py-1 text-xs shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+          class="ui-dropdown-panel absolute z-30 mt-1 max-h-60 min-w-[200px] w-full overflow-auto rounded-xl py-1 text-xs focus:outline-none"
         >
-          <div v-if="filteredOptions.length === 0 && query !== ''" class="relative cursor-default select-none py-2 px-4 text-gray-700 italic">
+          <div v-if="filteredOptions.length === 0 && query !== ''" class="relative cursor-default select-none py-2 px-4 text-muted italic">
             No results found.
           </div>
 
@@ -49,12 +50,13 @@
           >
             <li
               v-if="option.type === 'separator'"
-              class="border-t border-gray-100 my-1 mx-2"
+              class="border-t my-1 mx-2"
+              style="border-color: var(--color-border)"
             ></li>
             <li
               v-else
               :class="[
-                active ? 'bg-indigo-50 text-indigo-900' : 'text-gray-900',
+                active ? 'ui-dropdown-option--active' : 'text-theme',
                 'relative cursor-default select-none py-2 pl-10 pr-4'
               ]"
             >
@@ -63,7 +65,8 @@
               </span>
               <span
                 v-if="selected"
-                class="absolute inset-y-0 left-0 flex items-center pl-3 text-indigo-600"
+                class="absolute inset-y-0 left-0 flex items-center pl-3"
+                style="color: var(--color-primary)"
               >
                 <i class="bi bi-check text-lg"></i>
               </span>
@@ -84,6 +87,7 @@ import {
   ComboboxOptions,
   ComboboxOption,
 } from '@headlessui/vue';
+import { filterSelectOptions, findSelectLabel } from './selectUtils';
 
 const props = defineProps({
   modelValue: [String, Number],
@@ -107,8 +111,8 @@ const selectedValue = computed({
 });
 
 const getLabel = (id) => {
-  const opt = props.options.find(o => o.id === id);
-  if (opt) return opt.label;
+  const label = findSelectLabel(props.options, id, '');
+  if (label) return label;
   
   // Fallback: show ID with prefix if mark not found in options
   if (id) {
@@ -119,36 +123,10 @@ const getLabel = (id) => {
 };
 
 const isMissingMark = (id) => {
-  return id && !props.options.find(o => o.id === id);
+  return id && !findSelectLabel(props.options, id, '');
 };
 
 const filteredOptions = computed(() => {
-  if (query.value === '') return props.options;
-
-  const searchLower = query.value.toLowerCase();
-  const result = [];
-  
-  // Reuse the logic from MultiSelect for separators
-  let lastCategory = null;
-
-  for (const option of props.options) {
-    if (option.type === 'separator') continue;
-
-    if (option.label.toLowerCase().includes(searchLower)) {
-      if (option.category && option.category !== lastCategory) {
-        if (lastCategory !== null) {
-          result.push({
-            id: `separator-${option.category}`,
-            type: 'separator',
-            category: option.category
-          });
-        }
-        lastCategory = option.category;
-      }
-      result.push(option);
-    }
-  }
-
-  return result;
+  return filterSelectOptions(props.options, query.value);
 });
 </script>

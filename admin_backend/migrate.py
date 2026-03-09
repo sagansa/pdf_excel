@@ -108,10 +108,15 @@ def run_migrations():
                 return False
 
             migration_files = list_mysql_migrations()
+            applied_count = 0
+            skipped_count = 0
+            current_migration_name = None
+            current_statement = None
             
             for migration in migration_files:
                 migration_name = migration.name
                 if migration_name not in executed:
+                    current_migration_name = migration_name
                     logger.info("Running migration: %s", migration_name)
                     with migration.open('r') as f:
                         sql = f.read()
@@ -120,18 +125,32 @@ def run_migrations():
 
                         for statement in statements:
                             if statement:
+                                current_statement = statement
                                 conn.execute(text(statement))
                     
                     # Log as executed
                     conn.execute(text("INSERT INTO pdf_excel_migrations (migration_name) VALUES (:name)"), {"name": migration_name})
                     conn.commit()
+                    applied_count += 1
+                    current_statement = None
                     logger.info("Migration %s completed.", migration_name)
                 else:
-                    # print(f"Skipping {migration} (already executed)")
-                    pass
+                    skipped_count += 1
+
+            logger.info(
+                "Migration summary: applied=%s skipped=%s total=%s",
+                applied_count,
+                skipped_count,
+                len(migration_files),
+            )
 
     except Exception as e:
         logger.error("Migration failed: %s", e)
+        if 'current_migration_name' in locals() and current_migration_name:
+            logger.error("Failed migration file: %s", current_migration_name)
+        if 'current_statement' in locals() and current_statement:
+            preview = " ".join(current_statement.strip().split())
+            logger.error("Failed SQL statement: %s", preview[:500])
         return False
 
     logger.info("--- Migrations Finished ---")

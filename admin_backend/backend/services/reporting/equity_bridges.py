@@ -177,18 +177,23 @@ def append_previous_year_retained_earnings(conn, equity, as_of_date_obj, company
     try:
         report_year = as_of_date_obj.year
         company_start_year = report_year - 1
+        configured_previous_retained_earnings = 0.0
         start_year_result = conn.execute(text("""
-            SELECT MIN(start_year) AS min_start_year
+            SELECT MIN(start_year) AS min_start_year,
+                   COALESCE(SUM(previous_retained_earnings_amount), 0) AS configured_previous_retained_earnings
             FROM initial_capital_settings
             WHERE company_id = :company_id
         """), {'company_id': company_id}).fetchone()
         if start_year_result and start_year_result.min_start_year:
             company_start_year = int(start_year_result.min_start_year)
+            configured_previous_retained_earnings = float(
+                start_year_result.configured_previous_retained_earnings or 0.0
+            )
 
         if report_year <= company_start_year:
-            previous_year_retained_earnings = 0.0
+            previous_year_retained_earnings = configured_previous_retained_earnings
         else:
-            previous_year_retained_earnings = 0.0
+            previous_year_retained_earnings = configured_previous_retained_earnings
             for year in range(company_start_year, report_year):
                 year_income_statement = fetch_income_statement_data(
                     conn,
