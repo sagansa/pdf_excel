@@ -86,7 +86,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { useProductStore } from '../../stores/products';
+// import { useProductStore } from '../../stores/products';
 import { hppApi } from '../../api';
 
 const props = defineProps({

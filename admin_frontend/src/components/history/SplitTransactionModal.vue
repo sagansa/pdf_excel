@@ -3,60 +3,60 @@
     <template #title>
       <div class="flex items-center justify-between w-full">
         <div class="flex items-center gap-2">
-          <div class="p-1 bg-indigo-50 rounded-md">
-            <i class="bi bi-diagram-3 text-indigo-600 text-sm"></i>
+          <div class="p-1 rounded-md" style="background: rgba(15, 118, 110, 0.10);">
+            <i class="bi bi-diagram-3 text-sm" style="color: var(--color-primary);"></i>
           </div>
-          <span class="text-gray-900 font-bold tracking-tight text-sm">Split Transaction</span>
+          <span class="text-theme font-bold tracking-tight text-sm">Split Transaction</span>
         </div>
         <div v-if="transaction" class="flex items-center gap-2 text-[10px]">
-           <span class="text-gray-400 font-semibold uppercase tracking-widest text-[9px]">Total</span>
-           <span class="font-bold text-sm" :class="transaction.db_cr === 'CR' ? 'text-green-600' : 'text-red-500'">
+           <span class="text-muted font-semibold uppercase tracking-widest text-[9px]">Total</span>
+           <span class="font-bold text-sm font-mono" :class="transaction.db_cr === 'CR' ? 'text-success' : 'text-danger'">
              {{ formatAmount(transaction.amount) }}
            </span>
         </div>
       </div>
     </template>
 
-    <div v-if="transaction" class="space-y-4 px-4 pb-4">
+    <div v-if="transaction" class="space-y-4 px-6 py-4">
       <!-- Minimal Info Header -->
-      <div class="bg-gray-50/50 border border-gray-100 p-2 rounded-lg flex items-center gap-4 text-xs">
+      <div class="bg-surface-muted border border-border p-3 rounded-2xl flex items-center gap-4 text-xs">
         <div class="flex items-center gap-1.5 min-w-0">
-          <i class="bi bi-calendar3 text-gray-400"></i>
-          <span class="font-bold text-gray-700 whitespace-nowrap">{{ formatDate(transaction.txn_date) }}</span>
+          <i class="bi bi-calendar3 text-muted"></i>
+          <span class="font-bold text-theme whitespace-nowrap">{{ formatDate(transaction.txn_date) }}</span>
         </div>
-        <div class="w-px h-3 bg-gray-200"></div>
+        <div class="w-px h-3 bg-border"></div>
         <div class="flex items-center gap-1.5 min-w-0 flex-1">
-          <i class="bi bi-card-text text-gray-400"></i>
-          <span class="font-bold text-gray-700 truncate" :title="transaction.description">{{ transaction.description }}</span>
+          <i class="bi bi-card-text text-muted"></i>
+          <span class="font-bold text-theme truncate" :title="transaction.description">{{ transaction.description }}</span>
         </div>
       </div>
 
       <!-- Allocation Progress Bar -->
       <div class="space-y-1.5">
         <div class="flex justify-between text-[10px]">
-          <span class="font-bold text-gray-500 uppercase tracking-widest">Allocation</span>
-          <span class="font-bold" :class="Math.abs(remainingAmount) <= 0.01 ? 'text-green-600' : 'text-indigo-600'">
+          <span class="font-bold text-muted uppercase tracking-widest">Allocation</span>
+          <span class="font-bold font-mono" :class="Math.abs(remainingAmount) <= 0.01 ? 'text-success' : 'text-primary'">
              {{ formatAmount(allocatedAmount) }} / {{ formatAmount(transactionAmount) }}
           </span>
         </div>
-        <div class="relative h-1.5 w-full bg-gray-100 rounded-full overflow-hidden flex shadow-inner">
+        <div class="relative h-1.5 w-full bg-surface-muted rounded-full overflow-hidden flex shadow-inner">
            <div
-              class="h-full transition-all duration-300 ease-in-out bg-indigo-500"
-              :class="allocatedPercent > 100 ? 'bg-red-500' : ''"
+              class="h-full transition-all duration-300 ease-in-out"
+              :class="allocatedPercent > 100 ? 'bg-danger' : 'bg-primary'"
               :style="{ width: `${Math.min(allocatedPercent, 100)}%` }"
             ></div>
             <div
               v-if="allocatedPercent > 100"
-              class="h-full bg-red-600"
+              class="h-full bg-danger"
               :style="{ width: `${Math.min(allocatedPercent - 100, 100)}%` }"
             ></div>
         </div>
         <div class="flex justify-between items-center text-[10px]">
-          <span :class="allocatedPercent > 100 ? 'text-red-500 font-bold' : 'text-indigo-600 font-bold'">{{ allocatedPercent.toFixed(0) }}%</span>
-           <span v-if="Math.abs(remainingAmount) > 0.01" :class="remainingAmount > 0 ? 'text-amber-600' : 'text-red-600'">
+          <span :class="allocatedPercent > 100 ? 'text-danger font-bold' : 'text-primary font-bold'">{{ allocatedPercent.toFixed(0) }}%</span>
+           <span v-if="Math.abs(remainingAmount) > 0.01" :class="remainingAmount > 0 ? 'text-warning' : 'text-danger'">
              {{ remainingAmount > 0 ? 'Rem:' : 'Over:' }} {{ formatAmount(Math.abs(remainingAmount)) }}
            </span>
-           <span v-else class="text-green-600 font-bold flex items-center gap-1">
+           <span v-else class="text-success font-bold flex items-center gap-1">
              <i class="bi bi-check-circle-fill text-[9px]"></i> OK
            </span>
         </div>
@@ -64,17 +64,18 @@
 
       <div class="space-y-3">
         <div class="flex items-center justify-between">
-          <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Splits</span>
+          <span class="text-[10px] font-bold text-muted uppercase tracking-widest">Splits</span>
           <button
             @click="addSplit"
-            class="px-2 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded text-[10px] font-bold transition-colors border border-indigo-100"
+            class="btn-ghost px-3 py-1.5 text-[10px] font-bold"
+            style="color: var(--color-primary);"
           >
-            + Add
+            <i class="bi bi-plus-circle mr-1"></i> Add
           </button>
         </div>
 
-        <div v-if="splits.length === 0" class="py-6 border-2 border-dashed border-gray-100 rounded-lg text-center">
-          <p class="text-[10px] text-gray-400">No splits added</p>
+        <div v-if="splits.length === 0" class="py-6 border-2 border-dashed border-border rounded-2xl text-center">
+          <p class="text-[10px] text-muted">No splits added</p>
         </div>
 
         <div class="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
@@ -82,10 +83,10 @@
             <div
               v-for="(split, index) in splits"
               :key="index"
-              class="group bg-white border border-gray-200 hover:border-indigo-300 rounded-lg p-3 shadow-sm transition-all flex items-center gap-4"
+              class="group surface-card border border-border hover:border-primary rounded-2xl p-3 shadow-sm transition-all flex items-center gap-4"
             >
                <!-- Badge -->
-               <div class="w-6 h-6 rounded-full bg-gray-100 text-xs font-bold text-gray-500 flex items-center justify-center shrink-0">
+               <div class="w-6 h-6 rounded-full bg-surface-muted text-xs font-bold text-muted flex items-center justify-center shrink-0">
                  {{ index + 1 }}
                </div>
 
@@ -105,26 +106,27 @@
                    <input
                      v-model="split.notes"
                      placeholder="Notes..."
-                     class="w-full text-sm border border-gray-200 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-gray-50 focus:bg-white transition-colors placeholder:text-gray-400"
+                     class="w-full text-sm border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-surface-muted focus:bg-surface transition-colors placeholder:text-muted"
                    >
                  </div>
 
                  <!-- Amount Input -->
                  <div class="col-span-3 relative group/amount">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span class="text-gray-400 sm:text-sm">Rp</span>
+                      <span class="text-muted text-xs font-medium">Rp</span>
                     </div>
                     <input
                       type="number"
                       step="0.01"
                       v-model.number="split.amount"
-                      class="w-full pl-8 pr-3 py-2 bg-gray-50 focus:bg-white border border-gray-200 rounded-md text-sm font-mono font-bold text-right focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-colors"
+                      class="w-full pl-8 pr-3 py-2 bg-surface-muted focus:bg-surface border border-border rounded-lg text-xs font-mono font-bold text-right focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                       placeholder="0"
                     >
                     <button
                       v-if="index === splits.length - 1 && remainingAmount > 0"
                       @click="fillRemainder(index)"
-                      class="absolute -top-2.5 -right-2 w-5 h-5 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs hover:bg-indigo-200 shadow-sm opacity-0 group-hover/amount:opacity-100 transition-opacity"
+                      class="absolute -top-2.5 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs shadow-sm opacity-0 group-hover/amount:opacity-100 transition-opacity"
+                      :style="{ background: 'rgba(15, 118, 110, 0.10)', color: 'var(--color-primary)' }"
                       title="Fill Remainder"
                     >
                       <i class="bi bi-arrow-down-short"></i>
@@ -133,7 +135,7 @@
                </div>
 
                <!-- Delete Button -->
-               <button @click="removeSplit(index)" class="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0">
+               <button @click="removeSplit(index)" class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition-colors shrink-0">
                  <i class="bi bi-trash-fill text-sm"></i>
                </button>
             </div>
@@ -142,23 +144,23 @@
       </div>
 
       <!-- Compact Error -->
-      <div v-if="splits.length > 0 && hasValidationError" class="bg-red-50 border border-red-100 px-3 py-1.5 rounded text-[10px] text-red-600 flex items-center gap-2">
-         <i class="bi bi-exclamation-circle-fill"></i>
-         <span class="font-medium">{{ validationMessage }}</span>
+      <div v-if="splits.length > 0 && hasValidationError" class="rounded-2xl px-3 py-2 border text-xs flex items-center gap-2" style="background: rgba(185, 28, 28, 0.08); border-color: rgba(185, 28, 28, 0.18);">
+         <i class="bi bi-exclamation-circle-fill" style="color: var(--color-danger);"></i>
+         <span class="font-medium" style="color: var(--color-danger);">{{ validationMessage }}</span>
       </div>
     </div>
 
     <template #footer>
       <div class="flex items-center justify-between w-full">
-         <span class="text-[10px] text-gray-400">
+         <span class="text-[10px] text-muted">
            {{ splits.length }} split{{ splits.length !== 1 ? 's' : '' }}
          </span>
          <div class="flex gap-2">
-            <button @click="onClose" class="text-xs font-medium text-gray-500 hover:text-gray-900 px-3 py-1.5">Cancel</button>
+            <button @click="onClose" class="btn-secondary px-4 py-2 text-xs font-medium">Cancel</button>
             <button
                @click="saveSplits"
                :disabled="hasValidationError"
-               class="px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-1.5"
+               class="btn-primary px-4 py-2 text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
                <i v-if="store.isLoading" class="bi bi-arrow-repeat animate-spin"></i>
                Save

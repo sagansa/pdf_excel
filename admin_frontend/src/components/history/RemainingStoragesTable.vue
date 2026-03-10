@@ -33,38 +33,52 @@
         </FormField>
 
         <div class="flex flex-wrap items-center gap-2 xl:justify-end">
-          <div class="stat-pill !rounded-xl !px-2.5 !py-1 text-[10px]">
-            {{ total }} total rows
-          </div>
-          <button
-            type="button"
-            class="btn-primary !py-2 !text-xs"
-            :disabled="isLoading"
+          <StatCard
+            :value="total"
+            label="total rows"
+            wrapper-class="!rounded-xl !px-2.5 !py-1"
+            label-class="!text-[10px] !font-medium"
+            value-class="!text-xs"
+          />
+          <Button
+            variant="primary"
+            size="md"
+            icon="bi bi-funnel"
+            :loading="isLoading"
             @click="applyFilters"
           >
-            <i class="bi bi-funnel me-1"></i> Apply
-          </button>
-          <button
-            type="button"
-            class="btn-secondary !py-2 !text-xs"
-            :disabled="isLoading"
+            Apply
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            icon="bi bi-arrow-clockwise"
+            :loading="isLoading"
             @click="loadRows"
           >
-            <i class="bi bi-arrow-clockwise me-1"></i> Reload
-          </button>
+            Reload
+          </Button>
         </div>
       </div>
 
       <div class="mt-4 flex flex-wrap items-center gap-2" v-if="isPartialResult || error">
-        <div v-if="isPartialResult" class="remaining-pill remaining-pill--warning">
-          <i class="bi bi-lightning-charge-fill"></i>
-          Fast mode active, only recent pages scanned
-        </div>
+        <Alert
+          v-if="isPartialResult"
+          variant="warning"
+          message="Fast mode active, only recent pages scanned"
+          icon="bi bi-lightning-charge-fill"
+          wrapper-class="!py-2"
+          :show-icon="true"
+        />
 
-        <div v-if="error" class="remaining-pill remaining-pill--danger">
-          <i class="bi bi-exclamation-octagon-fill"></i>
-          {{ error }}
-        </div>
+        <Alert
+          v-if="error"
+          variant="danger"
+          :message="error"
+          icon="bi bi-exclamation-octagon-fill"
+          wrapper-class="!py-2"
+          :show-icon="true"
+        />
       </div>
 
       <details class="remaining-debug">
@@ -101,150 +115,158 @@
       </details>
     </SectionCard>
 
-    <TableShell>
-      <template #toolbar>
-        <div class="remaining-toolbar">
+    <div class="overflow-hidden rounded-2xl border border-border">
+      <div class="bg-surface-muted border-b border-border px-4 py-3">
+        <div class="flex items-center justify-between">
           <div>
-            <h3 class="remaining-toolbar__title">Remaining Storage Snapshots</h3>
-            <p class="remaining-toolbar__subtitle">
+            <h3 class="text-sm font-semibold text-theme">Remaining Storage Snapshots</h3>
+            <p class="mt-1 text-xs text-muted">
               {{ rows.length }} rows on this page, page {{ page }} of {{ lastPage }}
             </p>
           </div>
-          <div class="remaining-toolbar__meta">
-            <span class="stat-pill !rounded-xl !px-2.5 !py-1 text-[10px]">
-              {{ rows.length }} visible
-            </span>
-          </div>
+          <StatCard
+            :value="rows.length"
+            label="visible"
+            wrapper-class="!rounded-xl !px-2.5 !py-1"
+            label-class="!text-[10px] !font-medium"
+            value-class="!text-xs"
+          />
         </div>
-      </template>
+      </div>
 
       <table class="min-w-full text-sm">
-        <thead class="remaining-table-head">
+        <thead class="bg-surface-muted border-b border-border">
           <tr>
-            <th class="remaining-table-head__cell min-w-[112px]">Date</th>
-            <th class="remaining-table-head__cell min-w-[180px]">Store</th>
-            <th class="remaining-table-head__cell min-w-[160px]">User</th>
-            <th class="remaining-table-head__cell min-w-[260px]">Description</th>
-            <th class="remaining-table-head__cell w-[96px] text-right">Lines</th>
-            <th class="remaining-table-head__cell w-[120px] text-right">Total Qty</th>
-            <th class="remaining-table-head__cell w-[96px] text-right">Action</th>
+            <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-muted min-w-[112px]">Date</th>
+            <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-muted min-w-[180px]">Store</th>
+            <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-muted min-w-[160px]">User</th>
+            <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-muted min-w-[260px]">Description</th>
+            <th class="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-muted w-[96px]">Lines</th>
+            <th class="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-muted w-[120px]">Total Qty</th>
+            <th class="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-muted w-[96px]">Action</th>
           </tr>
         </thead>
 
         <tbody class="divide-y" style="border-color: var(--color-border)">
           <tr v-if="isLoading">
-            <td colspan="7" class="remaining-empty">
-              <div class="remaining-empty__icon">
+            <td colspan="7" class="px-6 py-12 text-center">
+              <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl text-lg" style="background: var(--color-surface-muted); color: var(--color-text-muted);">
                 <i class="bi bi-arrow-repeat spin"></i>
               </div>
-              <p class="remaining-empty__title">Loading remaining storages</p>
-              <p class="remaining-empty__text">Fetching the latest storage snapshots.</p>
+              <p class="text-sm font-semibold text-theme">Loading remaining storages</p>
+              <p class="mt-1 text-xs text-muted">Fetching the latest storage snapshots.</p>
             </td>
           </tr>
 
           <tr v-else-if="rows.length === 0">
-            <td colspan="7" class="remaining-empty">
-              <div class="remaining-empty__icon">
+            <td colspan="7" class="px-6 py-12 text-center">
+              <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl text-lg" style="background: var(--color-surface-muted); color: var(--color-text-muted);">
                 <i class="bi bi-inboxes"></i>
               </div>
-              <p class="remaining-empty__title">No remaining storage data</p>
-              <p class="remaining-empty__text">Try adjusting the date or store filter.</p>
+              <p class="text-sm font-semibold text-theme">No remaining storage data</p>
+              <p class="mt-1 text-xs text-muted">Try adjusting the date or store filter.</p>
             </td>
           </tr>
 
           <template v-for="(row, idx) in rows" :key="row.id || `${row.date || 'row'}-${idx}`">
-            <tr class="remaining-row">
-              <td class="remaining-cell whitespace-nowrap">
-                <span class="remaining-date">{{ formatDate(row.date) }}</span>
+            <tr class="transition-colors hover:bg-surface-muted/50">
+              <td class="px-4 py-3 align-top text-sm text-theme whitespace-nowrap">
+                <span class="rounded-lg px-2.5 py-1 text-xs font-semibold" style="background: rgba(15, 118, 110, 0.10); color: var(--color-primary);">
+                  {{ formatDate(row.date) }}
+                </span>
               </td>
-              <td class="remaining-cell">
-                <div class="remaining-cell__stack">
-                  <span class="remaining-cell__primary">{{ row.store_name || '-' }}</span>
-                  <span class="remaining-cell__secondary">Store snapshot</span>
+              <td class="px-4 py-3 align-top text-sm">
+                <div class="flex flex-col gap-1">
+                  <span class="leading-tight text-theme">{{ row.store_name || '-' }}</span>
+                  <span class="text-[11px] text-muted">Store snapshot</span>
                 </div>
               </td>
-              <td class="remaining-cell">
-                <span class="remaining-cell__primary">{{ row.user_name || '-' }}</span>
+              <td class="px-4 py-3 align-top text-sm text-theme">
+                {{ row.user_name || '-' }}
               </td>
-              <td class="remaining-cell">
-                <div class="remaining-cell__stack">
-                  <span class="remaining-cell__primary">{{ row.description || '-' }}</span>
-                  <span class="remaining-cell__secondary">ID {{ row.id || '-' }}</span>
+              <td class="px-4 py-3 align-top text-sm">
+                <div class="flex flex-col gap-1">
+                  <span class="leading-tight text-theme">{{ row.description || '-' }}</span>
+                  <span class="text-[11px] text-muted">ID {{ row.id || '-' }}</span>
                 </div>
               </td>
-              <td class="remaining-cell text-right">
-                <span class="remaining-badge">{{ row.detail_count || 0 }}</span>
+              <td class="px-4 py-3 align-top text-right text-sm">
+                <span class="inline-flex min-w-[34px] items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold" style="background: color-mix(in srgb, var(--color-surface-muted) 65%, black 35%); color: var(--color-text);">
+                  {{ row.detail_count || 0 }}
+                </span>
               </td>
-              <td class="remaining-cell text-right font-semibold">
+              <td class="px-4 py-3 align-top text-right text-sm font-semibold text-theme">
                 {{ formatNumber(row.total_quantity) }}
               </td>
-              <td class="remaining-cell text-right">
-                <button
-                  type="button"
-                  class="btn-secondary !rounded-xl !px-3 !py-1.5 !text-[11px]"
-                  :disabled="Boolean(detailLoadingKeys[buildRowKey(row, idx)])"
+              <td class="px-4 py-3 align-top text-right text-sm">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  :loading="Boolean(detailLoadingKeys[buildRowKey(row, idx)])"
                   @click="toggleDetails(row, idx)"
                 >
-                  {{
-                    Boolean(detailLoadingKeys[buildRowKey(row, idx)])
-                      ? 'Loading'
-                      : (isExpanded(row, idx) ? 'Hide' : 'Detail')
-                  }}
-                </button>
+                  {{ Boolean(detailLoadingKeys[buildRowKey(row, idx)]) ? 'Loading' : (isExpanded(row, idx) ? 'Hide' : 'Detail') }}
+                </Button>
               </td>
             </tr>
 
-            <tr v-if="isExpanded(row, idx)" class="remaining-detail-row">
+            <tr v-if="isExpanded(row, idx)" class="bg-surface-muted/60">
               <td colspan="7" class="p-4 md:p-5">
-                <div class="remaining-detail-shell">
-                  <div class="remaining-detail-shell__header">
-                    <div>
-                      <h4 class="remaining-detail-shell__title">Detail Items</h4>
-                      <p class="remaining-detail-shell__subtitle">
-                        {{ row.store_name || 'Unknown Store' }} • {{ formatDate(row.date) }}
-                      </p>
-                    </div>
-                    <div class="stat-pill !rounded-xl !px-2.5 !py-1 text-[10px]">
-                      {{ row.detail_count || 0 }} items
+                <div class="overflow-hidden rounded-2xl border border-border" style="background: var(--color-surface);">
+                  <div class="border-b px-4 py-3" style="background: color-mix(in srgb, var(--color-surface-muted) 78%, black 22%); border-color: var(--color-border);">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <h4 class="text-sm font-semibold text-theme">Detail Items</h4>
+                        <p class="mt-1 text-xs text-muted">
+                          {{ row.store_name || 'Unknown Store' }} • {{ formatDate(row.date) }}
+                        </p>
+                      </div>
+                      <StatCard
+                        :value="row.detail_count || 0"
+                        label="items"
+                        wrapper-class="!rounded-xl !px-2.5 !py-1"
+                        label-class="!text-[10px] !font-medium"
+                        value-class="!text-xs"
+                      />
                     </div>
                   </div>
 
                   <div
                     v-if="Boolean(detailLoadingKeys[buildRowKey(row, idx)])"
-                    class="remaining-detail-empty"
+                    class="px-4 py-8 text-center text-xs text-muted"
                   >
                     Loading detail items...
                   </div>
 
                   <div
                     v-else-if="(row.details || []).length === 0"
-                    class="remaining-detail-empty"
+                    class="px-4 py-8 text-center text-xs text-muted"
                   >
                     No detail items.
                   </div>
 
                   <div v-else class="overflow-x-auto">
                     <table class="min-w-full text-xs">
-                      <thead class="remaining-subtable-head">
+                      <thead class="bg-surface-muted border-b border-border">
                         <tr>
-                          <th class="remaining-subtable-head__cell min-w-[240px]">Product</th>
-                          <th class="remaining-subtable-head__cell min-w-[120px]">Unit</th>
-                          <th class="remaining-subtable-head__cell w-[120px] text-right">Quantity</th>
+                          <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-muted min-w-[240px]">Product</th>
+                          <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-muted min-w-[120px]">Unit</th>
+                          <th class="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.16em] text-muted w-[120px]">Quantity</th>
                         </tr>
                       </thead>
                       <tbody class="divide-y" style="border-color: var(--color-border)">
                         <tr
                           v-for="(detail, detailIdx) in row.details"
                           :key="detail.id || `${detail.product_id || 'item'}-${detailIdx}`"
-                          class="remaining-subrow"
+                          class="transition-colors hover:bg-surface-muted/30"
                         >
-                          <td class="remaining-subcell">
+                          <td class="px-4 py-2.5 text-sm text-theme">
                             {{ detail.product_name || detail.product_id || '-' }}
                           </td>
-                          <td class="remaining-subcell">
+                          <td class="px-4 py-2.5 text-sm text-theme">
                             {{ detail.unit_name || detail.unit_id || '-' }}
                           </td>
-                          <td class="remaining-subcell text-right font-semibold">
+                          <td class="px-4 py-2.5 text-right text-sm font-semibold text-theme">
                             {{ formatNumber(detail.quantity) }}
                           </td>
                         </tr>
@@ -258,31 +280,33 @@
         </tbody>
       </table>
 
-      <template #footer>
+      <div class="bg-surface-muted border-t border-border px-4 py-3">
         <div class="flex items-center justify-between gap-3">
           <span class="text-xs text-muted">
             Showing page {{ page }} of {{ lastPage }}
           </span>
 
           <div class="flex items-center gap-2">
-            <button
-              class="btn-secondary !py-2 !text-xs"
+            <Button
+              variant="secondary"
+              size="md"
               :disabled="isLoading || page <= 1"
               @click="goToPreviousPage"
             >
               Prev
-            </button>
-            <button
-              class="btn-secondary !py-2 !text-xs"
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
               :disabled="isLoading || page >= lastPage"
               @click="goToNextPage"
             >
               Next
-            </button>
+            </Button>
           </div>
         </div>
-      </template>
-    </TableShell>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -292,8 +316,10 @@ import { historyApi } from '../../api';
 import FormField from '../ui/FormField.vue';
 import SectionCard from '../ui/SectionCard.vue';
 import SelectInput from '../ui/SelectInput.vue';
-import TableShell from '../ui/TableShell.vue';
 import TextInput from '../ui/TextInput.vue';
+import StatCard from '../ui/StatCard.vue';
+import Button from '../ui/Button.vue';
+import Alert from '../ui/Alert.vue';
 
 const rows = ref([]);
 const isLoading = ref(false);
@@ -516,38 +542,6 @@ onMounted(async () => {
   animation: spin 1s linear infinite;
 }
 
-.remaining-toolbar {
-  @apply flex flex-col gap-3 md:flex-row md:items-center md:justify-between;
-}
-
-.remaining-toolbar__title {
-  @apply text-sm font-semibold;
-  color: var(--color-text);
-}
-
-.remaining-toolbar__subtitle {
-  @apply mt-1 text-xs;
-  color: var(--color-text-muted);
-}
-
-.remaining-toolbar__meta {
-  @apply flex items-center gap-2;
-}
-
-.remaining-pill {
-  @apply inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium;
-}
-
-.remaining-pill--warning {
-  background: rgba(180, 83, 9, 0.12);
-  color: var(--color-warning);
-}
-
-.remaining-pill--danger {
-  background: rgba(185, 28, 28, 0.12);
-  color: var(--color-danger);
-}
-
 .remaining-debug {
   @apply mt-4 rounded-2xl border p-3;
   border-color: var(--color-border);
@@ -557,124 +551,6 @@ onMounted(async () => {
 .remaining-debug__summary {
   @apply cursor-pointer text-xs font-semibold;
   color: var(--color-text-muted);
-}
-
-.remaining-table-head {
-  background: color-mix(in srgb, var(--color-surface-muted) 78%, black 22%);
-}
-
-.remaining-table-head__cell {
-  @apply px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em];
-  color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.remaining-row {
-  transition: background-color 160ms ease;
-}
-
-.remaining-row:hover {
-  background: rgba(15, 118, 110, 0.05);
-}
-
-.remaining-cell {
-  @apply px-4 py-3 align-top text-sm;
-  color: var(--color-text);
-}
-
-.remaining-cell__stack {
-  @apply flex flex-col gap-1;
-}
-
-.remaining-cell__primary {
-  @apply leading-tight;
-  color: var(--color-text);
-}
-
-.remaining-cell__secondary {
-  @apply text-[11px];
-  color: var(--color-text-muted);
-}
-
-.remaining-date {
-  @apply rounded-lg px-2.5 py-1 text-xs font-semibold;
-  background: rgba(15, 118, 110, 0.10);
-  color: var(--color-primary);
-}
-
-.remaining-badge {
-  @apply inline-flex min-w-[34px] items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold;
-  background: color-mix(in srgb, var(--color-surface-muted) 65%, black 35%);
-  color: var(--color-text);
-}
-
-.remaining-empty {
-  @apply px-6 py-12 text-center;
-}
-
-.remaining-empty__icon {
-  @apply mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl text-lg;
-  background: color-mix(in srgb, var(--color-surface-muted) 70%, black 30%);
-  color: var(--color-text-muted);
-}
-
-.remaining-empty__title {
-  @apply text-sm font-semibold;
-  color: var(--color-text);
-}
-
-.remaining-empty__text {
-  @apply mt-1 text-xs;
-  color: var(--color-text-muted);
-}
-
-.remaining-detail-row {
-  background: color-mix(in srgb, var(--color-surface-muted) 66%, black 34%);
-}
-
-.remaining-detail-shell {
-  @apply overflow-hidden rounded-2xl border;
-  border-color: var(--color-border);
-  background: var(--color-surface);
-}
-
-.remaining-detail-shell__header {
-  @apply flex flex-col gap-3 border-b px-4 py-3 md:flex-row md:items-center md:justify-between;
-  border-color: var(--color-border);
-  background: color-mix(in srgb, var(--color-surface-muted) 78%, black 22%);
-}
-
-.remaining-detail-shell__title {
-  @apply text-sm font-semibold;
-  color: var(--color-text);
-}
-
-.remaining-detail-shell__subtitle {
-  @apply mt-1 text-xs;
-  color: var(--color-text-muted);
-}
-
-.remaining-detail-empty {
-  @apply px-4 py-8 text-center text-xs;
-  color: var(--color-text-muted);
-}
-
-.remaining-subtable-head {
-  background: color-mix(in srgb, var(--color-surface-muted) 72%, black 28%);
-}
-
-.remaining-subtable-head__cell {
-  @apply px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.16em];
-  color: var(--color-text-muted);
-}
-
-.remaining-subrow:hover {
-  background: rgba(15, 118, 110, 0.04);
-}
-
-.remaining-subcell {
-  @apply px-4 py-2.5;
-  color: var(--color-text);
 }
 
 @keyframes spin {

@@ -1,39 +1,7 @@
 from sqlalchemy import bindparam, text
 
 
-def get_products(company_id=None):
-    query = "SELECT * FROM products"
-    params = {}
-    if company_id:
-        query += " WHERE company_id = :company_id OR company_id IS NULL"
-        params['company_id'] = company_id
-    query += " ORDER BY name ASC"
-    return text(query), params
-
-
-def insert_product():
-    return text("""
-        INSERT INTO products
-        (id, company_id, code, name, category, default_currency, default_price, created_at, updated_at)
-        VALUES (:id, :company_id, :code, :name, :category, :default_currency, :default_price, :now, :now)
-    """)
-
-
-def update_product():
-    return text("""
-        UPDATE products
-        SET company_id = :company_id,
-            code = :code,
-            name = :name,
-            category = :category,
-            default_currency = :default_currency,
-            default_price = :default_price,
-            updated_at = :now
-        WHERE id = :id
-    """)
-
-
-def get_batches(company_id=None):
+def get_batches(conn, company_id=None):
     return _legacy_get_batches(company_id)
 
 
@@ -84,11 +52,9 @@ def _hpp_reference_expr(conn, table_alias='bp'):
     from backend.db.schema import get_table_columns
 
     columns = get_table_columns(conn, 'hpp_batch_products')
-    if 'stock_monitoring_id' in columns and 'product_id' in columns:
-        return f"COALESCE({table_alias}.stock_monitoring_id, {table_alias}.product_id)"
     if 'stock_monitoring_id' in columns:
         return f"{table_alias}.stock_monitoring_id"
-    return f"{table_alias}.product_id"
+    return f"{table_alias}.id"
 
 
 def _hpp_reference_context(conn, table_alias='bp'):
@@ -96,11 +62,9 @@ def _hpp_reference_context(conn, table_alias='bp'):
 
     reference_expr = _hpp_reference_expr(conn, table_alias=table_alias)
     has_stock_monitorings = bool(get_table_columns(conn, 'stock_monitorings'))
-    has_products = bool(get_table_columns(conn, 'products'))
     return {
         'reference_expr': reference_expr,
         'has_stock_monitorings': has_stock_monitorings,
-        'has_products': has_products,
     }
 
 
@@ -113,9 +77,6 @@ def get_batch_unit_prices(conn, batch_id):
     if context['has_stock_monitorings']:
         joins.append(f"LEFT JOIN stock_monitorings sm ON {reference_expr} = sm.id")
         item_name_parts.append('sm.name')
-    if context['has_products']:
-        joins.append(f"LEFT JOIN products p ON {reference_expr} = p.id")
-        item_name_parts.append('p.name')
 
     fallback_name = f"CAST({reference_expr} AS CHAR)"
     item_name_expr = "COALESCE(" + ", ".join([*item_name_parts, fallback_name]) + ")"
@@ -170,13 +131,9 @@ def get_batch_products(conn, batch_id):
     if context['has_stock_monitorings']:
         joins.append(f"LEFT JOIN stock_monitorings sm ON {reference_expr} = sm.id")
         item_name_parts.append('sm.name')
-    if context['has_products']:
-        joins.append(f"LEFT JOIN products p ON {reference_expr} = p.id")
-        item_name_parts.append('p.name')
 
     fallback_name = f"CAST({reference_expr} AS CHAR)"
     item_name_expr = "COALESCE(" + ", ".join([*item_name_parts, fallback_name]) + ")"
-    product_code_expr = 'p.code' if context['has_products'] else 'NULL'
     monitoring_category_expr = 'sm.category' if context['has_stock_monitorings'] else 'NULL'
     return text(f"""
         SELECT
@@ -184,7 +141,6 @@ def get_batch_products(conn, batch_id):
             CAST({reference_expr} AS CHAR) AS stock_monitoring_id,
             {item_name_expr} AS product_name,
             {item_name_expr} AS item_name,
-            {product_code_expr} AS product_code,
             {monitoring_category_expr} AS monitoring_category
         FROM hpp_batch_products bp
         {' '.join(joins)}
@@ -276,9 +232,6 @@ def insert_batch_product(conn):
     if 'stock_monitoring_id' in columns:
         insert_columns.append('stock_monitoring_id')
         insert_values.append(':stock_monitoring_id')
-    if 'product_id' in columns:
-        insert_columns.append('product_id')
-        insert_values.append(':product_id')
 
     insert_columns.extend([
         'quantity',

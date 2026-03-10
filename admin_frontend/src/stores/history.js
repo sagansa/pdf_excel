@@ -233,14 +233,6 @@ export const useHistoryStore = defineStore('history', {
         
         console.log('HistoryStore: sortedMarks computed, count:', marks.length);
         
-        // Look for Laptop mark specifically
-        const laptopMark = marks.find(m => m.id === '670f93c5-b940-4a06-a556-7c0f92a5cb86');
-        if (laptopMark) {
-            console.log('HistoryStore: Found Laptop mark in sortedMarks:', laptopMark);
-        } else {
-            console.warn('HistoryStore: Laptop mark NOT found in sortedMarks');
-        }
-        
         return marks;
     },
 
