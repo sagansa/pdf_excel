@@ -1,258 +1,228 @@
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    @click.self="close"
+  <BaseModal
+    :isOpen="isOpen"
+    size="2xl"
+    @close="close"
   >
-    <div
-      class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
-    >
-      <div class="p-6 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-bold text-gray-900">
-            {{
-              isEditMode
-                ? "Edit Aset Amortisasi"
-                : "Daftarkan Aset Amortisasi Baru"
-            }}
-          </h3>
-          <button
-            @click="close"
-            class="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <i class="bi bi-x-lg text-xl"></i>
-          </button>
-        </div>
-      </div>
+    <template #title>
+      {{
+        isEditMode
+          ? "Edit Aset Amortisasi"
+          : "Daftarkan Aset Amortisasi Baru"
+      }}
+    </template>
 
-      <form @submit.prevent="handleSubmit" class="p-6 space-y-5">
-        <!-- Asset Information -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="md:col-span-2">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">
-              Nama Aset <span class="text-red-500">*</span>
-            </label>
-            <input
+    <form @submit.prevent="handleSubmit" class="space-y-5 px-6">
+      <!-- Asset Information -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="md:col-span-2">
+          <FormField label="Nama Aset" :required="true">
+            <TextInput
               v-model="form.asset_name"
               required
-              type="text"
-              class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm"
               placeholder="Misal: Pembelian Software ERP 2025"
             />
-          </div>
+          </FormField>
+        </div>
 
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">
-              Kelompok Aset <span class="text-red-500">*</span>
-            </label>
-            <select
+        <div>
+          <FormField label="Kelompok Aset" :required="true">
+            <SelectInput
               v-model="form.asset_group_id"
               required
-              class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm"
-            >
-              <option value="" disabled>Pilih Kelompok Aset...</option>
-              <optgroup
-                v-for="(groups, type) in groupedAssetGroups"
-                :key="type"
-                :label="getAssetTypeLabel(type)"
-              >
-                <option
-                  v-for="group in groups"
-                  :key="group.id"
-                  :value="group.id"
-                >
-                  {{ group.group_name }} ({{ group.useful_life_years }} tahun /
-                  {{ group.tarif_rate }}%)
-                </option>
-              </optgroup>
-            </select>
-          </div>
+              placeholder="Pilih Kelompok Aset..."
+              :options="groupedAssetGroupOptions"
+              label-key="label"
+              value-key="id"
+            />
+          </FormField>
+        </div>
 
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">
-              Tanggal Mulai Amortisasi <span class="text-red-500">*</span>
-            </label>
-            <input
+        <div>
+          <FormField label="Tanggal Mulai Amortisasi" :required="true" hint="Bulan amortisasi dimulai.">
+            <TextInput
               v-model="form.acquisition_date"
               required
               type="date"
-              class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm"
             />
-            <p class="text-[10px] text-gray-500 mt-1">
-              Bulan amortisasi dimulai.
-            </p>
-          </div>
+          </FormField>
+        </div>
+      </div>
+
+      <!-- Link Transactions Section -->
+      <div class="space-y-3 px-2">
+        <div class="flex items-center justify-between">
+          <label class="block text-xs font-bold text-theme">
+            <i class="bi bi-link-45deg mr-1"></i>
+            Link Transaksi Pembayaran
+          </label>
+          <span
+            class="text-xs font-medium rounded-full px-2 py-1"
+            style="background: rgba(15, 118, 110, 0.10); color: var(--color-primary);"
+          >
+            {{ selectedTransactionIds.length }} selected
+          </span>
         </div>
 
-        <!-- Link Transactions Section (like Rental Contract) -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <label class="block text-sm font-bold text-gray-700">
-              <i class="bi bi-link-45deg mr-1"></i>
-              Link Transaksi Pembayaran
-            </label>
-            <span
-              class="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full font-medium"
-            >
-              {{ selectedTransactionIds.length }} selected
-            </span>
+        <div class="border border-border rounded-2xl overflow-hidden">
+          <div class="bg-surface-muted px-4 py-2 border-b border-border">
+            <div class="flex items-center gap-2">
+              <TextInput
+                v-model="searchQuery"
+                placeholder="Cari transaksi..."
+                class="flex-1"
+              />
+              <button
+                type="button"
+                @click="toggleSortDirection"
+                class="text-muted hover:text-theme px-2"
+                :title="
+                  sortDirection === 'asc'
+                    ? 'Urutkan: Baru ke Lama'
+                    : 'Urutkan: Lama ke Baru'
+                "
+              >
+                <i
+                  :class="
+                    sortDirection === 'asc'
+                      ? 'bi bi-sort-numeric-down'
+                      : 'bi bi-sort-numeric-up'
+                  "
+                ></i>
+              </button>
+              <button
+                type="button"
+                @click="fetchLinkableTransactions"
+                class="text-muted hover:text-theme px-2"
+                title="Refresh"
+              >
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+            </div>
           </div>
 
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="searchQuery"
-                  type="text"
-                  placeholder="Cari transaksi..."
-                  class="flex-1 text-xs px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <button
-                  type="button"
-                  @click="toggleSortDirection"
-                  class="text-gray-500 hover:text-indigo-600 px-2"
-                  :title="
-                    sortDirection === 'asc'
-                      ? 'Urutkan: Baru ke Lama'
-                      : 'Urutkan: Lama ke Baru'
-                  "
-                >
-                  <i
-                    :class="
-                      sortDirection === 'asc'
-                        ? 'bi bi-sort-numeric-down'
-                        : 'bi bi-sort-numeric-up'
-                    "
-                  ></i>
-                </button>
-                <button
-                  type="button"
-                  @click="fetchLinkableTransactions"
-                  class="text-gray-500 hover:text-indigo-600 px-2"
-                  title="Refresh"
-                >
-                  <i class="bi bi-arrow-clockwise"></i>
-                </button>
-              </div>
+          <div class="max-h-48 overflow-y-auto">
+            <div v-if="isLoadingTxns" class="px-4 py-6 text-center">
+              <span
+                class="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block"
+              ></span>
+              <p class="text-xs text-muted mt-2">Memuat transaksi...</p>
             </div>
 
-            <div class="max-h-48 overflow-y-auto">
-              <div v-if="isLoadingTxns" class="px-4 py-6 text-center">
-                <span
-                  class="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin inline-block"
-                ></span>
-                <p class="text-xs text-gray-500 mt-2">Memuat transaksi...</p>
-              </div>
+            <div
+              v-else-if="filteredTransactions.length === 0"
+              class="px-4 py-8 text-center text-muted text-xs"
+            >
+              <i class="bi bi-inbox text-2xl mb-2 block"></i>
+              Tidak ada transaksi aset yang belum terdaftar
+            </div>
 
-              <div
-                v-else-if="filteredTransactions.length === 0"
-                class="px-4 py-8 text-center text-gray-500 text-xs"
+            <div
+              v-else
+              v-for="txn in filteredTransactions"
+              :key="txn.id"
+              class="flex items-center px-4 py-3 hover:bg-surface-muted border-b border-border last:border-0"
+              :class="{ 'bg-surface-muted': isSelected(txn.id) }"
+            >
+              <input
+                :id="'asset-txn-' + txn.id"
+                v-model="selectedTransactionIds"
+                :value="txn.id"
+                type="checkbox"
+                class="h-4 w-4 text-primary focus:ring-primary border-border rounded"
+              />
+              <label
+                :for="'asset-txn-' + txn.id"
+                class="ml-3 flex-1 cursor-pointer"
               >
-                <i class="bi bi-inbox text-2xl mb-2 block"></i>
-                Tidak ada transaksi aset yang belum terdaftar
-              </div>
-
-              <div
-                v-else
-                v-for="txn in filteredTransactions"
-                :key="txn.id"
-                class="flex items-center px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                :class="{ 'bg-indigo-50': isSelected(txn.id) }"
-              >
-                <input
-                  :id="'asset-txn-' + txn.id"
-                  v-model="selectedTransactionIds"
-                  :value="txn.id"
-                  type="checkbox"
-                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label
-                  :for="'asset-txn-' + txn.id"
-                  class="ml-3 flex-1 cursor-pointer"
-                >
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <div class="text-xs font-semibold text-gray-900">
-                        {{ txn.description }}
-                      </div>
-                      <div class="text-[10px] text-gray-500">
-                        {{ txn.txn_date }} |
-                        {{ txn.mark_name || txn.internal_report || "-" }}
-                      </div>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-semibold text-theme">
+                      {{ txn.description }}
                     </div>
-                    <div class="text-right">
-                      <div class="text-sm font-bold text-gray-900">
-                        {{ formatCurrency(txn.amount) }}
-                      </div>
+                    <div class="text-[10px] text-muted">
+                      {{ txn.txn_date }} |
+                      {{ txn.mark_name || txn.internal_report || "-" }}
                     </div>
                   </div>
-                </label>
-              </div>
+                  <div class="text-right">
+                    <div class="text-xs font-bold text-theme font-mono">
+                      {{ formatCurrency(txn.amount) }}
+                    </div>
+                  </div>
+                </div>
+              </label>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Summary -->
+      <!-- Summary -->
+      <div
+        v-if="selectedTransactionIds.length > 0"
+        class="rounded-2xl px-4 py-3"
+        style="background: rgba(15, 118, 110, 0.08); border: 1px solid rgba(15, 118, 110, 0.18);"
+      >
         <div
-          v-if="selectedTransactionIds.length > 0"
-          class="bg-indigo-50 border border-indigo-100 rounded-lg p-4"
+          class="text-[10px] font-bold uppercase mb-2 tracking-wider"
+          style="color: var(--color-primary);"
         >
-          <div
-            class="text-[10px] font-bold text-indigo-500 uppercase mb-2 tracking-wider"
-          >
-            Ringkasan Aset
-          </div>
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <div class="text-gray-500 text-[10px] uppercase">
-                Jumlah Transaksi
-              </div>
-              <div class="font-semibold text-gray-900">
-                {{ selectedTransactionIds.length }} transaksi
-              </div>
+          Ringkasan Aset
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <div class="text-muted text-[10px] uppercase">
+              Jumlah Transaksi
             </div>
-            <div>
-              <div class="text-gray-500 text-[10px] uppercase">
-                Total Nilai Perolehan
-              </div>
-              <div class="font-bold text-indigo-700 text-lg">
-                {{ formatCurrency(totalSelectedAmount) }}
-              </div>
+            <div class="font-semibold text-theme">
+              {{ selectedTransactionIds.length }} transaksi
+            </div>
+          </div>
+          <div>
+            <div class="text-muted text-[10px] uppercase">
+              Total Nilai Perolehan
+            </div>
+            <div class="font-bold text-lg font-mono" style="color: var(--color-primary);">
+              {{ formatCurrency(totalSelectedAmount) }}
             </div>
           </div>
         </div>
+      </div>
+    </form>
 
-        <!-- Action Buttons -->
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            @click="close"
-            class="px-5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-colors"
-            :disabled="isSubmitting"
-          >
-            Batal
-          </button>
-          <button
-            type="submit"
-            class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors inline-flex items-center gap-2"
-            :disabled="isSubmitting || !isFormValid"
-          >
-            <span
-              v-if="isSubmitting"
-              class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
-            ></span>
-            <i v-else class="bi bi-check2-circle"></i>
-            {{ isEditMode ? "Simpan Perubahan" : "Daftarkan Aset" }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+    <template #footer>
+      <button
+        type="button"
+        @click="close"
+        class="btn-secondary px-5 py-2 text-xs font-semibold transition-colors"
+        :disabled="isSubmitting"
+      >
+        Batal
+      </button>
+      <button
+        type="submit"
+        @click="handleSubmit"
+        class="btn-primary px-5 py-2 text-xs font-semibold transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="isSubmitting || !isFormValid"
+      >
+        <span
+          v-if="isSubmitting"
+          class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+        ></span>
+        <i v-else class="bi bi-check2-circle"></i>
+        {{ isEditMode ? "Simpan Perubahan" : "Daftarkan Aset" }}
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup>
 import { ref, computed, watch } from "vue";
 import api from "../../../api/index";
+import BaseModal from "../../ui/BaseModal.vue";
+import FormField from "../../ui/FormField.vue";
+import TextInput from "../../ui/TextInput.vue";
+import SelectInput from "../../ui/SelectInput.vue";
 
 const props = defineProps({
   isOpen: {
@@ -345,30 +315,45 @@ const toggleSortDirection = () => {
   sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
 };
 
-const groupedAssetGroups = computed(() => {
-  const grouped = { Tangible: [], Intangible: [], Building: [] };
-  props.assetGroups.forEach((group) => {
-    if (grouped[group.asset_type]) {
-      grouped[group.asset_type].push(group);
+const groupedAssetGroupOptions = computed(() => {
+  const options = [];
+  
+  // Add grouped options by asset type
+  const types = ['Tangible', 'Intangible', 'Building'];
+  const typeLabels = {
+    Tangible: '=== Harta Berwujud ===',
+    Intangible: '=== Harta Tidak Berwujud ===',
+    Building: '=== Bangunan ==='
+  };
+  
+  types.forEach(type => {
+    const groupsOfType = props.assetGroups
+      .filter(g => g.asset_type === type)
+      .sort((a, b) => a.group_number - b.group_number);
+    
+    if (groupsOfType.length > 0) {
+      // Add type header as a disabled option
+      options.push({
+        id: '',
+        label: typeLabels[type],
+        disabled: true
+      });
+      
+      // Add groups of this type
+      groupsOfType.forEach(group => {
+        options.push({
+          ...group,
+          label: `${group.group_name} (${group.useful_life_years} tahun / ${group.tarif_rate}%)`
+        });
+      });
     }
   });
-  Object.keys(grouped).forEach((type) => {
-    grouped[type].sort((a, b) => a.group_number - b.group_number);
-  });
-  return grouped;
+  
+  return options;
 });
 
 const isSelected = (txnId) => {
   return selectedTransactionIds.value.includes(txnId);
-};
-
-const getAssetTypeLabel = (type) => {
-  const labels = {
-    Tangible: "Harta Berwujud",
-    Intangible: "Harta Tidak Berwujud",
-    Building: "Bangunan",
-  };
-  return labels[type] || type;
 };
 
 // Data fetching

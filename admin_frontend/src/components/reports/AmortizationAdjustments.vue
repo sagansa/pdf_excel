@@ -596,10 +596,10 @@
       class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     >
       <div
-        class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        class="surface-card rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
       >
         <div
-          class="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between"
+          class="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl"
         >
           <h3 class="text-lg font-bold text-theme">
             {{ editingItem ? "Edit" : "Add" }} Amortization Entry
@@ -688,10 +688,11 @@
           </div>
           <div
             v-if="!form.asset_group_id && form.amount > 0"
-            class="bg-orange-50 border border-orange-100 rounded-lg p-3 flex items-start gap-2 mt-4"
+            class="rounded-2xl px-4 py-3 flex items-start gap-2"
+            style="background: rgba(180, 83, 9, 0.08); border: 1px solid rgba(180, 83, 9, 0.18);"
           >
-            <i class="bi bi-info-circle-fill text-orange-500 mt-0.5"></i>
-            <p class="text-[11px] text-orange-800 leading-tight">
+            <i class="bi bi-info-circle-fill mt-0.5" style="color: var(--color-warning);"></i>
+            <p class="text-[11px] leading-tight" style="color: var(--color-text);">
               <strong>Calculation Note:</strong> No Asset Group selected. This
               will be treated as a direct amortization expense. Select a group
               to enable automatic annual depreciation.
@@ -747,7 +748,7 @@
         </div>
 
         <div
-          class="bg-surface-muted border-t border-border px-6 py-4 flex items-center justify-end gap-3"
+          class="bg-surface-muted border-t border-border px-6 py-4 flex items-center justify-end gap-3 rounded-b-2xl"
         >
           <button
             @click="closeModal"
@@ -773,13 +774,14 @@
       v-if="showDeleteModal"
       class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     >
-      <div class="surface-card rounded-lg shadow-xl max-w-md w-full">
+      <div class="surface-card rounded-2xl shadow-xl max-w-md w-full">
         <div class="p-6">
           <div class="flex items-center gap-3 mb-4">
             <div
-              class="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center"
+              class="w-12 h-12 rounded-full flex items-center justify-center"
+              style="background: rgba(185, 28, 28, 0.10);"
             >
-              <i class="bi bi-exclamation-triangle text-danger text-xl"></i>
+              <i class="bi bi-exclamation-triangle text-xl" style="color: var(--color-danger);"></i>
             </div>
             <div>
               <h3 class="text-lg font-bold text-theme">Delete Entry?</h3>
@@ -820,9 +822,9 @@
       v-if="showTransactionDetailModal"
       class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     >
-      <div class="surface-card rounded-lg shadow-xl max-w-lg w-full">
+      <div class="surface-card rounded-2xl shadow-xl max-w-lg w-full">
         <div
-          class="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between"
+          class="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl"
         >
           <h3 class="text-lg font-bold text-theme">Transaction Details</h3>
           <button
@@ -960,7 +962,7 @@
         </div>
 
         <div
-          class="bg-surface-muted border-t border-border px-6 py-4 flex items-center justify-end gap-3"
+          class="bg-surface-muted border-t border-border px-6 py-4 flex items-center justify-end gap-3 rounded-b-2xl"
         >
           <button
             @click="closeTransactionDetailModal"

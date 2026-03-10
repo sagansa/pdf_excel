@@ -8,7 +8,6 @@ import ChartOfAccountsView from '../views/ChartOfAccountsView.vue'
 import ReportsView from '../views/ReportsView.vue'
 import UploadSummaryView from '../views/UploadSummaryView.vue'
 import SettingsView from '../views/SettingsView.vue'
-import ProductsView from '../views/ProductsView.vue'
 import ManagementView from '../views/ManagementView.vue'
 import InitialCapitalPage from '../views/InitialCapitalPage.vue'
 import GeneralLedger from '../views/GeneralLedger.vue'
@@ -61,11 +60,6 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: SettingsView
-    },
-    {
-      path: '/products',
-      name: 'products',
-      component: ProductsView
     },
     {
       path: '/management',

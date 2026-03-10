@@ -25,14 +25,11 @@ from backend.routes.inventory.hpp_queries import (
     get_batches as q_get_batches,
     get_earliest_transaction_date as q_get_earliest_transaction_date,
     get_linkable_transactions as q_get_linkable_transactions,
-    get_products as q_get_products,
     get_total_transaction_amount as q_get_total_transaction_amount,
     insert_batch as q_insert_batch,
     insert_batch_product as q_insert_batch_product,
     insert_batch_transaction as q_insert_batch_transaction,
-    insert_product as q_insert_product,
     update_batch as q_update_batch,
-    update_product as q_update_product,
 )
 
 hpp_bp = Blueprint('hpp_bp', __name__)
@@ -175,68 +172,6 @@ def get_hpp_items():
             items.append(transformed)
 
     return jsonify({'items': items})
-
-@hpp_bp.route('/api/products', methods=['GET'])
-def get_products():
-    engine = require_db_engine()
-    company_id = request.args.get('company_id')
-    with engine.connect() as conn:
-        result = conn.execute(*q_get_products(company_id))
-        return jsonify({'products': serialize_result_rows(result)})
-
-@hpp_bp.route('/api/products', methods=['POST'])
-def create_product():
-    engine = require_db_engine()
-    data = request.get_json(silent=True) or {}
-    name = str(data.get('name') or '').strip()
-    if not name:
-        raise BadRequestError('Product name is required')
-
-    product_id = str(uuid.uuid4())
-    now = datetime.now()
-
-    with engine.begin() as conn:
-        conn.execute(q_insert_product(), {
-            'id': product_id,
-            'company_id': data.get('company_id') or None,
-            'code': data.get('code') or None,
-            'name': name,
-            'category': data.get('category') or None,
-            'default_currency': data.get('default_currency') or 'USD',
-            'default_price': float(data.get('default_price') or 0.0),
-            'now': now,
-        })
-    return jsonify({'message': 'Product created successfully', 'id': product_id}), 201
-
-@hpp_bp.route('/api/products/<product_id>', methods=['PUT', 'DELETE'])
-def manage_product(product_id):
-    engine = require_db_engine()
-    if request.method == 'DELETE':
-        with engine.begin() as conn:
-            result = conn.execute(text("DELETE FROM products WHERE id = :id"), {'id': product_id})
-            if result.rowcount == 0:
-                raise NotFoundError('Product not found')
-            return jsonify({'message': 'Product deleted successfully'})
-
-    data = request.get_json(silent=True) or {}
-    name = str(data.get('name') or '').strip()
-    if not name:
-        raise BadRequestError('Product name is required')
-
-    with engine.begin() as conn:
-        result = conn.execute(q_update_product(), {
-            'id': product_id,
-            'company_id': data.get('company_id') or None,
-            'code': data.get('code') or None,
-            'name': name,
-            'category': data.get('category') or None,
-            'default_currency': data.get('default_currency') or 'USD',
-            'default_price': float(data.get('default_price') or 0.0),
-            'now': datetime.now(),
-        })
-        if result.rowcount == 0:
-            raise NotFoundError('Product not found')
-    return jsonify({'message': 'Product updated successfully'})
 
 @hpp_bp.route('/api/hpp-batches', methods=['GET'])
 def get_batches():
@@ -392,7 +327,6 @@ def save_batch():
                 'id': str(uuid.uuid4()),
                 'batch_id': batch_id,
                 'stock_monitoring_id': item['stock_monitoring_id'],
-                'product_id': item['stock_monitoring_id'],
                 'qty': item['quantity'],
                 'currency': item['foreign_currency'],
                 'price': item['foreign_price'],

@@ -75,11 +75,6 @@
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Chart of Accounts</span>
         </router-link>
 
-        <router-link to="/products" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Products' : ''">
-          <i class="bi bi-box-seam text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Products</span>
-        </router-link>
-
         <router-link to="/management" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Locations & Stores' : ''">
           <i class="bi bi-geo-alt text-lg flex-shrink-0"></i>
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Locations & Stores</span>
