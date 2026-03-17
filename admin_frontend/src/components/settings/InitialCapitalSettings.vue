@@ -1,501 +1,461 @@
 <template>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-6 text-white">
-      <div class="flex items-center gap-4">
-        <div class="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-          <i class="bi bi-coins text-xl"></i>
+  <div class="space-y-6">
+    <SectionCard>
+      <template #header>
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between w-full">
+          <div>
+            <h2 class="text-xl font-bold text-theme">Initial Capital</h2>
+            <p class="text-sm text-muted">Configure company initial capital settings for financial reporting.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <SegmentedControl
+              v-model="selectedReportType"
+              :options="[
+                { label: 'Real', value: 'real' },
+                { label: 'Coretax', value: 'coretax' }
+              ]"
+              @change="loadData"
+            />
+          </div>
         </div>
-        <div>
-          <h2 class="text-xl font-semibold">Initial Capital</h2>
-          <p class="text-white/80 text-sm">Configure company initial capital settings</p>
-        </div>
-      </div>
-    </div>
-    
-    <div class="p-6">
+      </template>
+
+      <div class="p-6">
         <!-- Company Selector -->
-        <div class="mb-6">
-          <label for="companySelect" class="block text-sm font-medium text-gray-700 mb-2">
-            <i class="bi bi-building text-indigo-600 mr-2"></i>
+        <div class="mb-8">
+          <label class="label-base mb-2 flex items-center gap-2">
+            <i class="bi bi-building text-primary"></i>
             Select Company
           </label>
-          <select 
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
-            id="companySelect"
-            v-model="$data.selectedCompany"
-            :disabled="loadingCompanies"
-            @change="loadData"
-          >
-            <option value="">-- Select Company --</option>
-            <option 
-              v-for="company in companies" 
-              :key="company.id" 
-              :value="company.id"
+          <div class="max-w-md">
+            <select 
+              class="ui-dropdown-trigger" 
+              v-model="selectedCompany"
+              :disabled="loadingCompanies"
+              @change="loadData"
             >
-              {{ company.name || company.id }}
-            </option>
-          </select>
-          <div v-if="loadingCompanies" class="mt-2 text-sm text-gray-500">
-            <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-            Loading companies...
-          </div>
-          <div v-else-if="!$data.selectedCompany" class="mt-2 text-sm text-amber-600">
-            <i class="bi bi-exclamation-triangle mr-1"></i>
-            Please select a company first
+              <option value="">-- Select Company --</option>
+              <option 
+                v-for="company in companies" 
+                :key="company.id" 
+                :value="company.id"
+              >
+                {{ company.name || company.id }}
+              </option>
+            </select>
           </div>
         </div>
-        
-        <div class="border-t border-gray-200 my-6"></div>
-        
-        <div v-if="loading" class="text-center py-8">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p class="mt-3 text-gray-600">Loading initial capital data...</p>
+
+        <div v-if="loading" class="flex flex-col items-center justify-center py-12">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p class="mt-4 text-muted text-sm font-medium">Loading data...</p>
         </div>
-        
-        <div v-else>
-          <!-- Info Alert -->
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6" v-if="!hasData">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <i class="bi bi-info-circle-fill text-blue-600 text-lg"></i>
+
+        <div v-else-if="!selectedCompany" class="py-12 text-center">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface-muted mb-4">
+            <i class="bi bi-building text-2xl text-muted"></i>
+          </div>
+          <h3 class="text-lg font-semibold text-theme">No Company Selected</h3>
+          <p class="text-muted text-sm max-w-xs mx-auto mt-1">Please select a company to configure its initial capital settings.</p>
+        </div>
+
+        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <!-- Form Section -->
+          <div class="lg:col-span-8 space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="field-stack">
+                <label class="label-base">Initial Capital Amount</label>
+                <TextInput
+                  v-model="formattedAmount"
+                  placeholder="0"
+                  @input="handleAmountInput"
+                >
+                  <template #leading>
+                    <span class="text-[10px] font-bold text-primary opacity-80 px-1">Rp</span>
+                  </template>
+                </TextInput>
+                <p class="field-hint">Initial capital contributed when established.</p>
               </div>
-              <div class="ml-3">
-                <h3 class="text-sm font-medium text-blue-800">No Initial Capital Data</h3>
-                <p class="mt-1 text-sm text-blue-700">
-                  Please enter the initial capital amount contributed when the company was established. 
-                  This data will be used to calculate Equity in the Balance Sheet.
-                </p>
+
+              <div class="field-stack">
+                <label class="label-base">Previous Retained Earnings</label>
+                <TextInput
+                  v-model="formattedRetainedEarnings"
+                  placeholder="0"
+                  @input="handleRetainedEarningsInput"
+                >
+                  <template #leading>
+                    <span class="text-[10px] font-bold text-primary opacity-80 px-1">Rp</span>
+                  </template>
+                </TextInput>
+                <p class="field-hint">Historical earnings prior to system migration.</p>
+              </div>
+
+              <div class="field-stack">
+                <label class="label-base">Recognition Start Year</label>
+                <TextInput
+                  v-model="formData.startYear"
+                  type="number"
+                  placeholder="2025"
+                  :min="2000"
+                  :max="new Date().getFullYear()"
+                >
+                  <template #leading>
+                    <i class="bi bi-calendar text-muted"></i>
+                  </template>
+                </TextInput>
+                <p class="field-hint">Year when this capital starts appearing in reports.</p>
+              </div>
+
+              <div class="field-stack">
+                <label class="label-base">Description</label>
+                <TextInput
+                  v-model="formData.description"
+                  placeholder="e.g., Founder's Capital"
+                >
+                  <template #leading>
+                    <i class="bi bi-tag text-muted"></i>
+                  </template>
+                </TextInput>
+                <p class="field-hint">Optional reference text for the report.</p>
               </div>
             </div>
-          </div>
-          
-          <!-- Form -->
-          <form @submit.prevent="saveData">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div class="lg:col-span-2 space-y-6">
-                <div>
-                  <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="bi bi-cash-stack text-indigo-600 mr-2"></i>
-                    Initial Capital Amount
-                  </label>
-                  <div class="relative rounded-md shadow-sm">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span class="text-gray-500 sm:text-sm">Rp</span>
-                    </div>
-                    <input 
-                      type="number" 
-                      class="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
-                      id="amount" 
-                      v-model="formData.amount"
-                      placeholder="0"
-                      step="0.01"
-                      required
-                    >
-                  </div>
-                  <p class="mt-2 text-sm text-gray-500">
-                    <i class="bi bi-lightbulb mr-1"></i>
-                    Enter the capital amount according to company establishment documents
-                  </p>
-                </div>
 
-                <div>
-                  <label for="previousRetainedEarningsAmount" class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="bi bi-bar-chart-line text-indigo-600 mr-2"></i>
-                    Laba Ditahan Tahun Sebelumnya
-                  </label>
-                  <div class="relative rounded-md shadow-sm">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span class="text-gray-500 sm:text-sm">Rp</span>
-                    </div>
-                    <input 
-                      type="number" 
-                      class="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
-                      id="previousRetainedEarningsAmount" 
-                      v-model="formData.previousRetainedEarningsAmount"
-                      placeholder="0"
-                      step="0.01"
-                      min="0"
-                    >
-                  </div>
-                  <p class="mt-2 text-sm text-gray-500">
-                    <i class="bi bi-lightbulb mr-1"></i>
-                    Gunakan untuk menjembatani laba ditahan historis sebelum migrasi ke aplikasi ini.
-                  </p>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label for="startYear" class="block text-sm font-medium text-gray-700 mb-2">
-                      <i class="bi bi-calendar text-indigo-600 mr-2"></i>
-                      Start Year
-                    </label>
-                    <input 
-                      type="number" 
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
-                      id="startYear" 
-                      v-model="formData.startYear"
-                      :min="2000"
-                      :max="new Date().getFullYear()"
-                      required
-                    >
-                  </div>
-                  
-                  <div>
-                    <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
-                      <i class="bi bi-tag text-indigo-600 mr-2"></i>
-                      Description
-                    </label>
-                    <input 
-                      type="text" 
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" 
-                      id="description" 
-                      v-model="formData.description"
-                      placeholder="e.g., Founder's capital"
-                    >
-                  </div>
-                </div>
-                
-                <!-- Action Buttons -->
-                <div class="flex flex-wrap gap-3 pt-4">
-                  <button 
-                    type="submit" 
-                    class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    :disabled="saving || !isFormValid"
-                  >
-                    <i class="bi bi-check-lg" v-if="!saving"></i>
-                    <div v-if="saving" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    {{ saving ? 'Saving...' : 'Save Data' }}
-                  </button>
-                  
-                  <button 
-                    type="button" 
-                    class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
-                    @click="resetForm"
-                    v-if="hasData"
-                    :disabled="saving"
-                  >
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                    Reset
-                  </button>
-                  
-                  <button 
-                    type="button" 
-                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                    @click="deleteData"
-                    v-if="hasData"
-                    :disabled="saving || deleting"
-                  >
-                    <i class="bi bi-trash" v-if="!deleting"></i>
-                    <div v-if="deleting" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    {{ deleting ? 'Deleting...' : 'Delete' }}
-                  </button>
-                </div>
-              </div>
+            <!-- Actions -->
+            <div class="flex items-center gap-3 pt-4 border-t border-border">
+              <button 
+                class="btn-primary"
+                @click="saveData"
+                :disabled="saving || !isFormValid"
+              >
+                <i v-if="saving" class="bi bi-arrow-repeat spin mr-2"></i>
+                <i v-else class="bi bi-check-lg mr-2"></i>
+                {{ saving ? 'Saving Changes...' : 'Save Settings' }}
+              </button>
               
-              <!-- Current Data Card -->
-              <div class="lg:col-span-1">
-                <div class="bg-gray-50 rounded-lg p-6" v-if="hasData">
-                  <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <i class="bi bi-database text-indigo-600"></i>
-                    Current Data
-                  </h3>
-                  
-                  <div class="space-y-4">
-                    <div class="border-b border-gray-200 pb-3">
-                      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Capital Amount</div>
-                      <div class="text-lg font-semibold text-indigo-600">
-                        Rp {{ formatNumber(currentData.amount) }}
-                      </div>
-                    </div>
+              <button 
+                v-if="hasData"
+                class="btn-secondary"
+                @click="resetForm"
+                :disabled="saving"
+              >
+                <i class="bi bi-arrow-counterclockwise mr-2"></i>
+                Reset
+              </button>
 
-                    <div class="border-b border-gray-200 pb-3">
-                      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Laba Ditahan Tahun Sebelumnya</div>
-                      <div class="text-lg font-semibold text-emerald-600">
-                        Rp {{ formatNumber(currentData.previousRetainedEarningsAmount) }}
-                      </div>
-                    </div>
-                    
-                    <div class="border-b border-gray-200 pb-3">
-                      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Start Year</div>
-                      <div class="text-lg font-semibold text-gray-900">
-                        {{ currentData.startYear }}
-                      </div>
-                    </div>
-                    
-                    <div class="border-b border-gray-200 pb-3" v-if="currentData.description">
-                      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Description</div>
-                      <div class="text-gray-900">
-                        {{ currentData.description }}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Last Updated</div>
-                      <div class="text-sm text-gray-500 flex items-center gap-1">
-                        <i class="bi bi-clock"></i>
-                        {{ formatDate(currentData.updatedAt) }}
-                      </div>
-                    </div>
-                  </div>
+              <button 
+                v-if="hasData"
+                class="ml-auto btn-danger text-xs px-4"
+                @click="deleteData"
+                :disabled="saving || deleting"
+              >
+                <i v-if="deleting" class="bi bi-arrow-repeat spin mr-2"></i>
+                <i v-else class="bi bi-trash mr-2"></i>
+                Delete Data
+              </button>
+            </div>
+          </div>
+
+          <!-- Summary Sidebar -->
+          <div class="lg:col-span-4 space-y-4">
+            <div class="bg-surface-muted rounded-2xl p-6 border border-border">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-muted mb-6">Current Configuration</h3>
+              
+              <div v-if="!hasData" class="py-4 text-center">
+                <p class="text-sm text-muted">No data saved for <strong>{{ selectedReportType }}</strong>.</p>
+              </div>
+
+              <div v-else class="space-y-6">
+                <StatCard 
+                  label="Capital Amount" 
+                  :value="'Rp ' + formatCompact(currentData.amount)"
+                  variant="primary"
+                  wrapper-class="bg-surface border-border shadow-soft"
+                  icon="bi bi-cash-stack"
+                />
+                
+                <StatCard 
+                  label="Retained Earnings" 
+                  :value="'Rp ' + formatCompact(currentData.previousRetainedEarningsAmount)"
+                  variant="success"
+                  wrapper-class="bg-surface border-border shadow-soft"
+                  icon="bi bi-bar-chart-line"
+                />
+
+                <div class="flex items-center justify-between text-xs font-medium border-t border-border pt-4">
+                  <span class="text-muted">Start Year:</span>
+                  <span class="text-theme">{{ currentData.startYear }}</span>
+                </div>
+
+                <div v-if="currentData.description" class="text-xs leading-relaxed text-muted bg-surface p-3 rounded-xl border border-border italic">
+                  "{{ currentData.description }}"
+                </div>
+
+                <div class="text-[10px] text-muted text-right italic mt-4">
+                  Last updated: {{ formatDate(currentData.updatedAt) }}
                 </div>
               </div>
             </div>
-          </form>
+            
+            <div class="bg-primary/5 rounded-2xl p-6 border border-primary/10">
+              <div class="flex gap-4">
+                <i class="bi bi-info-circle-fill text-primary"></i>
+                <div class="text-xs leading-relaxed">
+                  <p class="font-bold text-primary mb-1">Configuration Scope</p>
+                  <p class="text-muted">These settings are specific to <strong>{{ selectedReportType.toUpperCase() }}</strong>. Switching types allows you to maintain independent balances for audit vs coretax reports.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </SectionCard>
+  </div>
 </template>
 
-<script>
-export default {
-  name: 'InitialCapitalSettings',
-  props: {
-    companyId: {
-      type: String,
-      required: false,
-      default: ''
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue';
+import { useNotifications } from '../../composables/useNotifications';
+import SectionCard from '../ui/SectionCard.vue';
+import StatCard from '../ui/StatCard.vue';
+import TextInput from '../ui/TextInput.vue';
+import SegmentedControl from '../ui/SegmentedControl.vue';
+
+const props = defineProps({
+  companyId: {
+    type: String,
+    default: ''
+  }
+});
+
+const notifications = useNotifications();
+
+// Selection State
+const selectedCompany = ref('');
+const selectedReportType = ref('real');
+const loadingCompanies = ref(false);
+const companies = ref([]);
+
+// Data State
+const loading = ref(false);
+const saving = ref(false);
+const deleting = ref(false);
+const hasData = ref(false);
+
+const formData = ref({
+  amount: 0,
+  previousRetainedEarningsAmount: 0,
+  startYear: new Date().getFullYear(),
+  description: ''
+});
+
+const currentData = ref({
+  amount: 0,
+  previousRetainedEarningsAmount: 0,
+  startYear: 0,
+  description: '',
+  updatedAt: ''
+});
+
+// Formatting Helpers
+const formattedAmount = ref('0');
+const formattedRetainedEarnings = ref('0');
+
+const parseNumber = (str) => {
+  if (!str) return 0;
+  // Remove non-numeric characters except for decimal point
+  const cleaned = str.toString().replace(/[^\d]/g, '');
+  return parseFloat(cleaned) || 0;
+};
+
+const formatThousand = (num) => {
+  if (!num && num !== 0) return '';
+  const val = typeof num === 'string' ? parseNumber(num) : num;
+  return new Intl.NumberFormat('id-ID').format(val);
+};
+
+const handleAmountInput = (val) => {
+  const numeric = parseNumber(val);
+  formData.value.amount = numeric;
+  formattedAmount.value = formatThousand(numeric);
+};
+
+const handleRetainedEarningsInput = (val) => {
+  const numeric = parseNumber(val);
+  formData.value.previousRetainedEarningsAmount = numeric;
+  formattedRetainedEarnings.value = formatThousand(numeric);
+};
+
+const isFormValid = computed(() => {
+  return selectedCompany.value && 
+         formData.value.amount > 0 && 
+         formData.value.startYear >= 2000 && 
+         formData.value.startYear <= new Date().getFullYear();
+});
+
+// Lifecycle
+onMounted(() => {
+  loadCompanies();
+});
+
+// Actions
+const loadCompanies = async () => {
+  loadingCompanies.value = true;
+  try {
+    const response = await fetch('/api/companies');
+    const data = await response.json();
+    companies.value = data.companies || data || [];
+    
+    if (props.companyId) {
+      selectedCompany.value = props.companyId;
+    } else if (companies.value.length === 1) {
+      selectedCompany.value = companies.value[0].id;
     }
-  },
-  data() {
-    return {
-      loading: false,
-      saving: false,
-      deleting: false,
-      loadingCompanies: false,
-      hasData: false,
-      errors: {},
-      companies: [],
-      formData: {
+    
+    if (selectedCompany.value) {
+      loadData();
+    }
+  } catch (error) {
+    console.error('Error loading companies:', error);
+    notifications.error('Failed to load companies list');
+  } finally {
+    loadingCompanies.value = false;
+  }
+};
+
+const loadData = async () => {
+  if (!selectedCompany.value) return;
+  
+  loading.value = true;
+  try {
+    const url = `/api/initial-capital?company_id=${encodeURIComponent(selectedCompany.value)}&report_type=${selectedReportType.value}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.setting) {
+      hasData.value = true;
+      currentData.value = {
+        amount: data.setting.amount,
+        previousRetainedEarningsAmount: data.setting.previous_retained_earnings_amount || 0,
+        startYear: data.setting.start_year,
+        description: data.setting.description || '',
+        updatedAt: data.setting.updated_at
+      };
+      formData.value = { ...currentData.value };
+      formattedAmount.value = formatThousand(formData.value.amount);
+      formattedRetainedEarnings.value = formatThousand(formData.value.previousRetainedEarningsAmount);
+    } else {
+      hasData.value = false;
+      formData.value = {
         amount: 0,
         previousRetainedEarningsAmount: 0,
         startYear: new Date().getFullYear(),
         description: ''
-      },
-      currentData: {
-        amount: 0,
-        previousRetainedEarningsAmount: 0,
-        startYear: 0,
-        description: '',
-        updatedAt: ''
-      }
+      };
+      formattedAmount.value = '0';
+      formattedRetainedEarnings.value = '0';
     }
-  },
-  computed: {
-    isFormValid() {
-      return this.selectedCompanyId && 
-             this.formData.amount > 0 && 
-             this.formData.startYear >= 2000 && 
-             this.formData.startYear <= new Date().getFullYear()
-    },
-    selectedCompanyId() {
-      return this.companyId || this.$data.selectedCompany || ''
-    }
-  },
-  mounted() {
-    console.log('InitialCapitalSettings mounted with companyId:', this.companyId)
-    this.loadCompanies()
-  },
-  methods: {
-    async loadCompanies() {
-      this.loadingCompanies = true
-      try {
-        const response = await fetch('/api/companies')
-        const data = await response.json()
-        this.companies = data.companies || data || []
-        console.log('Loaded companies:', this.companies)
-        
-        // Auto-select company if prop is provided or only one company exists
-        if (this.companyId) {
-          this.$data.selectedCompany = this.companyId
-        } else if (this.companies.length === 1) {
-          this.$data.selectedCompany = this.companies[0].id
-        } else {
-          this.$data.selectedCompany = ''
-        }
-        
-        if (this.selectedCompanyId) {
-          this.loadData()
-        }
-      } catch (error) {
-        console.error('Error loading companies:', error)
-        this.errors.general = 'Failed to load companies list'
-      } finally {
-        this.loadingCompanies = false
-      }
-    },
-    async loadData() {
-      const companyIdToUse = this.selectedCompanyId
-      console.log('Loading initial capital for companyId:', companyIdToUse)
-      
-      if (!companyIdToUse) {
-        this.hasData = false
-        this.formData = {
-          amount: 0,
-          previousRetainedEarningsAmount: 0,
-          startYear: new Date().getFullYear(),
-          description: ''
-        }
-        return
-      }
-      
-      this.loading = true
-      this.errors = {}
-      try {
-        const response = await fetch(`/api/initial-capital?company_id=${encodeURIComponent(companyIdToUse)}`)
-        console.log('API Response status:', response.status)
-        const data = await response.json()
-        console.log('API Response data:', data)
-        
-        if (data.setting) {
-          this.hasData = true
-          this.currentData = {
-            amount: data.setting.amount,
-            previousRetainedEarningsAmount: data.setting.previous_retained_earnings_amount || 0,
-            startYear: data.setting.start_year,
-            description: data.setting.description || '',
-            updatedAt: data.setting.updated_at
-          }
-          this.formData = { ...this.currentData }
-        } else {
-          this.hasData = false
-          this.formData = {
-            amount: 0,
-            previousRetainedEarningsAmount: 0,
-            startYear: new Date().getFullYear(),
-            description: ''
-          }
-        }
-      } catch (error) {
-        console.error('Error loading initial capital:', error)
-        this.errors.general = 'Failed to load initial capital data'
-      } finally {
-        this.loading = false
-      }
-    },
-    
-    async saveData() {
-      if (!this.selectedCompanyId) {
-        this.errors.general = 'Please select a company first'
-        return
-      }
-      
-      this.saving = true
-      this.errors = {}
-      
-      try {
-        const response = await fetch('/api/initial-capital', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            company_id: this.selectedCompanyId,
-            amount: parseFloat(this.formData.amount),
-            previous_retained_earnings_amount: parseFloat(this.formData.previousRetainedEarningsAmount || 0),
-            start_year: parseInt(this.formData.startYear),
-            description: this.formData.description
-          })
-        })
-        
-        const data = await response.json()
-        
-        if (response.ok) {
-          this.hasData = true
-          this.loadData()
-          this.showSuccess('Initial capital saved successfully!')
-        } else {
-          this.errors.general = data.error || 'Failed to save data'
-        }
-      } catch (error) {
-        console.error('Error saving initial capital:', error)
-        this.errors.general = 'Failed to save initial capital'
-      } finally {
-        this.saving = false
-      }
-    },
-    
-    async deleteData() {
-      if (!this.selectedCompanyId) {
-        this.errors.general = 'Please select a company first'
-        return
-      }
-      
-      if (!confirm('Are you sure you want to delete the initial capital? The Balance Sheet may become unbalanced after this action.')) {
-        return
-      }
-      
-      this.deleting = true
-      this.errors = {}
-      
-      try {
-        const response = await fetch(`/api/initial-capital?company_id=${this.selectedCompanyId}`, {
-          method: 'DELETE'
-        })
-        
-        const data = await response.json()
-        
-        if (response.ok) {
-          this.hasData = false
-          this.formData = {
-            amount: 0,
-            previousRetainedEarningsAmount: 0,
-            startYear: new Date().getFullYear(),
-            description: ''
-          }
-          this.currentData = {
-            amount: 0,
-            previousRetainedEarningsAmount: 0,
-            startYear: 0,
-            description: '',
-            updatedAt: ''
-          }
-          this.showSuccess('Initial capital deleted successfully!')
-        } else {
-          this.errors.general = data.error || 'Failed to delete data'
-        }
-      } catch (error) {
-        console.error('Error deleting initial capital:', error)
-        this.errors.general = 'Failed to delete initial capital'
-      } finally {
-        this.deleting = false
-      }
-    },
-    
-    resetForm() {
-      this.formData = {
-        amount: this.currentData.amount,
-        previousRetainedEarningsAmount: this.currentData.previousRetainedEarningsAmount,
-        startYear: this.currentData.startYear,
-        description: this.currentData.description
-      }
-      this.errors = {}
-    },
-    
-    formatNumber(num) {
-      return new Intl.NumberFormat('id-ID').format(num)
-    },
-    
-    formatDate(dateStr) {
-      if (!dateStr) return '-'
-      const date = new Date(dateStr)
-      return date.toLocaleDateString('id-ID', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    },
-    
-    showSuccess(message) {
-      // You can integrate with a toast notification library here
-      alert(message)
-    }
+  } catch (error) {
+    console.error('Error loading initial capital:', error);
+    notifications.error('Failed to load initial capital data');
+  } finally {
+    loading.value = false;
   }
-}
+};
+
+const saveData = async () => {
+  if (!selectedCompany.value) return;
+  
+  saving.value = true;
+  try {
+    const response = await fetch('/api/initial-capital', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        company_id: selectedCompany.value,
+        report_type: selectedReportType.value,
+        amount: formData.value.amount,
+        previous_retained_earnings_amount: formData.value.previousRetainedEarningsAmount,
+        start_year: formData.value.startYear,
+        description: formData.value.description
+      })
+    });
+    
+    const data = await response.json();
+    if (response.ok) {
+      notifications.success('Initial capital saved successfully for ' + selectedReportType.value);
+      await loadData();
+    } else {
+      notifications.error(data.error || 'Failed to save data');
+    }
+  } catch (error) {
+    console.error('Error saving data:', error);
+    notifications.error('Internal server error while saving');
+  } finally {
+    saving.value = false;
+  }
+};
+
+const deleteData = async () => {
+  if (!confirm('Are you sure? This will remove the initial capital configuration for this report type.')) return;
+  
+  deleting.value = true;
+  try {
+    const url = `/api/initial-capital?company_id=${selectedCompany.value}&report_type=${selectedReportType.value}`;
+    const response = await fetch(url, { method: 'DELETE' });
+    if (response.ok) {
+      notifications.success('Data removed successfully');
+      await loadData();
+    } else {
+      notifications.error('Failed to delete data');
+    }
+  } catch (error) {
+    notifications.error('Internal server error while deleting');
+  } finally {
+    deleting.value = false;
+  }
+};
+
+const resetForm = () => {
+  formData.value = { ...currentData.value };
+  formattedAmount.value = formatThousand(formData.value.amount);
+  formattedRetainedEarnings.value = formatThousand(formData.value.previousRetainedEarningsAmount);
+};
+
+// UI Utils
+const formatCompact = (num) => {
+  return new Intl.NumberFormat('id-ID').format(num);
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleString('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+};
+
+const spinClass = "animate-spin";
 </script>
 
 <style scoped>
-/* Component uses Tailwind CSS classes - additional custom styles if needed */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Custom transitions */
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+}
 </style>

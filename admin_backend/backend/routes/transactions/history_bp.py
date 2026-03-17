@@ -25,6 +25,7 @@ def create_manual_transaction():
     header_description = data.get('description', 'Manual Journal')
     company_id = data.get('company_id')
     lines = data.get('lines', [])
+    linked_transaction_ids = data.get('linked_transaction_ids', [])
 
     if not txn_date or not lines:
         raise BadRequestError('Missing required fields (date, lines)')
@@ -132,7 +133,114 @@ def create_manual_transaction():
             c_vals_sql = ', '.join(f":{c}" for c in child_insert_cols)
             conn.execute(text(f"INSERT INTO transactions ({c_cols_sql}) VALUES ({c_vals_sql})"), child_data)
 
+        # Save links to existing transactions if provided
+        if linked_transaction_ids:
+            for linked_id in linked_transaction_ids:
+                conn.execute(text("""
+                    INSERT IGNORE INTO manual_journal_links (id, manual_txn_id, linked_txn_id, created_at)
+                    VALUES (:id, :manual_txn_id, :linked_txn_id, :now)
+                """), {
+                    'id': str(uuid.uuid4()),
+                    'manual_txn_id': parent_txn_id,
+                    'linked_txn_id': linked_id,
+                    'now': now
+                })
+
     return jsonify({'message': 'Manual multi-line journal entry created successfully', 'id': parent_txn_id}), 201
+
+
+@history_bp.route('/api/transactions/manual/<txn_id>/links', methods=['GET'])
+def get_manual_journal_links(txn_id):
+    """Get all transactions linked to a manual journal entry."""
+    engine = require_db_engine()
+
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT t.id, t.txn_date, t.description, t.amount, t.db_cr,
+                   t.bank_code, c.name as company_name
+            FROM manual_journal_links mjl
+            JOIN transactions t ON mjl.linked_txn_id = t.id
+            LEFT JOIN companies c ON t.company_id = c.id
+            WHERE mjl.manual_txn_id = :txn_id
+            ORDER BY t.txn_date DESC
+        """), {'txn_id': txn_id}).fetchall()
+
+        links = []
+        for row in rows:
+            d = serialize_row_values(row._mapping)
+            d['db_cr'] = _normalize_db_cr(d.get('db_cr'))
+            links.append(d)
+
+        return jsonify({'links': links})
+
+
+@history_bp.route('/api/transactions/linkable', methods=['GET'])
+def get_linkable_transactions():
+    """Search transactions that can be linked to a manual journal.
+    Excludes: child transactions (have a parent_id), MANUAL source transactions.
+    """
+    engine = require_db_engine()
+
+    company_id = request.args.get('company_id')
+    search = request.args.get('search', '').strip()
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    exclude_manual_txn_id = request.args.get('exclude_manual_txn_id')  # exclude already-linked ones
+
+    where_clauses = [
+        "(t.source_file IS NULL OR t.source_file != 'MANUAL')",
+        "(t.parent_id IS NULL OR t.parent_id = '')",
+    ]
+    params = {}
+
+    if company_id:
+        where_clauses.append("t.company_id = :company_id")
+        params['company_id'] = company_id
+
+    if search:
+        where_clauses.append("t.description LIKE :search")
+        params['search'] = f'%{search}%'
+
+    if start_date:
+        where_clauses.append("t.txn_date >= :start_date")
+        params['start_date'] = start_date
+
+    if end_date:
+        where_clauses.append("t.txn_date <= :end_date")
+        params['end_date'] = end_date
+
+    # Exclude transactions already linked to a specific manual journal
+    if exclude_manual_txn_id:
+        where_clauses.append("""
+            t.id NOT IN (
+                SELECT linked_txn_id FROM manual_journal_links
+                WHERE manual_txn_id = :exclude_manual_txn_id
+            )
+        """)
+        params['exclude_manual_txn_id'] = exclude_manual_txn_id
+
+    where_sql = ' AND '.join(where_clauses)
+
+    with engine.connect() as conn:
+        rows = conn.execute(text(f"""
+            SELECT t.id, t.txn_date, t.description, t.amount, t.db_cr,
+                   t.bank_code, m.internal_report as mark_name,
+                   c.name as company_name
+            FROM transactions t
+            LEFT JOIN marks m ON t.mark_id = m.id
+            LEFT JOIN companies c ON t.company_id = c.id
+            WHERE {where_sql}
+            ORDER BY t.txn_date DESC, t.created_at DESC
+            LIMIT 50
+        """), params).fetchall()
+
+        results = []
+        for row in rows:
+            d = serialize_row_values(row._mapping)
+            d['db_cr'] = _normalize_db_cr(d.get('db_cr'))
+            results.append(d)
+
+        return jsonify({'transactions': results})
 
 
 @history_bp.route('/api/transactions', methods=['GET'])
@@ -142,15 +250,21 @@ def get_transactions():
     with engine.connect() as conn:
         result = conn.execute(text("""
             SELECT t.*, m.internal_report, m.personal_use, m.tax_report,
-                   c.name as company_name, c.short_name as company_short_name
+                   c.name as company_name, c.short_name as company_short_name,
+                   mjl.manual_txn_id as linked_manual_id
             FROM transactions t
             LEFT JOIN marks m ON t.mark_id = m.id
             LEFT JOIN companies c ON t.company_id = c.id
+            LEFT JOIN manual_journal_links mjl ON t.id = mjl.linked_txn_id
             ORDER BY t.txn_date DESC, t.created_at DESC
         """))
         transactions = serialize_result_rows(result)
         for d in transactions:
             d['db_cr'] = _normalize_db_cr(d.get('db_cr'))
+            if not str(d.get('description') or '').strip():
+                fallback_desc = d.get('internal_report') or d.get('personal_use') or d.get('tax_report')
+                if fallback_desc:
+                    d['description'] = fallback_desc
         return jsonify({'transactions': transactions})
 
 
@@ -323,12 +437,41 @@ def assign_company_transaction(txn_id):
     company_id = data.get('company_id')
     now = datetime.now()
     with engine.begin() as conn:
-        result = conn.execute(
-            text("UPDATE transactions SET company_id = :company_id, updated_at = :updated_at WHERE id = :id"),
-            {'id': txn_id, 'company_id': company_id, 'updated_at': now}
-        )
-        if int(result.rowcount or 0) == 0:
-            raise NotFoundError('Transaction not found')
+        txn_columns = get_table_columns(conn, 'transactions')
+        update_fields = ["company_id = :company_id"]
+        params = {'company_id': company_id, 'updated_at': now, 'txn_id': txn_id}
+        if 'updated_at' in txn_columns:
+            update_fields.append("updated_at = :updated_at")
+
+        if 'parent_id' in txn_columns:
+            row = conn.execute(
+                text("SELECT id, parent_id FROM transactions WHERE id = :txn_id LIMIT 1"),
+                {'txn_id': txn_id}
+            ).fetchone()
+            if not row:
+                raise NotFoundError('Transaction not found')
+
+            parent_id = str(row.parent_id) if row.parent_id else None
+            if parent_id:
+                params['parent_id'] = parent_id
+                conn.execute(text(f"""
+                    UPDATE transactions
+                    SET {', '.join(update_fields)}
+                    WHERE id = :txn_id OR id = :parent_id OR parent_id = :parent_id
+                """), params)
+            else:
+                conn.execute(text(f"""
+                    UPDATE transactions
+                    SET {', '.join(update_fields)}
+                    WHERE id = :txn_id OR parent_id = :txn_id
+                """), params)
+        else:
+            result = conn.execute(
+                text(f"UPDATE transactions SET {', '.join(update_fields)} WHERE id = :txn_id"),
+                params
+            )
+            if int(result.rowcount or 0) == 0:
+                raise NotFoundError('Transaction not found')
     return jsonify({'message': 'Company assigned successfully'})
 
 
@@ -395,14 +538,42 @@ def bulk_assign_company_transactions():
 
     now = datetime.now()
     with engine.begin() as conn:
-        conn.execute(
-            text("""
-                UPDATE transactions
-                SET company_id = :company_id, updated_at = :updated_at
-                WHERE id IN :ids
-            """).bindparams(bindparam('ids', expanding=True)),
-            {'ids': txn_ids, 'company_id': company_id, 'updated_at': now}
-        )
+        txn_columns = get_table_columns(conn, 'transactions')
+        update_fields = ["company_id = :company_id"]
+        params = {'company_id': company_id, 'updated_at': now}
+        if 'updated_at' in txn_columns:
+            update_fields.append("updated_at = :updated_at")
+
+        update_ids = set(txn_ids)
+        if 'parent_id' in txn_columns and txn_ids:
+            rows = conn.execute(
+                text("SELECT id, parent_id FROM transactions WHERE id IN :ids")
+                .bindparams(bindparam('ids', expanding=True)),
+                {'ids': list(update_ids)}
+            ).fetchall()
+            parent_ids = set()
+            for row in rows:
+                parent_ids.add(str(row.parent_id) if row.parent_id else str(row.id))
+
+            if parent_ids:
+                children = conn.execute(
+                    text("SELECT id FROM transactions WHERE parent_id IN :parent_ids")
+                    .bindparams(bindparam('parent_ids', expanding=True)),
+                    {'parent_ids': list(parent_ids)}
+                ).fetchall()
+                update_ids.update(parent_ids)
+                update_ids.update(str(row.id) for row in children)
+
+        if update_ids:
+            params['ids'] = list(update_ids)
+            conn.execute(
+                text(f"""
+                    UPDATE transactions
+                    SET {', '.join(update_fields)}
+                    WHERE id IN :ids
+                """).bindparams(bindparam('ids', expanding=True)),
+                params
+            )
     return jsonify({'message': f'{len(txn_ids)} transactions updated successfully'})
 
 
@@ -518,6 +689,20 @@ def save_transaction_splits(txn_id):
                     WHERE id = :txn_id
                 """), {'txn_id': txn_id})
 
+        mark_name_lookup = {}
+        mark_ids = list({str(split.get('mark_id')) for split in splits if split.get('mark_id')})
+        if mark_ids:
+            mark_rows = conn.execute(
+                text("""
+                    SELECT id, internal_report, personal_use, tax_report
+                    FROM marks
+                    WHERE id IN :ids
+                """).bindparams(bindparam('ids', expanding=True)),
+                {'ids': mark_ids}
+            ).fetchall()
+            for row in mark_rows:
+                mark_name_lookup[str(row.id)] = row.internal_report or row.personal_use or row.tax_report or ''
+
         insert_sql = text("""
             INSERT INTO transactions (
                 id, parent_id, description, amount, db_cr, txn_date,
@@ -530,10 +715,15 @@ def save_transaction_splits(txn_id):
 
         now = datetime.now()
         for split in splits:
+            raw_desc = split.get('description')
+            description = str(raw_desc).strip() if raw_desc is not None else ''
+            if not description:
+                mark_label = mark_name_lookup.get(str(split.get('mark_id') or ''))
+                description = mark_label or parent_data.get('description') or ''
             conn.execute(insert_sql, {
                 'id': str(uuid.uuid4()),
                 'parent_id': txn_id,
-                'description': split.get('description', ''),
+                'description': description,
                 'amount': split.get('amount', 0),
                 'db_cr': _normalize_db_cr(split.get('db_cr') or parent_data.get('db_cr') or 'DB'),
                 'txn_date': parent_data.get('txn_date'),

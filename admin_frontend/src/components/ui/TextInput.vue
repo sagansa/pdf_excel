@@ -32,7 +32,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, useSlots } from 'vue';
+
+const slots = useSlots();
 
 defineOptions({
   inheritAttrs: false
@@ -76,9 +78,11 @@ const inputClasses = computed(() => {
     ? 'py-1.5 text-xs'
     : 'py-2 text-sm';
 
+  const hasLeading = props.leadingIcon || !!slots.leading;
+
   return [
     'w-full border-none bg-transparent pr-3 outline-none focus:ring-0',
-    props.leadingIcon || false ? 'pl-8' : 'pl-3',
+    hasLeading ? 'pl-11' : 'pl-3',
     props.clearable ? 'pr-10' : '',
     sizeClass
   ];

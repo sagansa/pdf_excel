@@ -5,64 +5,12 @@ from flask import make_response, send_file
 
 from backend.db.schema import get_table_columns
 from backend.routes.accounting_utils import serialize_row_values
-
-
-def coretax_filter_clause(conn, report_type, alias='m'):
-    if str(report_type).strip().lower() != 'coretax':
-        return ''
-
-    mark_columns = get_table_columns(conn, 'marks')
-    if 'is_coretax' in mark_columns:
-        if conn.dialect.name == 'sqlite':
-            return f" AND LOWER(COALESCE(CAST({alias}.is_coretax AS TEXT), '0')) IN ('1', 'true', 'yes', 'y')"
-        return f" AND LOWER(COALESCE(CAST({alias}.is_coretax AS CHAR), '0')) IN ('1', 'true', 'yes', 'y')"
-
-    return f" AND ({alias}.tax_report IS NOT NULL AND TRIM({alias}.tax_report) != '')"
-
-
-def mapping_report_type_expr(conn, alias, fallback='real'):
-    if conn.dialect.name == 'sqlite':
-        return f"LOWER(COALESCE(CAST({alias}.report_type AS TEXT), '{fallback}'))"
-    return f"LOWER(COALESCE(CAST({alias}.report_type AS CHAR), '{fallback}'))"
-
-
-def mark_coa_join_clause(conn, report_type='real', mark_ref='m.id', mapping_alias='mcm', join_type='INNER'):
-    mapping_columns = get_table_columns(conn, 'mark_coa_mapping')
-    normalized_report_type = str(report_type or 'real').strip().lower()
-    if normalized_report_type != 'coretax':
-        normalized_report_type = 'real'
-
-    if 'report_type' not in mapping_columns:
-        return f"{join_type} JOIN mark_coa_mapping {mapping_alias} ON {mapping_alias}.mark_id = {mark_ref}"
-
-    mapping_scope_expr = mapping_report_type_expr(conn, mapping_alias, 'real')
-
-    if normalized_report_type == 'coretax':
-        fallback_alias = f"{mapping_alias}_coretax"
-        fallback_scope_expr = mapping_report_type_expr(conn, fallback_alias, 'real')
-        return f"""
-        {join_type} JOIN mark_coa_mapping {mapping_alias}
-            ON {mapping_alias}.mark_id = {mark_ref}
-           AND (
-                {mapping_scope_expr} = 'coretax'
-                OR (
-                    {mapping_scope_expr} = 'real'
-                    AND NOT EXISTS (
-                        SELECT 1
-                        FROM mark_coa_mapping {fallback_alias}
-                        WHERE {fallback_alias}.mark_id = {mark_ref}
-                          AND {fallback_scope_expr} = 'coretax'
-                          AND UPPER(COALESCE({fallback_alias}.mapping_type, '')) = UPPER(COALESCE({mapping_alias}.mapping_type, ''))
-                    )
-                )
-           )
-        """
-
-    return f"""
-    {join_type} JOIN mark_coa_mapping {mapping_alias}
-        ON {mapping_alias}.mark_id = {mark_ref}
-       AND {mapping_scope_expr} = 'real'
-    """
+# REFACTORED: Import shared SQL fragment functions instead of duplicating
+# This ensures consistent behavior between general ledger and other reports
+from backend.services.reporting.report_sql_fragments import (
+    _coretax_filter_clause as coretax_filter_clause,
+    _mark_coa_join_clause as mark_coa_join_clause,
+)
 
 
 def build_ledger_groups(rows):

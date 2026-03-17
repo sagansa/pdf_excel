@@ -40,11 +40,12 @@ def _serialize_initial_capital_row(row):
 def get_initial_capital():
     engine = require_db_engine()
     company_id = _normalize_company_id(request.args.get('company_id'))
+    report_type = request.args.get('report_type', 'real')
 
     with engine.connect() as conn:
         result = conn.execute(
             get_initial_capital_by_company_query(),
-            {'company_id': company_id}
+            {'company_id': company_id, 'report_type': report_type}
         ).fetchone()
         return jsonify({'setting': _serialize_initial_capital_row(result)})
 
@@ -56,6 +57,7 @@ def save_initial_capital():
         raise BadRequestError('Request body must be JSON')
 
     company_id = _normalize_company_id(data.get('company_id'))
+    report_type = data.get('report_type', 'real')
     amount_raw = data.get('amount')
     if amount_raw is None:
         raise BadRequestError('amount is required')
@@ -74,11 +76,12 @@ def save_initial_capital():
         now_expr = current_timestamp_expression(conn)
         existing = conn.execute(
             get_initial_capital_id_by_company_query(),
-            {'company_id': company_id}
+            {'company_id': company_id, 'report_type': report_type}
         ).fetchone()
 
         params = {
             'company_id': company_id,
+            'report_type': report_type,
             'amount': amount,
             'previous_retained_earnings_amount': previous_retained_earnings_amount,
             'start_year': start_year,
@@ -99,10 +102,11 @@ def save_initial_capital():
 def delete_initial_capital():
     engine = require_db_engine()
     company_id = _normalize_company_id(request.args.get('company_id'))
+    report_type = request.args.get('report_type', 'real')
 
     with engine.begin() as conn:
         conn.execute(
             delete_initial_capital_by_company_query(),
-            {'company_id': company_id}
+            {'company_id': company_id, 'report_type': report_type}
         )
     return jsonify({'message': 'Initial capital setting deleted successfully'})

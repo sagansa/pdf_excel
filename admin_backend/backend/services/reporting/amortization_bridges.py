@@ -181,39 +181,40 @@ def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_da
                 )
                 accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accum_amount
 
-        if str(report_type).strip().lower() != 'coretax':
-            for row in conn.execute(text("""
-                SELECT
-                    a.acquisition_cost,
-                    a.acquisition_date,
-                    a.amortization_start_date,
-                    a.use_half_rate,
-                    ag.asset_type,
-                    ag.tarif_rate
-                FROM amortization_assets a
-                LEFT JOIN amortization_asset_groups ag ON a.asset_group_id = ag.id
-                WHERE (a.is_active = TRUE OR a.is_active = 1)
-                  AND a.acquisition_date <= :as_of_date
-                  AND (:company_id IS NULL OR a.company_id = :company_id)
-            """), {'as_of_date': as_of_date, 'company_id': company_id}):
-                amount = float(row.acquisition_cost or 0)
-                if amount <= 0:
-                    continue
-                start_date = _parse_date(row.amortization_start_date) or _parse_date(row.acquisition_date)
-                if not start_date or start_date > as_of_date_obj:
-                    continue
-                asset_type = row.asset_type or 'Tangible'
-                accum_code = accumulated_code_by_type.get(asset_type, accumulated_code_by_type['Tangible'])
-                rate = float(row.tarif_rate or 20)
-                accum_amount = _calculate_accumulated_amortization(
-                    amount,
-                    rate,
-                    start_date,
-                    as_of_date_obj,
-                    use_half_rate=_parse_bool(row.use_half_rate),
-                    allow_partial_year=allow_partial_year,
-                )
-                accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accum_amount
+        # REFACTORED: Include amortization assets for both 'real' and 'coretax'
+        # Previously excluded for coretax, causing incomplete balance sheet data
+        for row in conn.execute(text("""
+            SELECT
+                a.acquisition_cost,
+                a.acquisition_date,
+                a.amortization_start_date,
+                a.use_half_rate,
+                ag.asset_type,
+                ag.tarif_rate
+            FROM amortization_assets a
+            LEFT JOIN amortization_asset_groups ag ON a.asset_group_id = ag.id
+            WHERE (a.is_active = TRUE OR a.is_active = 1)
+              AND a.acquisition_date <= :as_of_date
+              AND (:company_id IS NULL OR a.company_id = :company_id)
+        """), {'as_of_date': as_of_date, 'company_id': company_id}):
+            amount = float(row.acquisition_cost or 0)
+            if amount <= 0:
+                continue
+            start_date = _parse_date(row.amortization_start_date) or _parse_date(row.acquisition_date)
+            if not start_date or start_date > as_of_date_obj:
+                continue
+            asset_type = row.asset_type or 'Tangible'
+            accum_code = accumulated_code_by_type.get(asset_type, accumulated_code_by_type['Tangible'])
+            rate = float(row.tarif_rate or 20)
+            accum_amount = _calculate_accumulated_amortization(
+                amount,
+                rate,
+                start_date,
+                as_of_date_obj,
+                use_half_rate=_parse_bool(row.use_half_rate),
+                allow_partial_year=allow_partial_year,
+            )
+            accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accum_amount
 
         all_codes = list(set(asset_totals.keys()) | set(accum_totals.keys()))
         coa_lookup = {}

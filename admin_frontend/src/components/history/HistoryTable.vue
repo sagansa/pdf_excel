@@ -68,7 +68,8 @@
                  </td>
                  <td class="text-xs mono">{{ t.bank_code }}</td>
                  <td class="text-xs max-w-[240px]" :title="coaTitleText(t)">
-                      <div v-if="visibleCoas(t).length > 0" class="flex flex-wrap gap-1">
+                      <div v-if="visibleCoas(t).length > 0" class="flex flex-wrap gap-1 items-center">
+                          <i v-if="t.is_linked_to_manual" class="bi bi-link-45deg text-primary text-sm -ml-0.5" title="Linked to manual journal"></i>
                           <span
                               v-for="coa in visibleCoas(t)"
                               :key="coa.key"

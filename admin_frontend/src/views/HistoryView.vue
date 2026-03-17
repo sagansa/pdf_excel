@@ -90,26 +90,16 @@
                 </div>
 
                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-[10px] text-white/60 font-bold uppercase tracking-wider">Bulk Mark</label>
-                        <select class="bulk-bar__select" @change="handleBulkMark($event.target.value)">
-                            <option value="">Select Mark...</option>
-                            <option value="none">-- Unmark --</option>
-                            <option v-for="m in store.sortedMarks" :key="m.id" :value="m.id">
-                                {{ m.internal_report || m.personal_use || 'Unnamed Mark' }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="flex flex-col gap-1">
-                        <label class="text-[10px] text-white/60 font-bold uppercase tracking-wider">Bulk Company</label>
-                        <select class="bulk-bar__select" @change="handleBulkCompany($event.target.value)">
-                            <option value="">Select Company...</option>
-                            <option value="none">-- No Company --</option>
-                            <option v-for="c in store.companies" :key="c.id" :value="c.id">
-                                {{ c.name }}
-                            </option>
-                        </select>
+                    <div class="flex items-center gap-2">
+                        <button 
+                            @click="isBulkActionModalOpen = true"
+                            class="bulk-bar__button group"
+                        >
+                            <span class="flex h-8 items-center gap-2 px-4 rounded-xl bg-white/10 group-hover:bg-white/20 transition-all">
+                                <i class="bi bi-pencil-square text-xs"></i>
+                                <span class="text-sm font-semibold">Bulk Actions</span>
+                            </span>
+                        </button>
                     </div>
 
                     <div class="flex items-center gap-2 ml-2">
@@ -259,6 +249,16 @@
         @close="isBulkDeleteModalOpen = false"
         @confirm="handleConfirmBulkDelete"
     />
+
+    <BulkActionModal
+        :isOpen="isBulkActionModalOpen"
+        :selectedCount="store.selectedTxnIds.length"
+        :companies="store.companies"
+        :sortedMarks="store.sortedMarks"
+        :loading="isBulkAssigning"
+        @close="isBulkActionModalOpen = false"
+        @apply="handleBulkApply"
+    />
   </div>
 </template>
 
@@ -279,6 +279,7 @@ import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
 import SelectInput from '../components/ui/SelectInput.vue';
 import TextInput from '../components/ui/TextInput.vue';
+import BulkActionModal from '../components/history/BulkActionModal.vue';
 import api from '../api';
 
 // Components relocated from Reports
@@ -320,6 +321,8 @@ const showExportMenu = ref(false);
 
 const isBulkDeleteModalOpen = ref(false);
 const isBulkDeleting = ref(false);
+const isBulkActionModalOpen = ref(false);
+const isBulkAssigning = ref(false);
 
 const reportCompanyOptions = computed(() => (
   (store.companies || []).map(company => ({
@@ -380,16 +383,24 @@ const handleSplitSaved = async () => {
     showSplitModal.value = false;
 };
 
-const handleBulkMark = async (markId) => {
-    if (!markId) return;
-    const finalMarkId = markId === 'none' ? null : markId;
-    await store.bulkAssignMark(finalMarkId);
-};
-
-const handleBulkCompany = async (companyId) => {
-    if (!companyId) return;
-    const finalCompanyId = companyId === 'none' ? null : companyId;
-    await store.bulkAssignCompany(finalCompanyId);
+const handleBulkApply = async ({ companyId, markId }) => {
+    isBulkAssigning.value = true;
+    try {
+        if (companyId) {
+            const finalCompanyId = companyId === 'none' ? null : companyId;
+            await store.bulkAssignCompany(finalCompanyId);
+        }
+        if (markId) {
+            const finalMarkId = markId === 'none' ? null : markId;
+            await store.bulkAssignMark(finalMarkId);
+        }
+        isBulkActionModalOpen.value = false;
+        // The store handles reloading and clearing selection
+    } catch (e) {
+        console.error(e);
+    } finally {
+        isBulkAssigning.value = false;
+    }
 };
 
 const handleConfirmBulkDelete = async () => {
@@ -502,5 +513,14 @@ const handleExport = async (format) => {
 
 .bulk-bar__icon--danger {
   color: #fca5a5;
+}
+
+.bulk-bar__button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
 }
 </style>

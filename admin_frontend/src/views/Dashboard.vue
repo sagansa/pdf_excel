@@ -11,6 +11,12 @@
     <!-- Financial Summary -->
     <FinancialSummaryWidget />
 
+    <!-- Stock Comparison -->
+    <StockComparisonWidget />
+
+    <!-- Sales by Date -->
+    <SalesByDateWidget />
+
     <!-- Remaining Storage Monitoring -->
     <RemainingStorageWidget />
 
@@ -86,7 +92,9 @@
 import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
 import FinancialSummaryWidget from '../components/dashboard/FinancialSummaryWidget.vue';
+import StockComparisonWidget from '../components/dashboard/StockComparisonWidget.vue';
 import RemainingStorageWidget from '../components/dashboard/RemainingStorageWidget.vue';
+import SalesByDateWidget from '../components/dashboard/SalesByDateWidget.vue';
 
 const headerBadges = [
   { icon: 'bi bi-lightning-charge-fill', label: 'Fast intake' },

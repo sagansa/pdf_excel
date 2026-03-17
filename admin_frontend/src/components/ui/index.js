@@ -16,3 +16,5 @@ export { default as TableShell } from './TableShell.vue';
 export { default as MultiSelect } from './MultiSelect.vue';
 export { default as ConfirmModal } from './ConfirmModal.vue';
 export { default as ToastViewport } from './ToastViewport.vue';
+export { default as Workspace } from './Workspace.vue';
+export { default as DataGrid } from './DataGrid.vue';

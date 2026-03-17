@@ -354,37 +354,51 @@ main:hover::-webkit-scrollbar-thumb {
   border-top: 1px solid var(--color-border);
 }
 
-.btn-primary {
-  @apply px-4 py-2 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold flex items-center justify-center;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
-  box-shadow: 0 12px 28px rgba(15, 118, 110, 0.22);
-}
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold flex items-center justify-center;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+    box-shadow: 0 12px 28px rgba(15, 118, 110, 0.22);
+  }
 
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 32px rgba(15, 118, 110, 0.26);
-}
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 32px rgba(15, 118, 110, 0.26);
+  }
 
-.btn-secondary {
-  @apply px-4 py-2 rounded-xl transition-all duration-200 font-semibold flex items-center justify-center;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-}
+  .btn-secondary {
+    @apply px-4 py-2 rounded-xl transition-all duration-200 font-semibold flex items-center justify-center;
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+  }
 
-.btn-secondary:hover {
-  border-color: var(--color-border-strong);
-  transform: translateY(-1px);
-}
+  .btn-secondary:hover {
+    border-color: var(--color-border-strong);
+    transform: translateY(-1px);
+  }
 
-.btn-ghost {
-  @apply transition-colors duration-200;
-  color: var(--color-text-muted);
-}
+  .btn-danger {
+    @apply px-4 py-2 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold flex items-center justify-center;
+    background: var(--color-danger);
+    box-shadow: 0 12px 28px rgba(185, 28, 28, 0.22);
+  }
 
-.btn-ghost:hover {
-  background: var(--color-surface-muted);
-  color: var(--color-text);
+  .btn-danger:hover {
+    transform: translateY(-1px);
+    background: #a11818; /* Slightly darker than b91c1c */
+    box-shadow: 0 16px 32px rgba(185, 28, 28, 0.26);
+  }
+
+  .btn-ghost {
+    @apply transition-colors duration-200;
+    color: var(--color-text-muted);
+  }
+
+  .btn-ghost:hover {
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+  }
 }
 
 .table-compact th {

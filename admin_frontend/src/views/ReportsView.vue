@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="reports-surface space-y-6">
     <PageHeader
       eyebrow="Reporting Studio"
       icon="bi bi-file-earmark-bar-graph-fill"
@@ -476,5 +476,146 @@ onBeforeUnmount(() => {
 
 :global(html.dark) .reports-loading {
   background: rgba(15, 21, 28, 0.72);
+}
+</style>
+
+<style>
+html.dark .reports-surface .bg-white {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html.dark .reports-surface .bg-gray-50,
+html.dark .reports-surface .bg-gray-100,
+html.dark .reports-surface .bg-gray-200,
+html.dark .reports-surface .bg-slate-50,
+html.dark .reports-surface .bg-slate-100,
+html.dark .reports-surface .bg-slate-200,
+html.dark .reports-surface .bg-blue-50,
+html.dark .reports-surface .bg-blue-100,
+html.dark .reports-surface .bg-indigo-50,
+html.dark .reports-surface .bg-indigo-100,
+html.dark .reports-surface .bg-green-50,
+html.dark .reports-surface .bg-green-100,
+html.dark .reports-surface .bg-red-50,
+html.dark .reports-surface .bg-red-100,
+html.dark .reports-surface .bg-yellow-50,
+html.dark .reports-surface .bg-yellow-100,
+html.dark .reports-surface .bg-amber-50,
+html.dark .reports-surface .bg-amber-100,
+html.dark .reports-surface .bg-orange-50,
+html.dark .reports-surface .bg-orange-100,
+html.dark .reports-surface .bg-emerald-50,
+html.dark .reports-surface .bg-emerald-100,
+html.dark .reports-surface .bg-sky-50,
+html.dark .reports-surface .bg-sky-100,
+html.dark .reports-surface .bg-purple-50 {
+  background: var(--color-surface-muted);
+}
+
+html.dark .reports-surface .border-gray-100,
+html.dark .reports-surface .border-gray-200,
+html.dark .reports-surface .border-gray-300,
+html.dark .reports-surface .border-slate-100,
+html.dark .reports-surface .border-slate-200,
+html.dark .reports-surface .border-slate-300,
+html.dark .reports-surface .border-blue-100,
+html.dark .reports-surface .border-blue-200,
+html.dark .reports-surface .border-green-100,
+html.dark .reports-surface .border-green-200,
+html.dark .reports-surface .border-red-100,
+html.dark .reports-surface .border-red-200,
+html.dark .reports-surface .border-yellow-200,
+html.dark .reports-surface .border-amber-100,
+html.dark .reports-surface .border-amber-200,
+html.dark .reports-surface .border-orange-100,
+html.dark .reports-surface .border-emerald-200,
+html.dark .reports-surface .border-indigo-100,
+html.dark .reports-surface .border-indigo-200,
+html.dark .reports-surface .border-purple-200 {
+  border-color: var(--color-border);
+}
+
+html.dark .reports-surface .divide-gray-100,
+html.dark .reports-surface .divide-gray-200,
+html.dark .reports-surface .divide-slate-100,
+html.dark .reports-surface .divide-slate-200 {
+  border-color: var(--color-border);
+}
+
+html.dark .reports-surface .text-gray-900,
+html.dark .reports-surface .text-gray-800,
+html.dark .reports-surface .text-gray-700,
+html.dark .reports-surface .text-slate-800,
+html.dark .reports-surface .text-slate-700 {
+  color: var(--color-text);
+}
+
+html.dark .reports-surface .text-gray-600,
+html.dark .reports-surface .text-gray-500,
+html.dark .reports-surface .text-gray-400,
+html.dark .reports-surface .text-gray-300,
+html.dark .reports-surface .text-slate-600,
+html.dark .reports-surface .text-slate-500,
+html.dark .reports-surface .text-slate-400,
+html.dark .reports-surface .text-slate-300 {
+  color: var(--color-text-muted);
+}
+
+html.dark .reports-surface .text-green-900,
+html.dark .reports-surface .text-green-800,
+html.dark .reports-surface .text-green-700,
+html.dark .reports-surface .text-green-600,
+html.dark .reports-surface .text-emerald-700,
+html.dark .reports-surface .text-emerald-600 {
+  color: #86efac;
+}
+
+html.dark .reports-surface .text-red-900,
+html.dark .reports-surface .text-red-800,
+html.dark .reports-surface .text-red-700,
+html.dark .reports-surface .text-red-600 {
+  color: #fca5a5;
+}
+
+html.dark .reports-surface .text-blue-900,
+html.dark .reports-surface .text-blue-800,
+html.dark .reports-surface .text-blue-700,
+html.dark .reports-surface .text-blue-600 {
+  color: #93c5fd;
+}
+
+html.dark .reports-surface .text-indigo-900,
+html.dark .reports-surface .text-indigo-800,
+html.dark .reports-surface .text-indigo-700,
+html.dark .reports-surface .text-indigo-600 {
+  color: #a5b4fc;
+}
+
+html.dark .reports-surface .text-orange-900,
+html.dark .reports-surface .text-orange-800,
+html.dark .reports-surface .text-orange-700,
+html.dark .reports-surface .text-orange-600 {
+  color: #fdba74;
+}
+
+html.dark .reports-surface .text-amber-800,
+html.dark .reports-surface .text-amber-700,
+html.dark .reports-surface .text-amber-600 {
+  color: #fcd34d;
+}
+
+html.dark .reports-surface .text-purple-900,
+html.dark .reports-surface .text-purple-800,
+html.dark .reports-surface .text-purple-700,
+html.dark .reports-surface .text-purple-600 {
+  color: #d8b4fe;
+}
+
+html.dark .reports-surface .text-sky-900,
+html.dark .reports-surface .text-sky-800,
+html.dark .reports-surface .text-sky-700,
+html.dark .reports-surface .text-sky-600 {
+  color: #7dd3fc;
 }
 </style>

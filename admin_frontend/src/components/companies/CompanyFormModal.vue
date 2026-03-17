@@ -1,43 +1,61 @@
 <template>
   <BaseModal :isOpen="isOpen" @close="close">
-    <template #title>{{ isEdit ? 'Edit Company' : 'Add Company' }}</template>
-
-    <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
-      <div class="space-y-1">
-        <label class="label-base">Company Name</label>
-        <input 
-            v-model="form.name" 
-            type="text" 
-            class="input-base" 
-            placeholder="e.g. PT Asa Pangan Bangsa"
-            required
-        >
+    <template #title>
+      <div class="flex items-center gap-2">
+        <i :class="['bi', isEdit ? 'bi-pencil-square' : 'bi-plus-circle-fill', 'text-primary']"></i>
+        <span>{{ isEdit ? 'Edit Company' : 'Add New Company' }}</span>
       </div>
-      <div class="space-y-1">
-        <label class="label-base">Short Name (Abbreviation)</label>
-        <input 
-            v-model="form.short_name" 
-            type="text" 
-            class="input-base" 
-            placeholder="e.g. APB"
+    </template>
+
+    <div class="p-6 space-y-6">
+      <div class="field-stack">
+        <label class="label-base">Company Name</label>
+        <TextInput 
+          v-model="form.name" 
+          placeholder="e.g. PT Asa Pangan Bangsa"
+          required
         >
+          <template #leading>
+            <i class="bi bi-building text-muted"></i>
+          </template>
+        </TextInput>
+        <p class="field-hint">Full legal entity name.</p>
+      </div>
+
+      <div class="field-stack">
+        <label class="label-base">Short Name (Abbreviation)</label>
+        <TextInput 
+          v-model="form.short_name" 
+          placeholder="e.g. APB"
+        >
+          <template #leading>
+            <i class="bi bi-hash text-muted"></i>
+          </template>
+        </TextInput>
+        <p class="field-hint">Used for compact displays and report headers.</p>
       </div>
       
-      <div v-if="error" class="text-sm text-red-600 bg-red-50 p-2 rounded">
-          {{ error }}
+      <div v-if="error" class="bg-danger/5 border border-danger/10 p-3 rounded-xl flex gap-3 text-danger">
+        <i class="bi bi-exclamation-circle-fill mt-0.5"></i>
+        <p class="text-xs font-medium leading-relaxed">{{ error }}</p>
       </div>
-    </form>
+    </div>
 
     <template #footer>
-      <button @click="close" class="btn-secondary">Cancel</button>
-      <button 
-        @click="handleSubmit" 
-        class="btn-primary shadow-lg shadow-indigo-100"
-        :disabled="loading"
-      >
-        <span v-if="loading" class="spinner-border w-4 h-4 me-2"></span>
-        Save Changes
-      </button>
+      <div class="flex items-center justify-end gap-3 w-full">
+        <button @click="close" class="btn-secondary" :disabled="loading">
+          Cancel
+        </button>
+        <button 
+          @click="handleSubmit" 
+          class="btn-primary"
+          :disabled="loading || !form.name"
+        >
+          <i v-if="loading" class="bi bi-arrow-repeat spin mr-2"></i>
+          <i v-else class="bi bi-check-lg mr-2"></i>
+          {{ isEdit ? 'Update Company' : 'Create Company' }}
+        </button>
+      </div>
     </template>
   </BaseModal>
 </template>
@@ -45,6 +63,7 @@
 <script setup>
 import { ref, watch, reactive } from 'vue';
 import BaseModal from '../ui/BaseModal.vue';
+import TextInput from '../ui/TextInput.vue';
 import { useCompanyStore } from '../../stores/companies';
 
 const props = defineProps({
@@ -105,3 +124,14 @@ const handleSubmit = async () => {
     }
 };
 </script>
+
+<style scoped>
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>

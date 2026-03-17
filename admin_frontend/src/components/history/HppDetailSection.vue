@@ -96,8 +96,7 @@ const props = defineProps({
   }
 });
 
-const store = useProductStore();
-const products = computed(() => store.products);
+const products = ref([]);
 
 const items = ref([]);
 const isSaving = ref(false);
@@ -164,8 +163,13 @@ const loadHppData = async () => {
 };
 
 onMounted(async () => {
-    // If store is empty, fetch. Actually we should always ensure products are loaded
-    await store.fetchProducts();
+    // Fetch products locally
+    try {
+        const response = await hppApi.getItems('storage');
+        products.value = response.data.items || [];
+    } catch (err) {
+        console.error("Failed to fetch products:", err);
+    }
     await loadHppData();
 });
 

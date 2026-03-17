@@ -47,33 +47,38 @@ def get_marks():
             d['is_salary_component'] = _parse_bool(d.get('is_salary_component'))
             d['is_rental'] = _parse_bool(d.get('is_rental'))
             d['is_coretax'] = _parse_bool(d.get('is_coretax'))
-            d['mappings'] = []
+            d['mappings_real'] = []
+            d['mappings_coretax'] = []
+            d['mappings'] = d['mappings_real']
             marks_dict[d['id']] = d
 
         mapping_columns = get_table_columns(conn, 'mark_coa_mapping')
-        mapping_scope_filter = ""
+        report_type_select_sql = "'real' AS report_type"
         if 'report_type' in mapping_columns:
             if conn.dialect.name == 'sqlite':
-                mapping_scope_filter = "WHERE LOWER(COALESCE(CAST(mcm.report_type AS TEXT), 'real')) = 'real'"
+                report_type_expr = "LOWER(COALESCE(NULLIF(TRIM(CAST(mcm.report_type AS TEXT)), ''), 'real'))"
             else:
-                mapping_scope_filter = "WHERE LOWER(COALESCE(CAST(mcm.report_type AS CHAR), 'real')) = 'real'"
+                report_type_expr = "LOWER(COALESCE(NULLIF(TRIM(CAST(mcm.report_type AS CHAR)), ''), 'real'))"
+            report_type_select_sql = f"{report_type_expr} AS report_type"
 
         mapping_result = conn.execute(text(f"""
-            SELECT mcm.mark_id, mcm.coa_id, mcm.mapping_type, coa.code, coa.name
+            SELECT mcm.mark_id, mcm.coa_id, mcm.mapping_type, coa.code, coa.name, {report_type_select_sql}
             FROM mark_coa_mapping mcm
             JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
-            {mapping_scope_filter}
         """))
 
         for m in serialize_result_rows(mapping_result):
             mark_id = m['mark_id']
             if mark_id in marks_dict:
-                marks_dict[mark_id]['mappings'].append({
+                report_type = str(m.get('report_type') or 'real').strip().lower()
+                target_key = 'mappings_coretax' if report_type == 'coretax' else 'mappings_real'
+                marks_dict[mark_id][target_key].append({
                     'id': m['coa_id'],
                     'coa_id': m['coa_id'],
                     'code': m['code'],
                     'name': m['name'],
-                    'type': m['mapping_type']
+                    'type': m['mapping_type'],
+                    'report_type': report_type
                 })
 
         return jsonify({'marks': marks})
@@ -190,9 +195,9 @@ def get_mark_coa_mappings(mark_id):
 
         if 'report_type' in mapping_columns:
             if conn.dialect.name == 'sqlite':
-                report_type_expr = "LOWER(COALESCE(CAST(mcm.report_type AS TEXT), 'real'))"
+                report_type_expr = "LOWER(COALESCE(NULLIF(TRIM(CAST(mcm.report_type AS TEXT)), ''), 'real'))"
             else:
-                report_type_expr = "LOWER(COALESCE(CAST(mcm.report_type AS CHAR), 'real'))"
+                report_type_expr = "LOWER(COALESCE(NULLIF(TRIM(CAST(mcm.report_type AS CHAR)), ''), 'real'))"
             report_type_select_sql = f"{report_type_expr} AS report_type"
             if requested_report_type != 'all':
                 report_type_filter_sql = f"AND {report_type_expr} = :report_type"

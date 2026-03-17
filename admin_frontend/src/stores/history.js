@@ -423,6 +423,27 @@ export const useHistoryStore = defineStore('history', {
             }
           }
 
+          // Inherit COAs from linked manual journal
+          const linkedManualId = normalizeId(txn.linked_manual_id);
+          if (linkedManualId) {
+            const manualChildren = childrenByParentId.get(linkedManualId) || [];
+            const txnAmount = toNumeric(txn.amount);
+            const txnDbCr = normalizeDbCr(txn.db_cr);
+            
+            // Look for matching lines in the manual journal (by amount only)
+            for (const mChild of manualChildren) {
+              const mAmount = toNumeric(mChild.amount);
+              if (Math.abs(mAmount - txnAmount) < 0.01) {
+                const mChildMarkId = normalizeId(mChild.mark_id);
+                const hasMChildMark = collectCoasFromMarkId(mChildMarkId, resolvedCoas, resolvedCoaIds, uniqCoas);
+                if (hasMChildMark) {
+                  relatedMarkIds.add(mChildMarkId);
+                  txn.is_linked_to_manual = true;
+                }
+              }
+            }
+          }
+
           if (txn.coa_id) {
               resolvedCoaIds.add(normalizeId(txn.coa_id));
           }

@@ -180,7 +180,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
         conn, equity, as_of_date_obj, as_of_date, company_id, report_type
     )
     append_previous_year_retained_earnings(conn, equity, as_of_date_obj, company_id, report_type)
-    prepend_initial_capital(conn, equity, as_of_date_obj, company_id)
+    prepend_initial_capital(conn, equity, as_of_date_obj, company_id, report_type)
     apply_ending_inventory_bridge(conn, asset_items, as_of_date_obj, company_id)
     apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_date, company_id, report_type)
 

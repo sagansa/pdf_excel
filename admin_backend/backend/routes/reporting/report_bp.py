@@ -212,11 +212,12 @@ def get_marks_summary():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     company_id = request.args.get('company_id')
+    report_type = request.args.get('report_type', 'real')
     if not start_date or not end_date:
         raise BadRequestError('start_date and end_date are required')
 
     with engine.connect() as conn:
-        result = conn.execute(build_marks_summary_query(), {
+        result = conn.execute(build_marks_summary_query(report_type), {
             'start_date': start_date,
             'end_date': end_date,
             'company_id': company_id

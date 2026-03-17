@@ -182,8 +182,8 @@ def append_previous_year_retained_earnings(conn, equity, as_of_date_obj, company
             SELECT MIN(start_year) AS min_start_year,
                    COALESCE(SUM(previous_retained_earnings_amount), 0) AS configured_previous_retained_earnings
             FROM initial_capital_settings
-            WHERE company_id = :company_id
-        """), {'company_id': company_id}).fetchone()
+            WHERE company_id = :company_id AND report_type = :report_type
+        """), {'company_id': company_id, 'report_type': report_type}).fetchone()
         if start_year_result and start_year_result.min_start_year:
             company_start_year = int(start_year_result.min_start_year)
             configured_previous_retained_earnings = float(
@@ -219,13 +219,13 @@ def append_previous_year_retained_earnings(conn, equity, as_of_date_obj, company
         logger.error('Failed to include previous year retained earnings in balance sheet equity: %s', exc)
 
 
-def prepend_initial_capital(conn, equity, as_of_date_obj, company_id):
+def prepend_initial_capital(conn, equity, as_of_date_obj, company_id, report_type='real'):
     try:
         initial_capital_result = conn.execute(text("""
             SELECT amount, start_year, description
             FROM initial_capital_settings
-            WHERE company_id = :company_id
-        """), {'company_id': company_id}).fetchone()
+            WHERE company_id = :company_id AND report_type = :report_type
+        """), {'company_id': company_id, 'report_type': report_type}).fetchone()
         if not initial_capital_result:
             return
 
