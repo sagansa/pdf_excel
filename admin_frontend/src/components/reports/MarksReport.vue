@@ -163,15 +163,25 @@ const getSortIcon = (field) => {
 
 const loadData = async () => {
   if (!store.filters.startDate || !store.filters.endDate) return;
-  
+
   isLoading.value = true;
   try {
+    console.log('MarksReport: Loading data with filters:', {
+      startDate: store.filters.startDate,
+      endDate: store.filters.endDate,
+      companyId: store.filters.companyId,
+      reportType: store.filters.reportType
+    });
+
     const response = await reportsApi.getMarksSummary(
       store.filters.startDate,
       store.filters.endDate,
       store.filters.companyId,
       store.filters.reportType
     );
+
+    console.log('MarksReport: API response:', response.data);
+
     marks.value = response.data.marks || [];
     summary.value = response.data.summary || {};
   } catch (err) {

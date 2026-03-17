@@ -20,9 +20,24 @@ def current_timestamp_expression(conn):
 
 
 def split_parent_exclusion_clause(conn, alias='t'):
+    """
+    Generate SQL clause to exclude parent transactions when children have marks.
+
+    This prevents double-counting when transactions are split:
+    - Parent transaction is just a container (should be excluded from reports)
+    - Child transactions have individual marks (should be included in reports)
+
+    Args:
+        conn: Database connection
+        alias: Table alias for transactions table (default 't')
+
+    Returns:
+        SQL WHERE clause string (empty if parent_id column doesn't exist)
+    """
     txn_columns = get_table_columns(conn, 'transactions')
     if 'parent_id' not in txn_columns:
         return ''
+    # Exclude parent if it has children (children will be included individually)
     return f" AND NOT EXISTS (SELECT 1 FROM transactions t_child WHERE t_child.parent_id = {alias}.id)"
 
 

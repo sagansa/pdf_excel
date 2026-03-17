@@ -25,6 +25,8 @@ from backend.routes.inventory.hpp_bp import hpp_bp
 from backend.routes.master_data.initial_capital_bp import initial_capital_bp
 from backend.routes.reporting.general_ledger_bp import general_ledger_bp
 from backend.routes.inventory.remaining_storage_bp import remaining_storage_bp
+from backend.routes.inventory.sales_by_date_bp import sales_by_date_bp
+from backend.routes.inventory.stock_comparison_bp import stock_comparison_bp
 from backend.routes.transactions.history_bp import history_bp
 from backend.routes.transactions.payroll_bp import payroll_bp
 from backend.routes.master_data.mark_bp import mark_bp
@@ -56,6 +58,8 @@ app.register_blueprint(hpp_bp)
 app.register_blueprint(initial_capital_bp)
 app.register_blueprint(general_ledger_bp)
 app.register_blueprint(remaining_storage_bp)
+app.register_blueprint(sales_by_date_bp)
+app.register_blueprint(stock_comparison_bp)
 app.register_blueprint(history_bp)
 app.register_blueprint(payroll_bp)
 app.register_blueprint(mark_bp)

@@ -4,16 +4,16 @@
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
     @click.self="$emit('close')"
   >
-    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-text)] dark:border dark:border-[color:var(--color-border)]">
       <!-- Header -->
-      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between dark:bg-[color:var(--color-surface)] dark:border-[color:var(--color-border)]">
         <div>
-          <h2 class="text-xl font-bold text-gray-900">COA Mapping</h2>
-          <p class="text-sm text-gray-500 mt-1">{{ mark?.personal_use || 'Mark' }}</p>
+          <h2 class="text-xl font-bold text-gray-900 dark:text-[color:var(--color-text)]">COA Mapping</h2>
+          <p class="text-sm text-gray-500 mt-1 dark:text-[color:var(--color-text-muted)]">{{ mark?.personal_use || 'Mark' }}</p>
         </div>
         <button
           @click="$emit('close')"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
+          class="text-gray-400 hover:text-gray-600 transition-colors dark:text-[color:var(--color-text-muted)] dark:hover:text-[color:var(--color-text)]"
         >
           <i class="bi bi-x-lg text-xl"></i>
         </button>
@@ -24,12 +24,12 @@
         <!-- Existing Mappings -->
         <div>
           <div class="flex items-center justify-between mb-3 gap-3">
-            <h3 class="text-sm font-semibold text-gray-700">Current Mappings</h3>
-            <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-[color:var(--color-text)]">Current Mappings</h3>
+            <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-[color:var(--color-border)] dark:bg-[color:var(--color-surface-muted)]">
               <button
                 type="button"
                 class="px-3 py-1 text-xs font-semibold rounded-md transition-colors"
-                :class="selectedReportType === 'real' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                :class="selectedReportType === 'real' ? 'bg-white text-indigo-700 shadow-sm dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-primary-strong)]' : 'text-gray-600 hover:text-gray-900 dark:text-[color:var(--color-text-muted)] dark:hover:text-[color:var(--color-text)]'"
                 @click="selectedReportType = 'real'"
               >
                 Real
@@ -37,7 +37,7 @@
               <button
                 type="button"
                 class="px-3 py-1 text-xs font-semibold rounded-md transition-colors"
-                :class="selectedReportType === 'coretax' ? 'bg-white text-cyan-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                :class="selectedReportType === 'coretax' ? 'bg-white text-cyan-700 shadow-sm dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-primary-strong)]' : 'text-gray-600 hover:text-gray-900 dark:text-[color:var(--color-text-muted)] dark:hover:text-[color:var(--color-text)]'"
                 @click="selectedReportType = 'coretax'"
               >
                 Coretax
@@ -47,13 +47,13 @@
           
           <div v-if="isLoading" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            <p class="text-sm text-gray-500 mt-2">Loading mappings...</p>
+            <p class="text-sm text-gray-500 mt-2 dark:text-[color:var(--color-text-muted)]">Loading mappings...</p>
           </div>
 
-          <div v-else-if="mappings.length === 0" class="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-            <i class="bi bi-link-45deg text-4xl text-gray-300"></i>
-            <p class="text-gray-500 mt-2">No COA mappings yet</p>
-            <p class="text-xs text-gray-400 mt-1">
+          <div v-else-if="mappings.length === 0" class="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 dark:bg-[color:var(--color-surface-muted)] dark:border-[color:var(--color-border)]">
+            <i class="bi bi-link-45deg text-4xl text-gray-300 dark:text-[color:var(--color-text-muted)]"></i>
+            <p class="text-gray-500 mt-2 dark:text-[color:var(--color-text-muted)]">No COA mappings yet</p>
+            <p class="text-xs text-gray-400 mt-1 dark:text-[color:var(--color-text-muted)]">
               Add a mapping below to link this mark to a Chart of Account ({{ selectedReportType === 'coretax' ? 'Coretax' : 'Real' }}).
             </p>
           </div>
@@ -62,12 +62,12 @@
             <div
               v-for="mapping in mappings"
               :key="mapping.id"
-              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 dark:bg-[color:var(--color-surface-muted)] dark:border-[color:var(--color-border)]"
             >
               <div class="flex-1">
                 <div class="flex items-center gap-2">
-                  <span class="font-mono text-sm font-semibold text-gray-900">{{ mapping.code }}</span>
-                  <span class="text-sm text-gray-600">{{ mapping.name }}</span>
+                  <span class="font-mono text-sm font-semibold text-gray-900 dark:text-[color:var(--color-text)]">{{ mapping.code }}</span>
+                  <span class="text-sm text-gray-600 dark:text-[color:var(--color-text-muted)]">{{ mapping.name }}</span>
                 </div>
                 <div class="flex items-center gap-2 mt-1">
                   <span
@@ -78,23 +78,23 @@
                   </span>
                   <span
                     class="px-2 py-0.5 text-xs font-medium rounded-full"
-                    :class="mapping.mapping_type === 'DEBIT' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'"
+                    :class="mapping.mapping_type === 'DEBIT' ? 'bg-blue-100 text-blue-800 dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-text)]' : 'bg-green-100 text-green-800 dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-text)]'"
                   >
                     {{ mapping.mapping_type }}
                   </span>
                   <span
                     class="px-2 py-0.5 text-xs font-medium rounded-full"
-                    :class="mapping.report_type === 'coretax' ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-700'"
+                    :class="mapping.report_type === 'coretax' ? 'bg-cyan-100 text-cyan-800 dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-text)]' : 'bg-slate-100 text-slate-700 dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-text)]'"
                   >
                     {{ mapping.report_type === 'coretax' ? 'CORETAX' : 'REAL' }}
                   </span>
                 </div>
-                <p v-if="mapping.notes" class="text-xs text-gray-500 mt-1">{{ mapping.notes }}</p>
+                <p v-if="mapping.notes" class="text-xs text-gray-500 mt-1 dark:text-[color:var(--color-text-muted)]">{{ mapping.notes }}</p>
               </div>
               <button
                 @click="openDeleteModal(mapping)"
                 :disabled="isDeleting"
-                class="ml-3 p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                class="ml-3 p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 dark:text-[color:var(--color-danger)] dark:hover:bg-[color:var(--color-surface)]"
                 title="Remove mapping"
               >
                 <i class="bi bi-trash"></i>
@@ -104,19 +104,19 @@
         </div>
 
         <!-- Add New Mapping Form -->
-        <div class="border-t border-gray-200 pt-6">
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">Add New Mapping</h3>
+        <div class="border-t border-gray-200 pt-6 dark:border-[color:var(--color-border)]">
+          <h3 class="text-sm font-semibold text-gray-700 mb-3 dark:text-[color:var(--color-text)]">Add New Mapping</h3>
           
           <form @submit.prevent="handleAddMapping" class="space-y-4">
             <!-- COA Selection -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-[color:var(--color-text)]">
                 Chart of Account <span class="text-red-500">*</span>
               </label>
               <select
                 v-model="newMapping.coa_id"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-text)] dark:border-[color:var(--color-border)] dark:focus:border-[color:var(--color-primary)] dark:focus:ring-[color:var(--color-primary-ring)]"
               >
                 <option value="">Select account...</option>
                 <optgroup
@@ -137,44 +137,44 @@
 
             <!-- Mapping Type -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-[color:var(--color-text)]">
                 Type <span class="text-red-500">*</span>
               </label>
               <div class="grid grid-cols-2 gap-3">
-                <label class="flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all" :class="newMapping.mapping_type === 'DEBIT' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                <label class="flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all dark:border-[color:var(--color-border)] dark:hover:border-[color:var(--color-border-strong)]" :class="newMapping.mapping_type === 'DEBIT' ? 'border-blue-500 bg-blue-50 dark:border-[color:var(--color-primary)] dark:bg-[color:var(--color-surface-muted)]' : 'border-gray-200 hover:border-gray-300'">
                   <input
                     type="radio"
                     v-model="newMapping.mapping_type"
                     value="DEBIT"
                     class="w-4 h-4 text-blue-600"
                   />
-                  <span class="ml-2 text-sm font-medium text-gray-900">Debit</span>
+                  <span class="ml-2 text-sm font-medium text-gray-900 dark:text-[color:var(--color-text)]">Debit</span>
                 </label>
-                <label class="flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all" :class="newMapping.mapping_type === 'CREDIT' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'">
+                <label class="flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all dark:border-[color:var(--color-border)] dark:hover:border-[color:var(--color-border-strong)]" :class="newMapping.mapping_type === 'CREDIT' ? 'border-green-500 bg-green-50 dark:border-[color:var(--color-primary)] dark:bg-[color:var(--color-surface-muted)]' : 'border-gray-200 hover:border-gray-300'">
                   <input
                     type="radio"
                     v-model="newMapping.mapping_type"
                     value="CREDIT"
                     class="w-4 h-4 text-green-600"
                   />
-                  <span class="ml-2 text-sm font-medium text-gray-900">Credit</span>
+                  <span class="ml-2 text-sm font-medium text-gray-900 dark:text-[color:var(--color-text)]">Credit</span>
                 </label>
               </div>
-              <p class="text-xs text-gray-500 mt-1">
+              <p class="text-xs text-gray-500 mt-1 dark:text-[color:var(--color-text-muted)]">
                 Choose DEBIT for expenses/assets, CREDIT for revenue/liabilities
               </p>
             </div>
 
             <!-- Notes -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-[color:var(--color-text)]">
                 Notes (optional)
               </label>
               <textarea
                 v-model="newMapping.notes"
                 rows="2"
                 placeholder="Additional notes about this mapping..."
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 placeholder-gray-400 dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-text)] dark:placeholder-[color:var(--color-text-muted)] dark:border-[color:var(--color-border)] dark:focus:border-[color:var(--color-primary)] dark:focus:ring-[color:var(--color-primary-ring)]"
               ></textarea>
             </div>
 
@@ -183,7 +183,7 @@
               <button
                 type="button"
                 @click="resetForm"
-                class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors dark:bg-[color:var(--color-surface)] dark:text-[color:var(--color-text)] dark:border-[color:var(--color-border)] dark:hover:bg-[color:var(--color-surface-muted)]"
               >
                 Reset
               </button>
@@ -250,13 +250,13 @@ const coaByCategory = computed(() => coaStore.coaByCategory);
 
 const getCategoryClass = (category) => {
   const classes = {
-    ASSET: 'bg-green-100 text-green-800',
-    LIABILITY: 'bg-red-100 text-red-800',
-    EQUITY: 'bg-blue-100 text-blue-800',
-    REVENUE: 'bg-purple-100 text-purple-800',
-    EXPENSE: 'bg-orange-100 text-orange-800'
+    ASSET: 'bg-green-100 text-green-800 dark:bg-emerald-500/20 dark:text-emerald-200',
+    LIABILITY: 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200',
+    EQUITY: 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-200',
+    REVENUE: 'bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-200',
+    EXPENSE: 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-200'
   };
-  return classes[category] || 'bg-gray-100 text-gray-800';
+  return classes[category] || 'bg-gray-100 text-gray-800 dark:bg-slate-500/20 dark:text-slate-200';
 };
 
 const loadMappings = async () => {

@@ -54,6 +54,12 @@ export const historyApi = {
   createManualTransaction(data) {
     return api.post('/transactions/manual', data);
   },
+  getLinkableTransactions(params = {}) {
+    return api.get('/transactions/linkable', { params });
+  },
+  getManualJournalLinks(txnId) {
+    return api.get(`/transactions/manual/${txnId}/links`);
+  },
   assignMark(txnId, markId) {
     return api.post(`/transactions/${txnId}/assign-mark`, { mark_id: markId });
   },
@@ -141,6 +147,9 @@ export const historyApi = {
   },
   getDashboardRemainingStorage(params = {}) {
     return api.get('/dashboard/remaining-storage', { params });
+  },
+  getDashboardSalesByDate(params = {}) {
+    return api.get('/dashboard/sales-by-date', { params });
   },
   getDashboardStockMonitoringSimplified(params = {}) {
     return api.get('/dashboard/stock-monitoring-simplified', { params });

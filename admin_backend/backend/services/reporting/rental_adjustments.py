@@ -290,8 +290,8 @@ def _calculate_prorated_contract_rent_expense(conn, start_date, end_date, compan
             contract_end = contract_start
 
         linked_total = _to_float(row.linked_total, 0.0)
-        if str(report_type).strip().lower() == 'coretax' and linked_total <= 0:
-            continue
+        # REFACTORED: Skip contracts without linked transactions for both 'real' and 'coretax'
+        # Previously had redundant check for coretax only
         if linked_total <= 0:
             continue
 

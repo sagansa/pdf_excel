@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { computed, toRefs } from 'vue';
+import { ref, computed, watch, toRefs } from 'vue';
 import BaseModal from '../ui/BaseModal.vue';
 import { useHistoryStore } from '../../stores/history';
 import HppDetailSection from './HppDetailSection.vue';
@@ -162,6 +162,12 @@ const props = defineProps({
 const emit = defineEmits(['close', 'assign-mark']);
 const store = useHistoryStore();
 const { transaction: localTxn } = toRefs(props);
+
+// Notes Logic
+const notes = ref('');
+const isSavingNotes = ref(false);
+const notesSaved = ref(false);
+const showSavedMessage = ref(false);
 
 const markDetails = computed(() => {
     if (!localTxn.value || !localTxn.value.mark_id) return null;
@@ -183,14 +189,6 @@ const deleteTxn = async () => {
 
 const formatDate = (dateStr) => dateStr ? dateStr.split(" ")[0] : '-';
 const formatAmount = (val) => new Intl.NumberFormat('id-ID').format(val);
-
-// Notes Logic
-const notes = ref('');
-const isSavingNotes = ref(false);
-const notesSaved = ref(false);
-const showSavedMessage = ref(false);
-
-import { watch, ref } from 'vue';
 
 watch(localTxn, (newVal) => {
     if (newVal) {
@@ -217,8 +215,6 @@ const handleCompanyChange = async (companyId) => {
     if (!localTxn.value) return;
     try {
         await store.assignCompany(localTxn.value.id, companyId || null);
-        // Data is optimistic updated in store, but we can refetch/refresh if needed
-        // The watcher on localTxn will handle prop updates if the parent repasses it
     } catch (e) {
         alert('Failed to update company');
     }

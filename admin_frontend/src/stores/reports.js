@@ -25,7 +25,7 @@ export const useReportsStore = defineStore('reports', {
       endDate: '',
       asOfDate: '',
       companyId: null,
-      reportType: 'real'
+      reportType: 'real'  // Default to 'real', user can switch to 'coretax'
     }
   }),
 

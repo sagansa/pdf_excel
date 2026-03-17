@@ -81,22 +81,22 @@
     </div>
 
     <!-- COGS Section -->
-    <div v-if="data?.cogs_breakdown && data.cogs_breakdown.total_cogs > 0" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div class="bg-blue-50 border-b border-blue-100 px-6 py-3">
+    <div v-if="data?.cogs_breakdown" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div class="bg-blue-50 border-b border-blue-100 px-6 py-3 dark:bg-[color:var(--color-surface-muted)] dark:border-[color:var(--color-border)]">
         <h3 class="text-sm font-bold text-blue-900 uppercase">Cost of Goods Sold</h3>
       </div>
       <div class="p-6 space-y-6">
         <!-- Inventory Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 dark:bg-[color:var(--color-surface-muted)] dark:border-[color:var(--color-border)]">
             <p class="text-xs font-medium text-blue-600 uppercase mb-1">Beginning Inventory - 5008</p>
             <p class="text-lg font-bold text-blue-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.cogs_breakdown.beginning_inventory) }}</p>
           </div>
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 dark:bg-[color:var(--color-surface-muted)] dark:border-[color:var(--color-border)]">
             <p class="text-xs font-medium text-blue-600 uppercase mb-1">- Ending Inventory - 5009</p>
             <p class="text-lg font-bold text-blue-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.cogs_breakdown.ending_inventory) }}</p>
           </div>
-          <div class="bg-blue-100 border border-blue-200 rounded-lg p-4">
+          <div class="bg-blue-100 border border-blue-200 rounded-lg p-4 dark:bg-[color:var(--color-surface-muted)] dark:border-[color:var(--color-border)]">
             <p class="text-xs font-medium text-blue-600 uppercase mb-1">Total COGS</p>
             <p class="text-lg font-bold text-blue-900 whitespace-nowrap tabular-nums">{{ formatCurrency(data.cogs_breakdown.total_cogs) }}</p>
           </div>
@@ -150,7 +150,7 @@
 
         <!-- Purchases Breakdown Table (Comparative) -->
         <div v-if="data.cogs_breakdown.purchases_items && data.cogs_breakdown.purchases_items.length > 0">
-          <div class="bg-blue-100 border-b border-blue-200 px-6 py-2 mb-3">
+          <div class="bg-blue-100 border-b border-blue-200 px-6 py-2 mb-3 dark:bg-[color:var(--color-surface-muted)] dark:border-[color:var(--color-border)]">
             <h4 class="text-xs font-bold text-blue-800 uppercase">Purchases Breakdown</h4>
           </div>
           <div class="overflow-x-auto">
@@ -186,7 +186,7 @@
                   </td>
                 </tr>
               </tbody>
-              <tfoot class="bg-blue-50 font-bold">
+              <tfoot class="bg-blue-50 font-bold dark:bg-[color:var(--color-surface-muted)]">
                 <tr>
                   <td colspan="2" class="px-6 py-3 text-sm text-blue-900">Total Purchases</td>
                   <td class="px-6 py-3 text-sm text-right text-blue-900">

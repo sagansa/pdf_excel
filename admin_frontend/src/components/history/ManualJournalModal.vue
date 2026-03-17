@@ -1,193 +1,332 @@
 <template>
-  <BaseModal :isOpen="isOpen" @close="$emit('close')">
-    <div class="bg-white rounded-2xl p-5 md:p-6 w-full max-w-5xl shadow-xl border border-gray-100 animate-fade-in mx-auto mt-8">
-      <div class="flex items-start justify-between mb-5">
-        <div>
-          <h2 class="text-xl font-bold text-gray-900">Manual Journal</h2>
-          <p class="text-xs text-gray-500 mt-1">Create balanced multi-line entries directly from Transactions.</p>
+  <BaseModal :isOpen="isOpen" @close="$emit('close')" size="2xl">
+    <template #title>
+      <div class="flex items-center gap-2.5">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <i class="bi bi-journal-text text-lg"></i>
         </div>
-        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-700 transition-colors p-1">
-          <i class="bi bi-x-lg"></i>
-        </button>
+        <div>
+          <h3 class="text-base font-bold">Manual Journal</h3>
+          <p class="text-[10px] text-muted font-medium uppercase tracking-wider">
+            Create balanced multi-line entries
+          </p>
+        </div>
       </div>
+    </template>
 
+    <div class="p-5 space-y-5">
       <form @submit.prevent="handleSubmit" class="space-y-5">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-4 md:p-5">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <!-- Header Info -->
+          <div class="lg:col-span-2 p-4 rounded-xl border border-border bg-surface-muted/30 space-y-4">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[10px] font-black text-primary uppercase tracking-tighter bg-primary/10 px-1.5 py-0.5 rounded">Journal Info</span>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Date</label>
-                <input
-                  type="date"
+              <div class="space-y-1.5">
+                <label class="block text-[10px] font-bold text-muted uppercase tracking-wider ml-1">Transaction Date</label>
+                <TextInput
                   v-model="header.txn_date"
+                  type="date"
+                  size="sm"
                   required
-                  class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none text-sm"
                 />
               </div>
 
-              <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Company</label>
-                <select
+              <div class="space-y-1.5">
+                <label class="block text-[10px] font-bold text-muted uppercase tracking-wider ml-1">Company</label>
+                <SelectInput
                   v-model="header.company_id"
-                  class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none text-sm"
-                >
-                  <option value="">-- No Company --</option>
-                  <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.short_name || c.name }}</option>
-                </select>
+                  :options="companyOptions"
+                  placeholder="-- No Company --"
+                  size="sm"
+                />
               </div>
 
-              <div class="md:col-span-2">
-                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Journal Memo</label>
-                <input
-                  type="text"
+              <div class="md:col-span-2 space-y-1.5">
+                <label class="block text-[10px] font-bold text-muted uppercase tracking-wider ml-1">Journal Memo</label>
+                <TextInput
                   v-model="header.description"
                   placeholder="e.g. Reklasifikasi biaya operasional"
+                  size="sm"
                   required
-                  class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none text-sm"
                 />
               </div>
             </div>
           </div>
 
-          <div class="bg-gray-900 rounded-2xl p-4 text-white">
-            <div class="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">Balance Summary</div>
-            <div class="space-y-3">
+          <!-- Summary Box -->
+          <div class="rounded-xl p-4 bg-gray-900 text-white shadow-lg space-y-3">
+            <div class="flex items-center gap-2 text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+              <i class="bi bi-lightning-charge-fill text-yellow-400"></i>
+              Balance
+            </div>
+            
+            <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-xs text-gray-300">Total Debits</span>
-                <span class="text-sm font-mono font-bold text-sky-300">Rp {{ formatCurrency(totalDebits) }}</span>
+                <span class="text-[11px] text-gray-300">Debits</span>
+                <span class="text-xs font-mono font-bold text-sky-300">Rp {{ formatCurrency(totalDebits) }}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-xs text-gray-300">Total Credits</span>
-                <span class="text-sm font-mono font-bold text-amber-300">Rp {{ formatCurrency(totalCredits) }}</span>
+                <span class="text-[11px] text-gray-300">Credits</span>
+                <span class="text-xs font-mono font-bold text-amber-300">Rp {{ formatCurrency(totalCredits) }}</span>
               </div>
-              <div class="pt-3 border-t border-gray-700 flex items-center justify-between">
-                <span class="text-xs text-gray-300">Difference</span>
-                <span class="text-lg font-mono font-black" :class="difference === 0 ? 'text-emerald-300' : 'text-rose-300'">
-                  Rp {{ formatCurrency(difference) }}
-                </span>
-              </div>
-              <div class="text-[10px] text-gray-400">
-                {{ lines.length }} lines • {{ hasDebitLine ? 'Debit OK' : 'No debit line' }} • {{ hasCreditLine ? 'Credit OK' : 'No credit line' }}
+              
+              <div class="pt-2 border-t border-gray-700">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] text-gray-300">Diff</span>
+                  <span class="text-base font-mono font-black" :class="difference === 0 ? 'text-emerald-400' : 'text-rose-400'">
+                    Rp {{ formatCurrency(difference) }}
+                  </span>
+                </div>
+                <div class="text-[9px] font-bold uppercase tracking-tighter text-right" :class="difference === 0 ? 'text-emerald-400/70' : 'text-rose-400/70'">
+                    {{ difference === 0 ? 'Balanced' : 'Out of Balance' }}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Lines -->
-        <div class="space-y-3 bg-white rounded-2xl border border-gray-200 p-4 md:p-5">
-          <div class="flex items-center justify-between">
-            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Journal Lines</label>
+        <div class="p-4 rounded-xl border border-border bg-surface overflow-hidden">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-[11px] font-bold text-theme uppercase tracking-wider flex items-center gap-2">
+              <i class="bi bi-list-columns-reverse text-primary"></i>
+              Journal Lines
+            </h4>
             <button
               type="button"
               @click="addLine"
-              class="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors"
+              class="text-[11px] font-bold text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-all flex items-center gap-1.5"
             >
-              <i class="bi bi-plus-lg"></i> Add Line
+              <i class="bi bi-plus-circle-fill"></i> Add Line
             </button>
           </div>
 
-          <div class="hidden md:grid grid-cols-[60px_130px_1fr_180px_1fr_44px] gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-            <div>Line</div>
+          <!-- Header Labels -->
+          <div class="hidden md:grid grid-cols-[30px_110px_1fr_150px_1fr_36px] gap-2 text-[9px] font-bold uppercase tracking-wider text-muted px-2 mb-1">
+            <div>#</div>
             <div>Side</div>
-            <div>COA</div>
-            <div>Amount</div>
+            <div>Account (COA)</div>
+            <div class="text-right">Amount</div>
             <div>Line Memo</div>
             <div></div>
           </div>
 
-          <div class="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+          <div class="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
             <div v-for="(line, index) in lines" :key="index"
-              class="grid grid-cols-1 md:grid-cols-[60px_130px_1fr_180px_1fr_44px] gap-2 items-start p-3 bg-gray-50 border border-gray-100 rounded-xl group hover:border-indigo-200 transition-all"
+              class="grid grid-cols-1 md:grid-cols-[30px_110px_1fr_150px_1fr_36px] gap-2 items-center p-2 rounded-lg border border-border bg-surface-muted/20 group hover:border-primary/20 transition-all shadow-sm shadow-black/5"
             >
-              <div class="text-xs md:text-[11px] font-bold text-gray-500 py-1.5">#{{ index + 1 }}</div>
+              <div class="text-[10px] font-bold text-muted flex items-center justify-center md:justify-start">
+                {{ index + 1 }}
+              </div>
 
               <!-- Side -->
-              <div>
+              <div class="relative">
                 <select
                   v-model="line.side"
-                  class="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg focus:border-indigo-500 transition-all outline-none text-xs font-bold"
-                  :class="line.side === 'DEBIT' ? 'text-sky-700' : 'text-amber-700'"
+                  class="w-full px-2 py-1.5 bg-surface border border-border rounded-lg focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none text-[10px] font-bold appearance-none pr-6 cursor-pointer"
+                  :class="line.side === 'DEBIT' ? 'text-sky-500' : 'text-amber-500'"
                 >
                   <option value="DEBIT">DEBIT (Dr)</option>
                   <option value="CREDIT">CREDIT (Cr)</option>
                 </select>
+                <i class="bi bi-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none text-muted"></i>
               </div>
 
               <!-- COA -->
-              <div>
-                <select
-                  v-model="line.coa_id"
-                  required
-                  class="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg focus:border-indigo-500 transition-all outline-none text-xs"
-                >
-                  <option value="">Select account...</option>
-                  <optgroup v-for="group in coaOptionsGrouped" :key="group.category" :label="group.category">
-                    <option v-for="coa in group.items" :key="coa.id" :value="coa.id">
-                      {{ coa.code }} - {{ coa.name }}
-                    </option>
-                  </optgroup>
-                </select>
+              <div class="min-w-0">
+                <SearchableSelect
+                   v-model="line.coa_id"
+                   :options="coaSelectOptions"
+                   placeholder="Account..."
+                />
               </div>
 
               <!-- Amount -->
-              <div class="relative">
-                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold">Rp</span>
-                <input
-                  type="number"
+              <div>
+                <TextInput
                   v-model.number="line.amount"
                   placeholder="0"
-                  required
-                  class="w-full pl-7 pr-2 py-1.5 bg-white border border-gray-200 rounded-lg focus:border-indigo-500 transition-all outline-none text-xs font-semibold text-right"
-                />
+                  type="number"
+                  :leadingLabel="true"
+                  size="sm"
+                  class="text-right font-mono font-bold text-[11px]"
+                >
+                  <template #leading>
+                    <span class="text-[9px] font-bold">Rp</span>
+                  </template>
+                </TextInput>
               </div>
 
               <div>
                 <input
                   type="text"
                   v-model="line.description"
-                  placeholder="Optional line memo"
-                  class="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg focus:border-indigo-500 transition-all outline-none text-xs"
+                  placeholder="Memo..."
+                  class="w-full px-2 py-1.5 bg-surface border border-border rounded-lg focus:ring-1 focus:ring-primary/30 focus:border-primary transition-all outline-none text-[10px] text-theme placeholder:text-muted/50"
                 />
               </div>
 
               <!-- Remove -->
-              <button
-                type="button"
-                @click="removeLine(index)"
-                :disabled="lines.length <= 2"
-                class="mt-1.5 text-gray-300 hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                title="Remove line"
-              >
-                <i class="bi bi-trash"></i>
-              </button>
+              <div class="flex justify-center">
+                <button
+                  type="button"
+                  @click="removeLine(index)"
+                  :disabled="lines.length <= 2"
+                  class="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                  title="Remove line"
+                >
+                  <i class="bi bi-trash-fill text-xs"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Errors -->
-        <div v-if="error" class="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs flex items-center gap-2">
-          <i class="bi bi-exclamation-circle-fill"></i>
-          {{ error }}
+        <!-- Link to Existing Transactions -->
+        <div class="p-4 rounded-xl border border-border bg-surface overflow-hidden">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-[11px] font-bold text-theme uppercase tracking-wider flex items-center gap-2">
+              <i class="bi bi-link-45deg text-primary"></i>
+              Link to Existing Transactions
+              <span v-if="linkedTransactions.length > 0" class="bg-primary/10 text-primary text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                {{ linkedTransactions.length }}
+              </span>
+            </h4>
+            <button
+              type="button"
+              @click="showLinkPanel = !showLinkPanel"
+              class="text-[11px] font-bold text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-all flex items-center gap-1.5"
+            >
+              <i :class="showLinkPanel ? 'bi bi-chevron-up' : 'bi bi-search'"></i>
+              {{ showLinkPanel ? 'Hide' : 'Search & Link' }}
+            </button>
+          </div>
+
+          <!-- Linked chips -->
+          <div v-if="linkedTransactions.length > 0" class="flex flex-wrap gap-1.5 mb-3">
+            <div
+              v-for="txn in linkedTransactions"
+              :key="txn.id"
+              class="flex items-center gap-1.5 bg-primary/10 border border-primary/20 text-primary text-[10px] font-semibold px-2 py-1 rounded-lg"
+            >
+              <i class="bi bi-paperclip text-[9px]"></i>
+              <span class="max-w-[200px] truncate" :title="txn.description">
+                {{ formatDate(txn.txn_date) }} — {{ txn.description || '(no desc)' }}
+              </span>
+              <span class="font-mono text-[9px] text-primary/70">Rp {{ formatCurrency(txn.amount) }}</span>
+              <button
+                type="button"
+                @click="unlinkTransaction(txn.id)"
+                class="ml-1 text-primary/60 hover:text-red-500 transition-colors"
+              >
+                <i class="bi bi-x text-xs"></i>
+              </button>
+            </div>
+          </div>
+          <p v-else-if="!showLinkPanel" class="text-[10px] text-muted italic">
+            No transactions linked. Click "Search &amp; Link" to connect existing transactions.
+          </p>
+
+          <!-- Search panel -->
+          <transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0 -translate-y-2"
+            enter-to-class="opacity-100 translate-y-0"
+          >
+            <div v-if="showLinkPanel" class="space-y-3 mt-2 pt-3 border-t border-border/50">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  v-model="linkSearch.query"
+                  @input="debouncedSearch"
+                  placeholder="Search description..."
+                  class="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[10px] text-theme focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none placeholder:text-muted/50"
+                />
+                <input
+                  type="date"
+                  v-model="linkSearch.start_date"
+                  @change="searchLinkable"
+                  class="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[10px] text-theme focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none"
+                />
+                <input
+                  type="date"
+                  v-model="linkSearch.end_date"
+                  @change="searchLinkable"
+                  class="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[10px] text-theme focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none"
+                />
+              </div>
+
+              <!-- Results -->
+              <div v-if="linkResults.length > 0" class="space-y-1 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
+                <div
+                  v-for="txn in linkResults"
+                  :key="txn.id"
+                  class="grid grid-cols-[1fr_auto_auto] gap-2 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 cursor-pointer transition-all group"
+                  @click="linkTransaction(txn)"
+                >
+                  <div class="min-w-0">
+                    <p class="text-[10px] font-semibold text-theme truncate">{{ txn.description || '(no desc)' }}</p>
+                    <p class="text-[9px] text-muted">
+                      {{ formatDate(txn.txn_date) }}
+                      <span v-if="txn.company_name" class="ml-1">· {{ txn.company_name }}</span>
+                      <span v-if="txn.bank_code" class="ml-1 font-bold">· {{ txn.bank_code }}</span>
+                    </p>
+                  </div>
+                  <span class="text-[10px] font-mono font-bold" :class="txn.db_cr === 'DB' ? 'text-sky-500' : 'text-amber-500'">
+                    {{ txn.db_cr === 'DB' ? 'Dr' : 'Cr' }} {{ formatCurrency(txn.amount) }}
+                  </span>
+                  <span class="text-[9px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    <i class="bi bi-plus-circle"></i> Link
+                  </span>
+                </div>
+              </div>
+              <p v-else-if="isSearching" class="text-[10px] text-muted text-center py-4">
+                <i class="bi bi-arrow-repeat animate-spin mr-1"></i> Searching...
+              </p>
+              <p v-else-if="linkSearchDone" class="text-[10px] text-muted text-center py-3">
+                No transactions found.
+              </p>
+              <p v-else class="text-[10px] text-muted text-center py-3">
+                Enter a keyword or date range to search.
+              </p>
+            </div>
+          </transition>
         </div>
 
+        <!-- Errors -->
+        <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
+          <div v-if="error" class="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 text-xs font-medium flex items-center gap-3">
+            <div class="w-6 h-6 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            {{ error }}
+          </div>
+        </transition>
+
         <!-- Actions -->
-        <div class="flex gap-3 pt-2">
+        <div class="flex gap-4 pt-4 border-t border-border/50">
           <button
             type="button"
             @click="$emit('close')"
-            class="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            class="flex-1 btn-secondary py-3 text-base"
             :disabled="isLoading"
           >
-            Cancel
+            Discard Changes
           </button>
           <button
             type="submit"
             :disabled="isLoading || difference !== 0 || !isFormValid"
-            class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2"
+            class="flex-1 btn-primary py-3 text-base shadow-lg shadow-primary/20"
           >
-            <span v-if="isLoading" class="spinner-border spinner-border-sm"></span>
-            <i v-else class="bi bi-journal-plus"></i>
-            {{ isLoading ? 'Posting...' : 'Post Journal' }}
+            <div class="flex items-center justify-center gap-2">
+              <span v-if="isLoading" class="spinner-border w-5 h-5"></span>
+              <template v-else>
+                <i class="bi bi-cloud-check-fill text-lg"></i>
+                <span>Post to Ledger</span>
+              </template>
+            </div>
           </button>
         </div>
       </form>
@@ -198,12 +337,21 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue';
 import BaseModal from '../ui/BaseModal.vue';
+import TextInput from '../ui/TextInput.vue';
+import SelectInput from '../ui/SelectInput.vue';
+import SearchableSelect from '../ui/SearchableSelect.vue';
 import { historyApi } from '../../api';
 
 const props = defineProps({
   isOpen: Boolean,
-  companies: Array,
-  coaList: Array
+  companies: {
+    type: Array,
+    default: () => []
+  },
+  coaList: {
+    type: Array,
+    default: () => []
+  }
 });
 
 const emit = defineEmits(['close', 'saved']);
@@ -222,13 +370,92 @@ const lines = ref([
   { coa_id: '', side: 'CREDIT', amount: null, description: '' }
 ]);
 
-const coaOptionsGrouped = computed(() => {
+// --- Link feature state ---
+const showLinkPanel = ref(false);
+const linkedTransactions = ref([]); // [{id, txn_date, description, amount, db_cr}, ...]
+const linkResults = ref([]);
+const isSearching = ref(false);
+const linkSearchDone = ref(false);
+const linkSearch = reactive({
+  query: '',
+  start_date: '',
+  end_date: ''
+});
+
+let searchTimer = null;
+const debouncedSearch = () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(searchLinkable, 400);
+};
+
+const searchLinkable = async () => {
+  if (!linkSearch.query && !linkSearch.start_date && !linkSearch.end_date) {
+    linkResults.value = [];
+    linkSearchDone.value = false;
+    return;
+  }
+
+  isSearching.value = true;
+  linkSearchDone.value = false;
+  const linkedIds = new Set(linkedTransactions.value.map(t => t.id));
+
+  try {
+    const params = {};
+    if (header.company_id) params.company_id = header.company_id;
+    if (linkSearch.query) params.search = linkSearch.query;
+    if (linkSearch.start_date) params.start_date = linkSearch.start_date;
+    if (linkSearch.end_date) params.end_date = linkSearch.end_date;
+
+    const res = await historyApi.getLinkableTransactions(params);
+    linkResults.value = (res.data.transactions || []).filter(t => !linkedIds.has(t.id));
+  } catch (e) {
+    console.error('Failed to search linkable transactions', e);
+    linkResults.value = [];
+  } finally {
+    isSearching.value = false;
+    linkSearchDone.value = true;
+  }
+};
+
+const linkTransaction = (txn) => {
+  if (!linkedTransactions.value.find(t => t.id === txn.id)) {
+    linkedTransactions.value.push(txn);
+    // Remove from results
+    linkResults.value = linkResults.value.filter(t => t.id !== txn.id);
+  }
+};
+
+const unlinkTransaction = (txnId) => {
+  linkedTransactions.value = linkedTransactions.value.filter(t => t.id !== txnId);
+};
+// --- End link feature ---
+
+const companyOptions = computed(() => {
+  return props.companies.map(c => ({
+    id: c.id,
+    label: c.name
+  }));
+});
+
+const coaSelectOptions = computed(() => {
   if (!props.coaList) return [];
   const categories = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
-  return categories.map(cat => ({
-    category: cat,
-    items: props.coaList.filter(c => c.category === cat)
-  })).filter(g => g.items.length > 0);
+  const options = [];
+  
+  categories.forEach(cat => {
+    const items = props.coaList.filter(c => c.category === cat);
+    if (items.length > 0) {
+      options.push({ label: cat, type: 'separator' });
+      items.forEach(coa => {
+        options.push({
+          id: coa.id,
+          label: `${coa.code} - ${coa.name}`
+        });
+      });
+    }
+  });
+  
+  return options;
 });
 
 const isFormValid = computed(() => {
@@ -280,6 +507,11 @@ const formatCurrency = (val) => {
   return new Intl.NumberFormat('id-ID').format(Math.abs(val));
 };
 
+const formatDate = (d) => {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 const handleSubmit = async () => {
   if (!hasDebitLine.value || !hasCreditLine.value) {
     error.value = "Journal must contain at least one debit line and one credit line.";
@@ -300,7 +532,8 @@ const handleSubmit = async () => {
       lines: lines.value.map(line => ({
         ...line,
         description: (line.description || '').trim() || null
-      }))
+      })),
+      linked_transaction_ids: linkedTransactions.value.map(t => t.id)
     };
     await historyApi.createManualTransaction(payload);
     emit('saved');
@@ -313,26 +546,42 @@ const handleSubmit = async () => {
   }
 };
 
+const resetForm = () => {
+  header.description = '';
+  header.company_id = '';
+  header.txn_date = new Date().toISOString().split('T')[0];
+  lines.value = [
+    { coa_id: '', side: 'DEBIT', amount: null, description: '' },
+    { coa_id: '', side: 'CREDIT', amount: null, description: '' }
+  ];
+  linkedTransactions.value = [];
+  linkResults.value = [];
+  linkSearch.query = '';
+  linkSearch.start_date = '';
+  linkSearch.end_date = '';
+  showLinkPanel.value = false;
+  linkSearchDone.value = false;
+  error.value = null;
+};
+
 watch(() => props.isOpen, (newVal) => {
-  if (newVal) {
-    // Reset form
-    header.description = '';
-    header.company_id = '';
-    header.txn_date = new Date().toISOString().split('T')[0];
-    lines.value = [
-      { coa_id: '', side: 'DEBIT', amount: null, description: '' },
-      { coa_id: '', side: 'CREDIT', amount: null, description: '' }
-    ];
-    error.value = null;
-  }
+  if (newVal) resetForm();
 });
 </script>
 
 <style scoped>
-.animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
 }
 
 input::-webkit-outer-spin-button,

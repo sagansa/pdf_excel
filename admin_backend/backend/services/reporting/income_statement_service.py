@@ -3,6 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import text
 
+from backend.db.schema import get_table_columns
 from backend.services.reporting.rental_adjustments import (
     _calculate_prorated_contract_rent_expense,
     _fetch_non_contract_rent_expense_items,
@@ -23,6 +24,24 @@ from backend.services.reporting.report_value_utils import (
 from backend.services.reporting.service_tax_adjustments import _calculate_service_tax_adjustment_for_period
 
 logger = logging.getLogger(__name__)
+
+
+def _is_coa_mapped_for_report(conn, coa_code, report_type):
+    """
+    Checks if a COA code is explicitly mapped in mark_coa_mapping for a given report_type.
+    'real' report_type is always considered mapped.
+    """
+    if report_type == 'real':
+        return True
+        
+    query = text("""
+        SELECT COUNT(*) 
+        FROM mark_coa_mapping mcm
+        JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        WHERE coa.code = :code AND mcm.report_type = :report_type
+    """)
+    result = conn.execute(query, {'code': coa_code, 'report_type': report_type}).scalar()
+    return (result or 0) > 0
 
 
 def _previous_period(start_date, end_date):
@@ -91,6 +110,24 @@ def _apply_comparative_data(current_data, previous_year_data):
 
 
 def _build_income_statement_query(conn, report_type, split_exclusion_clause, coretax_clause):
+    txn_columns = get_table_columns(conn, 'transactions')
+    parent_join = ""
+    company_ref = "t.company_id"
+    def normalize_mark_ref(expr):
+        if conn.dialect.name == 'sqlite':
+            return f"NULLIF(TRIM(CAST({expr} AS TEXT)), '')"
+        return f"NULLIF(TRIM(CAST({expr} AS CHAR)), '')"
+
+    if 'parent_id' in txn_columns:
+        # Join parent to get company_id for child transactions
+        parent_join = "LEFT JOIN transactions t_parent ON t.parent_id = t_parent.id"
+        # Use transaction's own mark_id (for both parent and child transactions)
+        # Child transactions have their own mark_id, parent transactions use their own mark_id
+        mark_ref = normalize_mark_ref('t.mark_id')
+        # Use parent's company_id if this is a child transaction
+        company_ref = "COALESCE(t.company_id, t_parent.company_id)"
+    else:
+        mark_ref = normalize_mark_ref('t.mark_id')
     mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
     return text(f"""
         SELECT
@@ -126,12 +163,13 @@ def _build_income_statement_query(conn, report_type, split_exclusion_clause, cor
                 END
             ) as signed_amount
         FROM transactions t
-        INNER JOIN marks m ON t.mark_id = m.id
+        {parent_join}
+        INNER JOIN marks m ON {mark_ref} = m.id
         {mark_coa_join}
         INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
         WHERE t.txn_date BETWEEN :start_date AND :end_date
             AND coa.category IN ('REVENUE', 'EXPENSE')
-            AND (:company_id IS NULL OR t.company_id = :company_id)
+            AND (:company_id IS NULL OR {company_ref} = :company_id)
             {split_exclusion_clause}
                 {coretax_clause}
         GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory
@@ -347,18 +385,20 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
         _merge_expense_item(expenses, rent_item)
         total_expenses += _to_float(rent_item.get('amount'), 0.0)
 
-    prorated_rent_expense = _calculate_prorated_contract_rent_expense(conn, start_date, end_date, company_id, report_type)
-    if abs(prorated_rent_expense) >= 0.000001:
-        rent_account = _resolve_rent_expense_account(conn, company_id, rent_expense_templates)
-        rent_item = {
-            'code': rent_account.get('code'),
-            'name': rent_account.get('name'),
-            'subcategory': rent_account.get('subcategory'),
-            'amount': prorated_rent_expense,
-            'category': 'EXPENSE'
-        }
-        _merge_expense_item(expenses, rent_item)
-        total_expenses += prorated_rent_expense
+    # 5315 check
+    if _is_coa_mapped_for_report(conn, '5315', report_type) or _is_coa_mapped_for_report(conn, '5105', report_type):
+        prorated_rent_expense = _calculate_prorated_contract_rent_expense(conn, start_date, end_date, company_id, report_type)
+        if abs(prorated_rent_expense) >= 0.000001:
+            rent_account = _resolve_rent_expense_account(conn, company_id, rent_expense_templates)
+            rent_item = {
+                'code': rent_account.get('code'),
+                'name': rent_account.get('name'),
+                'subcategory': rent_account.get('subcategory'),
+                'amount': prorated_rent_expense,
+                'category': 'EXPENSE'
+            }
+            _merge_expense_item(expenses, rent_item)
+            total_expenses += prorated_rent_expense
     
     # 2.4.1 Calculate service withholding tax adjustments (gross-up).
     # Since transactions are recorded as Net payment, we must add the withheld tax back to expenses.
@@ -378,17 +418,21 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
         'calculated_total': 0.0,
         'total_5314': 0.0
     }
-    dynamic_calc_ok = True
-    try:
-        amortization_breakdown = _calculate_dynamic_5314_total(conn, start_date, end_date=end_date, company_id=company_id, report_type=report_type)
-    except Exception as e:
-        dynamic_calc_ok = False
-        logger.error(f"Failed to calculate dynamic 5314 amount: {e}")
+    dynamic_calc_ok = False
+    dynamic_5314_amount = 0.0
+    
+    if _is_coa_mapped_for_report(conn, '5314', report_type):
+        dynamic_calc_ok = True
+        try:
+            amortization_breakdown = _calculate_dynamic_5314_total(conn, start_date, end_date=end_date, company_id=company_id, report_type=report_type)
+            dynamic_5314_amount = _to_float(amortization_breakdown.get('total_5314'), 0.0)
+        except Exception as e:
+            dynamic_calc_ok = False
+            logger.error(f"Failed to calculate dynamic 5314 amount: {e}")
+            dynamic_5314_amount = fallback_5314_from_ledger
+    
     calculated_amort_total = _to_float(amortization_breakdown.get('calculated_total'), 0.0)
     manual_amort_total = _to_float(amortization_breakdown.get('manual_total'), 0.0)
-    dynamic_5314_amount = _to_float(amortization_breakdown.get('total_5314'), 0.0)
-    if not dynamic_calc_ok:
-        dynamic_5314_amount = fallback_5314_from_ledger
     
     # 2. Handle COGS (HPP) with Manual Inventory Adjustments
     beginning_inv = 0
@@ -409,18 +453,20 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
     cogs_breakdown = _build_cogs_breakdown(expenses, start_date, beginning_inv, ending_inv)
     calculate_hpp = cogs_breakdown['total_cogs']
 
-    # Filter out COGS items and inject dynamic 5314 amount.
+    # Filter out COGS items and inject dynamic 5314 amount if mapped.
     final_expenses = [
         e for e in expenses
         if not _is_cogs_expense_item(e) and str(e.get('code') or '') != '5314'
     ]
-    final_expenses.append({
-        'code': '5314',
-        'name': 'Beban Penyusutan dan Amortisasi',
-        'subcategory': 'Operating Expenses',
-        'amount': dynamic_5314_amount,
-        'category': 'EXPENSE'
-    })
+    
+    if _is_coa_mapped_for_report(conn, '5314', report_type):
+        final_expenses.append({
+            'code': '5314',
+            'name': 'Beban Penyusutan dan Amortisasi',
+            'subcategory': 'Operating Expenses',
+            'amount': dynamic_5314_amount,
+            'category': 'EXPENSE'
+        })
     
     # Calculate total_expenses as the sum of all items in final_expenses list
     # This includes operating expenses, 5314 (amortization), and 5315 (rent)

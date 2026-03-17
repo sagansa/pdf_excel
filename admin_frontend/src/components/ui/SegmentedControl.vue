@@ -12,7 +12,7 @@
         @click="selectOption(option)"
         :class="[
           'px-3 py-1.5 text-xs font-medium rounded-md transition-all',
-          isSelected(option) ? 'bg-white shadow-sm font-semibold' : 'text-muted hover:text-theme'
+          isSelected(option) ? 'bg-surface text-primary shadow-sm font-bold' : 'text-muted hover:text-theme'
         ]"
         :disabled="option.disabled"
       >

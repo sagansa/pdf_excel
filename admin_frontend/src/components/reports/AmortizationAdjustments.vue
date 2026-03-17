@@ -3,50 +3,46 @@
     <!-- Header with Actions (if any needed for Amortization) -->
 
     <!-- Pending Transactions Alert (Compact) -->
-    <div
+    <Alert
       v-if="pendingTransactions?.length > 0"
-      class="amortization-alert"
+      variant="warning"
     >
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <i class="bi bi-exclamation-triangle-fill amortization-alert__icon"></i>
-          <div>
-            <h4 class="text-xs font-bold amortization-alert__title">
-              {{ pendingTransactions.length }} transaksi aset belum terdaftar
-            </h4>
-            <p class="mt-0.5 text-xs amortization-alert__text">
-              Terdapat transaksi yang ditandai sebagai Aset namun belum
-              didaftarkan untuk diamortisasi.
-            </p>
-          </div>
-        </div>
-        <button
+      <template #title>
+        {{ pendingTransactions.length }} transaksi aset belum terdaftar
+      </template>
+      <template #message>
+        Terdapat transaksi yang ditandai sebagai Aset namun belum didaftarkan untuk diamortisasi.
+      </template>
+      <template #actions>
+        <Button
+          size="sm"
+          variant="primary"
+          icon="bi bi-plus-circle-fill"
           @click="showAddAssetModal = true"
-          class="amortization-alert__button"
         >
-          <i class="bi bi-plus-circle-fill"></i> Daftarkan Aset Baru
-        </button>
-      </div>
-    </div>
+          Daftarkan Aset Baru
+        </Button>
+      </template>
+    </Alert>
     <!-- Calculated Asset Amortization (Automatic) -->
-    <div
+    <SectionCard
       v-if="calculatedItems.length > 0"
-      class="amortization-panel amortization-workspace mb-6"
+      class="mb-6"
+      contentClass="overflow-hidden"
+      bodyClass="p-0"
     >
-      <div class="amortization-workspace__header">
+      <template #header>
         <div>
-          <h3 class="amortization-workspace__title">
-            Calculated Asset Amortization
-          </h3>
-          <p class="mt-1 text-xs amortization-workspace__subtitle">
+          <h3 class="section-card__title">Calculated Asset Amortization</h3>
+          <p class="mt-1 text-xs section-card__subtitle">
             Automatic calculation based on registered assets. Total:
             {{ formatCurrency(calculatedTotalAmortization) }}
           </p>
         </div>
-        <div class="amortization-pill">
-          Automatic
-        </div>
-      </div>
+      </template>
+      <template #actions>
+        <div class="amortization-pill">Automatic</div>
+      </template>
 
       <div class="amortization-workspace__body">
         <div class="overflow-x-auto amortization-table-shell">
@@ -267,49 +263,49 @@
           </table>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Amortization Items List (Manual & Transactions) -->
-    <div
-      class="amortization-panel amortization-workspace mb-6"
+    <SectionCard
+      class="mb-6"
+      contentClass="overflow-hidden"
+      bodyClass="p-0"
     >
-      <div class="amortization-workspace__header">
+      <template #header>
         <div>
-          <h3 class="amortization-workspace__title">
-            Manual & Transaction Adjustments
-          </h3>
-          <p class="mt-1 text-xs amortization-workspace__subtitle">
+          <h3 class="section-card__title">Manual & Transaction Adjustments</h3>
+          <p class="mt-1 text-xs section-card__subtitle">
             Manual and transactional adjustments. Total:
             {{ formatCurrency(manualTotalAmortization) }}
-            <span v-if="manualItems.length > 0" class="text-theme"
-              >({{ manualItems.length }} entries)</span
-            >
+            <span v-if="manualItems.length > 0" class="text-theme">
+              ({{ manualItems.length }} entries)
+            </span>
           </p>
         </div>
+      </template>
+      <template #actions>
         <div class="flex items-center gap-3">
-          <div
-            class="amortization-pill"
-          >
-            Manual/Tx
-          </div>
-          <button
-            @click="openAddModal"
+          <div class="amortization-pill">Manual/Tx</div>
+          <Button
+            icon="bi bi-plus-lg"
+            variant="primary"
+            size="md"
             :disabled="!companyId"
-            class="btn-primary gap-2 px-4 py-2 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="openAddModal"
           >
-            <i class="bi bi-plus-lg"></i>
             Add Entry
-          </button>
-          <button
-            @click="generateJournalEntries"
+          </Button>
+          <Button
+            icon="bi bi-journal-text"
+            variant="secondary"
+            size="md"
             :disabled="!companyId || manualItems.length === 0"
-            class="btn-secondary gap-2 px-4 py-2 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="generateJournalEntries"
           >
-            <i class="bi bi-journal-text"></i>
             Generate Journals
-          </button>
+          </Button>
         </div>
-      </div>
+      </template>
 
       <div class="amortization-workspace__body">
         <!-- Empty State -->
@@ -561,281 +557,178 @@
           </table>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Final Total Summary -->
-    <div class="amortization-summary">
-      <div>
-        <h3 class="text-lg font-bold text-theme uppercase tracking-wider">
-          Total Amortization Breakdown
-        </h3>
-      </div>
-      <div class="flex gap-12">
-        <div class="text-right">
-          <span class="text-xs uppercase text-muted"
-            >Total Amortization (Curr)</span
-          >
-          <div class="text-3xl font-black text-theme">
-            {{ formatCurrency(grandTotalAmortization) }}
-          </div>
-        </div>
-        <div class="text-right border-l border-theme/50 pl-12">
-          <span class="text-xs uppercase text-muted"
-            >Total Book Value (End)</span
-          >
-          <div class="text-3xl font-black text-theme">
-            {{ formatCurrency(grandTotalBookValue) }}
-          </div>
-        </div>
-      </div>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <StatCard
+        label="Total Amortization (Curr)"
+        :value="formatCurrency(grandTotalAmortization)"
+        wrapperClass="bg-surface-muted border-border"
+        labelClass="text-xs uppercase text-muted"
+        valueClass="text-3xl font-black text-theme"
+      />
+      <StatCard
+        label="Total Book Value (End)"
+        :value="formatCurrency(grandTotalBookValue)"
+        wrapperClass="bg-surface-muted border-border"
+        labelClass="text-xs uppercase text-muted"
+        valueClass="text-3xl font-black text-theme"
+      />
     </div>
 
     <!-- Add/Edit Modal -->
-    <div
-      v-if="showModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-    >
-      <div
-        class="surface-card rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-      >
-        <div
-          class="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl"
-        >
-          <h3 class="text-lg font-bold text-theme">
-            {{ editingItem ? "Edit" : "Add" }} Amortization Entry
-          </h3>
-          <button @click="closeModal" class="text-muted hover:text-theme transition-colors">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
+    <BaseModal :isOpen="showModal" @close="closeModal" size="lg">
+      <template #title>
+        {{ editingItem ? "Edit" : "Add" }} Amortization Entry
+      </template>
 
-        <div class="p-6 space-y-4">
-          <!-- Asset Mark Selection -->
-          <div>
-            <label class="block text-xs font-semibold text-theme mb-1">
-              Asset Mark <span class="text-danger">*</span>
-            </label>
+      <div class="p-6 space-y-4">
+        <!-- Asset Mark Selection -->
+        <FormField label="Asset Mark *" labelClass="text-xs font-semibold text-theme">
+          <select
+            v-model="form.mark_id"
+            class="input-base w-full"
+          >
+            <option value="">Select Asset Mark</option>
+            <option
+              v-for="mark in availableMarks"
+              :key="mark.id"
+              :value="mark.id"
+            >
+              {{ mark.personal_use }}{{ mark.asset_type ? ` (${mark.asset_type})` : "" }}
+            </option>
+          </select>
+        </FormField>
+
+        <!-- Date -->
+        <FormField label="Amortization Date" labelClass="text-xs font-semibold text-theme">
+          <TextInput
+            v-model="form.amortization_date"
+            type="date"
+          />
+        </FormField>
+
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Asset Group -->
+          <FormField label="Asset Group" labelClass="text-xs font-semibold text-theme">
             <select
-              v-model="form.mark_id"
+              v-model="form.asset_group_id"
               class="input-base w-full"
             >
-              <option value="">Select Asset Mark</option>
-              <option
-                v-for="mark in availableMarks"
-                :key="mark.id"
-                :value="mark.id"
+              <option value="">None (One-time adjustment)</option>
+              <optgroup
+                v-for="(groups, type) in groupedAssetGroups"
+                :key="type"
+                :label="getAssetTypeLabel(type)"
               >
-                {{ mark.personal_use }}
-                <span v-if="mark.asset_type" class="text-muted">
-                  ({{ mark.asset_type }})
-                </span>
-              </option>
-            </select>
-          </div>
-
-          <!-- Date -->
-          <div>
-            <label class="block text-xs font-semibold text-theme mb-1">
-              Amortization Date
-            </label>
-            <input
-              v-model="form.amortization_date"
-              type="date"
-              class="input-base w-full"
-            />
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <!-- Asset Group -->
-            <div>
-              <label class="block text-xs font-semibold text-theme mb-1">
-                Asset Group
-              </label>
-              <select
-                v-model="form.asset_group_id"
-                class="input-base w-full"
-              >
-                <option value="">None (One-time adjustment)</option>
-                <optgroup
-                  v-for="(groups, type) in groupedAssetGroups"
-                  :key="type"
-                  :label="getAssetTypeLabel(type)"
+                <option
+                  v-for="group in groups"
+                  :key="group.id"
+                  :value="group.id"
                 >
-                  <option
-                    v-for="group in groups"
-                    :key="group.id"
-                    :value="group.id"
-                  >
-                    {{ group.group_name }} ({{ group.tarif_rate }}%)
-                  </option>
-                </optgroup>
-              </select>
-            </div>
+                  {{ group.group_name }} ({{ group.tarif_rate }}%)
+                </option>
+              </optgroup>
+            </select>
+          </FormField>
 
-            <!-- Deductible Level -->
-            <div>
-              <label class="block text-xs font-semibold text-theme mb-1">
-                Deductible Level
-              </label>
-              <select
-                v-model="form.use_half_rate"
-                class="input-base w-full"
-              >
-                <option :value="false">100% Deductible</option>
-                <option :value="true">50% Deductible</option>
-              </select>
-            </div>
-          </div>
-          <div
-            v-if="!form.asset_group_id && form.amount > 0"
-            class="rounded-2xl px-4 py-3 flex items-start gap-2"
-            style="background: rgba(180, 83, 9, 0.08); border: 1px solid rgba(180, 83, 9, 0.18);"
-          >
-            <i class="bi bi-info-circle-fill mt-0.5" style="color: var(--color-warning);"></i>
-            <p class="text-[11px] leading-tight" style="color: var(--color-text);">
-              <strong>Calculation Note:</strong> No Asset Group selected. This
-              will be treated as a direct amortization expense. Select a group
-              to enable automatic annual depreciation.
-            </p>
-          </div>
-
-          <!-- Description -->
-          <div>
-            <label class="block text-xs font-semibold text-theme mb-1">
-              Description <span class="text-danger">*</span>
-            </label>
-            <input
-              v-model="form.description"
-              type="text"
+          <!-- Deductible Level -->
+          <FormField label="Deductible Level" labelClass="text-xs font-semibold text-theme">
+            <select
+              v-model="form.use_half_rate"
               class="input-base w-full"
-              placeholder="e.g., Amortization of intangible assets - Q1 2025"
-            />
-          </div>
-
-          <!-- Amount -->
-          <div>
-            <label class="block text-xs font-semibold text-theme mb-1">
-              Original Cost / Amount (Rp) <span class="text-danger">*</span>
-            </label>
-            <div class="relative">
-              <span
-                class="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs font-medium"
-                >Rp</span
-              >
-              <input
-                :value="formatDisplayNumber(form.amount)"
-                type="text"
-                inputmode="decimal"
-                class="input-base w-full"
-                placeholder="0"
-                @input="updateAmountField($event.target.value)"
-              />
-            </div>
-          </div>
-
-          <!-- Notes -->
-          <div>
-            <label class="block text-xs font-semibold text-theme mb-1"
-              >Notes</label
             >
-            <textarea
-              v-model="form.notes"
-              rows="3"
-              class="input-base w-full"
-              placeholder="Additional information about this amortization..."
-            ></textarea>
-          </div>
+              <option :value="false">100% Deductible</option>
+              <option :value="true">50% Deductible</option>
+            </select>
+          </FormField>
+        </div>
+        <div
+          v-if="!form.asset_group_id && form.amount > 0"
+          class="rounded-2xl px-4 py-3 flex items-start gap-2"
+          style="background: rgba(180, 83, 9, 0.08); border: 1px solid rgba(180, 83, 9, 0.18);"
+        >
+          <i class="bi bi-info-circle-fill mt-0.5" style="color: var(--color-warning);"></i>
+          <p class="text-[11px] leading-tight" style="color: var(--color-text);">
+            <strong>Calculation Note:</strong> No Asset Group selected. This
+            will be treated as a direct amortization expense. Select a group
+            to enable automatic annual depreciation.
+          </p>
         </div>
 
-        <div
-          class="bg-surface-muted border-t border-border px-6 py-4 flex items-center justify-end gap-3 rounded-b-2xl"
-        >
-          <button
-            @click="closeModal"
-            class="btn-secondary px-4 py-2 font-medium text-xs transition-all"
+        <!-- Description -->
+        <FormField label="Description *" labelClass="text-xs font-semibold text-theme">
+          <TextInput
+            v-model="form.description"
+            placeholder="e.g., Amortization of intangible assets - Q1 2025"
+          />
+        </FormField>
+
+        <!-- Amount -->
+        <FormField label="Original Cost / Amount (Rp) *" labelClass="text-xs font-semibold text-theme">
+          <TextInput
+            v-model="amountDisplay"
+            inputmode="decimal"
+            placeholder="0"
+            leadingIcon="bi bi-cash-coin"
           >
-            Cancel
-          </button>
-          <button
-            @click="saveItem"
-            :disabled="!isFormValid || isSaving"
-            class="btn-primary px-6 py-2 font-medium text-xs transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <i class="bi bi-check-lg" v-if="!isSaving"></i>
-            <i class="bi bi-arrow-repeat spin" v-else></i>
-            {{ editingItem ? "Update" : "Save" }}
-          </button>
-        </div>
+            <template #leading>
+              <span class="text-muted text-xs font-medium">Rp</span>
+            </template>
+          </TextInput>
+        </FormField>
+
+        <!-- Notes -->
+        <FormField label="Notes" labelClass="text-xs font-semibold text-theme">
+          <textarea
+            v-model="form.notes"
+            rows="3"
+            class="input-base w-full"
+            placeholder="Additional information about this amortization..."
+          ></textarea>
+        </FormField>
       </div>
-    </div>
+
+      <template #footer>
+        <Button variant="secondary" @click="closeModal">Cancel</Button>
+        <Button
+          variant="primary"
+          icon="bi bi-check-lg"
+          :disabled="!isFormValid || isSaving"
+          :loading="isSaving"
+          @click="saveItem"
+        >
+          {{ editingItem ? "Update" : "Save" }}
+        </Button>
+      </template>
+    </BaseModal>
 
     <!-- Delete Confirmation Modal -->
-    <div
-      v-if="showDeleteModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-    >
-      <div class="surface-card rounded-2xl shadow-xl max-w-md w-full">
-        <div class="p-6">
-          <div class="flex items-center gap-3 mb-4">
-            <div
-              class="w-12 h-12 rounded-full flex items-center justify-center"
-              style="background: rgba(185, 28, 28, 0.10);"
-            >
-              <i class="bi bi-exclamation-triangle text-xl" style="color: var(--color-danger);"></i>
-            </div>
-            <div>
-              <h3 class="text-lg font-bold text-theme">Delete Entry?</h3>
-              <p class="text-xs text-muted">
-                This action cannot be undone.
-              </p>
-            </div>
-          </div>
-          <p class="text-xs text-muted mb-6">
-            Are you sure you want to delete the amortization entry for
-            <strong>{{ itemToDelete?.description }}</strong> ({{
-              formatCurrency(itemToDelete?.amount)
-            }})?
-          </p>
-          <div class="flex items-center justify-end gap-3">
-            <button
-              @click="showDeleteModal = false"
-              class="btn-secondary px-4 py-2 font-medium text-xs transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              @click="deleteItem"
-              :disabled="isDeleting"
-              class="btn-danger px-6 py-2 font-medium text-xs transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <i class="bi bi-trash" v-if="!isDeleting"></i>
-              <i class="bi bi-arrow-repeat spin" v-else></i>
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ConfirmModal
+      :isOpen="showDeleteModal"
+      title="Delete Entry?"
+      :message="
+        itemToDelete
+          ? `Are you sure you want to delete the amortization entry for ${itemToDelete.description || 'this entry'} (${formatCurrency(itemToDelete.amount)})? This action cannot be undone.`
+          : 'Are you sure you want to delete this amortization entry? This action cannot be undone.'
+      "
+      confirmText="Delete"
+      variant="danger"
+      :loading="isDeleting"
+      @close="showDeleteModal = false"
+      @confirm="deleteItem"
+    />
 
     <!-- Transaction Detail Modal -->
-    <div
-      v-if="showTransactionDetailModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    <BaseModal
+      :isOpen="showTransactionDetailModal"
+      @close="closeTransactionDetailModal"
+      size="lg"
     >
-      <div class="surface-card rounded-2xl shadow-xl max-w-lg w-full">
-        <div
-          class="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl"
-        >
-          <h3 class="text-lg font-bold text-theme">Transaction Details</h3>
-          <button
-            @click="closeTransactionDetailModal"
-            class="text-muted hover:text-theme transition-colors"
-          >
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
+      <template #title>Transaction Details</template>
 
-        <div v-if="selectedTransaction" class="p-6 space-y-4">
+      <div v-if="selectedTransaction" class="p-6 space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-muted mb-1"
@@ -897,10 +790,7 @@
 
             <div class="space-y-3">
               <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-semibold text-muted mb-1"
-                    >Asset Group</label
-                  >
+                <FormField label="Asset Group" labelClass="text-xs font-semibold text-muted">
                   <select
                     v-model="selectedTransaction.asset_group_id"
                     class="input-base w-full"
@@ -920,11 +810,8 @@
                       </option>
                     </optgroup>
                   </select>
-                </div>
-                <div>
-                  <label class="block text-xs font-semibold text-muted mb-1"
-                    >Deductible Level</label
-                  >
+                </FormField>
+                <FormField label="Deductible Level" labelClass="text-xs font-semibold text-muted">
                   <select
                     v-model="selectedTransaction.use_half_rate"
                     class="input-base w-full"
@@ -932,53 +819,37 @@
                     <option :value="false">100% Deductible</option>
                     <option :value="true">50% Deductible</option>
                   </select>
-                </div>
+                </FormField>
               </div>
 
-              <div>
-                <label class="block text-xs font-semibold text-muted mb-1"
-                  >Amortization Start Date</label
-                >
-                <input
-                  type="date"
+              <FormField label="Amortization Start Date" labelClass="text-xs font-semibold text-muted">
+                <TextInput
                   v-model="selectedTransaction.amortization_start_date"
-                  class="input-base w-full"
+                  type="date"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label class="block text-xs font-semibold text-muted mb-1"
-                  >Notes</label
-                >
+              <FormField label="Notes" labelClass="text-xs font-semibold text-muted">
                 <textarea
                   v-model="selectedTransaction.notes"
                   rows="2"
                   class="input-base w-full"
                   placeholder="Additional notes about amortization..."
                 ></textarea>
-              </div>
+              </FormField>
             </div>
           </div>
         </div>
 
-        <div
-          class="bg-surface-muted border-t border-border px-6 py-4 flex items-center justify-end gap-3 rounded-b-2xl"
-        >
-          <button
-            @click="closeTransactionDetailModal"
-            class="btn-secondary px-4 py-2 font-medium text-xs transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            @click="saveSelectedTransactionGroup"
-            class="btn-primary px-6 py-2 font-medium text-xs transition-all"
-          >
-            Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
+      <template #footer>
+        <Button variant="secondary" @click="closeTransactionDetailModal">
+          Cancel
+        </Button>
+        <Button variant="primary" @click="saveSelectedTransactionGroup">
+          Save Changes
+        </Button>
+      </template>
+    </BaseModal>
 
     <!-- Modals -->
     <AddAssetModal
@@ -996,10 +867,16 @@
 <script setup>
 import { ref, computed, watch, onMounted } from "vue";
 import { useReportsStore } from "../../stores/reports";
-import { useCoaStore } from "../../stores/coa";
 import { useAmortizationStore } from "../../stores/amortization";
-import { useMarksStore } from "../../stores/marks";
-import api, { reportsApi, marksApi, historyApi } from "../../api/index";
+import api, { reportsApi, historyApi } from "../../api/index";
+import Alert from "../ui/Alert.vue";
+import BaseModal from "../ui/BaseModal.vue";
+import Button from "../ui/Button.vue";
+import ConfirmModal from "../ui/ConfirmModal.vue";
+import FormField from "../ui/FormField.vue";
+import SectionCard from "../ui/SectionCard.vue";
+import StatCard from "../ui/StatCard.vue";
+import TextInput from "../ui/TextInput.vue";
 import AddAssetModal from "./modals/AddAssetModal.vue";
 
 const props = defineProps({
@@ -1015,8 +892,6 @@ const props = defineProps({
 
 const emit = defineEmits(["saved"]);
 const store = useReportsStore();
-const coaStore = useCoaStore();
-const marksStore = useMarksStore();
 const amortizationStore = useAmortizationStore();
 
 // State
@@ -1416,9 +1291,12 @@ const formatDisplayNumber = (value) => {
   });
 };
 
-const updateAmountField = (value) => {
-  form.value.amount = parseFormattedNumber(value);
-};
+const amountDisplay = computed({
+  get: () => formatDisplayNumber(form.value.amount),
+  set: (value) => {
+    form.value.amount = parseFormattedNumber(value);
+  },
+});
 
 const formatCurrency = (amount, includeSymbol = true) => {
   if (amount === null || amount === undefined)
@@ -1584,84 +1462,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-/* Alert Box */
-.amortization-alert {
-  @apply rounded-2xl p-4 shadow-sm;
-  background: rgba(180, 83, 9, 0.08);
-  border: 1px solid rgba(180, 83, 9, 0.18);
-}
-
-.amortization-alert__icon {
-  @apply text-xl;
-  color: var(--color-warning);
-}
-
-.amortization-alert__title {
-  color: var(--color-text);
-}
-
-.amortization-alert__text {
-  color: var(--color-text-muted);
-}
-
-.amortization-alert__button {
-  @apply inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold text-white transition-colors;
-  background: linear-gradient(135deg, var(--color-warning), #d97706);
-}
-
-.amortization-alert__button:hover {
-  filter: brightness(1.03);
-}
-
 /* Panel & Workspace */
-.amortization-panel {
-  @apply overflow-hidden rounded-2xl;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-card);
-}
-
-.amortization-workspace {
-  background: var(--color-surface);
-}
-
-.amortization-workspace__header {
-  @apply flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-start lg:justify-between;
-  background: var(--color-surface-muted);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.amortization-workspace__title {
-  @apply text-lg font-bold;
-  color: var(--color-text);
-}
-
-.amortization-workspace__subtitle {
-  color: var(--color-text-muted);
-}
-
 .amortization-workspace__body {
   @apply p-0;
   background: var(--color-surface);
-}
-
-.amortization-panel__header {
-  @apply flex items-center justify-between px-6 py-4;
-  background: var(--color-surface-muted);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.amortization-panel__title {
-  @apply text-lg font-bold;
-  color: var(--color-text);
-}
-
-.amortization-panel__subtitle {
-  color: var(--color-text-muted);
 }
 
 .amortization-pill {
@@ -1722,30 +1526,4 @@ onMounted(() => {
   border: 1px dashed var(--color-border);
 }
 
-/* Summary Card */
-.amortization-summary {
-  @apply rounded-2xl px-3 py-2;
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-}
-
-.amortization-summary__title {
-  @apply text-[10px] uppercase font-semibold;
-  color: var(--color-text-muted);
-}
-
-.amortization-summary__value {
-  @apply text-lg font-bold;
-  font-family: var(--font-mono);
-  color: var(--color-text);
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
 </style>

@@ -152,10 +152,9 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
         WHERE 1=1
           {company_filter_sql}
     """)
-    if str(report_type).strip().lower() != 'coretax':
-        manual_rows = conn.execute(manual_query, company_params)
-    else:
-        manual_rows = []
+    # REFACTORED: Include manual amortization items for both 'real' and 'coretax'
+    # Previously excluded for coretax, causing understated 5314 expenses
+    manual_rows = conn.execute(manual_query, company_params)
 
     manual_total = 0.0
     for row in manual_rows:
@@ -249,10 +248,9 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
           {asset_company_clause}
     """)
     asset_params = {'company_id': company_id} if company_id else {}
-    if str(report_type).strip().lower() != 'coretax':
-        asset_rows = conn.execute(assets_query, asset_params)
-    else:
-        asset_rows = []
+    # REFACTORED: Include amortization assets for both 'real' and 'coretax'
+    # Previously excluded for coretax, causing understated 5314 expenses
+    asset_rows = conn.execute(assets_query, asset_params)
 
     for row in asset_rows:
         base_amount = _to_float(row.acquisition_cost, 0.0)

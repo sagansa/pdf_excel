@@ -133,22 +133,47 @@
                    </button>
                  </td>
                  <td class="px-6 py-4">
-                   <div class="flex flex-col gap-1 mb-2" v-if="m.mappings && m.mappings.length > 0">
-                     <div
-                       v-for="mapping in m.mappings"
-                       :key="mapping.code"
-                       class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium"
-                       :class="mapping.type === 'DEBIT' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'"
-                     >
-                       <span class="font-mono mr-1">{{ mapping.code }}</span>
-                       <span class="mr-1 text-[9px] truncate max-w-[120px]" :title="mapping.name">{{ mapping.name }}</span>
-                       <span>({{ mapping.type === 'DEBIT' ? 'DB' : 'CR' }})</span>
+                   <div class="flex flex-col gap-2 mb-2">
+                     <div>
+                       <div class="text-[9px] font-semibold uppercase text-muted">Real</div>
+                       <div v-if="getRealMappings(m).length > 0" class="flex flex-col gap-1 mt-1">
+                         <div
+                           v-for="mapping in getRealMappings(m)"
+                           :key="`real-${mapping.coa_id || mapping.code}-${mapping.type}`"
+                           class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium"
+                           :class="mapping.type === 'DEBIT' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'"
+                         >
+                           <span class="font-mono mr-1">{{ mapping.code }}</span>
+                           <span class="mr-1 text-[9px] truncate max-w-[120px]" :title="mapping.name">{{ mapping.name }}</span>
+                           <span>({{ mapping.type === 'DEBIT' ? 'DB' : 'CR' }})</span>
+                         </div>
+                       </div>
+                       <div v-else class="mt-1">
+                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-100">
+                           <i class="bi bi-exclamation-circle me-1"></i> Not Mapped
+                         </span>
+                       </div>
                      </div>
-                   </div>
-                   <div v-else class="mb-2">
-                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                       <i class="bi bi-exclamation-circle me-1"></i> Not Mapped
-                     </span>
+                     <div>
+                       <div class="text-[9px] font-semibold uppercase text-muted">Coretax</div>
+                       <div v-if="getCoretaxMappings(m).length > 0" class="flex flex-col gap-1 mt-1">
+                         <div
+                           v-for="mapping in getCoretaxMappings(m)"
+                           :key="`coretax-${mapping.coa_id || mapping.code}-${mapping.type}`"
+                           class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium"
+                           :class="mapping.type === 'DEBIT' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'"
+                         >
+                           <span class="font-mono mr-1">{{ mapping.code }}</span>
+                           <span class="mr-1 text-[9px] truncate max-w-[120px]" :title="mapping.name">{{ mapping.name }}</span>
+                           <span>({{ mapping.type === 'DEBIT' ? 'DB' : 'CR' }})</span>
+                         </div>
+                       </div>
+                       <div v-else class="mt-1">
+                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-cyan-50 text-cyan-700 border border-cyan-100">
+                           <i class="bi bi-exclamation-circle me-1"></i> Not Mapped
+                         </span>
+                       </div>
+                     </div>
                    </div>
                    <button
                      @click="openMappingModal(m)"
@@ -202,8 +227,30 @@ const showMappingModal = ref(false);
 const selectedMarkForMapping = ref(null);
 const togglingFlags = ref({});
 const totalMarks = computed(() => store.sortedMarks.length);
+const getRealMappings = (mark) => {
+  if (Array.isArray(mark?.mappings_real)) return mark.mappings_real;
+  if (Array.isArray(mark?.mappings)) {
+    return mark.mappings.filter((mapping) => (
+      String(mapping?.report_type || 'real').trim().toLowerCase() === 'real'
+    ));
+  }
+  return [];
+};
+
+const getCoretaxMappings = (mark) => (
+  Array.isArray(mark?.mappings_coretax)
+    ? mark.mappings_coretax
+    : (Array.isArray(mark?.mappings)
+        ? mark.mappings.filter((mapping) => (
+          String(mapping?.report_type || '').trim().toLowerCase() === 'coretax'
+        ))
+        : [])
+);
+
 const unmappedCount = computed(() => (
-    (store.sortedMarks || []).filter(mark => !mark.mappings || mark.mappings.length === 0).length
+    (store.sortedMarks || []).filter(mark => (
+      getRealMappings(mark).length === 0 && getCoretaxMappings(mark).length === 0
+    )).length
 ));
 const headerBadges = [
     { icon: 'bi bi-link-45deg', label: 'COA mapping' },
