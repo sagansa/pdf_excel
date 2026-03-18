@@ -212,9 +212,10 @@
 
     <ManualJournalModal
         :isOpen="isManualJournalModalOpen"
+        :editId="journalEditId"
         :companies="store.companies"
         :coaList="store.coaList"
-        @close="isManualJournalModalOpen = false"
+        @close="handleManualJournalClose"
         @saved="handleManualJournalSaved"
     />
 
@@ -223,6 +224,7 @@
         :transaction="selectedTxn"
         @close="showDetails = false"
         @assign-mark="openAssignMark"
+        @edit-journal="handleEditJournal"
     />
 
     <AssignMarkModal
@@ -317,6 +319,7 @@ const showSplitModal = ref(false);
 const selectedTxn = ref(null);
 const isImportModalOpen = ref(false);
 const isManualJournalModalOpen = ref(false);
+const journalEditId = ref(null);
 const showExportMenu = ref(false);
 
 const isBulkDeleteModalOpen = ref(false);
@@ -427,6 +430,19 @@ const handleImport = async ({ file, bankCode, companyId }) => {
 
 const handleManualJournalSaved = async () => {
     await store.loadData();
+    journalEditId.value = null;
+    isManualJournalModalOpen.value = false;
+};
+
+const handleEditJournal = (id) => {
+    journalEditId.value = id;
+    showDetails.value = false;
+    isManualJournalModalOpen.value = true;
+};
+
+const handleManualJournalClose = () => {
+    isManualJournalModalOpen.value = false;
+    journalEditId.value = null;
 };
 
 const handleExport = async (format) => {

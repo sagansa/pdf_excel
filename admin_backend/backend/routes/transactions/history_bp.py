@@ -27,35 +27,34 @@ def create_manual_transaction():
     lines = data.get('lines', [])
     linked_transaction_ids = data.get('linked_transaction_ids', [])
 
-    if not txn_date or not lines:
-        raise BadRequestError('Missing required fields (date, lines)')
 
+
+    if not lines or not txn_date:
+        raise BadRequestError('Transaction date and lines are required')
+    
+    # Validation for balance and required fields per line
     total_debit = 0.0
     total_credit = 0.0
     for line in lines:
-        try:
-            amt = float(line.get('amount', 0))
-        except (ValueError, TypeError):
-            raise BadRequestError(f"Invalid amount in line for COA {line.get('coa_id')}")
-
+        amt = float(line.get('amount') or 0)
         side = str(line.get('side', 'DEBIT')).upper()
         if side == 'DEBIT':
             total_debit += amt
         else:
             total_credit += amt
-
+            
     if abs(total_debit - total_credit) > 0.01:
-        raise BadRequestError(
-            f'Journal is not balanced. Debits ({total_debit:,.2f}) != Credits ({total_credit:,.2f})'
-        )
+        raise BadRequestError(f'Journal is not balanced. Debits: {total_debit}, Credits: {total_credit}')
 
     now = datetime.now()
     parent_txn_id = str(uuid.uuid4())
-
+    
     with engine.begin() as conn:
-        mark_columns = get_table_columns(conn, 'marks')
         txn_columns = get_table_columns(conn, 'transactions')
+        mark_columns = get_table_columns(conn, 'marks')
+        mapping_columns = get_table_columns(conn, 'mark_coa_mapping')
 
+        # 1. Create Parent Transaction
         conn.execute(text("""
             INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, source_file, company_id, created_at, updated_at)
             VALUES (:id, :txn_date, :description, :amount, 'DB', 'MANUAL', 'MANUAL', :company_id, :now, :now)
@@ -72,8 +71,11 @@ def create_manual_transaction():
             line_id = str(uuid.uuid4())
             line_amount = float(line.get('amount', 0))
             line_side = str(line.get('side', 'DEBIT')).upper()
-            line_coa_id = line.get('coa_id')
             line_desc = line.get('description') or header_description
+            
+            # Dual COA IDs from line
+            real_coa_id = line.get('coa_id')
+            coretax_coa_id = line.get('coa_id_coretax')
 
             mark_id = str(uuid.uuid4())
             mark_name = f"JV: {line_desc}"
@@ -93,25 +95,51 @@ def create_manual_transaction():
                 mark_data['is_salary_component'] = False
             if 'is_rental' in mark_columns:
                 mark_data['is_rental'] = False
+            
+            # For manual journal lines, we mark them as both if they have both mappings
+            # But coretax flag in marks is usually a global setting for that mark if it's automated.
+            # Here we can just set it to False or based on presence of coretax_coa_id
             if 'is_coretax' in mark_columns:
-                mark_data['is_coretax'] = False
+                mark_data['is_coretax'] = bool(coretax_coa_id)
 
             insert_cols = [c for c in mark_data.keys() if c in mark_columns]
             cols_sql = ', '.join(insert_cols)
             vals_sql = ', '.join(f":{c}" for c in insert_cols)
             conn.execute(text(f"INSERT INTO marks ({cols_sql}) VALUES ({vals_sql})"), mark_data)
 
-            mapping_id = str(uuid.uuid4())
-            conn.execute(text("""
-                INSERT INTO mark_coa_mapping (id, mark_id, coa_id, mapping_type, created_at, updated_at)
-                VALUES (:id, :mark_id, :coa_id, :side, :now, :now)
-            """), {
-                'id': mapping_id,
-                'mark_id': mark_id,
-                'coa_id': line_coa_id,
-                'side': line_side,
-                'now': now
-            })
+            # Insert REAL Mapping
+            if real_coa_id:
+                mapping_id = str(uuid.uuid4())
+                mapping_data = {
+                    'id': mapping_id,
+                    'mark_id': mark_id,
+                    'coa_id': real_coa_id,
+                    'mapping_type': line_side,
+                    'created_at': now,
+                    'updated_at': now,
+                    'report_type': 'real'
+                }
+                mapping_insert_cols = [c for c in mapping_data.keys() if c in mapping_columns]
+                mapping_cols_sql = ', '.join(mapping_insert_cols)
+                mapping_vals_sql = ', '.join(f":{c}" for c in mapping_insert_cols)
+                conn.execute(text(f"INSERT INTO mark_coa_mapping ({mapping_cols_sql}) VALUES ({mapping_vals_sql})"), mapping_data)
+
+            # Insert CORETAX Mapping
+            if coretax_coa_id:
+                mapping_id = str(uuid.uuid4())
+                mapping_data = {
+                    'id': mapping_id,
+                    'mark_id': mark_id,
+                    'coa_id': coretax_coa_id,
+                    'mapping_type': line_side,
+                    'created_at': now,
+                    'updated_at': now,
+                    'report_type': 'coretax'
+                }
+                mapping_insert_cols = [c for c in mapping_data.keys() if c in mapping_columns]
+                mapping_cols_sql = ', '.join(mapping_insert_cols)
+                mapping_vals_sql = ', '.join(f":{c}" for c in mapping_insert_cols)
+                conn.execute(text(f"INSERT INTO mark_coa_mapping ({mapping_cols_sql}) VALUES ({mapping_vals_sql})"), mapping_data)
 
             line_db_cr = 'DB' if line_side == 'DEBIT' else 'CR'
             child_data = {
@@ -125,7 +153,8 @@ def create_manual_transaction():
                 'source_file': 'MANUAL',
                 'mark_id': mark_id,
                 'company_id': company_id if company_id else None,
-                'now': now
+                'created_at': now,
+                'updated_at': now
             }
 
             child_insert_cols = [c for c in child_data.keys() if c in txn_columns]
@@ -147,6 +176,244 @@ def create_manual_transaction():
                 })
 
     return jsonify({'message': 'Manual multi-line journal entry created successfully', 'id': parent_txn_id}), 201
+
+
+@history_bp.route('/api/transactions/manual/<parent_id>', methods=['GET'])
+def get_manual_journal(parent_id):
+    """Get full data of a manual journal entry by its parent_id."""
+    engine = require_db_engine()
+    
+    with engine.connect() as conn:
+        # 1. Fetch Parent
+        p_row = conn.execute(text("""
+            SELECT id, txn_date, description, amount, company_id
+            FROM transactions
+            WHERE id = :id AND bank_code = 'MANUAL' AND (parent_id IS NULL OR parent_id = '')
+        """), {'id': parent_id}).fetchone()
+        
+        if not p_row:
+            raise NotFoundError('Manual journal parent not found')
+            
+        parent = serialize_row_values(p_row._mapping)
+        
+        # 2. Fetch Children and their mappings
+        c_rows = conn.execute(text("""
+            SELECT t.id, t.description, t.amount, t.db_cr, t.mark_id,
+                   mcm.coa_id, mcm.report_type
+            FROM transactions t
+            LEFT JOIN marks m ON t.mark_id = m.id
+            LEFT JOIN mark_coa_mapping mcm ON mcm.mark_id = m.id
+            WHERE t.parent_id = :pid
+            ORDER BY t.created_at ASC
+        """), {'pid': parent_id}).fetchall()
+        
+        lines_map = {}
+        for row in c_rows:
+            d = serialize_row_values(row._mapping)
+            tx_id = d['id']
+            if tx_id not in lines_map:
+                lines_map[tx_id] = {
+                    'id': tx_id,
+                    'description': d['description'],
+                    'amount': float(d['amount']),
+                    'side': 'DEBIT' if d['db_cr'] == 'DB' else 'CREDIT',
+                    'coa_id': None,
+                    'coa_id_coretax': None
+                }
+            
+            # Map COA based on report_type
+            if d['report_type'] == 'coretax':
+                lines_map[tx_id]['coa_id_coretax'] = d['coa_id']
+            else:
+                lines_map[tx_id]['coa_id'] = d['coa_id']
+        
+        lines = list(lines_map.values())
+        
+        # 3. Fetch Linked Transactions
+        l_rows = conn.execute(text("""
+            SELECT t.id, t.txn_date, t.description, t.amount, t.db_cr, t.bank_code
+            FROM manual_journal_links mjl
+            JOIN transactions t ON mjl.linked_txn_id = t.id
+            WHERE mjl.manual_txn_id = :pid
+        """), {'pid': parent_id}).fetchall()
+        
+        linked = []
+        for row in l_rows:
+            d = serialize_row_values(row._mapping)
+            d['db_cr'] = _normalize_db_cr(d.get('db_cr'))
+            linked.append(d)
+            
+        return jsonify({
+            'header': parent,
+            'lines': lines,
+            'linked_transactions': linked
+        })
+
+
+@history_bp.route('/api/transactions/manual/<parent_id>', methods=['PUT'])
+def update_manual_journal(parent_id):
+    """Update an existing manual journal entry."""
+    engine = require_db_engine()
+    data = request.json or {}
+    lines = data.get('lines', [])
+    header_description = data.get('description', '')
+    txn_date = data.get('txn_date')
+    company_id = data.get('company_id')
+    linked_transaction_ids = data.get('linked_transaction_ids', [])
+
+
+    if not lines or not txn_date:
+        raise BadRequestError('Transaction date and lines are required')
+    
+    # Validation for balance
+    total_debit = 0.0
+    total_credit = 0.0
+    for line in lines:
+        amt = float(line.get('amount') or 0)
+        side = str(line.get('side', 'DEBIT')).upper()
+        if side == 'DEBIT':
+            total_debit += amt
+        else:
+            total_credit += amt
+            
+    if abs(total_debit - total_credit) > 0.01:
+        raise BadRequestError(f'Journal is not balanced. Debits: {total_debit}, Credits: {total_credit}')
+
+    now = datetime.now()
+    
+    with engine.begin() as conn:
+        txn_columns = get_table_columns(conn, 'transactions')
+        mark_columns = get_table_columns(conn, 'marks')
+        mapping_columns = get_table_columns(conn, 'mark_coa_mapping')
+
+        # 1. Verify and Update Parent
+        p_row = conn.execute(text("SELECT id FROM transactions WHERE id = :id AND bank_code = 'MANUAL'"), {'id': parent_id}).fetchone()
+        if not p_row:
+            raise NotFoundError('Manual journal not found')
+
+        conn.execute(text("""
+            UPDATE transactions 
+            SET txn_date = :txn_date, description = :description, amount = :amount, 
+                company_id = :company_id, updated_at = :now
+            WHERE id = :id
+        """), {
+            'id': parent_id,
+            'txn_date': txn_date,
+            'description': header_description,
+            'amount': total_debit,
+            'company_id': company_id if company_id else None,
+            'now': now
+        })
+
+        # 2. Get old children and their marks to cleanup
+        old_children = conn.execute(text("SELECT mark_id FROM transactions WHERE parent_id = :pid"), {'pid': parent_id}).fetchall()
+        old_mark_ids = [r.mark_id for r in old_children if r.mark_id]
+
+        # Cleanup
+        if old_mark_ids:
+            conn.execute(text("DELETE FROM mark_coa_mapping WHERE mark_id IN :ids"), {'ids': old_mark_ids})
+            conn.execute(text("DELETE FROM marks WHERE id IN :ids"), {'ids': old_mark_ids})
+        conn.execute(text("DELETE FROM transactions WHERE parent_id = :pid"), {'pid': parent_id})
+        conn.execute(text("DELETE FROM manual_journal_links WHERE manual_txn_id = :pid"), {'pid': parent_id})
+
+        # 3. Re-insert children
+        for line in lines:
+            line_id = str(uuid.uuid4())
+            line_amount = float(line.get('amount', 0))
+            line_side = str(line.get('side', 'DEBIT')).upper()
+            line_desc = line.get('description') or header_description
+            
+            # Dual COA IDs from line
+            real_coa_id = line.get('coa_id')
+            coretax_coa_id = line.get('coa_id_coretax')
+
+            mark_id = str(uuid.uuid4())
+            mark_name = f"JV: {line_desc}"
+
+            mark_data = {
+                'id': mark_id,
+                'internal_report': mark_name,
+                'personal_use': mark_name,
+                'created_at': now,
+                'updated_at': now
+            }
+            if 'is_coretax' in mark_columns:
+                mark_data['is_coretax'] = bool(coretax_coa_id)
+
+            insert_cols = [c for c in mark_data.keys() if c in mark_columns]
+            cols_sql = ', '.join(insert_cols)
+            vals_sql = ', '.join(f":{c}" for c in insert_cols)
+            conn.execute(text(f"INSERT INTO marks ({cols_sql}) VALUES ({vals_sql})"), mark_data)
+
+            # Insert REAL Mapping
+            if real_coa_id:
+                mapping_id = str(uuid.uuid4())
+                mapping_data = {
+                    'id': mapping_id,
+                    'mark_id': mark_id,
+                    'coa_id': real_coa_id,
+                    'mapping_type': line_side,
+                    'created_at': now,
+                    'updated_at': now,
+                    'report_type': 'real'
+                }
+                mapping_insert_cols = [c for c in mapping_data.keys() if c in mapping_columns]
+                mapping_cols_sql = ', '.join(mapping_insert_cols)
+                mapping_vals_sql = ', '.join(f":{c}" for c in mapping_insert_cols)
+                conn.execute(text(f"INSERT INTO mark_coa_mapping ({mapping_cols_sql}) VALUES ({mapping_vals_sql})"), mapping_data)
+
+            # Insert CORETAX Mapping
+            if coretax_coa_id:
+                mapping_id = str(uuid.uuid4())
+                mapping_data = {
+                    'id': mapping_id,
+                    'mark_id': mark_id,
+                    'coa_id': coretax_coa_id,
+                    'mapping_type': line_side,
+                    'created_at': now,
+                    'updated_at': now,
+                    'report_type': 'coretax'
+                }
+                mapping_insert_cols = [c for c in mapping_data.keys() if c in mapping_columns]
+                mapping_cols_sql = ', '.join(mapping_insert_cols)
+                mapping_vals_sql = ', '.join(f":{c}" for c in mapping_insert_cols)
+                conn.execute(text(f"INSERT INTO mark_coa_mapping ({mapping_cols_sql}) VALUES ({mapping_vals_sql})"), mapping_data)
+
+            line_db_cr = 'DB' if line_side == 'DEBIT' else 'CR'
+            child_data = {
+                'id': line_id,
+                'parent_id': parent_id,
+                'txn_date': txn_date,
+                'description': line_desc,
+                'amount': line_amount,
+                'db_cr': line_db_cr,
+                'bank_code': 'MANUAL',
+                'source_file': 'MANUAL',
+                'mark_id': mark_id,
+                'company_id': company_id if company_id else None,
+                'created_at': now,
+                'updated_at': now
+            }
+
+            child_insert_cols = [c for c in child_data.keys() if c in txn_columns]
+            c_cols_sql = ', '.join(child_insert_cols)
+            c_vals_sql = ', '.join(f":{c}" for c in child_insert_cols)
+            conn.execute(text(f"INSERT INTO transactions ({c_cols_sql}) VALUES ({c_vals_sql})"), child_data)
+
+        # 4. Refresh Links
+        if linked_transaction_ids:
+            for linked_id in linked_transaction_ids:
+                conn.execute(text("""
+                    INSERT IGNORE INTO manual_journal_links (id, manual_txn_id, linked_txn_id, created_at)
+                    VALUES (:id, :manual_txn_id, :linked_txn_id, :now)
+                """), {
+                    'id': str(uuid.uuid4()),
+                    'manual_txn_id': parent_id,
+                    'linked_txn_id': linked_id,
+                    'now': now
+                })
+
+    return jsonify({'message': 'Manual journal updated successfully'})
 
 
 @history_bp.route('/api/transactions/manual/<txn_id>/links', methods=['GET'])

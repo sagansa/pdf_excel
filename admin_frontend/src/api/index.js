@@ -54,6 +54,12 @@ export const historyApi = {
   createManualTransaction(data) {
     return api.post('/transactions/manual', data);
   },
+  getManualJournal(parentId) {
+    return api.get(`/transactions/manual/${parentId}`);
+  },
+  updateManualTransaction(parentId, data) {
+    return api.put(`/transactions/manual/${parentId}`, data);
+  },
   getLinkableTransactions(params = {}) {
     return api.get('/transactions/linkable', { params });
   },

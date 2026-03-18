@@ -6,9 +6,9 @@
           <i class="bi bi-journal-text text-lg"></i>
         </div>
         <div>
-          <h3 class="text-base font-bold">Manual Journal</h3>
+          <h3 class="text-base font-bold">{{ editId ? 'Edit Manual Journal' : 'Manual Journal' }}</h3>
           <p class="text-[10px] text-muted font-medium uppercase tracking-wider">
-            Create balanced multi-line entries
+            {{ editId ? 'Modify existing journal entry' : 'Create balanced multi-line entries' }}
           </p>
         </div>
       </div>
@@ -42,6 +42,8 @@
                   size="sm"
                 />
               </div>
+
+
 
               <div class="md:col-span-2 space-y-1.5">
                 <label class="block text-[10px] font-bold text-muted uppercase tracking-wider ml-1">Journal Memo</label>
@@ -89,11 +91,18 @@
 
         <!-- Lines -->
         <div class="p-4 rounded-xl border border-border bg-surface overflow-hidden">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-[11px] font-bold text-theme uppercase tracking-wider flex items-center gap-2">
-              <i class="bi bi-list-columns-reverse text-primary"></i>
-              Journal Lines
-            </h4>
+            <div class="flex items-center gap-4">
+              <h4 class="text-[11px] font-bold text-theme uppercase tracking-wider flex items-center gap-2">
+                <i class="bi bi-list-columns-reverse text-primary"></i>
+                Journal Lines
+              </h4>
+              <SegmentedControl
+                v-model="activeReportType"
+                :options="reportTypeOptions"
+                variant="primary"
+                class="scale-90"
+              />
+            </div>
             <button
               type="button"
               @click="addLine"
@@ -101,7 +110,6 @@
             >
               <i class="bi bi-plus-circle-fill"></i> Add Line
             </button>
-          </div>
 
           <!-- Header Labels -->
           <div class="hidden md:grid grid-cols-[30px_110px_1fr_150px_1fr_36px] gap-2 text-[9px] font-bold uppercase tracking-wider text-muted px-2 mb-1">
@@ -134,12 +142,12 @@
                 <i class="bi bi-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none text-muted"></i>
               </div>
 
-              <!-- COA -->
               <div class="min-w-0">
                 <SearchableSelect
-                   v-model="line.coa_id"
+                   :model-value="activeReportType === 'real' ? line.coa_id : line.coa_id_coretax"
                    :options="coaSelectOptions"
                    placeholder="Account..."
+                   @update:modelValue="(val) => coaChanged(line, val)"
                 />
               </div>
 
@@ -324,7 +332,7 @@
               <span v-if="isLoading" class="spinner-border w-5 h-5"></span>
               <template v-else>
                 <i class="bi bi-cloud-check-fill text-lg"></i>
-                <span>Post to Ledger</span>
+                <span>{{ editId ? 'Update Journal Entry' : 'Post Journal Entry' }}</span>
               </template>
             </div>
           </button>
@@ -340,10 +348,15 @@ import BaseModal from '../ui/BaseModal.vue';
 import TextInput from '../ui/TextInput.vue';
 import SelectInput from '../ui/SelectInput.vue';
 import SearchableSelect from '../ui/SearchableSelect.vue';
+import SegmentedControl from '../ui/SegmentedControl.vue';
 import { historyApi } from '../../api';
 
 const props = defineProps({
   isOpen: Boolean,
+  editId: {
+    type: String,
+    default: null
+  },
   companies: {
     type: Array,
     default: () => []
@@ -358,17 +371,36 @@ const emit = defineEmits(['close', 'saved']);
 
 const isLoading = ref(false);
 const error = ref(null);
+const activeReportType = ref('real');
+const reportTypeOptions = [
+  { label: 'Real', value: 'real' },
+  { label: 'Coretax', value: 'coretax' }
+];
 
 const header = reactive({
   txn_date: new Date().toISOString().split('T')[0],
   description: '',
-  company_id: ''
+  company_id: '',
 });
 
 const lines = ref([
-  { coa_id: '', side: 'DEBIT', amount: null, description: '' },
-  { coa_id: '', side: 'CREDIT', amount: null, description: '' }
+  { coa_id: '', coa_id_coretax: '', side: 'DEBIT', amount: null, description: '' },
+  { coa_id: '', coa_id_coretax: '', side: 'CREDIT', amount: null, description: '' }
 ]);
+
+const coaChanged = (line, val) => {
+  if (activeReportType.value === 'real') {
+    line.coa_id = val;
+    if (!line.coa_id_coretax || line.coa_id_coretax === '') {
+      line.coa_id_coretax = val;
+    }
+  } else {
+    line.coa_id_coretax = val;
+    if (!line.coa_id || line.coa_id === '') {
+      line.coa_id = val;
+    }
+  }
+};
 
 // --- Link feature state ---
 const showLinkPanel = ref(false);
@@ -471,6 +503,7 @@ const addLine = () => {
   const lastLine = lines.value[lines.value.length - 1];
   lines.value.push({
     coa_id: '',
+    coa_id_coretax: '',
     side: lastLine.side === 'DEBIT' ? 'CREDIT' : 'DEBIT',
     amount: null,
     description: ''
@@ -512,6 +545,38 @@ const formatDate = (d) => {
   return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+const fetchJournalData = async (id) => {
+  isLoading.value = true;
+  error.value = null;
+  try {
+    const res = await historyApi.getManualJournal(id);
+    const data = res.data;
+    
+    // Fill Header
+    header.txn_date = data.header.txn_date ? data.header.txn_date.substring(0, 10) : '';
+    header.description = data.header.description;
+    header.company_id = data.header.company_id || '';
+    
+    // Fill Lines
+    lines.value = data.lines.map(l => ({
+      coa_id: l.coa_id || '',
+      coa_id_coretax: l.coa_id_coretax || '',
+      side: l.side,
+      amount: l.amount,
+      description: l.description || ''
+    }));
+    
+    // Fill Links
+    linkedTransactions.value = data.linked_transactions || [];
+    
+  } catch (e) {
+    error.value = "Failed to load journal data for editing.";
+    console.error(e);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 const handleSubmit = async () => {
   if (!hasDebitLine.value || !hasCreditLine.value) {
     error.value = "Journal must contain at least one debit line and one credit line.";
@@ -535,11 +600,17 @@ const handleSubmit = async () => {
       })),
       linked_transaction_ids: linkedTransactions.value.map(t => t.id)
     };
-    await historyApi.createManualTransaction(payload);
+    
+    if (props.editId) {
+      await historyApi.updateManualTransaction(props.editId, payload);
+    } else {
+      await historyApi.createManualTransaction(payload);
+    }
+    
     emit('saved');
     emit('close');
   } catch (e) {
-    error.value = e.response?.data?.error || "Failed to create manual transaction";
+    error.value = e.response?.data?.error || `Failed to ${props.editId ? 'update' : 'create'} manual transaction`;
     console.error(e);
   } finally {
     isLoading.value = false;
@@ -550,9 +621,10 @@ const resetForm = () => {
   header.description = '';
   header.company_id = '';
   header.txn_date = new Date().toISOString().split('T')[0];
+  activeReportType.value = 'real';
   lines.value = [
-    { coa_id: '', side: 'DEBIT', amount: null, description: '' },
-    { coa_id: '', side: 'CREDIT', amount: null, description: '' }
+    { coa_id: '', coa_id_coretax: '', side: 'DEBIT', amount: null, description: '' },
+    { coa_id: '', coa_id_coretax: '', side: 'CREDIT', amount: null, description: '' }
   ];
   linkedTransactions.value = [];
   linkResults.value = [];
@@ -565,7 +637,18 @@ const resetForm = () => {
 };
 
 watch(() => props.isOpen, (newVal) => {
-  if (newVal) resetForm();
+  if (newVal) {
+    resetForm();
+    if (props.editId) {
+      fetchJournalData(props.editId);
+    }
+  }
+});
+
+watch(() => props.editId, (newVal) => {
+  if (props.isOpen && newVal) {
+    fetchJournalData(newVal);
+  }
 });
 </script>
 
