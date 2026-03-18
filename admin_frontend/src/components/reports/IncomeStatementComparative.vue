@@ -229,43 +229,35 @@
             <tr v-if="!data?.expenses || data.expenses.length === 0">
               <td :colspan="data?.comparative ? 5 : 4" class="px-6 py-8 text-center text-gray-400 text-sm">No expenses recorded</td>
             </tr>
-            <tr v-for="item in data?.expenses || []" :key="item.code" class="group">
+            <tr v-for="item in (data?.expenses || []).filter(e => e.fiscal_category !== 'NON_DEDUCTIBLE_PERMANENT')" :key="item.code" class="group">
               <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">{{ item.code }}</td>
               <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
               <td v-if="data?.comparative" class="px-6 py-3 text-sm text-right font-semibold text-gray-600">
                 <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.previous_year_amount || 0) }}</span>
               </td>
-              <td class="px-6 py-3 text-sm text-right font-semibold text-red-700">
+              <td class="px-6 py-3 text-sm text-right font-semibold text-gray-700">
                 <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
               </td>
               <td class="px-6 py-3 text-center">
                 <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    @click.stop.prevent="copyToClipboard(item.amount)"
-                    class="text-gray-400 hover:text-red-600 transition-colors p-1"
-                    title="Copy amount"
-                  >
+                  <button @click.stop.prevent="copyToClipboard(item.amount)" class="text-gray-400 hover:text-red-600 transition-colors p-1" title="Copy amount">
                     <i class="bi bi-clipboard text-xs"></i>
                   </button>
-                  <button
-                    @click.stop.prevent="openCoaDetail(item)"
-                    class="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                    title="View transactions"
-                  >
+                  <button @click.stop.prevent="openCoaDetail(item)" class="text-gray-400 hover:text-indigo-600 transition-colors p-1" title="View transactions">
                     <i class="bi bi-list-ul text-xs"></i>
                   </button>
                 </div>
               </td>
             </tr>
           </tbody>
-          <tfoot v-if="data?.expenses && data.expenses.length > 0" class="bg-red-50 font-bold">
+          <tfoot v-if="data?.expenses && data.expenses.length > 0" class="bg-gray-100 font-bold border-t-2 border-gray-200">
             <tr>
-              <td colspan="2" class="px-6 py-3 text-sm text-red-900">Total Expenses</td>
-              <td v-if="data?.comparative" class="px-6 py-3 text-sm text-right text-red-900">
-                {{ formatCurrency(data.previous_year_total_expenses || 0) }}
+              <td colspan="2" class="px-6 py-4 text-sm text-gray-900 uppercase tracking-wider">Total Operational Expenses</td>
+              <td v-if="data?.comparative" class="px-6 py-4 text-sm text-right text-gray-700">
+                {{ formatCurrency((data.previous_year_total_expenses || 0) - (data.fiscal_reconciliation?.previous_year_total_positive_correction || 0)) }}
               </td>
-              <td class="px-6 py-3 text-sm text-right text-red-900">
-                {{ formatCurrency(data.total_expenses) }}
+              <td class="px-6 py-4 text-sm text-right text-gray-900">
+                <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(data.total_expenses - (data.fiscal_reconciliation?.total_positive_correction || 0)) }}</span>
               </td>
               <td></td>
             </tr>
@@ -274,22 +266,83 @@
       </div>
     </div>
 
-    <!-- Net Income Summary -->
-    <div v-if="data" 
-      class="rounded-lg shadow-lg p-6 text-white"
-      :class="data.net_income >= 0 ? 'bg-gradient-to-br from-green-600 to-green-700' : 'bg-gradient-to-br from-red-600 to-red-700'"
-    >
-      <div class="flex items-center justify-between">
+    <!-- Final Net Income Summary & Reconciliation -->
+    <div v-if="data && data.fiscal_reconciliation" class="bg-white dark:bg-[#1f2937] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-gray-900 dark:text-gray-100">
+      
+      <!-- COMMERCIAL NET INCOME -->
+      <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+           :class="data.net_income >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20'">
         <div>
-          <p class="text-sm font-medium opacity-90">Net Income</p>
-          <p class="text-xs opacity-75 mt-1">Laba Bersih</p>
+          <p class="text-xs font-bold uppercase tracking-wider mb-1" :class="data.net_income >= 0 ? 'text-emerald-800 dark:text-emerald-400' : 'text-rose-800 dark:text-rose-400'">Commercial Net Income</p>
+          <p class="text-[10px] uppercase opacity-70">Laba (Rugi) Bersih Sebelum Pajak</p>
         </div>
-        <div class="text-right">
-          <p v-if="data.comparative" class="text-xs opacity-75 mb-1">
+        <div class="text-right flex flex-col items-end">
+          <p v-if="data.comparative" class="text-xs opacity-60 font-semibold mb-1">
             Previous: {{ formatCurrency(data.previous_year_net_income || 0) }}
           </p>
-          <p class="text-3xl font-bold whitespace-nowrap tabular-nums">
+          <p class="text-2xl font-black whitespace-nowrap tabular-nums" :class="data.net_income >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'">
             {{ formatCurrency(data.net_income) }}
+          </p>
+        </div>
+      </div>
+
+      <!-- NON DEDUCTIBLE ITEMS -->
+      <div v-if="data.fiscal_reconciliation.total_positive_correction > 0" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#111827]/50">
+        <div class="flex items-center justify-between mb-3 text-sm">
+          <div class="flex items-center gap-2">
+            <i class="bi bi-plus-circle text-rose-600 dark:text-rose-400 font-bold"></i>
+            <span class="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest text-xs">Non-Deductible Expenses (Koreksi Fiskal Positif)</span>
+          </div>
+          <span class="font-bold text-rose-600 dark:text-rose-400 tabular-nums">{{ formatCurrency(data.fiscal_reconciliation.total_positive_correction) }}</span>
+        </div>
+        
+        <!-- List of specific accounts -->
+        <ul class="space-y-2 pl-6">
+          <li v-for="item in data.fiscal_reconciliation.positive_corrections" :key="item.code" class="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400">
+            <span class="flex items-center gap-2">
+              <span class="font-mono bg-gray-200 dark:bg-gray-800 px-1 py-0.5 rounded text-[10px]">{{ item.code }}</span>
+              {{ item.name }}
+            </span>
+            <span class="font-mono tabular-nums">{{ formatCurrency(item.amount) }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- FISCAL NET INCOME -->
+      <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+           :class="data.fiscal_reconciliation.fiscal_net_income >= 0 ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-red-50 dark:bg-red-900/20'">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider mb-1 text-indigo-800 dark:text-indigo-400">Fiscal Net Income</p>
+          <p class="text-[10px] uppercase opacity-70">Laba (Rugi) Bersih Fiskal</p>
+        </div>
+        <div class="text-right flex flex-col items-end">
+          <p v-if="data.comparative" class="text-xs opacity-60 font-semibold mb-1">
+            Previous: {{ formatCurrency(data.fiscal_reconciliation.previous_year_fiscal_net_income || 0) }}
+          </p>
+          <p class="text-2xl font-black whitespace-nowrap tabular-nums text-indigo-700 dark:text-indigo-300">
+            {{ formatCurrency(data.fiscal_reconciliation.fiscal_net_income) }}
+          </p>
+        </div>
+      </div>
+
+      <!-- TAX & NET AFTER TAX -->
+      <div class="px-6 py-6 bg-gradient-to-br from-gray-900 to-gray-800 dark:from-[#111827] dark:to-gray-900 text-white">
+        <!-- Tax estimate -->
+        <div class="flex items-center justify-between text-sm opacity-90 mb-4 pb-4 border-b border-white/20">
+          <div>Estimated Corp. Income Tax (22%)</div>
+          <div class="font-bold tabular-nums text-rose-300">
+            ({{ formatCurrency(data.fiscal_reconciliation.fiscal_net_income > 0 ? data.fiscal_reconciliation.fiscal_net_income * 0.22 : 0) }})
+          </div>
+        </div>
+        
+        <!-- After Tax -->
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-lg font-bold uppercase tracking-wider">Net Income After Tax</p>
+            <p class="text-xs opacity-70 italic">Laba Bersih Setelah Pajak</p>
+          </div>
+          <p class="text-3xl font-black whitespace-nowrap tabular-nums text-emerald-400">
+            {{ formatCurrency(data.net_income - (data.fiscal_reconciliation.fiscal_net_income > 0 ? data.fiscal_reconciliation.fiscal_net_income * 0.22 : 0)) }}
           </p>
         </div>
       </div>
@@ -299,6 +352,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import FiscalCategoryBadge from '../ui/FiscalCategoryBadge.vue';
 
 const props = defineProps({
   data: {

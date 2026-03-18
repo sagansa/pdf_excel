@@ -135,6 +135,7 @@ def _build_income_statement_query(conn, report_type, split_exclusion_clause, cor
             coa.name,
             coa.category,
             coa.subcategory,
+            coa.fiscal_category,
             SUM(
                 CASE
                     WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'DEBIT' THEN
@@ -172,7 +173,7 @@ def _build_income_statement_query(conn, report_type, split_exclusion_clause, cor
             AND (:company_id IS NULL OR {company_ref} = :company_id)
             {split_exclusion_clause}
                 {coretax_clause}
-        GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory
+        GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory, coa.fiscal_category
         ORDER BY coa.code
     """)
 
@@ -204,6 +205,7 @@ def _process_income_statement_rows(result):
             'subcategory': d['subcategory'],
             'amount': amount,
             'category': d['category'],
+            'fiscal_category': d.get('fiscal_category', 'DEDUCTIBLE'),
         }
 
         if d['category'] == 'REVENUE':
@@ -465,14 +467,55 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
             'name': 'Beban Penyusutan dan Amortisasi',
             'subcategory': 'Operating Expenses',
             'amount': dynamic_5314_amount,
-            'category': 'EXPENSE'
+            'category': 'EXPENSE',
+            'fiscal_category': 'DEDUCTIBLE' # Amortization usually deductible unless specifically marked
         })
     
     # Calculate total_expenses as the sum of all items in final_expenses list
-    # This includes operating expenses, 5314 (amortization), and 5315 (rent)
-    # COGS items are handled separately in cogs_breakdown
     total_expenses_calculated = sum(e['amount'] for e in final_expenses)
     
+    # --- FISCAL RECONCILIATION LOGIC ---
+    positive_corrections = []
+    negative_corrections = []
+    
+    # Check expenses for non-deductible items
+    for exp in final_expenses:
+        f_cat = exp.get('fiscal_category', 'DEDUCTIBLE')
+        if f_cat in ('NON_DEDUCTIBLE_PERMANENT', 'NON_DEDUCTIBLE_TEMPORARY'):
+            positive_corrections.append({
+                'code': exp['code'],
+                'name': exp['name'],
+                'amount': exp['amount'],
+                'fiscal_category': f_cat
+            })
+            
+    # Check COGS for non-deductible items
+    for cogs_item in cogs_breakdown.get('purchases_items', []) + cogs_breakdown.get('other_cogs_items', []):
+        f_cat = cogs_item.get('fiscal_category', 'DEDUCTIBLE')
+        if f_cat in ('NON_DEDUCTIBLE_PERMANENT', 'NON_DEDUCTIBLE_TEMPORARY'):
+             positive_corrections.append({
+                'code': cogs_item['code'],
+                'name': cogs_item['name'],
+                'amount': cogs_item['amount'],
+                'fiscal_category': f_cat
+            })
+
+    # Check revenue for non-taxable income
+    for rev in revenue:
+        f_cat = rev.get('fiscal_category', 'DEDUCTIBLE')
+        if f_cat == 'NON_TAXABLE_INCOME':
+            negative_corrections.append({
+                'code': rev['code'],
+                'name': rev['name'],
+                'amount': rev['amount'],
+                'fiscal_category': f_cat
+            })
+
+    total_positive_correction = sum(c['amount'] for c in positive_corrections)
+    total_negative_correction = sum(c['amount'] for c in negative_corrections)
+    commercial_net_income = total_revenue - total_expenses_calculated - calculate_hpp
+    fiscal_net_income = commercial_net_income + total_positive_correction - total_negative_correction
+
     return {
         'revenue': revenue,
         'expenses': final_expenses,
@@ -491,5 +534,13 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
             'total_5314': dynamic_5314_amount,
             'report_year': amortization_breakdown.get('report_year')
         },
-        'net_income': total_revenue - total_expenses_calculated - calculate_hpp
+        'net_income': commercial_net_income,
+        'fiscal_reconciliation': {
+            'commercial_net_income': commercial_net_income,
+            'positive_corrections': positive_corrections,
+            'negative_corrections': negative_corrections,
+            'total_positive_correction': total_positive_correction,
+            'total_negative_correction': total_negative_correction,
+            'fiscal_net_income': fiscal_net_income
+        }
     }

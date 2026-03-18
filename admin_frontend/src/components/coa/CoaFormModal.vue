@@ -1,140 +1,155 @@
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-    @click.self="$emit('close')"
-  >
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-      <!-- Header -->
-      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <h2 class="text-xl font-bold text-gray-900">
-          {{ coa ? 'Edit Account' : 'Create New Account' }}
-        </h2>
-        <button
-          @click="$emit('close')"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <i class="bi bi-x-lg text-xl"></i>
-        </button>
+  <BaseModal :isOpen="isOpen" @close="$emit('close')" size="lg">
+    <template #title>
+      <div class="flex items-center gap-2 text-theme">
+        <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          <i class="bi bi-diagram-3 text-primary"></i>
+        </div>
+        <span>{{ coa ? 'Edit Account' : 'Create New Account' }}</span>
       </div>
+    </template>
 
-      <!-- Form -->
-      <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
-        <!-- Code -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Account Code <span class="text-red-500">*</span>
-          </label>
-          <input
-            v-model="formData.code"
-            type="text"
-            required
-            placeholder="e.g., 1-1000"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-          <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">
-             <i class="bi bi-info-circle"></i>
-             <span>{{ codeHelpText }}</span>
-          </p>
-        </div>
+    <div class="p-6 space-y-6">
+      <form @submit.prevent="handleSubmit" class="space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Code -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-bold text-muted uppercase tracking-[0.2em] ml-1">
+              Account Code <span class="text-danger">*</span>
+            </label>
+            <input
+              v-model="formData.code"
+              type="text"
+              required
+              placeholder="e.g., 1-1000"
+              class="input-base w-full"
+            />
+            <p class="text-[10px] text-muted mt-1 flex items-center gap-1 ml-1 font-medium italic">
+               <i class="bi bi-info-circle"></i>
+               <span>{{ codeHelpText }}</span>
+            </p>
+          </div>
 
-        <!-- Name -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Account Name <span class="text-red-500">*</span>
-          </label>
-          <input
-            v-model="formData.name"
-            type="text"
-            required
-            placeholder="e.g., Kas"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
+          <!-- Name -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-bold text-muted uppercase tracking-[0.2em] ml-1">
+              Account Name <span class="text-danger">*</span>
+            </label>
+            <input
+              v-model="formData.name"
+              type="text"
+              required
+              placeholder="e.g., Kas"
+              class="input-base w-full"
+            />
+          </div>
 
-        <!-- Category -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Category <span class="text-red-500">*</span>
-          </label>
-          <select
-            v-model="formData.category"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="">Select category...</option>
-            <option value="ASSET">Asset (starts with 1)</option>
-            <option value="LIABILITY">Liability (starts with 2)</option>
-            <option value="EQUITY">Equity (starts with 3)</option>
-            <option value="REVENUE">Revenue (starts with 4)</option>
-            <option value="EXPENSE">Expense (starts with 5)</option>
-          </select>
+          <!-- Category -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-bold text-muted uppercase tracking-[0.2em] ml-1">
+              Main Category <span class="text-danger">*</span>
+            </label>
+            <select
+              v-model="formData.category"
+              required
+              class="input-base w-full appearance-none"
+            >
+              <option value="" disabled>Select category...</option>
+              <option value="ASSET">Asset (starts with 1)</option>
+              <option value="LIABILITY">Liability (starts with 2)</option>
+              <option value="EQUITY">Equity (starts with 3)</option>
+              <option value="REVENUE">Revenue (starts with 4)</option>
+              <option value="EXPENSE">Expense (starts with 5)</option>
+            </select>
+          </div>
+
+          <!-- Fiscal Category -->
+          <div class="space-y-1.5">
+            <div class="flex items-center gap-2 ml-1">
+              <label class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">
+                Fiscal Category
+              </label>
+              <FiscalCategoryBadge :category="formData.fiscal_category" />
+            </div>
+            <select
+              v-model="formData.fiscal_category"
+              class="input-base w-full appearance-none"
+            >
+              <option value="DEDUCTIBLE">Deductible (Normal)</option>
+              <option value="NON_DEDUCTIBLE_PERMANENT">Non-Deductible (Permanent)</option>
+              <option value="NON_DEDUCTIBLE_TEMPORARY">Non-Deductible (Temporary)</option>
+              <option value="NON_TAXABLE_INCOME">Non-Taxable Income</option>
+            </select>
+          </div>
         </div>
 
         <!-- Subcategory -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-bold text-muted uppercase tracking-[0.2em] ml-1">
             Subcategory
           </label>
           <input
             v-model="formData.subcategory"
             type="text"
             placeholder="e.g., Current Assets"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="input-base w-full"
           />
         </div>
 
         <!-- Description -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-bold text-muted uppercase tracking-[0.2em] ml-1">
             Description
           </label>
           <textarea
             v-model="formData.description"
             rows="3"
             placeholder="Brief description of this account..."
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="input-base w-full resize-none min-h-[100px]"
           ></textarea>
         </div>
 
         <!-- Active Status -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3 p-3 rounded-xl bg-surface-muted border border-border">
           <input
             v-model="formData.is_active"
             type="checkbox"
-            id="is_active"
-            class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+            id="is_active_coa"
+            class="w-4 h-4 text-primary bg-surface border-border rounded focus:ring-primary"
           />
-          <label for="is_active" class="text-sm text-gray-700">
-            Active (uncheck to deactivate this account)
+          <label for="is_active_coa" class="text-xs font-bold text-theme cursor-pointer select-none">
+            Active Status <span class="text-[10px] text-muted font-normal ml-2">(Uncheck to deactivate this account)</span>
           </label>
-        </div>
-
-        <!-- Actions -->
-        <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            @click="$emit('close')"
-            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            :disabled="isSaving"
-            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <span v-if="isSaving" class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-            <span>{{ coa ? 'Update' : 'Create' }}</span>
-          </button>
         </div>
       </form>
     </div>
-  </div>
+
+    <template #footer>
+      <div class="flex items-center justify-end gap-3 w-full">
+        <button
+          type="button"
+          @click="$emit('close')"
+          class="btn-secondary !text-xs !py-2 h-[38px] px-6"
+        >
+          Cancel
+        </button>
+        <button
+          @click="handleSubmit"
+          :disabled="isSaving"
+          class="btn-primary !text-xs !py-2 h-[38px] px-8 flex items-center gap-2"
+        >
+          <span v-if="isSaving" class="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-white"></span>
+          <span>{{ coa ? 'Update Account' : 'Create Account' }}</span>
+        </button>
+      </div>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue';
+import BaseModal from '../ui/BaseModal.vue';
+import FiscalCategoryBadge from '../ui/FiscalCategoryBadge.vue';
 
 const props = defineProps({
   isOpen: {
@@ -155,6 +170,7 @@ const formData = ref({
   name: '',
   category: '',
   subcategory: '',
+  fiscal_category: 'DEDUCTIBLE',
   description: '',
   is_active: true
 });
@@ -183,6 +199,7 @@ watch(() => props.coa, (newCoa) => {
       name: newCoa.name || '',
       category: newCoa.category || '',
       subcategory: newCoa.subcategory || '',
+      fiscal_category: newCoa.fiscal_category || 'DEDUCTIBLE',
       description: newCoa.description || '',
       is_active: newCoa.is_active !== false
     };
@@ -193,6 +210,7 @@ watch(() => props.coa, (newCoa) => {
       name: '',
       category: '',
       subcategory: '',
+      fiscal_category: 'DEDUCTIBLE',
       description: '',
       is_active: true
     };
