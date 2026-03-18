@@ -27,9 +27,12 @@
               Category
             </th>
             <th class="px-6 py-3 text-left">
-              Subcategory
+              Fiscal Category
             </th>
             <th class="px-6 py-3 text-left">
+              Subcategory
+            </th>
+            <th class="px-6 py-3 text-left text-muted/50 font-normal">
               Description
             </th>
             <th class="px-6 py-3 text-right">
@@ -50,15 +53,13 @@
               <span class="text-sm font-medium text-theme">{{ coa.name }}</span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
-              <span
-                class="px-2 py-1 text-xs font-medium rounded-full"
-                :class="getCategoryClass(coa.category)"
-              >
-                {{ coa.category }}
-              </span>
+              <BaseBadge :variant="getCategoryVariant(coa.category)" :label="coa.category" />
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <FiscalCategoryBadge :category="coa.fiscal_category" />
             </td>
             <td class="px-6 py-4">
-              <span class="text-sm text-muted">{{ coa.subcategory || '-' }}</span>
+              <span class="text-xs font-semibold text-muted">{{ coa.subcategory || '-' }}</span>
             </td>
             <td class="px-6 py-4">
               <span class="text-sm text-muted line-clamp-2">{{ coa.description || '-' }}</span>
@@ -99,6 +100,8 @@
 
 <script setup>
 import TableShell from '../ui/TableShell.vue';
+import BaseBadge from '../ui/BaseBadge.vue';
+import FiscalCategoryBadge from '../ui/FiscalCategoryBadge.vue';
 
 defineProps({
   coaList: {
@@ -113,15 +116,15 @@ defineProps({
 
 defineEmits(['edit', 'delete']);
 
-const getCategoryClass = (category) => {
-  const classes = {
-    ASSET: 'bg-green-100 text-green-800',
-    LIABILITY: 'bg-red-100 text-red-800',
-    EQUITY: 'bg-blue-100 text-blue-800',
-    REVENUE: 'bg-purple-100 text-purple-800',
-    EXPENSE: 'bg-orange-100 text-orange-800'
+const getCategoryVariant = (category) => {
+  const map = {
+    ASSET: 'primary',
+    LIABILITY: 'danger',
+    EQUITY: 'indigo',
+    REVENUE: 'success',
+    EXPENSE: 'warning'
   };
-  return classes[category] || 'bg-gray-100 text-gray-800';
+  return map[category] || 'muted';
 };
 </script>
 

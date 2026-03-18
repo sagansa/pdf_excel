@@ -37,7 +37,8 @@ export const useCoaStore = defineStore('coa', {
       return state.coaList.map(coa => ({
         value: coa.id,
         label: `${coa.code} - ${coa.name}`,
-        category: coa.category
+        category: coa.category,
+        fiscal_category: coa.fiscal_category
       }));
     }
   },

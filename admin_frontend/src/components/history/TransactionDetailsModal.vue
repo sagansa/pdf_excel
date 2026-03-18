@@ -135,20 +135,40 @@
               </p>
               <div class="grid grid-cols-1 gap-2">
                 <div v-for="(map, idx) in markDetails.mappings" :key="idx" 
-                    class="bg-surface p-2.5 rounded-xl border border-border flex items-center justify-between group hover:border-primary/50 transition-all shadow-sm"
+                    class="bg-surface p-3 rounded-xl border border-border flex flex-col gap-3 group hover:border-primary/50 transition-all shadow-sm"
                 >
-                  <div class="flex items-center gap-3">
-                    <span class="font-mono font-bold text-[10px] text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10">
-                      {{ map.code }}
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <span class="font-mono font-bold text-[10px] text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10">
+                        {{ map.code }}
+                      </span>
+                      <span class="text-xs font-bold text-theme">{{ map.name }}</span>
+                    </div>
+                    <span class="text-[8px] font-black px-2 py-1 rounded-md uppercase tracking-widest border" 
+                        :class="map.type === 'DEBIT' 
+                          ? 'bg-warning/10 text-warning border-warning/20' 
+                          : 'bg-success/10 text-success border-success/20'">
+                      {{ map.type }}
                     </span>
-                    <span class="text-xs font-bold text-theme">{{ map.name }}</span>
                   </div>
-                  <span class="text-[8px] font-black px-2 py-1 rounded-md uppercase tracking-widest border" 
-                      :class="map.type === 'DEBIT' 
-                        ? 'bg-warning/10 text-warning border-warning/20' 
-                        : 'bg-success/10 text-success border-success/20'">
-                    {{ map.type }}
-                  </span>
+                  
+                  <!-- Fiscal Tagging Section -->
+                  <div class="flex items-center justify-between pt-2 border-t border-border/50">
+                    <div class="flex items-center gap-2">
+                       <FiscalCategoryBadge :category="map.fiscal_category" />
+                    </div>
+                    
+                    <select 
+                      :value="map.fiscal_category || 'DEDUCTIBLE'" 
+                      @change="e => updateCoaFiscal(map.coa_id, e.target.value)"
+                      class="text-[9px] bg-surface-muted border-border rounded px-2 py-1 focus:ring-1 focus:ring-primary outline-none font-bold uppercase tracking-tight"
+                    >
+                      <option value="DEDUCTIBLE">Set Deductible</option>
+                      <option value="NON_DEDUCTIBLE_PERMANENT">Non-Deductible (Perm)</option>
+                      <option value="NON_DEDUCTIBLE_TEMPORARY">Non-Deductible (Temp)</option>
+                      <option value="NON_TAXABLE_INCOME">Non-Taxable Income</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -200,7 +220,9 @@
 import { ref, computed, watch, toRefs } from 'vue';
 import BaseModal from '../ui/BaseModal.vue';
 import { useHistoryStore } from '../../stores/history';
+import { useCoaStore } from '../../stores/coa';
 import HppDetailSection from './HppDetailSection.vue';
+import FiscalCategoryBadge from '../ui/FiscalCategoryBadge.vue';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -270,6 +292,18 @@ const handleCompanyChange = async (companyId) => {
         await store.assignCompany(localTxn.value.id, companyId || null);
     } catch (e) {
         alert('Failed to update company');
+    }
+};
+
+const coaStore = useCoaStore();
+const updateCoaFiscal = async (coaId, fiscalCategory) => {
+    try {
+        await coaStore.updateCoa(coaId, { fiscal_category: fiscalCategory });
+        // After updating COA, we might need to refresh history store if it caches COA details
+        // But usually, history store fetches mappings which join with COA, so a refresh is good
+        await store.fetchMarks(); 
+    } catch (e) {
+        alert('Failed to update fiscal category: ' + e.message);
     }
 };
 </script>
