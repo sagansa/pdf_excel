@@ -1,140 +1,137 @@
 <template>
   <div class="space-y-6">
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-      <h3 class="text-lg font-semibold text-gray-900">Payroll Components & Employee Breakdown</h3>
-      <p class="text-sm text-gray-500 mt-1">
-        Tandai komponen gaji dari menu Mark. Master employee dikelola dari Settings, lalu di sini tiap transaksi dipetakan ke employee untuk rekap bulanan.
-      </p>
-    </div>
+    <SectionCard
+      title="Payroll Components & Employee Breakdown"
+      subtitle="Tandai komponen gaji dari menu Mark. Master employee dikelola dari Settings, lalu di sini tiap transaksi dipetakan ke employee untuk rekap bulanan."
+    />
 
-    <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <SectionCard body-class="p-4" title="Analysis & Filters">
       <div class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div class="bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-            <div class="text-xs uppercase font-semibold text-indigo-600">Transactions</div>
-            <div class="text-lg font-bold text-indigo-900">{{ transactionsSummary.total_transactions }}</div>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
-            <div class="text-xs uppercase font-semibold text-emerald-600">Assigned</div>
-            <div class="text-lg font-bold text-emerald-900">{{ transactionsSummary.assigned_transactions }}</div>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-            <div class="text-xs uppercase font-semibold text-amber-700">Unassigned</div>
-            <div class="text-lg font-bold text-amber-900">{{ Math.max(0, transactionsSummary.total_transactions - transactionsSummary.assigned_transactions) }}</div>
-          </div>
-          <div class="bg-sky-50 border border-sky-100 rounded-lg px-3 py-2">
-            <div class="text-xs uppercase font-semibold text-sky-700">Total Amount</div>
-            <div class="text-lg font-bold text-sky-900">{{ formatCurrency(transactionsSummary.total_amount) }}</div>
-          </div>
+          <StatCard
+            label="Transactions"
+            :value="transactionsSummary.total_transactions"
+            variant="primary"
+          />
+          <StatCard
+            label="Assigned"
+            :value="transactionsSummary.assigned_transactions"
+            variant="success"
+          />
+          <StatCard
+            label="Unassigned"
+            :value="Math.max(0, transactionsSummary.total_transactions - transactionsSummary.assigned_transactions)"
+            variant="warning"
+          />
+          <StatCard
+            label="Total Amount"
+            :value="formatCurrency(transactionsSummary.total_amount)"
+            variant="default"
+          />
         </div>
 
-        <div class="rounded-lg border border-gray-200 bg-gray-50/70 p-3">
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-600">Filter Data</h4>
-            <span class="text-xs text-gray-500">{{ filteredTransactions.length }}/{{ transactions.length }} rows</span>
+        <div class="rounded-2xl border border-border bg-surface-muted/50 p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h4 class="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">Filter Data</h4>
+            <span class="text-xs text-theme-muted">{{ filteredTransactions.length }}/{{ transactions.length }} rows</span>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-2">
-            <div class="xl:col-span-2">
-              <div class="text-[11px] font-medium text-gray-600 mb-1">Periode</div>
-              <select
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4">
+            <FormField label="Periode" label-class="!text-[11px]" wrapper-class="xl:col-span-2">
+              <SelectInput
                 v-model="selectedMonth"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
-              </select>
-            </div>
+                :options="monthOptions"
+              />
+            </FormField>
 
-            <div class="xl:col-span-4">
-              <div class="text-[11px] font-medium text-gray-600 mb-1">Search</div>
-              <input
+            <FormField label="Search" label-class="!text-[11px]" wrapper-class="xl:col-span-4">
+              <TextInput
                 v-model="search"
                 @keyup.enter="loadData"
-                type="text"
                 placeholder="Search transaction..."
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                icon="bi bi-search"
               />
-            </div>
+            </FormField>
 
-            <div class="xl:col-span-3">
-              <div class="text-[11px] font-medium text-gray-600 mb-1">Employee</div>
+            <FormField label="Employee" label-class="!text-[11px]" wrapper-class="xl:col-span-3">
               <MultiSelect
                 v-model="selectedEmployeeIds"
                 :options="employeeFilterOptions"
                 placeholder="Filter employee..."
               />
-            </div>
+            </FormField>
 
-            <div class="xl:col-span-3">
-              <div class="text-[11px] font-medium text-gray-600 mb-1">Component (Mark)</div>
+            <FormField label="Component (Mark)" label-class="!text-[11px]" wrapper-class="xl:col-span-3">
               <MultiSelect
                 v-model="selectedComponentNames"
                 :options="componentFilterOptions"
                 placeholder="Filter component (mark)..."
               />
-            </div>
+            </FormField>
 
-            <div class="xl:col-span-2">
-              <div class="text-[11px] font-medium text-gray-600 mb-1">Min Amount</div>
-              <input
+            <FormField label="Min Amount" label-class="!text-[11px]" wrapper-class="xl:col-span-2">
+              <TextInput
                 v-model="amountMin"
-                type="text"
                 placeholder="Min amount"
-                class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                type="number"
               />
-            </div>
+            </FormField>
 
-            <div class="xl:col-span-2">
-              <div class="text-[11px] font-medium text-gray-600 mb-1">Max Amount</div>
-              <input
+            <FormField label="Max Amount" label-class="!text-[11px]" wrapper-class="xl:col-span-2">
+              <TextInput
                 v-model="amountMax"
-                type="text"
                 placeholder="Max amount"
-                class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                type="number"
               />
-            </div>
+            </FormField>
 
-            <div class="xl:col-span-8 flex flex-wrap items-end gap-2">
+            <div class="xl:col-span-8 flex flex-wrap items-end gap-2 pt-1">
               <button
                 @click="loadData"
-                class="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                class="btn-primary !py-2 !px-4 text-xs"
               >
+                <i class="bi bi-arrow-clockwise"></i>
                 Refresh
               </button>
               <button
                 @click="clearLocalFilters"
-                class="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100"
+                class="btn-secondary !py-2 !px-4 text-xs"
               >
+                <i class="bi bi-eraser"></i>
                 Clear Filters
               </button>
             </div>
           </div>
         </div>
 
-        <div class="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-xs font-semibold text-gray-700">
+        <div class="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 mt-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              <i class="bi bi-check2-circle mr-1"></i>
               {{ selectedTransactionCount }} selected
             </span>
-            <select
-              v-model="bulkAssignUserId"
-              class="w-full sm:w-72 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              :disabled="selectedTransactionCount === 0 || loadingUsers || isBulkAssigning"
-            >
-              <option value="">-- Select employee for selected transactions --</option>
-              <option value="__unassigned__">-- Unassigned --</option>
-              <option v-for="user in employeeUsers" :key="`bulk-${user.id}`" :value="user.id">{{ user.name }}</option>
-            </select>
+            <div class="flex-1 max-w-sm">
+              <SelectInput
+                v-model="bulkAssignUserId"
+                :options="[
+                  { value: '', label: '-- Select employee --' },
+                  { value: '__unassigned__', label: '-- Unassigned --' },
+                  ...employeeUsers.map(user => ({ value: user.id, label: user.name }))
+                ]"
+                :disabled="selectedTransactionCount === 0 || loadingUsers || isBulkAssigning"
+              />
+            </div>
             <button
               @click="bulkAssignSelectedUser"
-              class="px-3 py-2 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
+              class="btn-primary !bg-emerald-600 hover:!bg-emerald-700 !py-2 !px-4 text-xs"
               :disabled="selectedTransactionCount === 0 || !bulkAssignUserId || isBulkAssigning"
             >
+              <i class="bi bi-person-check mr-2"></i>
               {{ isBulkAssigning ? 'Assigning...' : 'Assign Selected' }}
             </button>
             <button
               @click="clearSelection"
-              class="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-60"
+              class="btn-secondary !py-2 !px-4 text-xs"
               :disabled="selectedTransactionCount === 0 || isBulkAssigning"
             >
               Clear Selection
@@ -142,60 +139,55 @@
           </div>
         </div>
       </div>
-
-      <div
-        v-if="pageMessage"
-        class="mt-3 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700"
-      >
-        {{ pageMessage }}
-      </div>
-    </div>
-
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <h4 class="text-sm font-semibold text-gray-800">Salary Component Transactions</h4>
-      </div>
+    </SectionCard>
+    <Alert
+      v-if="pageMessage"
+      variant="warning"
+      :message="pageMessage"
+      class="mt-4"
+    />
+    <SectionCard title="Salary Component Transactions" body-class="p-0">
       <div class="max-h-[520px] overflow-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-          <thead class="bg-white sticky top-0">
+        <table class="table-compact min-w-full">
+          <thead class="bg-surface sticky top-0">
             <tr>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase w-10">
+              <th class="px-4 py-2 text-left text-xs font-semibold text-theme-muted uppercase w-10">
                 <input
                   ref="selectAllCheckbox"
                   type="checkbox"
-                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  class="h-4 w-4 rounded border-border text-primary focus:ring-primary-ring"
                   :checked="allFilteredSelected"
                   :disabled="filteredTransactions.length === 0 || isBulkAssigning"
                   @change="toggleSelectAllFiltered($event.target.checked)"
                 />
               </th>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">
-                <button @click="toggleSort('txn_date')" class="inline-flex items-center gap-1 hover:text-gray-700">
+              <th class="px-4 py-2 text-left text-xs font-semibold text-theme-muted uppercase">
+                <button @click="toggleSort('txn_date')" class="inline-flex items-center gap-1 hover:text-theme">
                   Date / Description
                   <i :class="getSortIcon('txn_date')"></i>
                 </button>
               </th>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">
-                <button @click="toggleSort('component_name')" class="inline-flex items-center gap-1 hover:text-gray-700">
+              <th class="px-4 py-2 text-left text-xs font-semibold text-theme-muted uppercase">
+                <button @click="toggleSort('component_name')" class="inline-flex items-center gap-1 hover:text-theme">
                   Component (Mark)
                   <i :class="getSortIcon('component_name')"></i>
                 </button>
               </th>
-              <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Amount</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Payroll Month</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Employee (Sagansa)</th>
+              <th class="px-4 py-2 text-right text-xs font-semibold text-theme-muted uppercase">Amount</th>
+              <th class="px-4 py-2 text-left text-xs font-semibold text-theme-muted uppercase">Payroll Month</th>
+              <th class="px-4 py-2 text-left text-xs font-semibold text-theme-muted uppercase">Employee (Sagansa)</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="divide-y divide-border">
             <tr v-if="loadingTransactions">
-              <td colspan="6" class="px-4 py-6 text-center text-gray-500">Loading payroll transactions...</td>
+              <td colspan="6" class="px-4 py-6 text-center text-theme-muted">Loading payroll transactions...</td>
             </tr>
             <tr v-else-if="filteredTransactions.length === 0">
-              <td colspan="6" class="px-4 py-6 text-center text-gray-500">
+              <td colspan="6" class="px-4 py-6 text-center text-theme-muted">
                 No salary component transactions for current filter
               </td>
             </tr>
-            <tr v-for="txn in filteredTransactions" :key="txn.id" class="hover:bg-gray-50">
+            <tr v-for="txn in filteredTransactions" :key="txn.id" class="hover:bg-surface-muted/50 transition-colors">
               <td class="px-4 py-3">
                 <input
                   type="checkbox"
@@ -206,37 +198,37 @@
                 />
               </td>
               <td class="px-4 py-3">
-                <div class="font-medium text-gray-900">{{ formatDate(txn.txn_date) }}</div>
-                <div class="text-xs text-gray-600 whitespace-normal break-words">{{ txn.description || '-' }}</div>
+                <div class="font-medium text-theme">{{ formatDate(txn.txn_date) }}</div>
+                <div class="text-xs text-theme-muted whitespace-normal break-words">{{ txn.description || '-' }}</div>
               </td>
-              <td class="px-4 py-3 text-gray-700">{{ txn.component_name || '-' }}</td>
-              <td class="px-4 py-3 text-right font-medium text-gray-900">{{ formatCurrency(txn.amount) }}</td>
+              <td class="px-4 py-3 text-theme-muted">{{ txn.component_name || '-' }}</td>
+              <td class="px-4 py-3 text-right font-medium text-theme">{{ formatCurrency(txn.amount) }}</td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
                   <input
                     type="month"
                     :value="getTxnPayrollMonthValue(txn)"
                     @change="updateTxnPayrollMonth(txn, $event.target.value)"
-                    class="w-36 px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="w-36 px-2 py-1.5 text-xs border border-border rounded-lg bg-surface-raised text-theme focus:ring-2 focus:ring-primary-ring"
                     :disabled="savingTxnId === txn.id || savingPeriodTxnId === txn.id || isBulkAssigning"
                   />
                   <button
                     @click="resetTxnPayrollMonth(txn)"
-                    class="px-2 py-1 text-[11px] font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-60"
+                    class="px-2 py-1 text-[11px] font-medium text-theme-muted bg-surface-muted rounded hover:bg-surface-muted/80 disabled:opacity-60"
                     :disabled="!txn.payroll_period_month || savingPeriodTxnId === txn.id || isBulkAssigning"
                     title="Reset ke bulan transaksi"
                   >
                     Default
                   </button>
                 </div>
-                <div v-if="savingPeriodTxnId === txn.id" class="text-[11px] text-gray-500 mt-1">Saving period...</div>
+                <div v-if="savingPeriodTxnId === txn.id" class="text-[11px] text-theme-muted mt-1 italic">Saving period...</div>
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
                   <select
                     :value="txn.sagansa_user_id || ''"
                     @change="assignUser(txn, $event.target.value)"
-                    class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="w-full px-3 py-1.5 text-xs border border-border rounded-lg bg-surface-raised text-theme focus:ring-2 focus:ring-primary-ring font-medium"
                     :disabled="savingTxnId === txn.id || loadingUsers"
                   >
                     <option value="">-- Unassigned --</option>
@@ -248,9 +240,9 @@
                     </option>
                     <option v-for="user in employeeUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
                   </select>
-                  <span v-if="savingTxnId === txn.id" class="text-xs text-gray-500">Saving...</span>
+                  <span v-if="savingTxnId === txn.id" class="text-xs text-theme-muted italic">Saving...</span>
                 </div>
-                <div v-if="txn.sagansa_user_id && !isEmployeeUser(txn.sagansa_user_id)" class="text-[11px] text-amber-700 mt-1">
+                <div v-if="txn.sagansa_user_id && !isEmployeeUser(txn.sagansa_user_id)" class="text-[11px] text-warning mt-1">
                   Current assignee belum ditandai employee
                 </div>
               </td>
@@ -258,59 +250,59 @@
           </tbody>
         </table>
       </div>
-    </div>
+    </SectionCard>
 
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <h4 class="text-sm font-semibold text-gray-800">Monthly Payroll Summary</h4>
-      </div>
-      <div class="p-4 border-b border-gray-100 bg-white">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-            <div class="text-xs uppercase font-semibold text-gray-500">Employees</div>
-            <div class="text-base font-bold text-gray-900">{{ displayMonthlySummary.employee_count }}</div>
+    <SectionCard title="Monthly Payroll Summary" body-class="p-0">
+      <div class="p-5 border-b border-border bg-surface-muted/30">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-surface-raised border border-border rounded-2xl px-4 py-3 shadow-sm">
+            <div class="text-[11px] uppercase font-bold text-theme-muted tracking-wider mb-1">Employees</div>
+            <div class="text-xl font-bold text-theme">{{ displayMonthlySummary.employee_count }}</div>
           </div>
-          <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-            <div class="text-xs uppercase font-semibold text-gray-500">Transactions</div>
-            <div class="text-base font-bold text-gray-900">{{ displayMonthlySummary.total_transactions }}</div>
+          <div class="bg-surface-raised border border-border rounded-2xl px-4 py-3 shadow-sm">
+            <div class="text-[11px] uppercase font-bold text-theme-muted tracking-wider mb-1">Transactions</div>
+            <div class="text-xl font-bold text-theme">{{ displayMonthlySummary.total_transactions }}</div>
           </div>
-          <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-            <div class="text-xs uppercase font-semibold text-gray-500">Total Payroll</div>
-            <div class="text-base font-bold text-gray-900">{{ formatCurrency(displayMonthlySummary.total_salary_amount) }}</div>
+          <div class="bg-surface-raised border border-border rounded-2xl px-4 py-3 shadow-sm">
+            <div class="text-[11px] uppercase font-bold text-theme-muted tracking-wider mb-1">Total Payroll</div>
+            <div class="text-xl font-bold text-primary">{{ formatCurrency(displayMonthlySummary.total_salary_amount) }}</div>
           </div>
         </div>
       </div>
       <div class="max-h-[480px] overflow-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-          <thead class="bg-white sticky top-0">
+        <table class="table-compact min-w-full">
+          <thead>
             <tr>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Employee</th>
-              <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Transactions</th>
-              <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Total Salary</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Component Breakdown</th>
+              <th class="px-4 py-2 text-left text-xs font-semibold uppercase">Employee</th>
+              <th class="px-4 py-2 text-right text-xs font-semibold uppercase">Transactions</th>
+              <th class="px-4 py-2 text-right text-xs font-semibold uppercase">Total Salary</th>
+              <th class="px-4 py-2 text-left text-xs font-semibold uppercase">Component Breakdown</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="divide-y divide-border">
             <tr v-if="loadingSummary">
-              <td colspan="4" class="px-4 py-6 text-center text-gray-500">Loading payroll summary...</td>
+              <td colspan="4" class="px-4 py-8 text-center text-theme-muted">
+                <i class="bi bi-arrow-repeat animate-spin mr-2"></i>
+                Loading payroll summary...
+              </td>
             </tr>
             <tr v-else-if="displaySummaryRows.length === 0">
-              <td colspan="4" class="px-4 py-6 text-center text-gray-500">No payroll summary for selected period</td>
+              <td colspan="4" class="px-4 py-8 text-center text-theme-muted">No payroll summary for selected period</td>
             </tr>
-            <tr v-for="row in displaySummaryRows" :key="summaryRowKey(row)" class="hover:bg-gray-50">
+            <tr v-for="row in displaySummaryRows" :key="summaryRowKey(row)" class="hover:bg-surface-muted/50 transition-colors">
               <td class="px-4 py-3">
-                <div class="font-medium text-gray-900">{{ row.sagansa_user_name || 'Unassigned' }}</div>
-                <div class="text-xs text-gray-500">{{ row.sagansa_user_id || '-' }}</div>
+                <div class="font-bold text-theme">{{ row.sagansa_user_name || 'Unassigned' }}</div>
+                <div class="text-[10px] text-theme-muted mono">{{ row.sagansa_user_id || '-' }}</div>
               </td>
-              <td class="px-4 py-3 text-right text-gray-700">{{ row.transaction_count }}</td>
-              <td class="px-4 py-3 text-right font-semibold text-gray-900">{{ formatCurrency(row.total_amount) }}</td>
+              <td class="px-4 py-3 text-right text-theme">{{ row.transaction_count }}</td>
+              <td class="px-4 py-3 text-right font-bold text-theme">{{ formatCurrency(row.total_amount) }}</td>
               <td class="px-4 py-3">
-                <div v-if="!row.components || row.components.length === 0" class="text-xs text-gray-500">-</div>
-                <div v-else class="flex flex-wrap gap-1">
+                <div v-if="!row.components || row.components.length === 0" class="text-xs text-theme-muted">-</div>
+                <div v-else class="flex flex-wrap gap-1.5">
                   <span
                     v-for="component in row.components"
                     :key="`${row.sagansa_user_id || 'unassigned'}-${component.component_name}`"
-                    class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100"
+                    class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20"
                   >
                     {{ component.component_name }}: {{ formatCurrency(component.amount) }}
                   </span>
@@ -320,14 +312,21 @@
           </tbody>
         </table>
       </div>
-    </div>
+    </SectionCard>
   </div>
 </template>
 
 <script setup>
+
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { filterApi, historyApi } from '../../api';
 import MultiSelect from '../ui/MultiSelect.vue';
+import SectionCard from '../ui/SectionCard.vue';
+import StatCard from '../ui/StatCard.vue';
+import FormField from '../ui/FormField.vue';
+import TextInput from '../ui/TextInput.vue';
+import SelectInput from '../ui/SelectInput.vue';
+import Alert from '../ui/Alert.vue';
 
 const props = defineProps({
   companyId: {
@@ -644,10 +643,10 @@ const toggleSort = (field) => {
 };
 
 const getSortIcon = (field) => {
-  if (sortField.value !== field) return 'bi bi-arrow-down-up text-[10px] text-gray-400';
+  if (sortField.value !== field) return 'bi bi-arrow-down-up text-[10px] text-theme-muted/50';
   return sortDirection.value === 'asc'
-    ? 'bi bi-sort-up text-[10px] text-indigo-600'
-    : 'bi bi-sort-down text-[10px] text-indigo-600';
+    ? 'bi bi-sort-up text-[10px] text-primary'
+    : 'bi bi-sort-down text-[10px] text-primary';
 };
 
 const toggleSelectTxn = (txnId, checked) => {

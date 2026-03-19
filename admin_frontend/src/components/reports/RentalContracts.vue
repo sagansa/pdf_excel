@@ -1,385 +1,418 @@
 <template>
   <div class="space-y-6">
     <!-- Header with Actions -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h3 class="text-lg font-semibold text-gray-900">Rental Contracts</h3>
-        <p class="text-sm text-gray-500 mt-1">Manage rental contracts and payments</p>
+    <SectionCard bodyClass="p-4 bg-surface-raised/30">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-theme">Rental Contracts</h2>
+          <p class="text-sm text-theme-muted mt-1">Manage rental contracts, link transactions, and track amortization.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            @click="showSettingsModal = true"
+          >
+            <i class="bi bi-gear mr-2"></i>
+            Settings
+          </Button>
+          <Button
+            variant="primary"
+            @click="showContractModal = true"
+          >
+            <i class="bi bi-file-earmark-text mr-2"></i>
+            Add Contract
+          </Button>
+        </div>
       </div>
-      <div class="flex gap-2">
-        <button
-          @click="showSettingsModal = true"
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <i class="bi bi-gear mr-2"></i>
-          Settings
-        </button>
-        <button
-          @click="showContractModal = true"
-          class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <i class="bi bi-file-earmark-text mr-2"></i>
-          Add Contract
-        </button>
-      </div>
-    </div>
+    </SectionCard>
 
     <!-- Pending Transactions Alert -->
-    <div v-if="pendingTransactions?.length > 0" class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 shadow-sm">
-      <div class="flex items-start gap-3">
-        <i class="bi bi-exclamation-triangle-fill text-amber-500 text-xl"></i>
-        <div class="flex-1">
-          <h4 class="text-sm font-bold text-amber-900">Pending Rental Transactions ({{ pendingTransactions.length }})</h4>
-          <p class="text-xs text-amber-700 mt-0.5">
+    <div v-if="pendingTransactions?.length > 0" class="bg-warning/5 border border-warning/20 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-start gap-4">
+        <div class="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center text-warning shrink-0">
+          <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h4 class="text-sm font-bold text-warning uppercase tracking-wider">Pending Rental Transactions ({{ pendingTransactions.length }})</h4>
+          <p class="text-xs text-theme-muted mt-1 leading-relaxed">
             Berikut adalah transaksi yang sudah ditandai sebagai "Sewa Tempat" namun belum dihubungkan ke kontrak apapun. 
             Segera buat atau hubungkan ke kontrak agar perhitungan laporan keuangan akurat.
           </p>
-          <div class="mt-3 max-h-32 overflow-y-auto bg-white bg-opacity-60 border border-amber-100 rounded p-2">
-            <table class="min-w-full text-xs">
-              <thead class="text-amber-900 border-b border-amber-100">
-                <tr>
-                  <th class="text-left py-1 font-bold">Tanggal</th>
-                  <th class="text-left py-1 font-bold">Keterangan</th>
-                  <th class="text-right py-1 font-bold">Jumlah</th>
+          <div class="mt-4 max-h-40 overflow-y-auto bg-surface/50 border border-warning/10 rounded-xl p-3">
+            <table class="table-compact min-w-full !bg-transparent">
+              <thead>
+                <tr class="!bg-transparent">
+                  <th class="text-left py-2 font-bold !bg-transparent border-warning/10">Tanggal</th>
+                  <th class="text-left py-2 font-bold !bg-transparent border-warning/10">Keterangan</th>
+                  <th class="text-right py-2 font-bold !bg-transparent border-warning/10">Jumlah</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-amber-50">
-                <tr v-for="txn in pendingTransactions" :key="txn.id" class="hover:bg-amber-50/50">
-                  <td class="py-1 whitespace-nowrap">{{ formatDate(txn.txn_date) }}</td>
-                  <td class="py-1 truncate max-w-[200px]" :title="txn.description">{{ txn.description }}</td>
-                  <td class="py-1 text-right font-medium text-amber-900">{{ formatCurrency(txn.amount) }}</td>
+              <tbody class="divide-y divide-warning/5">
+                <tr v-for="txn in pendingTransactions" :key="txn.id" class="hover:bg-warning/5">
+                  <td class="py-2 whitespace-nowrap text-theme/80">{{ formatDate(txn.txn_date) }}</td>
+                  <td class="py-2 truncate max-w-[300px] text-theme/80" :title="txn.description">{{ txn.description }}</td>
+                  <td class="py-2 text-right font-bold text-warning">{{ formatCurrency(txn.amount) }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class="mt-3">
-            <button
+          <div class="mt-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              class="!bg-warning/10 !border-warning/20 !text-warning hover:!bg-warning/20"
               @click="showContractModal = true"
-              class="text-xs font-bold text-amber-900 border border-amber-300 rounded px-3 py-1 bg-amber-100 hover:bg-amber-200 transition-colors"
             >
               Buat Kontrak Baru
-            </button>
+            </Button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Contracts List -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <SectionCard padding="none">
+      <template #header>
+        <div class="px-5 py-4 border-b border-border bg-surface-raised/50 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-1 h-4 bg-primary rounded-full"></div>
+            <h4 class="text-xs font-bold text-theme uppercase tracking-widest">
+              Rental Contracts List
+            </h4>
+          </div>
+          <div class="text-[10px] text-theme-muted font-medium">
+            Showing {{ contracts.length }} contracts
+          </div>
+        </div>
+      </template>
+
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+        <table class="table-compact min-w-full">
+          <thead>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Accounting (Monthly)</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amortization (Remaining)</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="text-left">Store</th>
+              <th class="text-left">Location</th>
+              <th class="text-left">Period</th>
+              <th class="text-left">Accounting (Monthly)</th>
+              <th class="text-left">Amortization (Remaining)</th>
+              <th class="text-left">Status</th>
+              <th class="text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="contract in contracts" :key="contract.id" class="hover:bg-gray-50">
+          <tbody class="divide-y divide-border/50">
+            <tr v-for="contract in contracts" :key="contract.id" class="hover:bg-surface-raised/30 transition-colors">
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ contract.store_name }}</div>
-                <div class="text-xs text-gray-500">{{ contract.store_code }}</div>
+                <div class="text-sm font-bold text-theme">{{ contract.store_name }}</div>
+                <div class="text-[10px] text-theme-muted font-bold uppercase tracking-widest mt-0.5">{{ contract.store_code }}</div>
               </td>
               <td class="px-6 py-4">
-                <div class="text-sm text-gray-900">{{ contract.location_name }}</div>
-                <div class="text-xs text-gray-500">{{ contract.location_address }}</div>
+                <div class="text-sm text-theme">{{ contract.location_name }}</div>
+                <div class="text-[10px] text-theme-muted line-clamp-1 mt-0.5">{{ contract.location_address }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ formatDate(contract.start_date) }}</div>
-                <div class="text-xs text-gray-500">to {{ formatDate(contract.end_date) }}</div>
+                <div class="text-sm font-bold text-theme">{{ formatDate(contract.start_date) }}</div>
+                <div class="text-[10px] text-theme-muted font-bold uppercase mt-0.5">to {{ formatDate(contract.end_date) }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-semibold text-gray-900">{{ formatCurrency(getAccountingSummary(contract).monthly_amortization) }}</div>
-                <div class="text-[10px] text-gray-500 uppercase">{{ contract.calculation_method }} • {{ contract.pph42_rate }}% PPh</div>
+                <div class="text-sm font-bold text-theme">{{ formatCurrency(getAccountingSummary(contract).monthly_amortization) }}</div>
+                <div class="text-[10px] text-theme-muted font-bold uppercase mt-0.5">{{ contract.calculation_method }} • {{ contract.pph42_rate }}% PPh</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-indigo-700 font-medium">{{ formatCurrency(getAccountingSummary(contract).remaining_prepaid) }}</div>
-                <div class="text-[10px] text-gray-500 uppercase">Amortized: {{ formatCurrency(getAccountingSummary(contract).total_amortized) }}</div>
+                <div class="text-sm text-primary font-bold">{{ formatCurrency(getAccountingSummary(contract).remaining_prepaid) }}</div>
+                <div class="text-[10px] text-theme-muted font-bold uppercase mt-0.5">Amortized: {{ formatCurrency(getAccountingSummary(contract).total_amortized) }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getStatusClass(contract.status)" class="px-2 py-1 text-xs font-medium rounded-full">
+                <span 
+                  :class="[
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border',
+                    getStatusClass(contract.status)
+                  ]"
+                >
                   {{ contract.status }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="flex items-center justify-end gap-2">
-                  <button
+              <td class="px-6 py-4 whitespace-nowrap text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     @click="viewContractDetails(contract)"
-                    class="text-indigo-600 hover:text-indigo-900 p-1"
                     title="View Details"
                   >
-                    <i class="bi bi-eye"></i>
-                  </button>
-                  <button
+                    <i class="bi bi-eye text-primary"></i>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     @click="editContract(contract)"
-                    class="text-gray-600 hover:text-gray-900 p-1"
                     title="Edit"
                   >
-                    <i class="bi bi-pencil-square"></i>
-                  </button>
-                  <button
+                    <i class="bi bi-pencil-square text-theme-muted"></i>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     @click="deleteContractConfirm(contract)"
-                    class="text-red-600 hover:text-red-900 p-1"
                     title="Delete"
                   >
-                    <i class="bi bi-trash"></i>
-                  </button>
+                    <i class="bi bi-trash text-danger"></i>
+                  </Button>
                 </div>
               </td>
             </tr>
             <tr v-if="contracts.length === 0">
-              <td colspan="7" class="px-6 py-12 text-center text-gray-500">
-                <i class="bi bi-inbox text-4xl mb-2"></i>
-                <p>No rental contracts found</p>
+              <td colspan="7" class="px-6 py-16 text-center text-theme-muted">
+                <div class="flex flex-col items-center gap-3">
+                  <i class="bi bi-inbox text-4xl opacity-20"></i>
+                  <p class="font-medium italic">No rental contracts found</p>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- Contract Details Modal -->
-    <div v-if="showDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="p-6 border-b border-gray-200">
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900">Contract Details</h3>
-            <button @click="showDetailsModal = false" class="text-gray-400 hover:text-gray-600">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
+    <BaseModal
+      :isOpen="showDetailsModal"
+      size="4xl"
+      @close="showDetailsModal = false"
+    >
+      <template #title>
+        <div>
+          <h3 class="text-lg font-bold text-theme">Contract Details</h3>
+          <p class="text-[10px] text-theme-muted font-bold uppercase tracking-widest mt-0.5">
+            {{ selectedContract?.store_name }} | {{ selectedContract?.location_name }}
+          </p>
+        </div>
+      </template>
+
+      <div class="px-6 space-y-8" v-if="selectedContract">
+        <!-- Contract Info Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 p-5 bg-surface-raised rounded-2xl border border-border">
+          <FormField label="Store" labelClass="!text-[10px] uppercase tracking-wider">
+            <p class="text-sm font-bold text-theme">{{ selectedContract.store_name }}</p>
+          </FormField>
+          <FormField label="Location" labelClass="!text-[10px] uppercase tracking-wider">
+            <p class="text-sm font-bold text-theme">{{ selectedContract.location_name }}</p>
+          </FormField>
+          <FormField label="Period" labelClass="!text-[10px] uppercase tracking-wider">
+            <p class="text-sm font-bold text-theme">{{ formatDate(selectedContract.start_date) }} - {{ formatDate(selectedContract.end_date) }}</p>
+          </FormField>
+          <FormField label="Total Amount" labelClass="!text-[10px] uppercase tracking-wider">
+            <p class="text-sm font-bold text-theme">{{ formatCurrency(selectedContract.total_amount) }}</p>
+          </FormField>
         </div>
         
-        <div class="p-6 space-y-6" v-if="selectedContract">
-          <!-- Contract Info -->
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Store</label>
-              <p class="text-sm text-gray-900">{{ selectedContract.store_name }}</p>
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Location</label>
-              <p class="text-sm text-gray-900">{{ selectedContract.location_name }}</p>
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Contract Period</label>
-              <p class="text-sm text-gray-900">{{ formatDate(selectedContract.start_date) }} - {{ formatDate(selectedContract.end_date) }}</p>
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Total Amount</label>
-              <p class="text-sm text-gray-900">{{ formatCurrency(selectedContract.total_amount) }}</p>
-            </div>
+        <!-- Accounting Stats Grid -->
+        <div class="space-y-4">
+          <div class="flex items-center gap-2 px-1">
+            <div class="w-1 h-3 bg-primary rounded-full"></div>
+            <h4 class="text-[10px] font-bold text-theme-muted uppercase tracking-[0.2em]">Accounting Summary</h4>
+          </div>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Bruto (Base)"
+              :value="formatCurrency(getAccountingSummary(selectedContract).bruto)"
+              variant="default"
+              icon="bi-receipt"
+            />
+            <StatCard
+              label="Netto (Payment)"
+              :value="formatCurrency(getAccountingSummary(selectedContract).net)"
+              variant="primary"
+              icon="bi-wallet2"
+            />
+            <StatCard
+              label="PPh 4(2)"
+              :value="formatCurrency(getAccountingSummary(selectedContract).tax)"
+              variant="warning"
+              icon="bi-shield-check"
+              :subtext="`${selectedContract.pph42_rate}% rate`"
+            />
+            <StatCard
+              label="Monthly Amort."
+              :value="formatCurrency(getAccountingSummary(selectedContract).monthly_amortization)"
+              variant="success"
+              icon="bi-calculator"
+            />
           </div>
           
-          <!-- Accounting Summary -->
-          <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-5">
-            <h4 class="text-xs font-bold text-indigo-800 uppercase mb-4 tracking-wider flex items-center">
-              <i class="bi bi-calculator mr-2"></i>
-              Accounting Summary
-            </h4>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              <div>
-                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Bruto (Base)</label>
-                <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(getAccountingSummary(selectedContract).bruto) }}</p>
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Netto (Payment)</label>
-                <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(getAccountingSummary(selectedContract).net) }}</p>
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">PPh 4(2) ({{ selectedContract.pph42_rate }}%)</label>
-                <p class="text-sm font-semibold text-amber-700">{{ formatCurrency(getAccountingSummary(selectedContract).tax) }}</p>
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Monthly Amort.</label>
-                <p class="text-sm font-bold text-indigo-700">{{ formatCurrency(getAccountingSummary(selectedContract).monthly_amortization) }}</p>
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Amortized so far</label>
-                <p class="text-sm font-medium text-gray-900">{{ formatCurrency(getAccountingSummary(selectedContract).total_amortized) }}</p>
-                <p class="text-[9px] text-gray-500 uppercase">{{ getAccountingSummary(selectedContract).elapsed_months }} of {{ getAccountingSummary(selectedContract).total_months }} months</p>
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Remaining Prepaid</label>
-                <p class="text-sm font-bold text-green-700">{{ formatCurrency(getAccountingSummary(selectedContract).remaining_prepaid) }}</p>
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-indigo-400 uppercase mb-1">PPh Payment</label>
-                <p class="text-sm font-medium text-gray-900">{{ selectedContract.pph42_payment_timing }}</p>
-                <p v-if="selectedContract.pph42_payment_date" class="text-[9px] text-indigo-600 font-bold uppercase">Paid on: {{ formatDate(selectedContract.pph42_payment_date) }}</p>
-                <p v-else-if="selectedContract.pph42_payment_timing !== 'same_period'" class="text-[9px] text-amber-600 font-bold uppercase">Not yet recorded</p>
-              </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <div class="p-4 bg-surface-raised rounded-2xl border border-border flex flex-col justify-center">
+                <div class="text-[10px] font-bold text-theme-muted uppercase tracking-widest mb-1">Status Amortasi</div>
+                <div class="text-lg font-bold text-theme">{{ formatCurrency(getAccountingSummary(selectedContract).total_amortized) }}</div>
+                <div class="text-[10px] text-theme-muted font-medium mt-1 uppercase">{{ getAccountingSummary(selectedContract).elapsed_months }} of {{ getAccountingSummary(selectedContract).total_months }} months elapsed</div>
+             </div>
+             <div class="p-4 bg-primary/5 rounded-2xl border border-primary/20 flex flex-col justify-center">
+                <div class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Remaining Prepaid</div>
+                <div class="text-lg font-bold text-primary">{{ formatCurrency(getAccountingSummary(selectedContract).remaining_prepaid) }}</div>
+             </div>
+             <div class="p-4 bg-surface-raised rounded-2xl border border-border flex flex-col justify-center">
+                <div class="text-[10px] font-bold text-theme-muted uppercase tracking-widest mb-1">PPh Payment</div>
+                <div class="text-sm font-bold text-theme flex items-center gap-2">
+                  {{ selectedContract.pph42_payment_timing }}
+                  <span v-if="selectedContract.pph42_payment_date" class="text-[9px] bg-success/10 text-success px-1.5 py-0.5 rounded border border-success/20">PAID</span>
+                </div>
+                <div v-if="selectedContract.pph42_payment_date" class="text-[10px] text-theme-muted font-medium mt-1 uppercase">Paid on: {{ formatDate(selectedContract.pph42_payment_date) }}</div>
+             </div>
+          </div>
+        </div>
+
+        <!-- Linked Transactions -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between px-1">
+            <div class="flex items-center gap-2 text-theme">
+              <div class="w-1 h-3 bg-primary rounded-full"></div>
+              <h4 class="text-[10px] font-bold uppercase tracking-[0.2em]">Linked Transactions</h4>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              @click="showLinkTransactionModal = true"
+            >
+              <i class="bi bi-link-45deg mr-1"></i>
+              Link Transaction
+            </Button>
+          </div>
+          <div class="border border-border rounded-2xl overflow-hidden">
+            <table class="table-compact min-w-full">
+              <thead>
+                <tr>
+                  <th class="text-left">Date</th>
+                  <th class="text-left">Description</th>
+                  <th class="text-right">Amount</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border/50">
+                <tr v-for="txn in contractTransactions" :key="txn.id" class="hover:bg-surface-raised/30">
+                  <td class="px-4 py-3 text-sm font-bold text-theme">{{ formatDate(txn.txn_date) }}</td>
+                  <td class="px-4 py-3 text-sm text-theme/80">{{ txn.description }}</td>
+                  <td class="px-4 py-3 text-sm text-right font-bold text-theme">{{ formatCurrency(txn.amount) }}</td>
+                  <td class="px-4 py-3 text-center">
+                    <span 
+                      v-if="txn.is_journaled" 
+                      class="px-2 py-0.5 text-[9px] font-bold bg-success/10 text-success rounded-full border border-success/20 uppercase"
+                    >
+                      Journaled
+                    </span>
+                    <span 
+                      v-else 
+                      class="px-2 py-0.5 text-[9px] font-bold bg-theme-muted/10 text-theme-muted rounded-full border border-border uppercase"
+                    >
+                      Not Journaled
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      @click="unlinkTransaction(txn.id)"
+                      class="text-danger hover:bg-danger/10"
+                    >
+                      Unlink
+                    </Button>
+                  </td>
+                </tr>
+                <tr v-if="contractTransactions.length === 0">
+                  <td colspan="5" class="px-4 py-12 text-center text-theme-muted italic">
+                    No transactions linked yet
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Journal Entries Section -->
+        <div class="border-t border-border pt-8 space-y-4">
+          <div class="flex items-center justify-between px-1">
+            <div class="flex items-center gap-2 text-theme">
+              <div class="w-1 h-3 bg-primary rounded-full"></div>
+              <h4 class="text-[10px] font-bold uppercase tracking-[0.2em]">Journal Entries</h4>
+            </div>
+            <div class="flex gap-2">
+              <Button
+                v-if="generatedJournals.length > 0"
+                variant="secondary"
+                size="sm"
+                @click="showJournals = !showJournals"
+              >
+                {{ showJournals ? 'Hide' : 'Show' }} Journals
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                @click="generateJournals"
+                :disabled="isGeneratingJournals || contractTransactions.length === 0"
+                :loading="isGeneratingJournals"
+              >
+                Generate Journals
+              </Button>
             </div>
           </div>
 
-          <!-- Linked Transactions -->
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <h4 class="text-sm font-semibold text-gray-900">Linked Transactions</h4>
-              <button
-                @click="showLinkTransactionModal = true"
-                class="px-3 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100"
-              >
-                <i class="bi bi-link-45deg mr-1"></i>
-                Link Transaction
-              </button>
-            </div>
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+          <!-- Journal Preview -->
+          <div v-if="showJournals && generatedJournals.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div
+              v-for="(journal, idx) in generatedJournals"
+              :key="idx"
+              class="bg-surface-raised rounded-2xl p-5 border border-border space-y-4"
+            >
+              <div class="flex items-center justify-between">
+                <h5 class="text-[10px] font-bold text-primary uppercase tracking-widest">
+                  {{ journal.description || 'Payment' }}
+                </h5>
+                <span class="text-[10px] font-bold text-theme-muted uppercase">{{ journal.transaction_date }}</span>
+              </div>
+              <table class="w-full text-[11px]">
+                <thead class="text-theme-muted border-b border-border">
                   <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th class="text-left font-bold pb-2 uppercase tracking-tighter opacity-60">Account</th>
+                    <th class="text-right font-bold pb-2 uppercase tracking-tighter opacity-60">Debit</th>
+                    <th class="text-right font-bold pb-2 uppercase tracking-tighter opacity-60">Credit</th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="txn in contractTransactions" :key="txn.id">
-                    <td class="px-4 py-2 text-sm text-gray-900">{{ formatDate(txn.txn_date) }}</td>
-                    <td class="px-4 py-2 text-sm text-gray-900">{{ txn.description }}</td>
-                    <td class="px-4 py-2 text-sm text-right text-gray-900">{{ formatCurrency(txn.amount) }}</td>
-                    <td class="px-4 py-2 text-center">
-                      <span v-if="txn.is_journaled" class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                        Journaled
-                      </span>
-                      <span v-else class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
-                        Not Journaled
-                      </span>
+                <tbody class="divide-y divide-border/30">
+                  <tr v-for="entry in journal.entries" :key="entry.coa_code">
+                    <td class="text-theme font-medium py-2">
+                      <div class="font-bold">{{ entry.coa_code }}</div>
+                      <div class="text-[9px] text-theme-muted uppercase tracking-tight">{{ entry.coa_name }}</div>
                     </td>
-                    <td class="px-4 py-2 text-right">
-                      <button
-                        @click="unlinkTransaction(txn.id)"
-                        class="text-xs text-red-600 hover:text-red-900"
-                      >
-                        Unlink
-                      </button>
+                    <td class="text-right text-theme font-bold py-2">
+                      {{ entry.debit > 0 ? formatCurrency(entry.debit) : '-' }}
                     </td>
-                  </tr>
-                  <tr v-if="contractTransactions.length === 0">
-                    <td colspan="5" class="px-4 py-8 text-center text-gray-500 text-sm">
-                      No transactions linked yet
+                    <td class="text-right text-theme font-bold py-2">
+                      {{ entry.credit > 0 ? formatCurrency(entry.credit) : '-' }}
                     </td>
                   </tr>
                 </tbody>
               </table>
+              <div class="pt-3 border-t border-border flex items-center justify-between">
+                <span
+                  :class="journal.is_posted ? 'bg-success/10 text-success border-success/20' : 'bg-warning/10 text-warning border-warning/20'"
+                  class="px-2 py-0.5 text-[9px] font-bold rounded border uppercase tracking-widest"
+                >
+                  {{ journal.is_posted ? 'Posted' : 'Not Posted' }}
+                </span>
+              </div>
             </div>
           </div>
-
-          <!-- Journal Entries Section -->
-          <div class="border-t border-gray-200 pt-6">
-            <div class="flex items-center justify-between mb-3">
-              <h4 class="text-sm font-semibold text-gray-900">
-                <i class="bi bi-journal-text mr-1"></i>
-                Journal Entries
-              </h4>
-              <div class="flex gap-2">
-                <button
-                  v-if="generatedJournals.length > 0"
-                  @click="showJournals = !showJournals"
-                  class="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
-                >
-                  {{ showJournals ? 'Hide' : 'Show' }} Journals
-                </button>
-                <button
-                  @click="generateJournals"
-                  :disabled="isGeneratingJournals || contractTransactions.length === 0"
-                  class="px-3 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <i v-if="isGeneratingJournals" class="bi bi-arrow-repeat spin mr-1"></i>
-                  <i v-else class="bi bi-calculator mr-1"></i>
-                  {{ isGeneratingJournals ? 'Generating...' : 'Generate Journals' }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Journal Preview -->
-            <div v-if="showJournals && generatedJournals.length > 0" class="space-y-4">
-              <div
-                v-for="(journal, idx) in generatedJournals"
-                :key="idx"
-                class="bg-gray-50 rounded-lg p-4 border border-gray-200"
-              >
-                <div class="flex items-center justify-between mb-2">
-                  <h5 class="text-xs font-bold text-indigo-700 uppercase">
-                    {{ journal.description || 'Payment' }}
-                  </h5>
-                  <span class="text-xs text-gray-500">{{ journal.transaction_date }}</span>
-                </div>
-                <table class="w-full text-xs">
-                  <thead class="text-gray-400 border-b border-gray-200">
-                    <tr>
-                      <th class="text-left font-normal pb-1">Account</th>
-                      <th class="text-right font-normal pb-1">Debit</th>
-                      <th class="text-right font-normal pb-1">Credit</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-100">
-                    <tr v-for="entry in journal.entries" :key="entry.coa_code">
-                      <td class="text-gray-700 font-medium py-1">
-                        {{ entry.coa_code }} - {{ entry.coa_name }}
-                      </td>
-                      <td class="text-right text-gray-900">
-                        {{ entry.debit > 0 ? formatCurrency(entry.debit) : '-' }}
-                      </td>
-                      <td class="text-right text-gray-900">
-                        {{ entry.credit > 0 ? formatCurrency(entry.credit) : '-' }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div class="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between">
-                  <span
-                    :class="journal.is_posted ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
-                    class="px-2 py-0.5 text-[10px] font-bold rounded uppercase"
-                  >
-                    {{ journal.is_posted ? 'Posted' : 'Not Posted' }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Amortization Summary -->
-              <div v-if="amortizationSchedule.length > 0" class="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                <h5 class="text-xs font-bold text-indigo-700 uppercase mb-2">Amortization Schedule</h5>
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span class="text-indigo-600">Duration:</span>
-                    <span class="font-bold text-indigo-900 ml-1">{{ amortizationSchedule.length }} months</span>
-                  </div>
-                  <div>
-                    <span class="text-indigo-600">Monthly Amount:</span>
-                    <span class="font-bold text-indigo-900 ml-1">{{ formatCurrency(monthlyAmount) }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="contractTransactions.length === 0" class="text-center py-6 text-gray-400 text-sm">
-              <i class="bi bi-calculator text-2xl mb-2 block"></i>
-              Link transactions to generate journal entries
+          
+          <div v-else-if="contractTransactions.length === 0" class="bg-surface-raised rounded-2xl p-12 text-center border border-dashed border-border text-theme-muted">
+            <div class="flex flex-col items-center gap-3">
+              <i class="bi bi-calculator text-3xl opacity-20"></i>
+              <p class="text-sm font-medium italic">Link transactions to generate journal entries</p>
             </div>
           </div>
-
         </div>
       </div>
-    </div>
+    </BaseModal>
 
-    <!-- Add/Edit Location Modal -->
-    <AddLocationModal
-      :isOpen="showLocationModal"
-      :location="selectedLocation"
-      :companyId="companyId"
-      @close="showLocationModal = false; selectedLocation = null"
-      @saved="handleLocationSaved"
-    />
-
-    <!-- Add/Edit Contract Modal -->
+    <!-- Sub-Modals -->
     <AddContractModal
       :isOpen="showContractModal"
       :contract="selectedContractForEdit"
@@ -388,7 +421,6 @@
       @saved="handleContractSaved"
     />
 
-    <!-- Delete Confirmation Modal -->
     <ConfirmModal
       :isOpen="showDeleteModal"
       title="Delete Contract"
@@ -414,6 +446,11 @@ import { rentalApi, reportsApi } from '../../api';
 import AddContractModal from './modals/AddContractModal.vue';
 import RentalSettingsModal from './modals/RentalSettingsModal.vue';
 import ConfirmModal from '../ui/ConfirmModal.vue';
+import SectionCard from '../ui/SectionCard.vue';
+import Button from '../ui/Button.vue';
+import BaseModal from '../ui/BaseModal.vue';
+import StatCard from '../ui/StatCard.vue';
+import FormField from '../ui/FormField.vue';
 
 const props = defineProps({
   companyId: {

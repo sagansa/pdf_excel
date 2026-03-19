@@ -57,8 +57,7 @@
             Link Transaksi Pembayaran
           </label>
           <span
-            class="text-xs font-medium rounded-full px-2 py-1"
-            style="background: rgba(15, 118, 110, 0.10); color: var(--color-primary);"
+            class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20"
           >
             {{ selectedTransactionIds.length }} selected
           </span>
@@ -157,15 +156,12 @@
         </div>
       </div>
 
-      <!-- Summary -->
       <div
         v-if="selectedTransactionIds.length > 0"
-        class="rounded-2xl px-4 py-3"
-        style="background: rgba(15, 118, 110, 0.08); border: 1px solid rgba(15, 118, 110, 0.18);"
+        class="rounded-2xl px-4 py-3 bg-primary/5 border border-primary/10"
       >
         <div
-          class="text-[10px] font-bold uppercase mb-2 tracking-wider"
-          style="color: var(--color-primary);"
+          class="text-[10px] font-bold uppercase mb-2 tracking-wider text-primary"
         >
           Ringkasan Aset
         </div>
@@ -179,10 +175,10 @@
             </div>
           </div>
           <div>
-            <div class="text-muted text-[10px] uppercase">
+            <div class="text-theme-muted text-[10px] uppercase font-bold tracking-tight">
               Total Nilai Perolehan
             </div>
-            <div class="font-bold text-lg font-mono" style="color: var(--color-primary);">
+            <div class="font-bold text-lg font-mono text-primary">
               {{ formatCurrency(totalSelectedAmount) }}
             </div>
           </div>

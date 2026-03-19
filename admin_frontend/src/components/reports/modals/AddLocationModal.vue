@@ -1,133 +1,116 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click.self="$emit('close')">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-      <div class="p-6 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-gray-900">{{ editMode ? 'Edit Location' : 'Add New Location' }}</h3>
-          <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
-      </div>
-      
-      <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Location Name *</label>
-          <input
-            v-model="form.location_name"
-            type="text"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            placeholder="e.g., Ruko Permata Hijau"
+  <BaseModal
+    :isOpen="isOpen"
+    size="2xl"
+    @close="$emit('close')"
+  >
+    <template #title>
+      {{ editMode ? 'Edit Location' : 'Add New Location' }}
+    </template>
+    
+    <form @submit.prevent="handleSubmit" class="space-y-4 px-6">
+      <FormField label="Location Name *">
+        <TextInput
+          v-model="form.location_name"
+          required
+          placeholder="e.g., Ruko Permata Hijau"
+        />
+      </FormField>
+
+      <FormField label="Address *">
+        <textarea
+          v-model="form.address"
+          required
+          rows="3"
+          class="input-base w-full text-sm"
+          placeholder="Full address"
+        ></textarea>
+      </FormField>
+
+      <div class="grid grid-cols-2 gap-4">
+        <FormField label="City">
+          <TextInput
+            v-model="form.city"
           />
-        </div>
+        </FormField>
+        <FormField label="Province">
+          <TextInput
+            v-model="form.province"
+          />
+        </FormField>
+      </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Address *</label>
-          <textarea
-            v-model="form.address"
-            required
-            rows="3"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            placeholder="Full address"
-          ></textarea>
-        </div>
+      <div class="grid grid-cols-2 gap-4">
+        <FormField label="Postal Code">
+          <TextInput
+            v-model="form.postal_code"
+          />
+        </FormField>
+        <FormField label="Area (sqm)">
+          <TextInput
+            v-model.number="form.area_sqm"
+            type="number"
+            step="0.01"
+          />
+        </FormField>
+      </div>
 
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
-            <input
-              v-model="form.city"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Province</label>
-            <input
-              v-model="form.province"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-        </div>
+      <div class="grid grid-cols-2 gap-4">
+        <FormField label="Latitude">
+          <TextInput
+            v-model.number="form.latitude"
+            type="number"
+            step="any"
+            placeholder="-6.2088"
+          />
+        </FormField>
+        <FormField label="Longitude">
+          <TextInput
+            v-model.number="form.longitude"
+            type="number"
+            step="any"
+            placeholder="106.8456"
+          />
+        </FormField>
+      </div>
 
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
-            <input
-              v-model="form.postal_code"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Area (sqm)</label>
-            <input
-              v-model.number="form.area_sqm"
-              type="number"
-              step="0.01"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-        </div>
+      <FormField label="Notes">
+        <textarea
+          v-model="form.notes"
+          rows="2"
+          class="input-base w-full text-sm"
+          placeholder="Additional notes..."
+        ></textarea>
+      </FormField>
+    </form>
 
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
-            <input
-              v-model.number="form.latitude"
-              type="number"
-              step="any"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="-6.2088"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
-            <input
-              v-model.number="form.longitude"
-              type="number"
-              step="any"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="106.8456"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea
-            v-model="form.notes"
-            rows="2"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          ></textarea>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            @click="$emit('close')"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            :disabled="loading"
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {{ loading ? 'Saving...' : (editMode ? 'Update' : 'Create') }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+    <template #footer>
+      <Button
+        variant="secondary"
+        @click="$emit('close')"
+        :disabled="loading"
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="primary"
+        :loading="loading"
+        :disabled="loading"
+        @click="handleSubmit"
+      >
+        {{ editMode ? 'Update' : 'Create' }}
+      </Button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue';
 import { rentalApi } from '../../../api';
+import BaseModal from '../../ui/BaseModal.vue';
+import FormField from '../../ui/FormField.vue';
+import TextInput from '../../ui/TextInput.vue';
+import Button from '../../ui/Button.vue';
 
 const props = defineProps({
   isOpen: Boolean,
