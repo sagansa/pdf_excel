@@ -414,24 +414,23 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
     
     # 2.5 Calculate 5314 (Beban Penyusutan dan Amortisasi) dynamically:
     # total = calculated amortization + manual amortization.
+    # Note: Amortization does not depend on mark mapping. It should always be calculated.
     amortization_breakdown = {
         'report_year': int(str(start_date)[:4]),
         'manual_total': 0.0,
         'calculated_total': 0.0,
         'total_5314': 0.0
     }
-    dynamic_calc_ok = False
+    dynamic_calc_ok = True
     dynamic_5314_amount = 0.0
     
-    if _is_coa_mapped_for_report(conn, '5314', report_type):
-        dynamic_calc_ok = True
-        try:
-            amortization_breakdown = _calculate_dynamic_5314_total(conn, start_date, end_date=end_date, company_id=company_id, report_type=report_type)
-            dynamic_5314_amount = _to_float(amortization_breakdown.get('total_5314'), 0.0)
-        except Exception as e:
-            dynamic_calc_ok = False
-            logger.error(f"Failed to calculate dynamic 5314 amount: {e}")
-            dynamic_5314_amount = fallback_5314_from_ledger
+    try:
+        amortization_breakdown = _calculate_dynamic_5314_total(conn, start_date, end_date=end_date, company_id=company_id, report_type=report_type)
+        dynamic_5314_amount = _to_float(amortization_breakdown.get('total_5314'), 0.0)
+    except Exception as e:
+        dynamic_calc_ok = False
+        logger.error(f"Failed to calculate dynamic 5314 amount: {e}")
+        dynamic_5314_amount = fallback_5314_from_ledger
     
     calculated_amort_total = _to_float(amortization_breakdown.get('calculated_total'), 0.0)
     manual_amort_total = _to_float(amortization_breakdown.get('manual_total'), 0.0)
@@ -460,16 +459,15 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
         e for e in expenses
         if not _is_cogs_expense_item(e) and str(e.get('code') or '') != '5314'
     ]
-    
-    if _is_coa_mapped_for_report(conn, '5314', report_type):
-        final_expenses.append({
-            'code': '5314',
-            'name': 'Beban Penyusutan dan Amortisasi',
-            'subcategory': 'Operating Expenses',
-            'amount': dynamic_5314_amount,
-            'category': 'EXPENSE',
-            'fiscal_category': 'DEDUCTIBLE' # Amortization usually deductible unless specifically marked
-        })
+    # Always append COA 5314 (Amortization) dynamically to the report
+    final_expenses.append({
+        'code': '5314',
+        'name': 'Beban Penyusutan dan Amortisasi',
+        'subcategory': 'Operating Expenses',
+        'amount': dynamic_5314_amount,
+        'category': 'EXPENSE',
+        'fiscal_category': 'DEDUCTIBLE' # Amortization usually deductible unless specifically marked
+    })
     
     # Calculate total_expenses as the sum of all items in final_expenses list
     total_expenses_calculated = sum(e['amount'] for e in final_expenses)

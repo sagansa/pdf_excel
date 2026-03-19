@@ -422,37 +422,32 @@
       </div>
 
        <!-- Final Net Income Summary & Reconciliation -->
-       <div v-if="data.fiscal_reconciliation" class="bg-white dark:bg-[#1f2937] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-gray-900 dark:text-gray-100">
+       <div v-if="data.fiscal_reconciliation" class="bg-white dark:bg-[#1f2937] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-gray-900 dark:text-gray-100 mt-6">
          
-         <!-- COMMERCIAL NET INCOME -->
-         <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
-              :class="data.net_income >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20'">
+         <!-- LABA SEBELUM PAJAK (Using fiscal_net_income values) -->
+         <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-[#111827]/50">
            <div>
-             <p class="text-xs font-bold uppercase tracking-wider mb-1" :class="data.net_income >= 0 ? 'text-emerald-800 dark:text-emerald-400' : 'text-rose-800 dark:text-rose-400'">Commercial Net Income</p>
-             <p class="text-[10px] uppercase opacity-70">Laba (Rugi) Bersih Sebelum Pajak</p>
+             <p class="text-xs font-bold uppercase tracking-wider mb-1 text-gray-800 dark:text-gray-200">Laba (Rugi) Bersih Sebelum Pajak</p>
            </div>
            <div class="text-right flex flex-col items-end">
-             <p class="text-2xl font-black whitespace-nowrap tabular-nums" :class="data.net_income >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'">
-               {{ formatCurrency(data.net_income) }}
+             <p class="text-xl font-black whitespace-nowrap tabular-nums text-gray-900 dark:text-gray-100">
+               {{ formatCurrency(data.fiscal_reconciliation.fiscal_net_income) }}
              </p>
            </div>
          </div>
 
-         <!-- NON DEDUCTIBLE ITEMS -->
-         <div v-if="data.fiscal_reconciliation.total_positive_correction > 0" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#111827]/50">
+         <!-- KOREKSI FISKAL POSITIF / TAX EXPENSE -->
+         <div v-if="data.fiscal_reconciliation.total_positive_correction > 0" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f2937]">
            <div class="flex items-center justify-between mb-3 text-sm">
              <div class="flex items-center gap-2">
-               <i class="bi bi-plus-circle text-rose-600 dark:text-rose-400 font-bold"></i>
                <span class="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest text-xs">Non-Deductible Expenses (Koreksi Fiskal Positif)</span>
              </div>
              <span class="font-bold text-rose-600 dark:text-rose-400 tabular-nums">{{ formatCurrency(data.fiscal_reconciliation.total_positive_correction) }}</span>
            </div>
-           
-           <!-- List of specific accounts -->
-           <ul class="space-y-2 pl-6">
+           <ul class="space-y-2 pl-4">
              <li v-for="item in data.fiscal_reconciliation.positive_corrections" :key="item.code" class="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400">
                <span class="flex items-center gap-2">
-                 <span class="font-mono bg-gray-200 dark:bg-gray-800 px-1 py-0.5 rounded text-[10px]">{{ item.code }}</span>
+                 <span class="font-mono">{{ item.code }}</span>
                  {{ item.name }}
                </span>
                <span class="font-mono tabular-nums">{{ formatCurrency(item.amount) }}</span>
@@ -460,128 +455,35 @@
            </ul>
          </div>
 
-         <!-- FISCAL NET INCOME -->
-         <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
-              :class="data.fiscal_reconciliation.fiscal_net_income >= 0 ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-red-50 dark:bg-red-900/20'">
-           <div>
-             <p class="text-xs font-bold uppercase tracking-wider mb-1 text-indigo-800 dark:text-indigo-400">Fiscal Net Income</p>
-             <p class="text-[10px] uppercase opacity-70">Laba (Rugi) Bersih Fiskal</p>
+         <!-- KOREKSI FISKAL NEGATIF (Just in case) -->
+         <div v-if="data.fiscal_reconciliation.total_negative_correction > 0" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f2937]">
+           <div class="flex items-center justify-between mb-3 text-sm">
+             <div class="flex items-center gap-2">
+               <span class="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest text-xs">Koreksi Fiskal Negatif</span>
+             </div>
+             <span class="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">({{ formatCurrency(data.fiscal_reconciliation.total_negative_correction) }})</span>
            </div>
-           <div class="text-right flex flex-col items-end">
-             <p class="text-2xl font-black whitespace-nowrap tabular-nums text-indigo-700 dark:text-indigo-300">
-               {{ formatCurrency(data.fiscal_reconciliation.fiscal_net_income) }}
-             </p>
-           </div>
+           <ul class="space-y-2 pl-4">
+             <li v-for="item in data.fiscal_reconciliation.negative_corrections" :key="item.code" class="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400">
+               <span class="flex items-center gap-2">
+                 <span class="font-mono">{{ item.code }}</span>
+                 {{ item.name }}
+               </span>
+               <span class="font-mono tabular-nums">{{ formatCurrency(item.amount) }}</span>
+             </li>
+           </ul>
          </div>
 
-         <!-- TAX & NET AFTER TAX -->
-         <div class="px-6 py-6 bg-gradient-to-br from-gray-900 to-gray-800 dark:from-[#111827] dark:to-gray-900 text-white">
-           <!-- Tax estimate -->
-           <div class="flex items-center justify-between text-sm opacity-90 mb-4 pb-4 border-b border-white/20">
-             <div>Estimated Corp. Income Tax (22%)</div>
-             <div class="font-bold tabular-nums text-rose-300">
-               ({{ formatCurrency(data.fiscal_reconciliation.fiscal_net_income > 0 ? data.fiscal_reconciliation.fiscal_net_income * 0.22 : 0) }})
-             </div>
+         <!-- LABA SETELAH PAJAK (Using commercial_net_income or net_income) -->
+         <div class="px-6 py-6 bg-gradient-to-br from-gray-900 to-gray-800 dark:from-[#111827] dark:to-gray-900 text-white flex items-center justify-between">
+           <div>
+             <p class="text-lg font-bold uppercase tracking-wider">Laba (Rugi) Bersih Setelah Pajak</p>
            </div>
-           
-           <!-- After Tax -->
-           <div class="flex items-center justify-between">
-             <div>
-               <p class="text-lg font-bold uppercase tracking-wider">Net Income After Tax</p>
-               <p class="text-xs opacity-70 italic">Laba Bersih Setelah Pajak</p>
-             </div>
-             <p class="text-3xl font-black whitespace-nowrap tabular-nums text-emerald-400">
-               {{ formatCurrency(data.net_income - (data.fiscal_reconciliation.fiscal_net_income > 0 ? data.fiscal_reconciliation.fiscal_net_income * 0.22 : 0)) }}
-             </p>
-           </div>
+           <p class="text-3xl font-black whitespace-nowrap tabular-nums text-emerald-400">
+             {{ formatCurrency(data.net_income) }}
+           </p>
          </div>
        </div>
-           </div>
-         </div>
-
-         <!-- Fiscal Reconciliation Expansion -->
-         <div
-           v-if="data.fiscal_reconciliation"
-           class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-         >
-           <div class="bg-gray-900 px-6 py-4 flex items-center justify-between">
-             <div class="flex items-center gap-3">
-               <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                 <i class="bi bi- calculator-fill text-orange-500"></i>
-               </div>
-               <h3 class="text-sm font-bold text-white uppercase tracking-widest">
-                 Rekonsiliasi Fiskal (Tax Reconciliation)
-               </h3>
-             </div>
-             <FiscalCategoryBadge category="NON_DEDUCTIBLE_PERMANENT" />
-           </div>
-           
-           <div class="p-0">
-             <table class="w-full text-sm">
-                <tbody class="divide-y divide-gray-100">
-                  <tr class="bg-gray-50/50">
-                    <td class="px-6 py-4 text-gray-600 font-medium">Laba (Rugi) Bersih Komersial</td>
-                    <td class="px-6 py-4 text-right font-bold text-gray-900 tabular-nums">
-                      {{ formatCurrency(data.fiscal_reconciliation.commercial_net_income) }}
-                    </td>
-                  </tr>
-                  
-                  <!-- Positive Corrections -->
-                  <tr v-if="data.fiscal_reconciliation.total_positive_correction > 0">
-                    <td class="px-6 py-4">
-                      <div class="flex items-center gap-2">
-                        <span class="text-emerald-600 font-bold">(+)</span>
-                        <span class="text-gray-700">Koreksi Fiskal Positif (Non-Deductible)</span>
-                      </div>
-                      <ul class="mt-2 space-y-1 ml-6 text-[10px] text-gray-500">
-                        <li v-for="item in data.fiscal_reconciliation.positive_corrections" :key="item.code" class="flex justify-between">
-                          <span>{{ item.name }} ({{ item.code }})</span>
-                          <span class="font-mono">{{ formatCurrency(item.amount) }}</span>
-                        </li>
-                      </ul>
-                    </td>
-                    <td class="px-6 py-4 text-right font-semibold text-emerald-600 tabular-nums">
-                      {{ formatCurrency(data.fiscal_reconciliation.total_positive_correction) }}
-                    </td>
-                  </tr>
-
-                  <!-- Negative Corrections -->
-                  <tr v-if="data.fiscal_reconciliation.total_negative_correction > 0">
-                    <td class="px-6 py-4">
-                      <div class="flex items-center gap-2">
-                        <span class="text-rose-600 font-bold">(-)</span>
-                        <span class="text-gray-700">Koreksi Fiskal Negatif (Non-Taxable)</span>
-                      </div>
-                      <ul class="mt-2 space-y-1 ml-6 text-[10px] text-gray-500">
-                        <li v-for="item in data.fiscal_reconciliation.negative_corrections" :key="item.code" class="flex justify-between">
-                          <span>{{ item.name }} ({{ item.code }})</span>
-                          <span class="font-mono">{{ formatCurrency(item.amount) }}</span>
-                        </li>
-                      </ul>
-                    </td>
-                    <td class="px-6 py-4 text-right font-semibold text-rose-600 tabular-nums">
-                      {{ formatCurrency(-data.fiscal_reconciliation.total_negative_correction) }}
-                    </td>
-                  </tr>
-
-                  <!-- Fiscal Result -->
-                  <tr class="bg-orange-50/50 border-t-2 border-orange-200">
-                    <td class="px-6 py-5">
-                      <div class="flex flex-col">
-                        <span class="text-orange-900 font-bold text-base">Penghasilan Netto Fiskal</span>
-                        <span class="text-orange-700 text-[10px] uppercase tracking-wider font-bold">Fiscal Net Income</span>
-                      </div>
-                    </td>
-                    <td class="px-6 py-5 text-right">
-                      <span class="text-2xl font-black text-orange-900 tabular-nums">
-                        {{ formatCurrency(data.fiscal_reconciliation.fiscal_net_income) }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-             </table>
-           </div>
-         </div>
        </div>
     </div>
   </div>
