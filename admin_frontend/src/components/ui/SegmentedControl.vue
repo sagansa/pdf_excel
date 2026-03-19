@@ -7,6 +7,7 @@
       ]"
     >
       <button
+        type="button"
         v-for="option in options"
         :key="getOptionValue(option)"
         @click="selectOption(option)"
