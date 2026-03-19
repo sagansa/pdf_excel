@@ -34,8 +34,8 @@ export const converterApi = {
 };
 
 export const historyApi = {
-  getTransactions() {
-    return api.get('/transactions');
+  getTransactions(params = {}) {
+    return api.get('/transactions', { params });
   },
   getUploadSummary() {
     return api.get('/transactions/upload-summary');

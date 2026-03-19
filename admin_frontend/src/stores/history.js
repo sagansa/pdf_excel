@@ -82,6 +82,9 @@ export const useHistoryStore = defineStore('history', {
        const selectedCoaIds = new Set((coaIds || []).map(id => String(id)));
 
         result = result.filter(t => {
+            // Hide child transactions for manual journals (since parent aggregates COAs)
+            if (t.parent_id && t.bank_code === 'MANUAL') return false;
+
             const txnDate = t.txn_date ? t.txn_date.split(' ')[0] : '';
             const txnYear = txnDate ? txnDate.split('-')[0] : '';
 
@@ -424,23 +427,11 @@ export const useHistoryStore = defineStore('history', {
           }
 
           // Inherit COAs from linked manual journal
-          const linkedManualId = normalizeId(txn.linked_manual_id);
-          if (linkedManualId) {
-            const manualChildren = childrenByParentId.get(linkedManualId) || [];
-            const txnAmount = toNumeric(txn.amount);
-            const txnDbCr = normalizeDbCr(txn.db_cr);
-            
-            // Look for matching lines in the manual journal (by amount only)
-            for (const mChild of manualChildren) {
-              const mAmount = toNumeric(mChild.amount);
-              if (Math.abs(mAmount - txnAmount) < 0.01) {
-                const mChildMarkId = normalizeId(mChild.mark_id);
-                const hasMChildMark = collectCoasFromMarkId(mChildMarkId, resolvedCoas, resolvedCoaIds, uniqCoas);
-                if (hasMChildMark) {
-                  relatedMarkIds.add(mChildMarkId);
-                  txn.is_linked_to_manual = true;
-                }
-              }
+          if (txn.manual_mark_id) {
+            txn.is_linked_to_manual = true;
+            const hasMLineMark = collectCoasFromMarkId(txn.manual_mark_id, resolvedCoas, resolvedCoaIds, uniqCoas);
+            if (hasMLineMark) {
+                relatedMarkIds.add(txn.manual_mark_id);
             }
           }
 

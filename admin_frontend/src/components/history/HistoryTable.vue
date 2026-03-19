@@ -89,7 +89,7 @@
                   <td class="min-w-[150px]" @click.stop>
                       <div class="flex items-center gap-2">
                           <SearchableSelect
-                              v-if="!t.is_split"
+                              v-if="!t.is_split && !t.is_linked_to_manual"
                               class="w-full flex-1"
                               :model-value="t.mark_id || ''"
                               :options="markOptions"
@@ -97,12 +97,20 @@
                               @update:model-value="onMarkSelected(t.id, $event)"
                           />
                           <div
-                              v-else
+                              v-else-if="t.is_split"
                               class="text-[10px] font-bold px-2 py-1 rounded-md flex-1 flex items-center gap-1.5 border"
                               :class="t.is_multi_marked ? 'history-chip history-chip--primary' : 'history-chip history-chip--warning'"
                           >
                              <i class="bi bi-stack"></i>
                              {{ t.is_multi_marked ? 'Mixed Marks' : 'Split (No Active Mark)' }}
+                          </div>
+                          <div
+                              v-else-if="t.is_linked_to_manual"
+                              class="text-[10px] font-bold px-2 py-1 rounded-md flex-1 flex items-center gap-1.5 border border-primary/20 bg-primary/5 text-primary"
+                              :title="`Linked to: ${t.manual_mark_name || 'Manual Journal'}`"
+                          >
+                              <i class="bi bi-link-45deg text-sm"></i>
+                              {{ t.manual_mark_name || 'Manual Journal' }}
                           </div>
                            <button
                                @click.stop="$emit('split-transaction', t)"
