@@ -1,186 +1,165 @@
 <template>
   <div class="space-y-6">
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-      <h3 class="text-lg font-semibold text-gray-900">
-        Service Transactions & Tax
-      </h3>
-      <p class="text-sm text-gray-500 mt-1">
-        Mark jasa diatur dari menu Mark. Di sini tiap transaksi jasa punya
-        konfigurasi pajak sendiri: NPWP, metode bruto/netto, dan waktu bayar
-        pajak.
+    <!-- Header info -->
+    <header class="flex flex-col gap-2">
+      <div class="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-accent">
+        History & Database
+      </div>
+      <h2 class="text-3xl font-bold tracking-tight text-theme">
+        Service Tax Handling
+      </h2>
+      <p class="max-w-3xl text-sm leading-relaxed text-theme-muted">
+        Kelola konfigurasi pajak untuk transaksi jasa. Mark jasa diatur dari menu 
+        <router-link to="/marks" class="text-primary hover:underline font-semibold">Mark</router-link>. 
+        Gunakan editor untuk mengatur NPWP, metode perhitungan (Bruto/Netto), dan penjadwalan pembayaran pajak.
       </p>
-    </div>
+    </header>
 
-    <div class="bg-white rounded-xl border border-gray-200 p-4">
-      <div
-        class="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between"
-      >
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 w-full lg:w-auto">
-          <div
-            class="bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2"
-          >
-            <div class="text-xs uppercase font-semibold text-indigo-600">
-              Total Transaksi
-            </div>
-            <div class="text-lg font-bold text-indigo-900">
-              {{ summary.total_txn }}
-            </div>
+    <!-- Stats & Search -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard
+          label="Total Transaksi"
+          :value="summary.total_txn"
+          variant="primary"
+          icon="bi-receipt"
+        />
+        <StatCard
+          label="Ada NPWP"
+          :value="summary.with_npwp"
+          variant="success"
+          icon="bi-card-list"
+        />
+        <StatCard
+          label="Preview Total Pajak"
+          :value="formatCurrency(summary.total_tax)"
+          variant="warning"
+          icon="bi-calculator"
+        />
+      </div>
+
+      <SectionCard class="lg:col-span-4" bodyClass="p-4">
+        <div class="flex flex-col gap-3">
+          <div class="text-[10px] font-bold text-theme-muted uppercase tracking-widest">
+            Search & Filter
           </div>
-          <div
-            class="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2"
-          >
-            <div class="text-xs uppercase font-semibold text-emerald-600">
-              Ada NPWP
-            </div>
-            <div class="text-lg font-bold text-emerald-900">
-              {{ summary.with_npwp }}
-            </div>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-            <div class="text-xs uppercase font-semibold text-amber-700">
-              Preview Total Pajak
-            </div>
-            <div class="text-lg font-bold text-amber-900">
-              {{ formatCurrency(summary.total_tax) }}
-            </div>
+          <div class="flex items-center gap-2">
+            <TextInput
+              v-model="search"
+              placeholder="Cari deskripsi/mark..."
+              @keyup.enter="loadServiceTransactions"
+              class="flex-1"
+            >
+              <template #leading>
+                <i class="bi bi-search"></i>
+              </template>
+            </TextInput>
+            <Button
+              variant="primary"
+              @click="loadServiceTransactions"
+            >
+              Cari
+            </Button>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <input
-            v-model="search"
-            @keyup.enter="loadServiceTransactions"
-            type="text"
-            placeholder="Cari deskripsi/mark..."
-            class="w-64 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-          <button
-            @click="loadServiceTransactions"
-            class="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
-          >
-            Cari
-          </button>
-        </div>
-      </div>
+      </SectionCard>
     </div>
 
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <h4 class="text-sm font-semibold text-gray-800">
-          Service Transactions List
-        </h4>
-      </div>
-      <div class="max-h-[560px] overflow-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-          <thead class="bg-white sticky top-0">
+    <SectionCard bodyClass="p-0 overflow-hidden">
+      <template #header>
+        <div class="px-5 py-4 border-b border-border bg-surface-raised/50 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-1 h-4 bg-primary rounded-full"></div>
+            <h4 class="text-xs font-bold text-theme uppercase tracking-widest">
+              Service Transactions List
+            </h4>
+          </div>
+          <div class="text-[10px] text-theme-muted font-medium">
+            Showing {{ transactions.length }} transactions
+          </div>
+        </div>
+      </template>
+
+      <div class="max-h-[600px] overflow-auto">
+        <table class="table-compact min-w-full">
+          <thead>
             <tr>
-              <th
-                class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
-              >
-                Tanggal / Deskripsi
-              </th>
-              <th
-                class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase"
-              >
-                Nominal
-              </th>
-              <th
-                class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
-              >
-                Mark
-              </th>
-              <th
-                class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
-              >
-                NPWP
-              </th>
-              <th
-                class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
-              >
-                Metode
-              </th>
-              <th
-                class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
-              >
-                Waktu Bayar
-              </th>
-              <th
-                class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
-              >
-                Tgl Bayar
-              </th>
-              <th
-                class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
-              >
-                Preview Pajak
-              </th>
-              <th
-                class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase"
-              >
-                Aksi
-              </th>
+              <th class="text-left">Tanggal / Deskripsi</th>
+              <th class="text-right">Nominal</th>
+              <th class="text-left">Mark</th>
+              <th class="text-left">NPWP</th>
+              <th class="text-left">Metode</th>
+              <th class="text-left">Waktu Bayar</th>
+              <th class="text-left">Tgl Bayar</th>
+              <th class="text-left">Preview Pajak</th>
+              <th class="text-right">Aksi</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="divide-y divide-border/50">
             <tr v-if="loadingTransactions">
-              <td colspan="9" class="px-4 py-6 text-center text-gray-500">
-                Loading transaksi jasa...
+              <td colspan="9" class="px-6 py-12 text-center text-theme-muted font-medium italic">
+                <div class="flex flex-col items-center gap-3">
+                  <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  Loading transaksi jasa...
+                </div>
               </td>
             </tr>
             <tr v-else-if="transactions.length === 0">
-              <td colspan="9" class="px-4 py-6 text-center text-gray-500">
+              <td colspan="9" class="px-6 py-12 text-center text-theme-muted font-medium italic">
                 Tidak ada transaksi jasa untuk filter saat ini
               </td>
             </tr>
             <tr
               v-for="txn in transactions"
               :key="txn.id"
-              class="hover:bg-gray-50"
             >
               <td class="px-4 py-3">
-                <div class="font-medium text-gray-900">
+                <div class="font-bold text-theme text-[13px]">
                   {{ formatDate(txn.txn_date) }}
                 </div>
-                <div class="text-xs text-gray-600 max-w-[300px] truncate">
+                <div class="text-[10px] text-theme-muted max-w-[300px] truncate mt-0.5 uppercase tracking-tight">
                   {{ txn.description || "-" }}
                 </div>
               </td>
-              <td class="px-4 py-3 text-right font-medium text-gray-900">
+              <td class="px-4 py-3 text-right font-bold text-theme">
                 {{ formatCurrency(txn.amount) }}
               </td>
-              <td class="px-4 py-3 text-gray-700">
-                {{ txn.personal_use || txn.internal_report || "-" }}
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-surface-muted text-theme-muted uppercase tracking-wider border border-border">
+                  {{ txn.personal_use || txn.internal_report || "-" }}
+                </span>
               </td>
               <td class="px-4 py-3">
                 <span
                   v-if="txn.has_npwp"
-                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800"
+                  class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-success/10 text-success uppercase tracking-wider border border-success/20"
                 >
                   Ada
                 </span>
                 <span
                   v-else
-                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700"
+                  class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-theme-muted/10 text-theme-muted uppercase tracking-wider border border-border"
                 >
                   Tidak Ada
                 </span>
               </td>
-              <td class="px-4 py-3 text-gray-700">
+              <td class="px-4 py-3">
                 <span
                   v-if="txn.service_calculation_method === 'NETTO'"
-                  class="font-medium text-indigo-700"
+                  class="font-bold text-primary text-[11px] uppercase"
                   >Netto</span
                 >
                 <span
                   v-else-if="txn.service_calculation_method === 'NONE'"
-                  class="font-medium text-gray-500 italic"
+                  class="font-bold text-theme-muted text-[11px] uppercase italic opacity-60"
                   >Tanpa Pajak</span
                 >
-                <span v-else class="font-medium text-gray-700">Bruto</span>
+                <span v-else class="font-bold text-theme text-[11px] uppercase">Bruto</span>
               </td>
-              <td class="px-4 py-3 text-gray-700">
+              <td class="px-4 py-3 text-theme/80 text-[11px]">
                 {{ formatTiming(txn.service_tax_payment_timing) }}
               </td>
-              <td class="px-4 py-3 text-gray-700">
+              <td class="px-4 py-3 text-theme/80 text-[11px]">
                 {{
                   txn.service_tax_payment_date
                     ? formatDate(txn.service_tax_payment_date)
@@ -188,263 +167,189 @@
                 }}
               </td>
               <td class="px-4 py-3">
-                <div class="text-xs text-gray-700">
-                  <div>
-                    Tarif:
-                    <span class="font-semibold"
-                      >{{ getPreview(txn).rate }}%</span
-                    >
+                <div class="text-[10px]">
+                  <div class="flex items-center gap-1">
+                    <span class="text-theme-muted uppercase font-bold tracking-tighter opacity-60 w-8">Tarif</span>
+                    <span class="font-bold text-theme">{{ getPreview(txn).rate }}%</span>
                   </div>
-                  <div>
-                    PPh:
-                    <span class="font-semibold">{{
-                      formatCurrency(getPreview(txn).tax)
-                    }}</span>
+                  <div class="flex items-center gap-1 mt-0.5">
+                    <span class="text-theme-muted uppercase font-bold tracking-tighter opacity-60 w-8">PPh</span>
+                    <span class="font-bold text-primary">{{ formatCurrency(getPreview(txn).tax) }}</span>
                   </div>
                 </div>
               </td>
               <td class="px-4 py-3 text-right">
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   @click="openEditor(txn)"
-                  class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                   title="Edit Pajak"
                 >
-                  <i class="bi bi-pencil-square text-lg"></i>
-                </button>
+                  <i class="bi bi-pencil-square"></i>
+                </Button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </SectionCard>
 
-    <div
-      v-if="isEditorOpen && selectedTxn"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      @click.self="closeEditor"
+    <BaseModal
+      :isOpen="isEditorOpen"
+      size="2xl"
+      @close="closeEditor"
     >
-      <div
-        class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
-      >
-        <div
-          class="p-6 border-b border-gray-200 flex items-center justify-between"
-        >
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">
-              Edit Service Tax
-            </h3>
-            <p class="text-xs text-gray-500 mt-1">
-              {{ formatDate(selectedTxn.txn_date) }} |
-              {{ selectedTxn.description || "-" }}
-            </p>
-          </div>
-          <button
-            @click="closeEditor"
-            class="text-gray-400 hover:text-gray-600"
-          >
-            <i class="bi bi-x-lg"></i>
-          </button>
+      <template #title>
+        <div>
+          <h3 class="text-lg font-bold text-theme">Edit Service Tax</h3>
+          <p class="text-[10px] text-theme-muted font-bold uppercase tracking-widest mt-0.5">
+            {{ formatDate(selectedTxn?.txn_date) }} | {{ selectedTxn?.description || "-" }}
+          </p>
         </div>
+      </template>
 
-        <div class="p-6 space-y-4">
-          <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
-            <div class="text-xs text-gray-500">Nominal Transaksi</div>
-            <div class="text-2xl font-bold text-gray-900">
-              {{ formatCurrency(selectedTxn.amount) }}
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1"
-                >Status NPWP</label
-              >
-              <select
-                v-model="editorForm.has_npwp"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option :value="false">Tidak Ada NPWP</option>
-                <option :value="true">Ada NPWP</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1"
-                >NPWP</label
-              >
-              <input
-                v-model="editorForm.npwp"
-                :disabled="!editorForm.has_npwp"
-                type="text"
-                maxlength="32"
-                placeholder="15 digit NPWP"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:text-gray-400"
-              />
-            </div>
-          </div>
-
-          <div
-            class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-indigo-50 border border-indigo-100 rounded-lg"
-          >
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1"
-                >Metode Perhitungan</label
-              >
-              <select
-                v-model="editorForm.calculation_method"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="BRUTO">Bruto</option>
-                <option value="NETTO">Netto</option>
-                <option value="NONE">Tanpa Pajak</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1"
-                >Waktu Bayar Pajak</label
-              >
-              <select
-                v-model="editorForm.tax_payment_timing"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="same_period">Periode yang sama</option>
-                <option value="next_period">Periode berikutnya</option>
-                <option value="next_year">Tahun berikutnya</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1"
-                >Tanggal Bayar Pajak</label
-              >
-              <input
-                v-model="editorForm.tax_payment_date"
-                type="date"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-          </div>
-
-          <div class="bg-white border border-gray-200 rounded-lg p-4">
-            <div class="text-xs font-bold text-gray-500 uppercase mb-3">
-              Preview Pajak Transaksi
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div
-                class="p-2 sm:p-3 bg-gray-50 rounded-lg border border-gray-100 flex items-center gap-2 sm:gap-3 overflow-hidden"
-              >
-                <div
-                  class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 shrink-0"
-                >
-                  <i class="bi bi-percent"></i>
-                </div>
-                <div class="min-w-0">
-                  <div
-                    class="text-[10px] text-gray-500 uppercase font-bold tracking-wider truncate"
-                  >
-                    Tarif
-                  </div>
-                  <div class="font-bold text-gray-900 text-sm sm:text-base">
-                    {{ editorPreview.rate }}%
-                  </div>
-                </div>
-              </div>
-
-              <div
-                class="p-2 sm:p-3 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center gap-2 sm:gap-3 overflow-hidden"
-              >
-                <div
-                  class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0"
-                >
-                  <i class="bi bi-box-arrow-in-right"></i>
-                </div>
-                <div class="min-w-0">
-                  <div
-                    class="text-[10px] text-indigo-500 uppercase font-bold tracking-wider truncate"
-                  >
-                    Nilai Bruto
-                  </div>
-                  <div
-                    class="font-bold text-indigo-700 text-sm sm:text-base truncate"
-                    :title="formatCurrency(editorPreview.bruto)"
-                  >
-                    {{ formatCurrency(editorPreview.bruto) }}
-                  </div>
-                </div>
-              </div>
-
-              <div
-                class="p-2 sm:p-3 bg-emerald-50 rounded-lg border border-emerald-100 flex items-center gap-2 sm:gap-3 overflow-hidden"
-              >
-                <div
-                  class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0"
-                >
-                  <i class="bi bi-wallet2"></i>
-                </div>
-                <div class="min-w-0">
-                  <div
-                    class="text-[10px] text-emerald-500 uppercase font-bold tracking-wider truncate"
-                  >
-                    Nilai Netto
-                  </div>
-                  <div
-                    class="font-bold text-emerald-700 text-sm sm:text-base truncate"
-                    :title="formatCurrency(editorPreview.netto)"
-                  >
-                    {{ formatCurrency(editorPreview.netto) }}
-                  </div>
-                </div>
-              </div>
-
-              <div
-                class="p-2 sm:p-3 bg-amber-50 rounded-lg border border-amber-100 flex items-center gap-2 sm:gap-3 overflow-hidden"
-              >
-                <div
-                  class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 shrink-0"
-                >
-                  <i class="bi bi-shield-check"></i>
-                </div>
-                <div class="min-w-0">
-                  <div
-                    class="text-[10px] text-amber-600 uppercase font-bold tracking-wider truncate"
-                  >
-                    PPh
-                  </div>
-                  <div
-                    class="font-bold text-amber-700 text-sm sm:text-base truncate"
-                    :title="formatCurrency(editorPreview.tax)"
-                  >
-                    {{ formatCurrency(editorPreview.tax) }}
-                  </div>
-                </div>
-              </div>
-            </div>
+      <div class="px-6 space-y-6">
+        <div class="bg-surface-muted rounded-2xl border border-border p-5">
+          <div class="text-[10px] text-theme-muted font-bold uppercase tracking-widest opacity-60">Nominal Transaksi</div>
+          <div class="text-3xl font-bold text-theme mt-1">
+            {{ formatCurrency(selectedTxn?.amount) }}
           </div>
         </div>
 
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button
-            type="button"
-            @click="closeEditor"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Batal
-          </button>
-          <button
-            type="button"
-            :disabled="editorSaving"
-            @click="saveEditor"
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {{ editorSaving ? "Menyimpan..." : "Simpan" }}
-          </button>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField label="Status NPWP">
+            <SelectInput
+              v-model="editorForm.has_npwp"
+              :options="[
+                { value: false, label: 'Tidak Ada NPWP' },
+                { value: true, label: 'Ada NPWP' }
+              ]"
+            />
+          </FormField>
+          <FormField label="NPWP">
+            <TextInput
+              v-model="editorForm.npwp"
+              :disabled="!editorForm.has_npwp"
+              placeholder="15 digit NPWP"
+              maxlength="32"
+            />
+          </FormField>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-primary/5 rounded-2xl border border-primary/10">
+          <FormField label="Metode Perhitungan">
+            <SelectInput
+              v-model="editorForm.calculation_method"
+              :options="[
+                { value: 'BRUTO', label: 'Bruto' },
+                { value: 'NETTO', label: 'Netto' },
+                { value: 'NONE', label: 'Tanpa Pajak' }
+              ]"
+            />
+          </FormField>
+          <FormField label="Waktu Bayar Pajak">
+            <SelectInput
+              v-model="editorForm.tax_payment_timing"
+              :options="[
+                { value: 'same_period', label: 'Periode yang sama' },
+                { value: 'next_period', label: 'Periode berikutnya' },
+                { value: 'next_year', label: 'Tahun berikutnya' }
+              ]"
+            />
+          </FormField>
+          <FormField label="Tanggal Bayar Pajak">
+            <TextInput
+              v-model="editorForm.tax_payment_date"
+              type="date"
+            />
+          </FormField>
+        </div>
+
+        <div class="bg-surface rounded-2xl border border-border p-5">
+          <div class="text-[10px] font-bold text-theme-muted uppercase tracking-widest mb-4">
+            Preview Pajak Transaksi
+          </div>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="p-3 bg-surface-muted rounded-xl border border-border flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-theme/5 flex items-center justify-center text-theme shrink-0">
+                <i class="bi bi-percent"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="text-[9px] text-theme-muted uppercase font-bold tracking-tighter opacity-60">Tarif</div>
+                <div class="font-bold text-theme text-sm">{{ editorPreview.rate }}%</div>
+              </div>
+            </div>
+
+            <div class="p-3 bg-primary/10 rounded-xl border border-primary/20 flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <i class="bi bi-box-arrow-in-right"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="text-[9px] text-primary uppercase font-bold tracking-tighter opacity-60">Bruto</div>
+                <div class="font-bold text-primary text-sm truncate" :title="formatCurrency(editorPreview.bruto)">
+                  {{ formatCurrency(editorPreview.bruto) }}
+                </div>
+              </div>
+            </div>
+
+            <div class="p-3 bg-success/10 rounded-xl border border-success/20 flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center text-success shrink-0">
+                <i class="bi bi-wallet2"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="text-[9px] text-success uppercase font-bold tracking-tighter opacity-60">Netto</div>
+                <div class="font-bold text-success text-sm truncate" :title="formatCurrency(editorPreview.netto)">
+                  {{ formatCurrency(editorPreview.netto) }}
+                </div>
+              </div>
+            </div>
+
+            <div class="p-3 bg-warning/10 rounded-xl border border-warning/20 flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center text-warning shrink-0">
+                <i class="bi bi-shield-check"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="text-[9px] text-warning uppercase font-bold tracking-tighter opacity-60">PPh</div>
+                <div class="font-bold text-warning text-sm truncate" :title="formatCurrency(editorPreview.tax)">
+                  {{ formatCurrency(editorPreview.tax) }}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+
+      <template #footer>
+        <Button
+          variant="secondary"
+          @click="closeEditor"
+          :disabled="editorSaving"
+        >
+          Batal
+        </Button>
+        <Button
+          variant="primary"
+          @click="saveEditor"
+          :loading="editorSaving"
+          :disabled="editorSaving"
+        >
+          Simpan
+        </Button>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { historyApi } from "../../api";
+import SectionCard from "../ui/SectionCard.vue";
+import StatCard from "../ui/StatCard.vue";
+import TextInput from "../ui/TextInput.vue";
+import SelectInput from "../ui/SelectInput.vue";
+import Button from "../ui/Button.vue";
+import BaseModal from "../ui/BaseModal.vue";
+import FormField from "../ui/FormField.vue";
 
 const props = defineProps({
   companyId: {

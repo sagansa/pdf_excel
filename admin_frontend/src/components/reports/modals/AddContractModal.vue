@@ -1,247 +1,235 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click.self="$emit('close')">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-      <div class="p-6 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-gray-900">{{ editMode ? 'Edit Contract' : 'Add New Contract' }}</h3>
-          <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
+  <BaseModal
+    :isOpen="isOpen"
+    size="2xl"
+    @close="$emit('close')"
+  >
+    <template #title>
+      {{ editMode ? 'Edit Contract' : 'Add New Contract' }}
+    </template>
+    
+    <form @submit.prevent="handleSubmit" class="space-y-4 px-6">
+      <!-- Store and Location -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField label="Store *">
+          <SelectInput
+            v-model="form.store_id"
+            required
+            placeholder="Select a store..."
+            :options="stores.map(s => ({ value: s.id, label: `${s.store_code} - ${s.store_name}` }))"
+          />
+        </FormField>
+
+        <FormField label="Location *">
+          <SelectInput
+            v-model="form.location_id"
+            required
+            placeholder="Select a location..."
+            :options="locations.map(l => ({ value: l.id, label: `${l.location_name} - ${l.address}` }))"
+          />
+        </FormField>
       </div>
-      
-      <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
-        <!-- Store and Location -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Store *</label>
-            <select
-              v-model="form.store_id"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-            >
-              <option value="">Select a store...</option>
-              <option v-for="store in stores" :key="store.id" :value="store.id">
-                {{ store.store_code }} - {{ store.store_name }}
-              </option>
-            </select>
-          </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Location *</label>
-            <select
-              v-model="form.location_id"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-            >
-              <option value="">Select a location...</option>
-              <option v-for="loc in locations" :key="loc.id" :value="loc.id">
-                {{ loc.location_name }} - {{ loc.address }}
-              </option>
-            </select>
-          </div>
-        </div>
+      <!-- Dates -->
+      <div class="grid grid-cols-2 gap-4">
+        <FormField label="Start Date *">
+          <TextInput
+            v-model="form.start_date"
+            type="date"
+            required
+          />
+        </FormField>
+        <FormField label="End Date *">
+          <TextInput
+            v-model="form.end_date"
+            type="date"
+            required
+          />
+        </FormField>
+      </div>
 
-        <!-- Dates -->
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
-            <input
-              v-model="form.start_date"
-              type="date"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
-            <input
-              v-model="form.end_date"
-              type="date"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-            />
-          </div>
-        </div>
-
-        <!-- Accounting Config -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Metode</label>
-            <select
-              v-model="form.calculation_method"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
-            >
-              <option value="BRUTO">Bruto</option>
-              <option value="NETTO">Netto (Gross-up)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Tarif PPh (%)</label>
-            <input
-              v-model.number="form.pph42_rate"
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Bayar</label>
-            <select
-              v-model="form.pph42_payment_timing"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
-            >
-              <option value="same_period">Periode sama</option>
-              <option value="next_period">Bulan depan</option>
-              <option value="next_year">Tahun depan</option>
-            </select>
-          </div>
-          <div v-if="form.pph42_payment_timing !== 'same_period'">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Bayar PPh</label>
-            <input
+      <!-- Accounting Config -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-primary/5 border border-primary/10 rounded-2xl">
+        <FormField label="Metode">
+          <SelectInput
+            v-model="form.calculation_method"
+            :options="[
+              { value: 'BRUTO', label: 'Bruto' },
+              { value: 'NETTO', label: 'Netto (Gross-up)' }
+            ]"
+            size="sm"
+          />
+        </FormField>
+        <FormField label="Tarif PPh (%)">
+          <TextInput
+            v-model.number="form.pph42_rate"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            size="sm"
+          />
+        </FormField>
+        <FormField label="Waktu Bayar">
+          <SelectInput
+            v-model="form.pph42_payment_timing"
+            :options="[
+              { value: 'same_period', label: 'Periode sama' },
+              { value: 'next_period', label: 'Bulan depan' },
+              { value: 'next_year', label: 'Tahun depan' }
+            ]"
+            size="sm"
+          />
+        </FormField>
+        
+        <template v-if="form.pph42_payment_timing !== 'same_period'">
+          <FormField label="Tanggal Bayar PPh">
+            <TextInput
               v-model="form.pph42_payment_date"
               type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
+              size="sm"
             />
-          </div>
-          <div v-if="form.pph42_payment_timing !== 'same_period'">
-            <label class="block text-sm font-medium text-gray-700 mb-1">No. Ref Pembayaran PPh</label>
-            <input
+          </FormField>
+          <FormField label="No. Ref Pembayaran PPh">
+            <TextInput
               v-model="form.pph42_payment_ref"
-              type="text"
-              placeholder="Nomor referensi / NTPN"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-xs"
+              placeholder="NTPN / Ref #"
+              size="sm"
             />
-          </div>
-        </div>
+          </FormField>
+        </template>
+      </div>
 
-        <!-- Transaction Selection -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <label class="block text-sm font-bold text-gray-700">
-              <i class="bi bi-link-45deg mr-1"></i>
-              Link Transactions
-            </label>
-            <span class="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full font-medium">
-              {{ selectedTransactions.length }} selected
-            </span>
+      <!-- Transaction Selection -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="block text-xs font-bold text-theme">
+            <i class="bi bi-link-45deg mr-1"></i>
+            Link Transactions
+          </label>
+          <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+            {{ selectedTransactions.length }} selected
+          </span>
+        </div>
+        
+        <div class="border border-border rounded-2xl overflow-hidden">
+          <div class="bg-surface-muted px-4 py-2 border-b border-border">
+            <div class="flex items-center gap-2">
+              <TextInput
+                v-model="transactionSearch"
+                placeholder="Search transactions..."
+                class="flex-1"
+                size="sm"
+              />
+              <button
+                type="button"
+                @click="refreshTransactions"
+                class="text-theme-muted hover:text-primary transition-colors px-2"
+                title="Refresh"
+              >
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+            </div>
           </div>
           
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="transactionSearch"
-                  type="text"
-                  placeholder="Search transactions..."
-                  class="flex-1 text-xs px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <button
-                  type="button"
-                  @click="refreshTransactions"
-                  class="text-gray-500 hover:text-indigo-600"
-                  title="Refresh"
-                >
-                  <i class="bi bi-arrow-clockwise"></i>
-                </button>
-              </div>
-            </div>
-            
-            <div class="max-h-48 overflow-y-auto">
-              <div
-                v-for="txn in filteredTransactions"
-                :key="txn.id"
-                class="flex items-center px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                :class="{ 'bg-indigo-50': isSelected(txn.id) }"
-              >
-                <input
-                  :id="'txn-' + txn.id"
-                  v-model="selectedTransactions"
-                  :value="txn.id"
-                  type="checkbox"
-                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label :for="'txn-' + txn.id" class="ml-3 flex-1 cursor-pointer">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <div class="text-xs font-semibold text-gray-900">{{ txn.description }}</div>
-                      <div class="text-[10px] text-gray-500">
-                        {{ formatDate(txn.txn_date) }} | {{ txn.personal_use || txn.internal_report || 'No mark' }}
-                      </div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-sm font-bold text-gray-900">{{ formatCurrency(txn.amount) }}</div>
+          <div class="max-h-48 overflow-y-auto">
+            <div
+              v-for="txn in filteredTransactions"
+              :key="txn.id"
+              class="flex items-center px-4 py-3 hover:bg-surface-muted border-b border-border last:border-0"
+              :class="{ 'bg-surface-muted': isSelected(txn.id) }"
+            >
+              <input
+                :id="'txn-' + txn.id"
+                v-model="selectedTransactions"
+                :value="txn.id"
+                type="checkbox"
+                class="h-4 w-4 text-primary focus:ring-primary border-border rounded"
+              />
+              <label :for="'txn-' + txn.id" class="ml-3 flex-1 cursor-pointer">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-semibold text-theme">{{ txn.description }}</div>
+                    <div class="text-[10px] text-theme-muted">
+                      {{ formatDate(txn.txn_date) }} | {{ txn.personal_use || txn.internal_report || 'No mark' }}
                     </div>
                   </div>
-                </label>
-              </div>
-              
-              <div v-if="filteredTransactions.length === 0" class="px-4 py-8 text-center text-gray-500 text-xs">
-                <i class="bi bi-inbox text-2xl mb-2 block"></i>
-                No linkable transactions found (Only marked as rental)
-              </div>
+                  <div class="text-right">
+                    <div class="text-xs font-bold text-theme font-mono">{{ formatCurrency(txn.amount) }}</div>
+                  </div>
+                </div>
+              </label>
+            </div>
+            
+            <div v-if="filteredTransactions.length === 0" class="px-4 py-8 text-center text-theme-muted text-xs">
+              <i class="bi bi-inbox text-2xl mb-2 block opacity-40"></i>
+              No linkable transactions found
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Summary -->
-        <div class="bg-white border border-gray-200 rounded-lg p-4">
-          <div class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-wider">Accounting Summary</div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            <div>
-              <div class="text-gray-500 text-[10px] uppercase">Dasar Bayar</div>
-              <div class="font-semibold text-gray-900">{{ formatCurrency(baseSelectedAmount) }}</div>
-            </div>
-            <div>
-              <div class="text-gray-500 text-[10px] uppercase">Nilai Bruto</div>
-              <div class="font-semibold text-indigo-700">{{ formatCurrency(calculatedBrutoAmount) }}</div>
-            </div>
-            <div>
-              <div class="text-gray-500 text-[10px] uppercase">Nilai Netto</div>
-              <div class="font-semibold text-gray-900">{{ formatCurrency(calculatedNetAmount) }}</div>
-            </div>
-            <div>
-              <div class="text-gray-500 text-[10px] uppercase">PPh 4(2)</div>
-              <div class="font-semibold text-amber-700">{{ formatCurrency(calculatedTaxAmount) }}</div>
-            </div>
+      <!-- Summary -->
+      <div class="rounded-2xl px-4 py-3 bg-primary/5 border border-primary/10">
+        <div class="text-[10px] font-bold text-theme-muted uppercase mb-3 tracking-wider">Accounting Summary</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <div class="text-theme-muted text-[10px] uppercase font-bold">Dasar Bayar</div>
+            <div class="text-xs font-semibold text-theme">{{ formatCurrency(baseSelectedAmount) }}</div>
+          </div>
+          <div>
+            <div class="text-theme-muted text-[10px] uppercase font-bold">Bruto</div>
+            <div class="text-xs font-bold text-primary">{{ formatCurrency(calculatedBrutoAmount) }}</div>
+          </div>
+          <div>
+            <div class="text-theme-muted text-[10px] uppercase font-bold">Netto</div>
+            <div class="text-xs font-semibold text-theme">{{ formatCurrency(calculatedNetAmount) }}</div>
+          </div>
+          <div>
+             <div class="text-theme-muted text-[10px] uppercase font-bold">PPh 4(2)</div>
+            <div class="text-xs font-bold text-amber-600 dark:text-amber-400">{{ formatCurrency(calculatedTaxAmount) }}</div>
           </div>
         </div>
+      </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea
-            v-model="form.notes"
-            rows="2"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-          ></textarea>
-        </div>
+      <FormField label="Notes">
+        <textarea
+          v-model="form.notes"
+          rows="2"
+          class="input-base w-full text-sm"
+          placeholder="Additional contract notes..."
+        ></textarea>
+      </FormField>
+    </form>
 
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            @click="$emit('close')"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            :disabled="loading"
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 shadow-md"
-          >
-            {{ loading ? 'Saving...' : (editMode ? 'Update' : 'Create') }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+    <template #footer>
+      <Button
+        variant="secondary"
+        @click="$emit('close')"
+        :disabled="loading"
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="primary"
+        :loading="loading"
+        :disabled="loading"
+        @click="handleSubmit"
+      >
+        {{ editMode ? 'Update' : 'Create' }}
+      </Button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue';
 import { rentalApi } from '../../../api';
+import BaseModal from '../../ui/BaseModal.vue';
+import FormField from '../../ui/FormField.vue';
+import TextInput from '../../ui/TextInput.vue';
+import SelectInput from '../../ui/SelectInput.vue';
+import Button from '../../ui/Button.vue';
 
 const props = defineProps({
   isOpen: Boolean,

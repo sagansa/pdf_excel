@@ -1,116 +1,103 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click.self="$emit('close')">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-      <div class="p-6 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-gray-900">{{ editMode ? 'Edit Store' : 'Add New Store' }}</h3>
-          <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
-      </div>
-      
-      <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Store Code *</label>
-            <input
-              v-model="form.store_code"
-              type="text"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="e.g., APB"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Store Name *</label>
-            <input
-              v-model="form.store_name"
-              type="text"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="e.g., Alam Sutera"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Current Location</label>
-          <select
-            v-model="form.current_location_id"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="">No location assigned</option>
-            <option v-for="loc in locations" :key="loc.id" :value="loc.id">
-              {{ loc.location_name }} - {{ loc.address }}
-            </option>
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              v-model="form.status"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="closed">Closed</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Opened Date</label>
-            <input
-              v-model="form.opened_date"
-              type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-        </div>
-
-        <div v-if="form.status === 'closed'">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Closed Date</label>
-          <input
-            v-model="form.closed_date"
-            type="date"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+  <BaseModal
+    :isOpen="isOpen"
+    size="2xl"
+    @close="$emit('close')"
+  >
+    <template #title>
+      {{ editMode ? 'Edit Store' : 'Add New Store' }}
+    </template>
+    
+    <form @submit.prevent="handleSubmit" class="space-y-4 px-6">
+      <div class="grid grid-cols-2 gap-4">
+        <FormField label="Store Code *">
+          <TextInput
+            v-model="form.store_code"
+            required
+            placeholder="e.g., APB"
           />
-        </div>
+        </FormField>
+        <FormField label="Store Name *">
+          <TextInput
+            v-model="form.store_name"
+            required
+            placeholder="e.g., Alam Sutera"
+          />
+        </FormField>
+      </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea
-            v-model="form.notes"
-            rows="3"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          ></textarea>
-        </div>
+      <FormField label="Current Location">
+        <SelectInput
+          v-model="form.current_location_id"
+          placeholder="No location assigned"
+          :options="locations.map(l => ({ value: l.id, label: `${l.location_name} - ${l.address}` }))"
+        />
+      </FormField>
 
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            @click="$emit('close')"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            :disabled="loading"
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {{ loading ? 'Saving...' : (editMode ? 'Update' : 'Create') }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+      <div class="grid grid-cols-2 gap-4">
+        <FormField label="Status">
+          <SelectInput
+            v-model="form.status"
+            :options="[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+              { value: 'closed', label: 'Closed' }
+            ]"
+          />
+        </FormField>
+        <FormField label="Opened Date">
+          <TextInput
+            v-model="form.opened_date"
+            type="date"
+          />
+        </FormField>
+      </div>
+
+      <FormField v-if="form.status === 'closed'" label="Closed Date">
+        <TextInput
+          v-model="form.closed_date"
+          type="date"
+        />
+      </FormField>
+
+      <FormField label="Notes">
+        <textarea
+          v-model="form.notes"
+          rows="3"
+          class="input-base w-full text-sm"
+          placeholder="Additional notes..."
+        ></textarea>
+      </FormField>
+    </form>
+
+    <template #footer>
+      <Button
+        variant="secondary"
+        @click="$emit('close')"
+        :disabled="loading"
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="primary"
+        :loading="loading"
+        :disabled="loading"
+        @click="handleSubmit"
+      >
+        {{ editMode ? 'Update' : 'Create' }}
+      </Button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch } from 'vue';
 import { rentalApi } from '../../../api';
+import BaseModal from '../../ui/BaseModal.vue';
+import FormField from '../../ui/FormField.vue';
+import TextInput from '../../ui/TextInput.vue';
+import SelectInput from '../../ui/SelectInput.vue';
+import Button from '../../ui/Button.vue';
 
 const props = defineProps({
   isOpen: Boolean,
