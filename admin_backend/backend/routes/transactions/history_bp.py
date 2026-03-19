@@ -162,7 +162,21 @@ def create_manual_transaction():
             c_vals_sql = ', '.join(f":{c}" for c in child_insert_cols)
             conn.execute(text(f"INSERT INTO transactions ({c_cols_sql}) VALUES ({c_vals_sql})"), child_data)
 
-        # Save links to existing transactions if provided
+            # --- NEW: Save links per child transaction (line) ---
+            line_linked_ids = line.get('linked_transaction_ids', [])
+            if line_linked_ids:
+                for linked_id in line_linked_ids:
+                    conn.execute(text("""
+                        INSERT IGNORE INTO manual_journal_links (id, manual_txn_id, linked_txn_id, created_at)
+                        VALUES (:id, :manual_txn_id, :linked_txn_id, :now)
+                    """), {
+                        'id': str(uuid.uuid4()),
+                        'manual_txn_id': line_id,
+                        'linked_txn_id': linked_id,
+                        'now': now
+                    })
+
+        # Save legacy/header-level links if provided (though frontend should move to line-level)
         if linked_transaction_ids:
             for linked_id in linked_transaction_ids:
                 conn.execute(text("""
@@ -212,13 +226,28 @@ def get_manual_journal(parent_id):
             d = serialize_row_values(row._mapping)
             tx_id = d['id']
             if tx_id not in lines_map:
+                # NEW: Fetch links for this specific line
+                l_rows = conn.execute(text("""
+                    SELECT t.id, t.txn_date, t.description, t.amount, t.db_cr, t.bank_code
+                    FROM manual_journal_links mjl
+                    JOIN transactions t ON mjl.linked_txn_id = t.id
+                    WHERE mjl.manual_txn_id = :tid
+                """), {'tid': tx_id}).fetchall()
+                
+                line_links = []
+                for lr in l_rows:
+                    ld = serialize_row_values(lr._mapping)
+                    ld['db_cr'] = _normalize_db_cr(ld.get('db_cr'))
+                    line_links.append(ld)
+
                 lines_map[tx_id] = {
                     'id': tx_id,
                     'description': d['description'],
                     'amount': float(d['amount']),
                     'side': 'DEBIT' if d['db_cr'] == 'DB' else 'CREDIT',
                     'coa_id': None,
-                    'coa_id_coretax': None
+                    'coa_id_coretax': None,
+                    'linked_transactions': line_links  # NEW: Per-line links
                 }
             
             # Map COA based on report_type
@@ -229,7 +258,7 @@ def get_manual_journal(parent_id):
         
         lines = list(lines_map.values())
         
-        # 3. Fetch Linked Transactions
+        # 3. Fetch Linked Transactions (Legacy/Header-level)
         l_rows = conn.execute(text("""
             SELECT t.id, t.txn_date, t.description, t.amount, t.db_cr, t.bank_code
             FROM manual_journal_links mjl
@@ -306,15 +335,23 @@ def update_manual_journal(parent_id):
         })
 
         # 2. Get old children and their marks to cleanup
-        old_children = conn.execute(text("SELECT mark_id FROM transactions WHERE parent_id = :pid"), {'pid': parent_id}).fetchall()
-        old_mark_ids = [r.mark_id for r in old_children if r.mark_id]
+        old_rows = conn.execute(text("SELECT id, mark_id FROM transactions WHERE parent_id = :pid"), {'pid': parent_id}).fetchall()
+        old_child_ids = [r.id for r in old_rows]
+        old_mark_ids = [r.mark_id for r in old_rows if r.mark_id]
 
         # Cleanup
         if old_mark_ids:
             conn.execute(text("DELETE FROM mark_coa_mapping WHERE mark_id IN :ids"), {'ids': old_mark_ids})
             conn.execute(text("DELETE FROM marks WHERE id IN :ids"), {'ids': old_mark_ids})
+        
         conn.execute(text("DELETE FROM transactions WHERE parent_id = :pid"), {'pid': parent_id})
-        conn.execute(text("DELETE FROM manual_journal_links WHERE manual_txn_id = :pid"), {'pid': parent_id})
+        
+        # Cleanup links: parent links AND child links
+        if old_child_ids:
+            conn.execute(text("DELETE FROM manual_journal_links WHERE manual_txn_id = :pid OR manual_txn_id IN :child_ids").bindparams(bindparam('child_ids', expanding=True)), 
+                         {'pid': parent_id, 'child_ids': old_child_ids})
+        else:
+            conn.execute(text("DELETE FROM manual_journal_links WHERE manual_txn_id = :pid"), {'pid': parent_id})
 
         # 3. Re-insert children
         for line in lines:
@@ -400,7 +437,21 @@ def update_manual_journal(parent_id):
             c_vals_sql = ', '.join(f":{c}" for c in child_insert_cols)
             conn.execute(text(f"INSERT INTO transactions ({c_cols_sql}) VALUES ({c_vals_sql})"), child_data)
 
-        # 4. Refresh Links
+            # --- NEW: Save links per child transaction (line) ---
+            line_linked_ids = line.get('linked_transaction_ids', [])
+            if line_linked_ids:
+                for linked_id in line_linked_ids:
+                    conn.execute(text("""
+                        INSERT IGNORE INTO manual_journal_links (id, manual_txn_id, linked_txn_id, created_at)
+                        VALUES (:id, :manual_txn_id, :linked_txn_id, :now)
+                    """), {
+                        'id': str(uuid.uuid4()),
+                        'manual_txn_id': line_id,
+                        'linked_txn_id': linked_id,
+                        'now': now
+                    })
+
+        # 4. Refresh Legacy/Header Links
         if linked_transaction_ids:
             for linked_id in linked_transaction_ids:
                 conn.execute(text("""
@@ -518,16 +569,22 @@ def get_transactions():
         result = conn.execute(text("""
             SELECT t.*, m.internal_report, m.personal_use, m.tax_report,
                    c.name as company_name, c.short_name as company_short_name,
-                   mjl.manual_txn_id as linked_manual_id
+                   mjl.manual_txn_id as linked_manual_id,
+                   mt.mark_id as manual_mark_id,
+                   mm.internal_report as manual_mark_name
             FROM transactions t
             LEFT JOIN marks m ON t.mark_id = m.id
             LEFT JOIN companies c ON t.company_id = c.id
             LEFT JOIN manual_journal_links mjl ON t.id = mjl.linked_txn_id
+            LEFT JOIN transactions mt ON mjl.manual_txn_id = mt.id
+            LEFT JOIN marks mm ON mt.mark_id = mm.id
             ORDER BY t.txn_date DESC, t.created_at DESC
         """))
         transactions = serialize_result_rows(result)
         for d in transactions:
             d['db_cr'] = _normalize_db_cr(d.get('db_cr'))
+            d['is_linked_to_manual'] = bool(d.get('linked_manual_id'))
+            
             if not str(d.get('description') or '').strip():
                 fallback_desc = d.get('internal_report') or d.get('personal_use') or d.get('tax_report')
                 if fallback_desc:
@@ -849,10 +906,63 @@ def delete_transaction(txn_id):
     engine = require_db_engine()
 
     with engine.begin() as conn:
+        # 1. Handle child transactions and their marks if this is a parent (manual journal or split)
+        child_marks = conn.execute(
+            text("SELECT mark_id FROM transactions WHERE parent_id = :id"),
+            {'id': txn_id}
+        ).fetchall()
+        
+        child_mark_ids = [r.mark_id for r in child_marks if r.mark_id]
+        if child_mark_ids:
+            conn.execute(
+                text("DELETE FROM mark_coa_mapping WHERE mark_id IN :ids"),
+                {'ids': child_mark_ids}
+            )
+            conn.execute(
+                text("DELETE FROM marks WHERE id IN :ids"),
+                {'ids': child_mark_ids}
+            )
+        
+        # Delete children
+        conn.execute(
+            text("DELETE FROM transactions WHERE parent_id = :id"),
+            {'id': txn_id}
+        )
+
+        # 2. Handle own mark/mapping if exists
+        own_res = conn.execute(
+            text("SELECT mark_id FROM transactions WHERE id = :id"),
+            {'id': txn_id}
+        ).fetchone()
+        
+        if own_res and own_res.mark_id:
+            conn.execute(
+                text("DELETE FROM mark_coa_mapping WHERE mark_id = :mid"),
+                {'mid': own_res.mark_id}
+            )
+            conn.execute(
+                text("DELETE FROM marks WHERE id = :mid"),
+                {'mid': own_res.mark_id}
+            )
+
+        # 3. Handle manual_journal_links (both as parent or linked item)
+        conn.execute(
+            text("DELETE FROM manual_journal_links WHERE manual_txn_id = :id OR linked_txn_id = :id"),
+            {'id': txn_id}
+        )
+
+        # 4. Handle HPP batch links
+        conn.execute(
+            text("DELETE FROM hpp_batch_transactions WHERE transaction_id = :id"),
+            {'id': txn_id}
+        )
+
+        # 5. Finally delete the transaction itself
         result = conn.execute(text("DELETE FROM transactions WHERE id = :id"), {'id': txn_id})
         if int(result.rowcount or 0) == 0:
             raise NotFoundError('Transaction not found')
-    return jsonify({'message': 'Transaction deleted successfully'})
+
+    return jsonify({'message': 'Transaction and all related records deleted successfully'})
 
 
 @history_bp.route('/api/transactions/bulk-delete', methods=['POST'])

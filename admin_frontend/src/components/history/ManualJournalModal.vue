@@ -112,18 +112,20 @@
             </button>
 
           <!-- Header Labels -->
-          <div class="hidden md:grid grid-cols-[30px_110px_1fr_150px_1fr_36px] gap-2 text-[9px] font-bold uppercase tracking-wider text-muted px-2 mb-1">
+          <div class="hidden md:grid grid-cols-[30px_110px_1fr_150px_1fr_60px_36px] gap-2 text-[9px] font-bold uppercase tracking-wider text-muted px-2 mb-1">
             <div>#</div>
             <div>Side</div>
             <div>Account (COA)</div>
             <div class="text-right">Amount</div>
             <div>Line Memo</div>
+            <div class="text-center">Link</div>
             <div></div>
           </div>
 
           <div class="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
             <div v-for="(line, index) in lines" :key="index"
-              class="grid grid-cols-1 md:grid-cols-[30px_110px_1fr_150px_1fr_36px] gap-2 items-center p-2 rounded-lg border border-border bg-surface-muted/20 group hover:border-primary/20 transition-all shadow-sm shadow-black/5"
+              class="grid grid-cols-1 md:grid-cols-[30px_110px_1fr_150px_1fr_60px_36px] gap-2 items-center p-2 rounded-lg border border-border bg-surface-muted/20 group hover:border-primary/20 transition-all shadow-sm shadow-black/5"
+              :class="activeLineIndex === index ? 'ring-1 ring-primary border-primary bg-primary/5' : ''"
             >
               <div class="text-[10px] font-bold text-muted flex items-center justify-center md:justify-start">
                 {{ index + 1 }}
@@ -176,6 +178,26 @@
                 />
               </div>
 
+              <!-- Link Button -->
+              <div class="flex justify-center">
+                <button
+                  type="button"
+                  @click="toggleLineLink(index)"
+                  class="relative w-8 h-8 flex items-center justify-center rounded-lg transition-all"
+                  :class="line.linked_transactions?.length > 0 
+                    ? 'text-primary bg-primary/10 hover:bg-primary/20' 
+                    : 'text-muted hover:text-primary hover:bg-primary/10'"
+                  :title="line.linked_transactions?.length > 0 ? `${line.linked_transactions.length} linked` : 'Link transactions'"
+                >
+                  <i class="bi bi-link-45deg text-lg"></i>
+                  <span v-if="line.linked_transactions?.length > 0" 
+                    class="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[8px] font-black text-white shadow-sm ring-1 ring-surface"
+                  >
+                    {{ line.linked_transactions.length }}
+                  </span>
+                </button>
+              </div>
+
               <!-- Remove -->
               <div class="flex justify-center">
                 <button
@@ -193,29 +215,28 @@
         </div>
 
         <!-- Link to Existing Transactions -->
-        <div class="p-4 rounded-xl border border-border bg-surface overflow-hidden">
-          <div class="flex items-center justify-between mb-3">
+        <div v-if="showLinkPanel" class="p-4 rounded-xl border border-primary/20 bg-surface shadow-lg ring-1 ring-primary/5">
+          <div class="flex items-center justify-between mb-3 pb-2 border-b border-border/50">
             <h4 class="text-[11px] font-bold text-theme uppercase tracking-wider flex items-center gap-2">
-              <i class="bi bi-link-45deg text-primary"></i>
-              Link to Existing Transactions
-              <span v-if="linkedTransactions.length > 0" class="bg-primary/10 text-primary text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                {{ linkedTransactions.length }}
+              <i class="bi bi-link-45deg text-primary text-base"></i>
+              Linking for Line #{{ activeLineIndex + 1 }}
+              <span v-if="lines[activeLineIndex]?.linked_transactions?.length > 0" class="bg-primary/10 text-primary text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                {{ lines[activeLineIndex].linked_transactions.length }} linked
               </span>
             </h4>
             <button
               type="button"
-              @click="showLinkPanel = !showLinkPanel"
-              class="text-[11px] font-bold text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-all flex items-center gap-1.5"
+              @click="showLinkPanel = false; activeLineIndex = null"
+              class="text-muted hover:text-theme transition-colors p-1"
             >
-              <i :class="showLinkPanel ? 'bi bi-chevron-up' : 'bi bi-search'"></i>
-              {{ showLinkPanel ? 'Hide' : 'Search & Link' }}
+              <i class="bi bi-x-lg text-xs"></i>
             </button>
           </div>
 
           <!-- Linked chips -->
-          <div v-if="linkedTransactions.length > 0" class="flex flex-wrap gap-1.5 mb-3">
+          <div v-if="lines[activeLineIndex]?.linked_transactions?.length > 0" class="flex flex-wrap gap-1.5 mb-4 p-2 rounded-lg bg-surface-muted/30 border border-border/50">
             <div
-              v-for="txn in linkedTransactions"
+              v-for="txn in lines[activeLineIndex].linked_transactions"
               :key="txn.id"
               class="flex items-center gap-1.5 bg-primary/10 border border-primary/20 text-primary text-[10px] font-semibold px-2 py-1 rounded-lg"
             >
@@ -226,15 +247,15 @@
               <span class="font-mono text-[9px] text-primary/70">Rp {{ formatCurrency(txn.amount) }}</span>
               <button
                 type="button"
-                @click="unlinkTransaction(txn.id)"
+                @click="unlinkTransaction(txn.id, activeLineIndex)"
                 class="ml-1 text-primary/60 hover:text-red-500 transition-colors"
               >
                 <i class="bi bi-x text-xs"></i>
               </button>
             </div>
           </div>
-          <p v-else-if="!showLinkPanel" class="text-[10px] text-muted italic">
-            No transactions linked. Click "Search &amp; Link" to connect existing transactions.
+          <p v-else class="text-[10px] text-muted italic mb-4 px-2">
+            No transactions linked to this line yet. Search and add below.
           </p>
 
           <!-- Search panel -->
@@ -404,7 +425,7 @@ const coaChanged = (line, val) => {
 
 // --- Link feature state ---
 const showLinkPanel = ref(false);
-const linkedTransactions = ref([]); // [{id, txn_date, description, amount, db_cr}, ...]
+const activeLineIndex = ref(null); // NEW: Track which line we are linking for
 const linkResults = ref([]);
 const isSearching = ref(false);
 const linkSearchDone = ref(false);
@@ -429,7 +450,12 @@ const searchLinkable = async () => {
 
   isSearching.value = true;
   linkSearchDone.value = false;
-  const linkedIds = new Set(linkedTransactions.value.map(t => t.id));
+  
+  // Exclude IDs already linked to ANY line to avoid duplicates in search (optional)
+  const linkedIds = new Set();
+  lines.value.forEach(l => {
+    (l.linked_transactions || []).forEach(lt => linkedIds.add(lt.id));
+  });
 
   try {
     const params = {};
@@ -450,15 +476,39 @@ const searchLinkable = async () => {
 };
 
 const linkTransaction = (txn) => {
-  if (!linkedTransactions.value.find(t => t.id === txn.id)) {
-    linkedTransactions.value.push(txn);
+  if (activeLineIndex.value === null) return;
+  const line = lines.value[activeLineIndex.value];
+  if (!line.linked_transactions) line.linked_transactions = [];
+  
+  if (!line.linked_transactions.find(t => t.id === txn.id)) {
+    line.linked_transactions.push(txn);
     // Remove from results
     linkResults.value = linkResults.value.filter(t => t.id !== txn.id);
   }
 };
 
-const unlinkTransaction = (txnId) => {
-  linkedTransactions.value = linkedTransactions.value.filter(t => t.id !== txnId);
+const unlinkTransaction = (txnId, lineIndex) => {
+  const targetIndex = lineIndex !== undefined ? lineIndex : activeLineIndex.value;
+  if (targetIndex === null) return;
+  
+  const line = lines.value[targetIndex];
+  if (line && line.linked_transactions) {
+    line.linked_transactions = line.linked_transactions.filter(t => t.id !== txnId);
+  }
+};
+
+const toggleLineLink = (index) => {
+  if (activeLineIndex.value === index) {
+      activeLineIndex.value = null;
+      showLinkPanel.value = false;
+  } else {
+      activeLineIndex.value = index;
+      showLinkPanel.value = true;
+      // Maybe trigger search if query exists
+      if (linkSearch.query || linkSearch.start_date || linkSearch.end_date) {
+          searchLinkable();
+      }
+  }
 };
 // --- End link feature ---
 
@@ -506,7 +556,8 @@ const addLine = () => {
     coa_id_coretax: '',
     side: lastLine.side === 'DEBIT' ? 'CREDIT' : 'DEBIT',
     amount: null,
-    description: ''
+    description: '',
+    linked_transactions: [] // NEW
   });
 };
 
@@ -563,11 +614,12 @@ const fetchJournalData = async (id) => {
       coa_id_coretax: l.coa_id_coretax || '',
       side: l.side,
       amount: l.amount,
-      description: l.description || ''
+      description: l.description || '',
+      linked_transactions: l.linked_transactions || [] // NEW: Populate per-line links
     }));
     
-    // Fill Links
-    linkedTransactions.value = data.linked_transactions || [];
+    // Fill Links (Legacy support for journal-level links if any)
+    // linkedTransactions.value = data.linked_transactions || [];
     
   } catch (e) {
     error.value = "Failed to load journal data for editing.";
@@ -596,9 +648,10 @@ const handleSubmit = async () => {
       ...header,
       lines: lines.value.map(line => ({
         ...line,
-        description: (line.description || '').trim() || null
+        description: (line.description || '').trim() || null,
+        linked_transaction_ids: (line.linked_transactions || []).map(lt => lt.id) // NEW: Send per-line IDs
       })),
-      linked_transaction_ids: linkedTransactions.value.map(t => t.id)
+      linked_transaction_ids: [] // Clear header-level links on save if redirecting to lines
     };
     
     if (props.editId) {
@@ -623,10 +676,10 @@ const resetForm = () => {
   header.txn_date = new Date().toISOString().split('T')[0];
   activeReportType.value = 'real';
   lines.value = [
-    { coa_id: '', coa_id_coretax: '', side: 'DEBIT', amount: null, description: '' },
-    { coa_id: '', coa_id_coretax: '', side: 'CREDIT', amount: null, description: '' }
+    { coa_id: '', coa_id_coretax: '', side: 'DEBIT', amount: null, description: '', linked_transactions: [] },
+    { coa_id: '', coa_id_coretax: '', side: 'CREDIT', amount: null, description: '', linked_transactions: [] }
   ];
-  linkedTransactions.value = [];
+  activeLineIndex.value = null; // NEW
   linkResults.value = [];
   linkSearch.query = '';
   linkSearch.start_date = '';
