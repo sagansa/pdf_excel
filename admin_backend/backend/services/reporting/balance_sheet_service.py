@@ -84,20 +84,26 @@ def _build_balance_sheet_query(conn, report_type):
 
 
 def _append_balance_row(row_data, asset_items, liabilities_current, liabilities_non_current, equity):
-    amount = float(row_data['total_amount']) if row_data['total_amount'] else 0.0
+    raw_amount = float(row_data['total_amount']) if row_data['total_amount'] else 0.0
 
     if row_data['category'] == 'ASSET':
+        # ASSET normal balance = DEBIT → raw_amount sign is correct as-is
         add_or_update_asset_item(
             asset_items,
             row_data['id'],
             row_data['code'],
             row_data['name'],
             row_data.get('subcategory'),
-            amount,
+            raw_amount,
         )
         return
 
     if row_data['category'] == 'LIABILITY':
+        # LIABILITY normal balance = CREDIT, but the BS query uses DEBIT=positive (asset convention).
+        # Negate so that:
+        #   CREDIT mapping (accrual)  → raw = -amount → negated = +amount  (liability increases ✓)
+        #   DEBIT  mapping (payment)  → raw = +amount → negated = -amount  (liability decreases ✓)
+        amount = -raw_amount
         add_or_update_liability_item(
             liabilities_current,
             liabilities_non_current,
@@ -111,6 +117,8 @@ def _append_balance_row(row_data, asset_items, liabilities_current, liabilities_
         return
 
     if row_data['category'] == 'EQUITY':
+        # EQUITY normal balance = CREDIT → same negation logic as LIABILITY
+        amount = -raw_amount
         equity.append({
             'id': row_data['id'],
             'code': row_data['code'],

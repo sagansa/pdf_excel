@@ -24,206 +24,205 @@
         </Button>
       </template>
     </Alert>
-    <!-- Calculated Asset Amortization (Automatic) -->
-    <SectionCard
-      v-if="calculatedItems.length > 0"
-      class="mb-6"
-      contentClass="overflow-hidden"
-      bodyClass="p-0"
-    >
-      <template #header>
-        <div>
-          <h3 class="section-card__title">Calculated Asset Amortization</h3>
-          <p class="mt-1 text-xs section-card__subtitle">
-            Automatic calculation based on registered assets. Total:
-            {{ formatCurrency(calculatedTotalAmortization) }}
-          </p>
-        </div>
-      </template>
-      <template #actions>
-        <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-          Automatic
-        </div>
-      </template>
+    <!-- Calculated Asset Amortization (Automatic, Grouped) -->
+    <div v-if="calculatedItems.length > 0" class="space-y-0 mb-6">
+      <!-- Grand Header -->
+      <SectionCard contentClass="overflow-hidden" bodyClass="p-0">
+        <template #header>
+          <div>
+            <h3 class="section-card__title">Calculated Asset Amortization</h3>
+            <p class="mt-1 text-xs section-card__subtitle">
+              Automatic calculation based on registered assets. Total amortization:
+              <strong>{{ formatCurrency(calculatedTotalAmortization) }}</strong>
+            </p>
+          </div>
+        </template>
+        <template #actions>
+          <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+            Automatic
+          </div>
+        </template>
 
-      <div class="amortization-workspace__body p-0">
         <div class="overflow-x-auto">
           <table class="table-compact min-w-full">
             <thead>
               <tr>
                 <th class="w-[120px]">Tx Date</th>
                 <th class="min-w-[200px]">Asset Name</th>
-                <th class="min-w-[120px]">Group / Deductible</th>
+                <th class="min-w-[100px]">Deductible</th>
                 <th class="w-[110px] text-right">Original Cost</th>
                 <th class="w-[110px] text-right">Accum. Depr (Prev)</th>
                 <th class="w-[60px] text-center">Mult.</th>
-                <th class="w-[110px] text-right">Amortization (Curr)</th>
-                <th class="w-[110px] text-right">Total Accum. Depr</th>
+                <th class="w-[110px] text-right">Amortization</th>
+                <th class="w-[110px] text-right">Total Accum.</th>
                 <th class="w-[110px] text-right">Book Value (End)</th>
                 <th class="w-[80px] text-center">Actions</th>
               </tr>
             </thead>
-            <tbody class="amortization-table-body divide-y">
-              <tr
-                v-for="item in calculatedItems"
-                :key="item.asset_id"
-                class="amortization-row"
-              >
-                <td class="px-3 py-2 text-xs text-muted font-mono">
-                  {{ formatDate(item.txn_date || item.acquisition_date) }}
-                </td>
-                <td class="px-3 py-2">
-                  <div class="flex flex-col gap-0.5 max-w-[250px]">
-                    <!-- Notes as Main Title (Bold) if exists -->
-                    <div
-                      v-if="item.notes || item.amortization_notes"
-                      class="text-xs font-bold text-theme break-words leading-tight"
-                    >
-                      {{ item.notes || item.amortization_notes }}
-                    </div>
-                    <!-- Description/Asset Name as Subtitle (Italic) -->
-                    <div
-                      class="text-xs text-muted italic break-words leading-tight"
-                      :class="{
-                        'font-semibold text-theme not-italic text-xs': !(
-                          item.notes || item.amortization_notes
-                        ),
-                      }"
-                    >
-                      {{ item.asset_name }}
-                    </div>
-                  </div>
-                </td>
-                <td class="px-3 py-2">
-                  <div class="flex flex-col">
-                    <span class="text-xs font-medium text-theme">{{
-                      getCalculatedGroupLabel(item)
-                    }}</span>
-                    <span class="text-[10px] text-muted">{{
-                      getDeductibleLabel(item)
-                    }}</span>
-                  </div>
-                </td>
-                <td class="px-3 py-2 text-xs text-right text-muted">
-                  {{ formatCurrency(item.acquisition_cost, false) }}
-                </td>
-                <td class="px-3 py-2 text-xs text-right text-muted">
-                  {{
-                    formatCurrency(
-                      item.accumulated_depreciation_prev_year || 0,
-                      false,
-                    )
-                  }}
-                </td>
 
-                <td class="px-3 py-2 text-center">
-                  <span
-                    class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+            <tbody>
+              <!-- Iterate over types (Tangible, Building, Intangible) -->
+              <template v-for="(groups, typeName) in groupedCalculatedItems" :key="typeName">
+
+                <!-- ─── TYPE HEADER ─────────────────────────────────────────── -->
+                <tr class="amort-type-header">
+                  <td colspan="10" class="px-4 py-2.5">
+                    <div class="flex items-center gap-3">
+                      <div class="w-1.5 h-5 rounded-full"
+                        :class="{
+                          'bg-primary': typeName === 'Tangible',
+                          'bg-warning': typeName === 'Building',
+                          'bg-success': typeName === 'Intangible',
+                        }">
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <i class="bi text-sm"
+                          :class="{
+                            'bi-boxes text-primary': typeName === 'Tangible',
+                            'bi-building text-warning': typeName === 'Building',
+                            'bi-lightbulb text-success': typeName === 'Intangible',
+                          }">
+                        </i>
+                        <span class="text-[11px] font-black uppercase tracking-[0.18em]"
+                          :class="{
+                            'text-primary': typeName === 'Tangible',
+                            'text-warning': typeName === 'Building',
+                            'text-success': typeName === 'Intangible',
+                          }">
+                          {{ getAssetTypeLabel(typeName) }}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Iterate over groups within this type -->
+                <template v-for="(groupItems, groupName) in groups" :key="`${typeName}-${groupName}`">
+
+                  <!-- ─── GROUP SUB-HEADER ──────────────────────────────────── -->
+                  <tr class="amort-group-header">
+                    <td colspan="10" class="px-6 py-1.5">
+                      <div class="flex items-center gap-2">
+                        <i class="bi bi-folder2-open text-[10px] text-muted"></i>
+                        <span class="text-[10px] font-bold text-muted uppercase tracking-wider">
+                          {{ groupName }}
+                        </span>
+                        <span class="text-[9px] bg-surface-raised border border-border px-1.5 py-0.5 rounded text-muted font-bold ml-1">
+                          {{ groupItems.length }} aset
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- ─── ROWS IN THIS GROUP ──────────────────────────────── -->
+                  <tr
+                    v-for="item in groupItems"
+                    :key="item.asset_id"
+                    class="amortization-row"
                   >
-                    {{ item.multiplier }}
-                  </span>
-                </td>
-                <td
-                  class="px-3 py-2 text-xs text-right font-bold text-theme"
-                >
-                  {{ formatCurrency(item.annual_amortization, false) }}
-                </td>
-                <td class="px-3 py-2 text-xs text-right text-muted">
-                  {{
-                    formatCurrency(
-                      item.total_accumulated_depreciation || 0,
-                      false,
-                    )
-                  }}
-                </td>
-                <td
-                  class="px-3 py-2 text-xs text-right font-bold text-theme"
-                >
-                  {{ formatCurrency(item.book_value_end_year || 0, false) }}
-                </td>
-                <td class="px-3 py-2">
-                  <div class="flex items-center justify-center gap-2">
-                    <!-- Manual Asset Actions -->
-                    <template v-if="item.is_manual_asset">
-                      <button
-                        @click="editItem(item)"
-                        class="text-muted hover:text-theme transition-colors"
-                        title="Edit"
-                      >
-                        <i class="bi bi-pencil-square"></i>
-                      </button>
-                      <button
-                        @click="confirmDelete(item)"
-                        class="text-muted hover:text-danger transition-colors"
-                        title="Delete"
-                      >
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </template>
-                    <!-- Transaction Actions -->
-                    <template v-else-if="item.is_from_ledger">
-                      <button
-                        @click="openTransactionDetail(item)"
-                        class="text-muted hover:text-theme transition-colors"
-                        title="View Details"
-                      >
-                        <i class="bi bi-eye"></i>
-                      </button>
-                    </template>
-                    <!-- Registered Asset Actions -->
-                    <template v-else-if="item.asset_id">
-                      <button
-                        @click="editRegisteredAsset(item)"
-                        class="text-muted hover:text-theme transition-colors"
-                        title="Edit Asset"
-                      >
-                        <i class="bi bi-pencil-square"></i>
-                      </button>
-                      <button
-                        @click="confirmDeleteAsset(item)"
-                        class="text-muted hover:text-danger transition-colors"
-                        title="Delete Asset"
-                      >
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </template>
-                    <span
-                      v-else
-                      class="text-muted pointer-events-none"
-                      title="No actions available"
-                    >
-                      <i class="bi bi-dash text-xs"></i>
+                    <td class="px-3 py-2 text-xs text-muted font-mono pl-8">
+                      {{ formatDate(item.txn_date || item.acquisition_date) }}
+                    </td>
+                    <td class="px-3 py-2 pl-8">
+                      <div class="flex flex-col gap-0.5 max-w-[250px]">
+                        <div v-if="item.notes || item.amortization_notes" class="text-xs font-bold text-theme break-words leading-tight">
+                          {{ item.notes || item.amortization_notes }}
+                        </div>
+                        <div class="text-xs text-muted italic break-words leading-tight"
+                          :class="{ 'font-semibold text-theme not-italic': !(item.notes || item.amortization_notes) }">
+                          {{ item.asset_name }}
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-3 py-2">
+                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                        :class="item.use_half_rate ? 'bg-warning/10 text-warning border border-warning/20' : 'bg-surface-raised text-muted border border-border'">
+                        {{ getDeductibleLabel(item) }}
+                      </span>
+                    </td>
+                    <td class="px-3 py-2 text-xs text-right text-muted">{{ formatCurrency(item.acquisition_cost, false) }}</td>
+                    <td class="px-3 py-2 text-xs text-right text-muted">{{ formatCurrency(item.accumulated_depreciation_prev_year || 0, false) }}</td>
+                    <td class="px-3 py-2 text-center">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        {{ item.multiplier }}
+                      </span>
+                    </td>
+                    <td class="px-3 py-2 text-xs text-right font-bold text-theme">{{ formatCurrency(item.annual_amortization, false) }}</td>
+                    <td class="px-3 py-2 text-xs text-right text-muted">{{ formatCurrency(item.total_accumulated_depreciation || 0, false) }}</td>
+                    <td class="px-3 py-2 text-xs text-right font-bold text-theme">{{ formatCurrency(item.book_value_end_year || 0, false) }}</td>
+                    <td class="px-3 py-2">
+                      <div class="flex items-center justify-center gap-2">
+                        <template v-if="item.is_manual_asset">
+                          <button @click="editItem(item)" class="text-muted hover:text-theme transition-colors" title="Edit">
+                            <i class="bi bi-pencil-square"></i>
+                          </button>
+                          <button @click="confirmDelete(item)" class="text-muted hover:text-danger transition-colors" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </template>
+                        <template v-else-if="item.is_from_ledger">
+                          <button @click="openTransactionDetail(item)" class="text-muted hover:text-theme transition-colors" title="View Details">
+                            <i class="bi bi-eye"></i>
+                          </button>
+                        </template>
+                        <template v-else-if="item.asset_id">
+                          <button @click="editRegisteredAsset(item)" class="text-muted hover:text-theme transition-colors" title="Edit Asset">
+                            <i class="bi bi-pencil-square"></i>
+                          </button>
+                          <button @click="confirmDeleteAsset(item)" class="text-muted hover:text-danger transition-colors" title="Delete Asset">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </template>
+                        <span v-else class="text-muted pointer-events-none" title="No actions">
+                          <i class="bi bi-dash text-xs"></i>
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+
+                </template>
+
+                <!-- ─── TYPE SUBTOTAL ─────────────────────────────────────── -->
+                <tr class="amort-type-subtotal">
+                  <td colspan="3" class="px-4 py-2 text-right">
+                    <span class="text-[10px] font-black uppercase tracking-wider"
+                      :class="{
+                        'text-primary': typeName === 'Tangible',
+                        'text-warning': typeName === 'Building',
+                        'text-success': typeName === 'Intangible',
+                      }">
+                      Subtotal {{ getAssetTypeLabel(typeName) }}
                     </span>
-                  </div>
-                </td>
-              </tr>
+                  </td>
+                  <td class="px-3 py-2 text-right text-xs font-bold text-theme">{{ formatCurrency(typeTotals[typeName]?.cost || 0, false) }}</td>
+                  <td colspan="2"></td>
+                  <td class="px-3 py-2 text-right text-xs font-bold text-theme">{{ formatCurrency(typeTotals[typeName]?.amort || 0, false) }}</td>
+                  <td></td>
+                  <td class="px-3 py-2 text-right text-xs font-bold text-theme">{{ formatCurrency(typeTotals[typeName]?.bookVal || 0, false) }}</td>
+                  <td></td>
+                </tr>
+
+              </template>
             </tbody>
-            <tfoot class="bg-surface-muted/50 border-t border-border">
+
+            <!-- Grand Total -->
+            <tfoot class="bg-surface-muted/50 border-t-2 border-border">
               <tr class="font-bold">
-                <td
-                  colspan="3"
-                  class="px-3 py-3 text-right text-[10px] uppercase font-bold tracking-wider text-theme-muted"
-                >
+                <td colspan="3" class="px-3 py-3 text-right text-[10px] uppercase font-black tracking-wider text-theme-muted">
                   Total Calculated Amortization
                 </td>
-                <td class="px-3 py-3 text-right text-xs text-theme">
-                  {{ formatCurrency(totalOriginalCost, false) }}
-                </td>
+                <td class="px-3 py-3 text-right text-xs text-theme">{{ formatCurrency(totalOriginalCost, false) }}</td>
                 <td colspan="2"></td>
-                <td class="px-3 py-3 text-right text-xs text-theme">
-                  {{ formatCurrency(calculatedTotalAmortization, false) }}
-                </td>
+                <td class="px-3 py-3 text-right text-xs text-theme">{{ formatCurrency(calculatedTotalAmortization, false) }}</td>
                 <td></td>
-                <td class="px-3 py-3 text-right text-xs text-theme">
-                  {{ formatCurrency(totalBookValueEnd, false) }}
-                </td>
+                <td class="px-3 py-3 text-right text-xs text-theme">{{ formatCurrency(totalBookValueEnd, false) }}</td>
                 <td></td>
               </tr>
             </tfoot>
           </table>
         </div>
-      </div>
-    </SectionCard>
+      </SectionCard>
+    </div>
 
     <!-- Amortization Items List (Manual & Transactions) -->
     <SectionCard
@@ -809,6 +808,56 @@ const manualItems = computed(() =>
   items.value.filter((item) => !item.asset_id),
 );
 
+// Grouped structure: { Tangible: { 'Group 1': [...], ... }, Intangible: {...}, Building: {...} }
+const groupedCalculatedItems = computed(() => {
+  const TYPE_ORDER = ['Tangible', 'Building', 'Intangible'];
+  const result = {};
+
+  calculatedItems.value.forEach(item => {
+    const type = item.asset_type || 'Tangible';
+    const groupKey = item.group_name || item.mark_name || '-';
+    if (!result[type]) result[type] = {};
+    if (!result[type][groupKey]) result[type][groupKey] = [];
+    result[type][groupKey].push(item);
+  });
+
+  // Sort types by preferred order, then groups alphabetically
+  const sorted = {};
+  TYPE_ORDER.forEach(type => {
+    if (result[type]) {
+      sorted[type] = {};
+      Object.keys(result[type])
+        .sort()
+        .forEach(group => {
+          sorted[type][group] = result[type][group];
+        });
+    }
+  });
+  // Add any unexpected types at the end
+  Object.keys(result).forEach(type => {
+    if (!sorted[type]) sorted[type] = result[type];
+  });
+
+  return sorted;
+});
+
+// Subtotals per type
+const typeTotals = computed(() => {
+  const totals = {};
+  Object.entries(groupedCalculatedItems.value).forEach(([type, groups]) => {
+    let cost = 0, amort = 0, bookVal = 0;
+    Object.values(groups).forEach(items => {
+      items.forEach(item => {
+        cost += item.acquisition_cost || 0;
+        amort += item.annual_amortization || 0;
+        bookVal += item.book_value_end_year || 0;
+      });
+    });
+    totals[type] = { cost, amort, bookVal };
+  });
+  return totals;
+});
+
 const totalOriginalCost = computed(() =>
   calculatedItems.value.reduce(
     (sum, item) => sum + (item.acquisition_cost || 0),
@@ -1367,5 +1416,35 @@ onMounted(() => {
 .amortization-row--muted {
   @apply bg-surface-muted;
   opacity: 0.8;
+}
+
+/* ─── Grouped Table Separators ─── */
+.amort-type-header {
+  background: var(--color-surface-muted);
+  border-top: 2px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.amort-type-header:first-child {
+  border-top: none;
+}
+
+.amort-group-header {
+  background: var(--color-surface-raised);
+  border-top: 1px dashed var(--color-border);
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.amort-type-subtotal {
+  background: var(--color-surface-muted);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-border-strong);
+}
+
+.amort-type-header td,
+.amort-group-header td,
+.amort-type-subtotal td {
+  /* prevent hover color from overriding these rows */
+  background: inherit !important;
 }
 </style>

@@ -18,7 +18,9 @@ def build_available_years_query(year_expr, split_exclusion):
     """)
 
 
-def build_coa_detail_query(npwp_expr, method_expr, split_exclusion):
+def build_coa_detail_query(npwp_expr, method_expr, split_exclusion, report_type='real'):
+    # Normalise so the SQL LIKE comparison is safe
+    safe_report_type = 'coretax' if str(report_type or 'real').strip().lower() == 'coretax' else 'real'
     return text(f"""
         SELECT
             t.id, t.txn_date, t.description, t.amount, t.db_cr,
@@ -27,7 +29,9 @@ def build_coa_detail_query(npwp_expr, method_expr, split_exclusion):
             {method_expr} AS service_calculation_method
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
-        INNER JOIN mark_coa_mapping mcm ON m.id = mcm.mark_id
+        INNER JOIN mark_coa_mapping mcm
+            ON m.id = mcm.mark_id
+            AND LOWER(COALESCE(TRIM(mcm.report_type), 'real')) = '{safe_report_type}'
         LEFT JOIN companies c ON t.company_id = c.id
         WHERE mcm.coa_id = :coa_id
           AND (:start_date IS NULL OR t.txn_date >= :start_date)

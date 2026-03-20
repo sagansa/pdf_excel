@@ -1,190 +1,215 @@
 <template>
-  <BaseModal :isOpen="isOpen" @close="close" size="lg">
+  <BaseModal :isOpen="isOpen" @close="close" size="xl">
     <template #title>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3">
         <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
           <i class="bi bi-receipt text-primary"></i>
         </div>
-        <span>Transaction Details</span>
+        <div v-if="localTxn">
+          <p class="text-sm font-bold text-theme leading-tight">Transaction Details</p>
+          <p class="text-[10px] font-mono text-muted leading-tight">{{ localTxn.bank_code }} · {{ formatDate(localTxn.txn_date) }}</p>
+        </div>
       </div>
     </template>
-    
-    <div v-if="localTxn" class="p-6 space-y-6">
-      <!-- Main Status Card -->
-      <div class="p-5 rounded-2xl bg-surface-muted border border-border shadow-soft">
-        <div class="flex justify-between items-start">
-          <div class="space-y-1">
-            <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Transaction Date</p>
-            <p class="text-sm font-bold text-theme">{{ formatDate(localTxn.txn_date) }}</p>
-          </div>
-          <div class="text-right space-y-1">
-            <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Amount</p>
-            <p class="text-2xl font-black font-mono tracking-tight" 
-               :class="localTxn.db_cr === 'CR' ? 'text-success' : 'text-danger'">
-              {{ localTxn.db_cr === 'CR' ? '+' : '-' }}{{ formatAmount(localTxn.amount) }}
-            </p>
-          </div>
-        </div>
+
+    <div v-if="localTxn" class="flex flex-col">
+      <!-- ─── Tab Bar ─────────────────────────────────────────── -->
+      <div class="flex gap-1 px-5 pt-4 pb-0 border-b border-border">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="txn-tab"
+          :class="{ 'txn-tab--active': activeTab === tab.id }"
+          @click="activeTab = tab.id"
+        >
+          <i :class="[tab.icon, 'mr-1.5 text-xs']"></i>
+          {{ tab.label }}
+        </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Company Assignment -->
-        <div class="col-span-1 md:col-span-2 space-y-2">
-          <label class="text-[10px] font-bold text-muted uppercase tracking-[0.2em] ml-1">Entity / Company</label>
-          <SelectInput
-            :model-value="localTxn.company_id || ''"
-            :options="store.companies.map(c => ({ value: c.id, label: `${c.name} (${c.short_name})` }))"
-            placeholder="-- No Company Assigned --"
-            @update:model-value="handleCompanyChange"
-            class="!py-2.5"
-          />
-        </div>
+      <!-- ─── TAB: Transaction Info ──────────────────────────── -->
+      <div v-show="activeTab === 'info'" class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        <!-- Metadata Grid -->
+        <!-- LEFT COLUMN -->
         <div class="space-y-4">
-          <div class="space-y-1">
-            <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Source Bank</p>
-            <div class="flex items-center gap-2 text-sm font-semibold text-theme">
-              <div class="w-5 h-5 rounded bg-surface border border-border flex items-center justify-center text-[10px]">
-                <i class="bi bi-bank"></i>
-              </div>
-              {{ localTxn.bank_code }}
-            </div>
-          </div>
-          
-          <div class="space-y-1">
-            <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Import Source</p>
-            <p class="text-xs text-muted truncate max-w-full" :title="localTxn.source_file">
-              <i class="bi bi-file-earmark-text me-1"></i> {{ localTxn.source_file }}
-            </p>
-          </div>
-        </div>
 
-        <!-- Description Box -->
-        <div class="space-y-2">
-          <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Description / Reference</p>
-          <div class="bg-surface-muted p-3 rounded-xl border border-border min-h-[4.5rem]">
-            <p class="text-xs text-theme leading-relaxed font-mono whitespace-pre-wrap">{{ localTxn.description }}</p>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Notes & Classification Group -->
-      <div class="grid grid-cols-1 gap-6 pt-2">
-        <!-- Notes Section -->
-        <div class="space-y-3">
-          <div class="flex justify-between items-center">
-            <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em] ml-1">Internal Notes</p>
-            <transition name="fade">
-              <span v-if="notesSaved && showSavedMessage" class="text-[10px] text-success font-bold flex items-center gap-1">
-                <i class="bi bi-check-circle-fill"></i> Saved Successfully
-              </span>
-            </transition>
-          </div>
-          <div class="relative group">
-            <textarea 
-                v-model="notes"
-                placeholder="Add private notes for this transaction..." 
-                class="w-full text-xs bg-surface-raised border-border rounded-xl focus:ring-primary focus:border-primary min-h-[80px] p-3 transition-all font-sans"
-                @blur="notes !== localTxn.notes && saveNotes()"
-            ></textarea>
-            <button 
-                v-if="notes !== localTxn.notes"
-                @click="saveNotes" 
-                class="absolute bottom-3 right-3 text-[10px] font-black uppercase tracking-widest bg-primary text-white px-3 py-1.5 rounded-lg shadow-lg hover:shadow-primary/20 transition-all"
-                :disabled="isSavingNotes"
-            >
-              {{ isSavingNotes ? 'Saving...' : 'Save Changes' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Classification & COA Grid -->
-        <div class="p-5 rounded-2xl bg-primary/5 border border-primary/10 space-y-4">
-          <div class="flex justify-between items-center">
-            <div class="text-[10px] font-black text-primary uppercase tracking-[0.25em] flex items-center gap-2">
-              <i class="bi bi-tag-fill"></i> Classification & COA
-            </div>
-            <button 
-              class="text-[10px] font-black text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-all uppercase tracking-widest border border-primary/20" 
-              @click="openAssignMark"
-            >
-              {{ markDetails ? 'Edit Mapping' : 'Map Accounts' }}
-            </button>
-          </div>
-          
-          <div v-if="markDetails" class="space-y-4">
-            <div class="grid grid-cols-3 gap-4 pb-4 border-b border-primary/10">
-              <div class="space-y-1">
-                <p class="text-[9px] text-primary/60 uppercase font-black tracking-widest">Internal</p>
-                <p class="text-[11px] font-bold text-theme">{{ markDetails.internal_report || '-' }}</p>
-              </div>
-              <div class="space-y-1">
-                <p class="text-[9px] text-primary/60 uppercase font-black tracking-widest">Personal</p>
-                <p class="text-[11px] font-bold text-theme">{{ markDetails.personal_use || '-' }}</p>
-              </div>
-              <div class="space-y-1">
-                <p class="text-[9px] text-primary/60 uppercase font-black tracking-widest">Taxation</p>
-                <p class="text-[11px] font-bold text-theme">{{ markDetails.tax_report || '-' }}</p>
-              </div>
-            </div>
-            
-            <div v-if="markDetails.mappings && markDetails.mappings.length > 0">
-              <p class="text-[9px] text-primary/70 uppercase font-black mb-3 flex items-center gap-1 tracking-widest">
-                <i class="bi bi-diagram-3-fill"></i> COA Mappings
-              </p>
-              <div class="grid grid-cols-1 gap-2">
-                <div v-for="(map, idx) in markDetails.mappings" :key="idx" 
-                    class="bg-surface p-3 rounded-xl border border-border flex flex-col gap-3 group hover:border-primary/50 transition-all shadow-sm"
+          <!-- Amount Hero -->
+          <div class="p-4 rounded-2xl bg-surface-muted border border-border flex items-center justify-between">
+            <div>
+              <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Transaction Date</p>
+              <p class="text-sm font-bold text-theme mt-0.5">{{ formatDate(localTxn.txn_date) }}</p>
+              <div class="flex items-center gap-1.5 mt-1.5">
+                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border"
+                  :class="localTxn.db_cr === 'CR'
+                    ? 'bg-success/10 text-success border-success/20'
+                    : 'bg-danger/10 text-danger border-danger/20'"
                 >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                      <span class="font-mono font-bold text-[10px] text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10">
-                        {{ map.code }}
-                      </span>
-                      <span class="text-xs font-bold text-theme">{{ map.name }}</span>
-                    </div>
-                    <span class="text-[8px] font-black px-2 py-1 rounded-md uppercase tracking-widest border" 
-                        :class="map.type === 'DEBIT' 
-                          ? 'bg-warning/10 text-warning border-warning/20' 
-                          : 'bg-success/10 text-success border-success/20'">
-                      {{ map.type }}
-                    </span>
+                  <i :class="localTxn.db_cr === 'CR' ? 'bi-arrow-down-circle-fill' : 'bi-arrow-up-circle-fill'" class="bi mr-1 text-[9px]"></i>
+                  {{ localTxn.db_cr === 'CR' ? 'Masuk' : 'Keluar' }}
+                </span>
+                <span class="text-[10px] text-muted font-mono">{{ localTxn.bank_code }}</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Amount</p>
+              <p class="text-2xl font-black font-mono tracking-tight mt-0.5"
+                :class="localTxn.db_cr === 'CR' ? 'text-success' : 'text-danger'">
+                {{ localTxn.db_cr === 'CR' ? '+' : '-' }}{{ formatAmount(localTxn.amount) }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Company -->
+          <div class="space-y-1.5">
+            <label class="label-base flex items-center gap-2">
+              <i class="bi bi-building text-primary text-xs"></i>
+              Entity / Company
+            </label>
+            <SelectInput
+              :model-value="localTxn.company_id || ''"
+              :options="store.companies.map(c => ({ value: c.id, label: `${c.name} (${c.short_name})` }))"
+              placeholder="-- No Company Assigned --"
+              @update:model-value="handleCompanyChange"
+            />
+          </div>
+
+          <!-- Source Bank & File -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Source Bank</p>
+              <div class="flex items-center gap-2 bg-surface-muted rounded-xl border border-border px-3 py-2">
+                <i class="bi bi-bank text-muted text-xs"></i>
+                <span class="text-xs font-semibold text-theme">{{ localTxn.bank_code }}</span>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Source File</p>
+              <div class="flex items-center gap-2 bg-surface-muted rounded-xl border border-border px-3 py-2 overflow-hidden" :title="localTxn.source_file">
+                <i class="bi bi-file-earmark-text text-muted text-xs flex-shrink-0"></i>
+                <span class="text-xs text-muted truncate">{{ localTxn.source_file || '-' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center">
+              <label class="label-base flex items-center gap-2">
+                <i class="bi bi-sticky text-primary text-xs"></i>
+                Internal Notes
+              </label>
+              <transition name="fade">
+                <span v-if="notesSaved && showSavedMessage" class="text-[10px] text-success font-bold flex items-center gap-1">
+                  <i class="bi bi-check-circle-fill"></i> Saved
+                </span>
+              </transition>
+            </div>
+            <div class="relative">
+              <textarea
+                v-model="notes"
+                placeholder="Add private notes for this transaction..."
+                class="w-full text-xs bg-surface-raised border border-border rounded-xl focus:ring-1 focus:ring-primary focus:border-primary min-h-[80px] p-3 transition-all font-sans resize-none"
+                @blur="notes !== localTxn.notes && saveNotes()"
+              ></textarea>
+              <button
+                v-if="notes !== localTxn.notes"
+                @click="saveNotes"
+                class="absolute bottom-2 right-2 text-[10px] font-black uppercase tracking-widest bg-primary text-white px-3 py-1 rounded-lg shadow-lg transition-all"
+                :disabled="isSavingNotes"
+              >
+                {{ isSavingNotes ? 'Saving...' : 'Save' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="space-y-4">
+
+          <!-- Description -->
+          <div class="space-y-1.5">
+            <p class="label-base">Description / Reference</p>
+            <div class="bg-surface-muted p-3 rounded-xl border border-border min-h-[80px] max-h-[120px] overflow-y-auto">
+              <p class="text-xs text-theme leading-relaxed font-mono whitespace-pre-wrap">{{ localTxn.description }}</p>
+            </div>
+          </div>
+
+          <!-- Classification & COA -->
+          <div class="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-3">
+            <div class="flex justify-between items-center">
+              <div class="text-[10px] font-black text-primary uppercase tracking-[0.25em] flex items-center gap-2">
+                <i class="bi bi-tag-fill"></i> Classification & COA
+              </div>
+              <button
+                class="text-[10px] font-black text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-all uppercase tracking-widest border border-primary/20"
+                @click="openAssignMark"
+              >
+                {{ markDetails ? 'Edit' : 'Map Accounts' }}
+              </button>
+            </div>
+
+            <div v-if="markDetails" class="space-y-3">
+              <!-- Report categories -->
+              <div class="grid grid-cols-3 gap-2 pb-3 border-b border-primary/10">
+                <div class="space-y-0.5">
+                  <p class="text-[9px] text-primary/60 uppercase font-black tracking-widest">Internal</p>
+                  <p class="text-[11px] font-bold text-theme">{{ markDetails.internal_report || '-' }}</p>
+                </div>
+                <div class="space-y-0.5">
+                  <p class="text-[9px] text-primary/60 uppercase font-black tracking-widest">Personal</p>
+                  <p class="text-[11px] font-bold text-theme">{{ markDetails.personal_use || '-' }}</p>
+                </div>
+                <div class="space-y-0.5">
+                  <p class="text-[9px] text-primary/60 uppercase font-black tracking-widest">Taxation</p>
+                  <p class="text-[11px] font-bold text-theme">{{ markDetails.tax_report || '-' }}</p>
+                </div>
+              </div>
+
+              <!-- COA Mappings -->
+              <div v-if="markDetails.mappings && markDetails.mappings.length > 0" class="space-y-1.5">
+                <p class="text-[9px] text-primary/70 uppercase font-black flex items-center gap-1 tracking-widest">
+                  <i class="bi bi-diagram-3-fill"></i> COA Mappings
+                </p>
+                <div
+                  v-for="(map, idx) in markDetails.mappings"
+                  :key="idx"
+                  class="bg-surface p-2.5 rounded-xl border border-border flex items-center justify-between gap-2 hover:border-primary/50 transition-all"
+                >
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="font-mono font-bold text-[10px] text-primary bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 flex-shrink-0">{{ map.code }}</span>
+                    <span class="text-xs font-bold text-theme truncate">{{ map.name }}</span>
                   </div>
-                  
-                  <!-- Fiscal Tagging Section -->
-                  <div class="flex items-center justify-between pt-2 border-t border-border/50">
-                    <div class="flex items-center gap-2">
-                       <FiscalCategoryBadge :category="map.fiscal_category" />
-                    </div>
-                    
-                    <select 
-                      :value="map.fiscal_category || 'DEDUCTIBLE'" 
+                  <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <span class="text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest border"
+                      :class="map.type === 'DEBIT' ? 'bg-warning/10 text-warning border-warning/20' : 'bg-success/10 text-success border-success/20'"
+                    >{{ map.type }}</span>
+                    <FiscalCategoryBadge :category="map.fiscal_category" />
+                    <select
+                      :value="map.fiscal_category || 'DEDUCTIBLE'"
                       @change="e => updateCoaFiscal(map.coa_id, e.target.value)"
-                      class="text-[9px] bg-surface-muted border-border rounded px-2 py-1 focus:ring-1 focus:ring-primary outline-none font-bold uppercase tracking-tight"
+                      class="text-[9px] bg-surface-muted border border-border rounded px-1.5 py-1 focus:ring-1 focus:ring-primary outline-none font-bold uppercase tracking-tight"
                     >
-                      <option value="DEDUCTIBLE">Set Deductible</option>
-                      <option value="NON_DEDUCTIBLE_PERMANENT">Non-Deductible (Perm)</option>
-                      <option value="NON_DEDUCTIBLE_TEMPORARY">Non-Deductible (Temp)</option>
-                      <option value="NON_TAXABLE_INCOME">Non-Taxable Income</option>
+                      <option value="DEDUCTIBLE">Deductible</option>
+                      <option value="NON_DEDUCTIBLE_PERMANENT">Non-Ded (Perm)</option>
+                      <option value="NON_DEDUCTIBLE_TEMPORARY">Non-Ded (Temp)</option>
+                      <option value="NON_TAXABLE_INCOME">Non-Taxable</option>
                     </select>
                   </div>
                 </div>
               </div>
+              <p v-else class="text-[10px] text-muted italic text-center py-2">No COA mappings defined.</p>
             </div>
-            <div v-else class="text-[10px] text-muted italic py-2 text-center">
-              No specific COA mappings defined for this mark.
+
+            <div v-else class="py-6 text-center border-2 border-dashed border-primary/10 rounded-2xl">
+              <i class="bi bi-intersect text-2xl text-primary/20 mb-2 block"></i>
+              <p class="text-xs text-muted font-medium">No classification assigned yet.</p>
             </div>
-          </div>
-          <div v-else class="py-6 text-center border-2 border-dashed border-primary/10 rounded-2xl bg-surface/50">
-            <i class="bi bi-intersect text-2xl text-primary/20 mb-2 block"></i>
-            <p class="text-xs text-muted font-medium">No classification assigned yet.</p>
           </div>
         </div>
       </div>
-          
-      <!-- HPP Section -->
-      <div class="pt-2">
+
+      <!-- ─── TAB: COGS / HPP ────────────────────────────────── -->
+      <div v-show="activeTab === 'cogs'" class="p-5">
         <HppDetailSection :transaction="localTxn" />
       </div>
     </div>
@@ -192,24 +217,22 @@
     <template #footer>
       <div class="flex items-center justify-between w-full">
         <div class="flex gap-2">
-          <button 
-            v-if="localTxn.bank_code === 'MANUAL'"
+          <button
+            v-if="localTxn?.bank_code === 'MANUAL'"
             @click="editManualJournal"
             class="btn-secondary !text-xs !py-2 h-[38px]"
           >
             <i class="bi bi-pencil-square me-2"></i> Edit Journal
           </button>
-          
-          <button 
-            @click="deleteTxn" 
-            class="btn-secondary !bg-danger/5 !text-danger hover:!bg-danger/10 !border-danger/10 transition-all !text-xs !py-2 h-[38px]"
+          <button
+            @click="deleteTxn"
+            class="btn-secondary !bg-danger/5 !text-danger hover:!bg-danger/10 !border-danger/10 !text-xs !py-2 h-[38px]"
           >
             <i class="bi bi-trash3 me-2"></i> Delete
           </button>
         </div>
-        
         <button @click="close" class="btn-primary !py-2 !px-8 h-[38px] !text-xs">
-          Close View
+          Close
         </button>
       </div>
     </template>
@@ -219,6 +242,7 @@
 <script setup>
 import { ref, computed, watch, toRefs } from 'vue';
 import BaseModal from '../ui/BaseModal.vue';
+import SelectInput from '../ui/SelectInput.vue';
 import { useHistoryStore } from '../../stores/history';
 import { useCoaStore } from '../../stores/coa';
 import HppDetailSection from './HppDetailSection.vue';
@@ -233,6 +257,13 @@ const emit = defineEmits(['close', 'assign-mark', 'edit-journal']);
 const store = useHistoryStore();
 const { transaction: localTxn } = toRefs(props);
 
+// Tab control
+const activeTab = ref('info');
+const tabs = [
+  { id: 'info', label: 'Transaction Info', icon: 'bi bi-receipt' },
+  { id: 'cogs', label: 'COGS / HPP', icon: 'bi bi-box-seam' },
+];
+
 // Notes Logic
 const notes = ref('');
 const isSavingNotes = ref(false);
@@ -240,70 +271,100 @@ const notesSaved = ref(false);
 const showSavedMessage = ref(false);
 
 const markDetails = computed(() => {
-    if (!localTxn.value || !localTxn.value.mark_id) return null;
-    return store.marks.find(m => m.id === localTxn.value.mark_id);
+  if (!localTxn.value || !localTxn.value.mark_id) return null;
+  return store.marks.find(m => m.id === localTxn.value.mark_id);
 });
 
-const close = () => emit('close');
+const close = () => {
+  activeTab.value = 'info';
+  emit('close');
+};
 const openAssignMark = () => emit('assign-mark', localTxn.value);
 const editManualJournal = () => {
-    // If it's a child, we want the parent_id, otherwise it's the id itself
-    const editId = localTxn.value.parent_id || localTxn.value.id;
-    emit('edit-journal', editId);
+  const editId = localTxn.value.parent_id || localTxn.value.id;
+  emit('edit-journal', editId);
 };
 
 const deleteTxn = async () => {
-    if(!confirm("Are you sure you want to delete this transaction?")) return;
-    try {
-        await store.deleteTransaction(localTxn.value.id);
-        close();
-    } catch (e) {
-        alert("Failed to delete: " + e.message);
-    }
+  if (!confirm('Are you sure you want to delete this transaction?')) return;
+  try {
+    await store.deleteTransaction(localTxn.value.id);
+    close();
+  } catch (e) {
+    alert('Failed to delete: ' + e.message);
+  }
 };
 
-const formatDate = (dateStr) => dateStr ? dateStr.split(" ")[0] : '-';
+const formatDate = (dateStr) => dateStr ? dateStr.split(' ')[0] : '-';
 const formatAmount = (val) => new Intl.NumberFormat('id-ID').format(val);
 
 watch(localTxn, (newVal) => {
-    if (newVal) {
-        notes.value = newVal.notes || '';
-    }
+  if (newVal) {
+    notes.value = newVal.notes || '';
+    activeTab.value = 'info';
+  }
 }, { immediate: true });
 
 const saveNotes = async () => {
-    if (!localTxn.value) return;
-    isSavingNotes.value = true;
-    try {
-        await store.updateNotes(localTxn.value.id, notes.value);
-        notesSaved.value = true;
-        showSavedMessage.value = true;
-        setTimeout(() => { showSavedMessage.value = false; }, 2000);
-    } catch (e) {
-        alert('Failed to save notes');
-    } finally {
-        isSavingNotes.value = false;
-    }
+  if (!localTxn.value) return;
+  isSavingNotes.value = true;
+  try {
+    await store.updateNotes(localTxn.value.id, notes.value);
+    notesSaved.value = true;
+    showSavedMessage.value = true;
+    setTimeout(() => { showSavedMessage.value = false; }, 2000);
+  } catch (e) {
+    alert('Failed to save notes');
+  } finally {
+    isSavingNotes.value = false;
+  }
 };
 
 const handleCompanyChange = async (companyId) => {
-    if (!localTxn.value) return;
-    try {
-        await store.assignCompany(localTxn.value.id, companyId || null);
-    } catch (e) {
-        alert('Failed to update company');
-    }
+  if (!localTxn.value) return;
+  try {
+    await store.assignCompany(localTxn.value.id, companyId || null);
+  } catch (e) {
+    alert('Failed to update company');
+  }
 };
 
 const coaStore = useCoaStore();
 const updateCoaFiscal = async (coaId, fiscalCategory) => {
-    try {
-        await coaStore.updateCoa(coaId, { fiscal_category: fiscalCategory });
-        // After updating COA, we might need to refresh history store if it caches COA details
-        // But usually, history store fetches mappings which join with COA, so a refresh is good
-        await store.fetchMarks(); 
-    } catch (e) {
-        alert('Failed to update fiscal category: ' + e.message);
-    }
+  try {
+    await coaStore.updateCoa(coaId, { fiscal_category: fiscalCategory });
+    await store.fetchMarks();
+  } catch (e) {
+    alert('Failed to update fiscal category: ' + e.message);
+  }
 };
 </script>
+
+<style scoped>
+.txn-tab {
+  @apply inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-t-xl transition-all whitespace-nowrap border-b-2 -mb-px;
+  border-bottom-color: transparent;
+  color: var(--color-text-muted);
+  background: transparent;
+}
+
+.txn-tab:hover {
+  color: var(--color-text);
+}
+
+.txn-tab--active {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

@@ -1,97 +1,98 @@
 <template>
   <div class="space-y-6">
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <SectionCard body-class="p-6">
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h2 class="text-2xl font-bold text-gray-900">Payroll Salary Summary</h2>
-          <p class="text-sm text-gray-500 mt-1">Ringkasan gaji per bulan, employee, dan mark</p>
+          <h2 class="text-2xl font-bold text-theme">Payroll Salary Summary</h2>
+          <p class="text-sm text-muted mt-1">Ringkasan gaji per bulan, employee, dan mark</p>
         </div>
-        <div class="text-xs text-gray-500">
+        <div class="text-xs text-muted">
           <div>Period: {{ formatDate(data?.period?.start_date) }} - {{ formatDate(data?.period?.end_date) }}</div>
-          <div v-if="data?.message" class="text-amber-700 mt-1">{{ data.message }}</div>
+          <div v-if="data?.message" class="text-danger mt-1">{{ data.message }}</div>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
-    <div class="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
-      <div class="text-xs uppercase font-semibold text-indigo-600">Total Payroll</div>
-      <div class="text-lg font-bold text-indigo-900">{{ formatCurrency(grandTotal) }}</div>
-    </div>
+    <StatCard
+      label="Total Payroll"
+      :value="formatCurrency(grandTotal)"
+      variant="primary"
+    />
 
-    <div v-if="!hasData" class="bg-white rounded-lg shadow-sm border border-gray-200 p-10 text-center">
-      <i class="bi bi-people text-5xl text-gray-300"></i>
-      <p class="text-gray-500 mt-3 font-medium">No payroll salary summary</p>
-      <p class="text-xs text-gray-400 mt-1">Pastikan periode, company filter, dan konfigurasi salary component sudah sesuai.</p>
-    </div>
+    <SectionCard v-if="!hasData" body-class="p-10 text-center">
+      <i class="bi bi-people text-5xl text-muted opacity-50"></i>
+      <p class="text-theme mt-3 font-medium">No payroll salary summary</p>
+      <p class="text-xs text-muted mt-1">Pastikan periode, company filter, dan konfigurasi salary component sudah sesuai.</p>
+    </SectionCard>
 
-    <div v-else class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <SectionCard v-else body-class="p-0 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm min-w-[980px]">
-          <thead class="bg-gray-50 border-b border-gray-200">
+          <thead class="bg-surface-muted/30 border-b border-border">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase sticky left-0 bg-gray-50 z-10 min-w-[260px]">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase sticky left-0 bg-surface-muted/30 z-10 min-w-[260px]">
                 Employee / Mark
               </th>
               <th
                 v-for="month in monthColumns"
                 :key="`month-header-${month.month_key}`"
-                class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase whitespace-nowrap"
+                class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase whitespace-nowrap"
               >
                 {{ month.month_label }}
               </th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase whitespace-nowrap bg-indigo-50">
+              <th class="px-4 py-3 text-right text-xs font-semibold text-theme uppercase whitespace-nowrap bg-primary/5">
                 Total
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="divide-y divide-border">
             <template v-for="employee in employeeRows" :key="employee.key">
-              <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 sticky left-0 bg-white z-10">
+              <tr class="hover:bg-hover active:bg-hover/80 transition-colors">
+                <td class="px-4 py-3 sticky left-0 bg-surface z-10 transition-colors">
                   <button
                     class="w-full flex items-center justify-between gap-2 text-left"
                     @click="toggleExpanded(employee.key)"
                   >
                     <div class="min-w-0">
-                      <div class="font-semibold text-gray-900 truncate">{{ employee.name }}</div>
-                      <div class="text-[11px] text-gray-500 truncate">{{ employee.id || '-' }}</div>
+                      <div class="font-semibold text-theme truncate">{{ employee.name }}</div>
+                      <div class="text-[11px] text-muted truncate">{{ employee.id || '-' }}</div>
                     </div>
                     <i
                       :class="isExpanded(employee.key) ? 'bi bi-chevron-up' : 'bi bi-chevron-down'"
-                      class="text-xs text-gray-500 shrink-0"
+                      class="text-xs text-muted shrink-0"
                     ></i>
                   </button>
                 </td>
                 <td
                   v-for="month in monthColumns"
                   :key="`employee-${employee.key}-${month.month_key}`"
-                  class="px-4 py-3 text-right font-medium text-gray-800 whitespace-nowrap"
+                  class="px-4 py-3 text-right font-medium text-theme whitespace-nowrap bg-surface transition-colors"
                 >
                   {{ formatCurrency(employee.monthly[month.month_key] || 0) }}
                 </td>
-                <td class="px-4 py-3 text-right font-bold text-indigo-700 whitespace-nowrap bg-indigo-50">
+                <td class="px-4 py-3 text-right font-bold text-primary whitespace-nowrap bg-primary/5 transition-colors">
                   {{ formatCurrency(employee.total) }}
                 </td>
               </tr>
               <tr
                 v-for="component in isExpanded(employee.key) ? employee.components : []"
                 :key="`component-${employee.key}-${component.mark_name}`"
-                class="bg-gray-50"
+                class="bg-surface-muted/20"
               >
-                <td class="px-6 py-2 text-gray-700 min-w-[260px] sticky left-0 bg-gray-50 z-10">
+                <td class="px-6 py-2 text-theme min-w-[260px] sticky left-0 bg-surface-muted/20 z-10">
                   <span class="inline-flex items-center gap-2">
-                    <i class="bi bi-dot text-base"></i>
+                    <i class="bi bi-dot text-base text-muted"></i>
                     {{ component.mark_name }}
                   </span>
                 </td>
                 <td
                   v-for="month in monthColumns"
                   :key="`component-${employee.key}-${component.mark_name}-${month.month_key}`"
-                  class="px-4 py-2 text-right text-gray-700 whitespace-nowrap"
+                  class="px-4 py-2 text-right text-muted whitespace-nowrap"
                 >
                   {{ formatCurrency(component.monthly[month.month_key] || 0) }}
                 </td>
-                <td class="px-4 py-2 text-right font-semibold text-gray-900 whitespace-nowrap bg-indigo-50">
+                <td class="px-4 py-2 text-right font-semibold text-theme whitespace-nowrap bg-primary/5">
                   {{ formatCurrency(component.total) }}
                 </td>
               </tr>
@@ -99,12 +100,14 @@
           </tbody>
         </table>
       </div>
-    </div>
+    </SectionCard>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import SectionCard from '../ui/SectionCard.vue';
+import StatCard from '../ui/StatCard.vue';
 
 const props = defineProps({
   data: {

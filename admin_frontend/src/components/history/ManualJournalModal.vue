@@ -159,12 +159,14 @@
                   v-model.number="line.amount"
                   placeholder="0"
                   type="number"
+                  min="0"
                   :leadingLabel="true"
                   size="sm"
-                  class="text-right font-mono font-bold text-[11px]"
+                  class="text-right font-mono font-bold text-[11px] transition-colors"
+                  :class="line.amount < 0 ? 'bg-red-500/10 !text-red-500' : ''"
                 >
                   <template #leading>
-                    <span class="text-[9px] font-bold">Rp</span>
+                    <span class="text-[9px] font-bold" :class="line.amount < 0 ? 'text-red-500/70' : ''">Rp</span>
                   </template>
                 </TextInput>
               </div>
@@ -303,9 +305,14 @@
                       <span v-if="txn.bank_code" class="ml-1 font-bold">· {{ txn.bank_code }}</span>
                     </p>
                   </div>
-                  <span class="text-[10px] font-mono font-bold" :class="txn.db_cr === 'DB' ? 'text-sky-500' : 'text-amber-500'">
-                    {{ txn.db_cr === 'DB' ? 'Dr' : 'Cr' }} {{ formatCurrency(txn.amount) }}
-                  </span>
+                  <div class="flex flex-col items-end gap-0.5">
+                    <span class="text-[10px] font-mono font-bold"
+                      :class="txn.db_cr === 'CR' ? 'text-success' : 'text-danger'">
+                      <i :class="txn.db_cr === 'CR' ? 'bi-arrow-down-circle-fill' : 'bi-arrow-up-circle-fill'" class="bi mr-0.5"></i>
+                      {{ txn.db_cr === 'CR' ? 'Masuk' : 'Keluar' }} {{ formatCurrency(txn.amount) }}
+                    </span>
+                    <span class="text-[8px] text-muted font-mono">bank: {{ txn.db_cr }}</span>
+                  </div>
                   <span class="text-[9px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                     <i class="bi bi-plus-circle"></i> Link
                   </span>
@@ -326,7 +333,16 @@
 
         <!-- Errors -->
         <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
-          <div v-if="error" class="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 text-xs font-medium flex items-center gap-3">
+          <div v-if="hasNegativeAmount" class="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-500 text-xs font-medium flex items-center gap-3">
+            <div class="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+              <i class="bi bi-info-circle-fill"></i>
+            </div>
+            Nominal jurnal harus selalu positif. Gunakan pilihan DEBIT (Dr) atau CREDIT (Cr) untuk menentukan penambahan atau pengurangan saldo akun.
+          </div>
+        </transition>
+
+        <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
+          <div v-if="error" class="p-4 mt-2 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 text-xs font-medium flex items-center gap-3">
             <div class="w-6 h-6 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
               <i class="bi bi-exclamation-triangle-fill"></i>
             </div>
@@ -584,6 +600,7 @@ const difference = computed(() => {
   return Math.round(diff * 100) / 100;
 });
 
+const hasNegativeAmount = computed(() => lines.value.some(l => Number(l.amount) < 0));
 const hasDebitLine = computed(() => lines.value.some(l => l.side === 'DEBIT' && Number(l.amount) > 0));
 const hasCreditLine = computed(() => lines.value.some(l => l.side === 'CREDIT' && Number(l.amount) > 0));
 

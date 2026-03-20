@@ -166,6 +166,7 @@ def get_coa_detail_report():
     )
 
     company_id = request.args.get('company_id')
+    report_type = request.args.get('report_type', 'real')
 
     with engine.connect() as conn:
         coa_info = get_coa_or_404(conn, coa_id)
@@ -175,7 +176,7 @@ def get_coa_detail_report():
         npwp_expr = "t.service_npwp" if 'service_npwp' in txn_columns else "NULL"
         method_expr = "COALESCE(t.service_calculation_method, 'BRUTO')" if 'service_calculation_method' in txn_columns else "'BRUTO'"
 
-        result = conn.execute(build_coa_detail_query(npwp_expr, method_expr, split_exclusion), {
+        result = conn.execute(build_coa_detail_query(npwp_expr, method_expr, split_exclusion, report_type), {
             'coa_id': coa_id,
             'start_date': start_date,
             'end_date': end_date,
