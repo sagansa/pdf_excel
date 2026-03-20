@@ -33,7 +33,15 @@
         <div class="rounded-2xl border border-border bg-surface-muted/50 p-4">
           <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h4 class="text-[11px] font-bold uppercase tracking-[0.2em] text-theme-muted">Filter Data</h4>
-            <span class="text-xs text-theme-muted">{{ filteredTransactions.length }}/{{ transactions.length }} rows</span>
+            <div class="flex items-center gap-4">
+              <SegmentedControl
+                v-model="activeReportType"
+                :options="reportTypeOptions"
+                variant="primary"
+                class="scale-90 origin-right"
+              />
+              <span class="text-xs text-theme-muted">{{ filteredTransactions.length }}/{{ transactions.length }} rows</span>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4">
@@ -327,6 +335,7 @@ import FormField from '../ui/FormField.vue';
 import TextInput from '../ui/TextInput.vue';
 import SelectInput from '../ui/SelectInput.vue';
 import Alert from '../ui/Alert.vue';
+import SegmentedControl from '../ui/SegmentedControl.vue';
 
 const props = defineProps({
   companyId: {
@@ -376,6 +385,19 @@ const selectAllCheckbox = ref(null);
 const isFilterLoaded = ref(false);
 const FILTER_VIEW_NAME = 'payroll_salary_handling';
 let saveFilterTimer = null;
+
+const activeReportType = ref('real');
+const reportTypeOptions = [
+  { label: 'Real', value: 'real' },
+  { label: 'Coretax', value: 'coretax' }
+];
+
+watch(activeReportType, () => {
+  if (isFilterLoaded.value) {
+    scheduleSaveUiFilters();
+    loadData();
+  }
+});
 
 const normalizedYear = computed(() => {
   const parsed = Number(props.year);
@@ -680,6 +702,7 @@ const saveUiFilters = async () => {
   try {
     const normalizedSelectedMonth = selectedMonth.value === '' ? '' : Number(selectedMonth.value || '');
     await filterApi.saveFilters(FILTER_VIEW_NAME, {
+      activeReportType: activeReportType.value,
       selectedMonth: Number.isFinite(normalizedSelectedMonth) ? normalizedSelectedMonth : '',
       search: String(search.value || ''),
       selectedEmployeeIds: selectedEmployeeIds.value.map((id) => String(id)),
@@ -707,6 +730,7 @@ const loadUiFilters = async () => {
     const response = await filterApi.getFilters(FILTER_VIEW_NAME);
     const filters = response?.data?.filters || {};
     if (Object.keys(filters).length > 0) {
+      if (filters.activeReportType) activeReportType.value = filters.activeReportType;
       if (filters.selectedMonth === '' || filters.selectedMonth === null || filters.selectedMonth === undefined) {
         selectedMonth.value = '';
       } else {
@@ -766,7 +790,9 @@ const loadTransactions = async () => {
       props.companyId,
       normalizedYear.value,
       selectedMonth.value,
-      search.value
+      search.value,
+      '',
+      activeReportType.value
     );
     transactions.value = response.data.transactions || [];
     transactionsSummary.value = response.data.summary || {
@@ -795,7 +821,8 @@ const loadSummary = async () => {
     const response = await historyApi.getPayrollMonthlySummary(
       props.companyId,
       normalizedYear.value,
-      selectedMonth.value
+      selectedMonth.value,
+      activeReportType.value
     );
     summaryRows.value = response.data.rows || [];
     monthlySummary.value = response.data.summary || {

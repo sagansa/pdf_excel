@@ -57,13 +57,13 @@
                     {{ t.company_short_name || '-' }}
                 </td>
                 <td class="text-xs break-words max-w-[200px] leading-tight" :title="t.description">{{ t.description }}</td>
-                <td class="text-right mono font-bold text-sm" :class="t.db_cr === 'CR' ? 'text-green-600' : 'text-red-500'">
-                    {{ formatAmount(t.amount) }}
+                <td class="text-right mono font-bold text-sm" :class="getFlowColorClass(t.db_cr, 'text')">
+                    {{ getAmountSign(t.db_cr) }}{{ formatAmount(t.amount) }}
                 </td>
                  <td class="text-center">
-                     <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                      :class="t.db_cr === 'CR' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
-                      {{ t.db_cr }}
+                     <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getFlowColorClass(t.db_cr, 'bg')">
+                       <i :class="getFlowIcon(t.db_cr)" class="text-[9px]"></i>
+                       {{ getFlowLabel(t.db_cr) }}
                     </span>
                  </td>
                  <td class="text-xs mono">{{ t.bank_code }}</td>
@@ -128,47 +128,55 @@
         <tfoot v-if="!store.isLoading && store.filteredTransactions.length > 0" class="history-table-foot">
             <!-- Page Totals -->
             <tr class="mono text-xs">
-                <td colspan="5" class="py-1 text-right font-bold text-muted uppercase tracking-tighter">Page Debit (DB)</td>
-                <td class="text-right font-bold py-1 text-red-500">
+                <td colspan="5" class="py-1 text-right font-bold text-muted uppercase tracking-tighter">
+                  <i class="bi bi-arrow-up-circle-fill text-danger mr-1"></i>Page Total Keluar
+                </td>
+                <td class="text-right font-bold py-1 text-danger">
                     {{ formatAmount(store.pageDebitTotal) }}
                 </td>
                 <td colspan="4"></td>
             </tr>
             <tr class="mono text-xs">
-                <td colspan="5" class="py-1 text-right font-bold text-muted uppercase tracking-tighter">Page Credit (CR)</td>
-                <td class="text-right font-bold py-1 text-green-600">
+                <td colspan="5" class="py-1 text-right font-bold text-muted uppercase tracking-tighter">
+                  <i class="bi bi-arrow-down-circle-fill text-success mr-1"></i>Page Total Masuk
+                </td>
+                <td class="text-right font-bold py-1 text-success">
                     {{ formatAmount(store.pageCreditTotal) }}
                 </td>
                 <td colspan="4"></td>
             </tr>
             <tr class="mono text-xs">
-                <td colspan="5" class="py-2 text-right font-bold text-theme uppercase tracking-tighter">Page Net Total</td>
-                <td class="text-right font-bold py-2 border-t history-table-divider" :class="store.pageTotal >= 0 ? 'text-green-700' : 'text-red-600'">
-                    {{ formatAmount(Math.abs(store.pageTotal)) }}
-                    <span class="text-[10px]">{{ store.pageTotal >= 0 ? 'CR' : 'DB' }}</span>
+                <td colspan="5" class="py-2 text-right font-bold text-theme uppercase tracking-tighter">Page Net</td>
+                <td class="text-right font-bold py-2 border-t history-table-divider" :class="store.pageTotal >= 0 ? 'text-success' : 'text-danger'">
+                    {{ store.pageTotal >= 0 ? '+' : '-' }}{{ formatAmount(Math.abs(store.pageTotal)) }}
+                    <span class="text-[10px] ml-1">{{ store.pageTotal >= 0 ? 'Masuk' : 'Keluar' }}</span>
                 </td>
                 <td colspan="4"></td>
             </tr>
             <!-- Filtered Totals -->
             <tr class="mono text-xs">
-                <td colspan="5" class="py-1 text-right font-bold text-muted uppercase tracking-tighter">Total Debit (DB)</td>
-                <td class="text-right font-black py-1 text-red-600">
+                <td colspan="5" class="py-1 text-right font-bold text-muted uppercase tracking-tighter">
+                  <i class="bi bi-arrow-up-circle-fill text-danger mr-1"></i>Total Keluar
+                </td>
+                <td class="text-right font-black py-1 text-danger">
                     {{ formatAmount(store.filteredDebitTotal) }}
                 </td>
                 <td colspan="4"></td>
             </tr>
             <tr class="mono text-xs">
-                <td colspan="5" class="py-1 text-right font-bold text-muted uppercase tracking-tighter">Total Credit (CR)</td>
-                <td class="text-right font-black py-1 text-green-700">
+                <td colspan="5" class="py-1 text-right font-bold text-muted uppercase tracking-tighter">
+                  <i class="bi bi-arrow-down-circle-fill text-success mr-1"></i>Total Masuk
+                </td>
+                <td class="text-right font-black py-1 text-success">
                     {{ formatAmount(store.filteredCreditTotal) }}
                 </td>
                 <td colspan="4"></td>
             </tr>
             <tr class="mono text-xs">
                 <td colspan="5" class="py-2 text-right font-black text-theme uppercase tracking-tighter">Total Net</td>
-                <td class="text-right font-black py-2 border-t history-table-divider" :class="store.filteredTotal >= 0 ? 'text-green-800' : 'text-red-700'">
-                    {{ formatAmount(Math.abs(store.filteredTotal)) }}
-                    <span class="text-[10px]">{{ store.filteredTotal >= 0 ? 'CR' : 'DB' }}</span>
+                <td class="text-right font-black py-2 border-t history-table-divider" :class="store.filteredTotal >= 0 ? 'text-success' : 'text-danger'">
+                    {{ store.filteredTotal >= 0 ? '+' : '-' }}{{ formatAmount(Math.abs(store.filteredTotal)) }}
+                    <span class="text-[10px] ml-1">{{ store.filteredTotal >= 0 ? 'Masuk' : 'Keluar' }}</span>
                 </td>
                 <td colspan="4"></td>
             </tr>
@@ -259,6 +267,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useHistoryStore } from '../../stores/history';
+import { getFlowLabel, getFlowIcon, getFlowColorClass, getAmountSign } from '../../composables/useBankDirection';
 import ConfirmModal from '../ui/ConfirmModal.vue';
 import SearchableSelect from '../ui/SearchableSelect.vue';
 import TableShell from '../ui/TableShell.vue';

@@ -4,7 +4,6 @@ from sqlalchemy import text
 
 from backend.db.schema import get_table_columns
 from backend.services.reporting.report_sql_fragments import (
-    _coretax_filter_clause,
     _split_parent_exclusion_clause,
 )
 from backend.services.reporting.report_value_utils import (
@@ -30,7 +29,7 @@ def _empty_payroll_summary(start_date, end_date, message=None):
     return payload
 
 
-def _payroll_summary_query(conn, txn_columns, report_type, split_exclusion_clause, coretax_clause):
+def _payroll_summary_query(conn, txn_columns, split_exclusion_clause):
     user_col_expr = "t.sagansa_user_id" if 'sagansa_user_id' in txn_columns else "NULL"
     effective_date_expr = "COALESCE(t.payroll_period_month, t.txn_date)" if 'payroll_period_month' in txn_columns else "t.txn_date"
     if conn.dialect.name == 'sqlite':
@@ -48,10 +47,13 @@ def _payroll_summary_query(conn, txn_columns, report_type, split_exclusion_claus
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
         WHERE COALESCE(m.is_salary_component, 0) = 1
+          AND EXISTS (
+              SELECT 1 FROM mark_coa_mapping mcm
+              WHERE mcm.mark_id = m.id AND mcm.report_type = :report_type
+          )
           AND {effective_date_expr} BETWEEN :start_date AND :end_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}
-                {coretax_clause}
         GROUP BY
             {month_key_expr},
             {user_col_expr},
@@ -152,7 +154,6 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
 
     txn_columns = get_table_columns(conn, 'transactions')
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
-    coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
 
     user_map = _fetch_sagansa_user_map()
     month_groups = {}
@@ -160,10 +161,11 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
     total_amount = 0.0
     total_transactions = 0
 
-    rows = conn.execute(_payroll_summary_query(conn, txn_columns, report_type, split_exclusion_clause, coretax_clause), {
+    rows = conn.execute(_payroll_summary_query(conn, txn_columns, split_exclusion_clause), {
         'start_date': start_date,
         'end_date': end_date,
-        'company_id': company_id
+        'company_id': company_id,
+        'report_type': report_type
     })
 
     for row in rows:

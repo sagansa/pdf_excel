@@ -183,8 +183,8 @@ export const historyApi = {
       throw error;
     }
   },
-  getPayrollTransactions(companyId, year, month, search = '', userId = '') {
-    const params = {};
+  getPayrollTransactions(companyId, year, month, search = '', userId = '', reportType = 'real') {
+    const params = { report_type: reportType };
     if (companyId) params.company_id = companyId;
     if (year) params.year = year;
     if (month) params.month = month;
@@ -208,8 +208,8 @@ export const historyApi = {
       sagansa_user_id: sagansaUserId
     });
   },
-  getPayrollMonthlySummary(companyId, year, month) {
-    const params = {};
+  getPayrollMonthlySummary(companyId, year, month, reportType = 'real') {
+    const params = { report_type: reportType };
     if (companyId) params.company_id = companyId;
     if (year) params.year = year;
     if (month) params.month = month;

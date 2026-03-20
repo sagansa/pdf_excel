@@ -68,7 +68,7 @@
                 <TextInput
                   v-model="formattedAmount"
                   placeholder="0"
-                  @input="handleAmountInput"
+                  @update:model-value="handleAmountInput"
                 >
                   <template #leading>
                     <span class="text-[10px] font-bold text-primary opacity-80 px-1">Rp</span>
@@ -82,7 +82,7 @@
                 <TextInput
                   v-model="formattedRetainedEarnings"
                   placeholder="0"
-                  @input="handleRetainedEarningsInput"
+                  @update:model-value="handleRetainedEarningsInput"
                 >
                   <template #leading>
                     <span class="text-[10px] font-bold text-primary opacity-80 px-1">Rp</span>

@@ -402,6 +402,7 @@ def get_payroll_transactions():
     month = _normalize_month(request.args.get('month'))
     search = (request.args.get('search') or '').strip().lower()
     user_id = (request.args.get('user_id') or '').strip()
+    report_type = request.args.get('report_type', 'real')
 
     if year is None:
         raise BadRequestError('year must be numeric (1900-3000)')
@@ -432,7 +433,8 @@ def get_payroll_transactions():
                 'year_str': f"{year:04d}",
                 'month_str': f"{month:02d}" if month else None,
                 'search': f"%{search}%" if search else None,
-                'user_id': user_id or None
+                'user_id': user_id or None,
+                'report_type': report_type
             }
         else:
             year_filter = f"YEAR({effective_date_expr}) = :year"
@@ -443,7 +445,8 @@ def get_payroll_transactions():
                 'year': year,
                 'month': month,
                 'search': f"%{search}%" if search else None,
-                'user_id': user_id or None
+                'user_id': user_id or None,
+                'report_type': report_type
             }
 
         user_filter = "AND (:user_id IS NULL OR COALESCE(CAST(t.sagansa_user_id AS CHAR), '') = :user_id)" if 'sagansa_user_id' in txn_columns else ""
@@ -467,6 +470,10 @@ def get_payroll_transactions():
             INNER JOIN marks m ON t.mark_id = m.id
             LEFT JOIN companies c ON t.company_id = c.id
             WHERE COALESCE(m.is_salary_component, 0) = 1
+              AND EXISTS (
+                  SELECT 1 FROM mark_coa_mapping mcm
+                  WHERE mcm.mark_id = m.id AND mcm.report_type = :report_type
+              )
               AND (:company_id IS NULL OR t.company_id = :company_id)
               AND {year_filter}
               {month_filter}
@@ -642,6 +649,7 @@ def get_payroll_monthly_summary():
     company_id = request.args.get('company_id')
     year = _normalize_year(request.args.get('year'))
     month = _normalize_month(request.args.get('month'))
+    report_type = request.args.get('report_type', 'real')
 
     if year is None:
         raise BadRequestError('year must be numeric (1900-3000)')
@@ -672,12 +680,12 @@ def get_payroll_monthly_summary():
             period_clause = f"strftime('%Y', {effective_date_expr}) = :year_str"
             if month:
                 period_clause += f" AND strftime('%m', {effective_date_expr}) = :month_str"
-            params = {'company_id': company_id, 'year_str': f"{year:04d}", 'month_str': f"{month:02d}"}
+            params = {'company_id': company_id, 'year_str': f"{year:04d}", 'month_str': f"{month:02d}", 'report_type': report_type}
         else:
             period_clause = f"YEAR({effective_date_expr}) = :year"
             if month:
                 period_clause += f" AND MONTH({effective_date_expr}) = :month"
-            params = {'company_id': company_id, 'year': year, 'month': month}
+            params = {'company_id': company_id, 'year': year, 'month': month, 'report_type': report_type}
 
         result = conn.execute(text(f"""
             SELECT
@@ -690,6 +698,10 @@ def get_payroll_monthly_summary():
             FROM transactions t
             INNER JOIN marks m ON t.mark_id = m.id
             WHERE COALESCE(m.is_salary_component, 0) = 1
+              AND EXISTS (
+                  SELECT 1 FROM mark_coa_mapping mcm
+                  WHERE mcm.mark_id = m.id AND mcm.report_type = :report_type
+              )
               AND {period_clause}
               AND (:company_id IS NULL OR t.company_id = :company_id)
               {split_exclusion}

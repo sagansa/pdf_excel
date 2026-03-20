@@ -135,9 +135,10 @@
                   <span v-else class="text-theme-muted/40 italic text-[10px] font-bold uppercase tracking-widest">Unmarked</span>
                 </td>
                 <td class="px-4 py-3 text-center">
-                  <div class="inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter shadow-sm"
+                  <div class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter shadow-sm"
                     :class="txn.db_cr === 'CR' ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'">
-                    {{ txn.db_cr }}
+                    <i :class="txn.db_cr === 'CR' ? 'bi-arrow-down-circle-fill' : 'bi-arrow-up-circle-fill'" class="bi text-[9px]"></i>
+                    {{ txn.db_cr === 'CR' ? 'Masuk' : 'Keluar' }}
                   </div>
                 </td>
                 <td class="px-4 py-3 text-sm text-right font-mono font-black"
@@ -370,6 +371,10 @@ const fetchTransactions = async () => {
     
     if (props.filters.companyId) {
       params.company_id = props.filters.companyId;
+    }
+
+    if (props.filters.reportType) {
+      params.report_type = props.filters.reportType;
     }
 
     const res = await reportsApi.getCoaDetail(params);
