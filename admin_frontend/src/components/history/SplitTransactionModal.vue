@@ -204,13 +204,24 @@ const markOptions = computed(() => {
   }));
 });
 
+const toNumeric = (val) => {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return val;
+  // Handle Indonesian formatting: dots as thousands, commas as decimals if string
+  // and generic string numbers.
+  const cleaned = String(val).replace(/\./g, '').replace(/,/g, '.');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 const transactionAmount = computed(() => {
   if (!props.transaction) return 0;
-  return parseFloat(props.transaction.amount) || 0;
+  // Use toNumeric for safety
+  return toNumeric(props.transaction.amount);
 });
 
 const allocatedAmount = computed(() => {
-  return splits.value.reduce((sum, split) => sum + (parseFloat(split.amount) || 0), 0);
+  return splits.value.reduce((sum, split) => sum + toNumeric(split.amount), 0);
 });
 
 const allocatedPercent = computed(() => {
@@ -263,14 +274,16 @@ const formatAmount = (val) => {
 };
 
 const addSplit = () => {
+  console.log('[SplitTransactionModal] Adding split. Transaction amount:', transactionAmount.value);
   const remaining = transactionAmount.value - allocatedAmount.value;
   const defaultAmount = remaining > 0 ? remaining : 0;
   
   splits.value.push({
     mark_id: '',
-    amount: defaultAmount > 0 ? Math.min(defaultAmount, transactionAmount.value) : null,
+    amount: defaultAmount > 0 ? Number(defaultAmount.toFixed(2)) : 0,
     notes: ''
   });
+  console.log('[SplitTransactionModal] Splits now:', splits.value);
 };
 
 const removeSplit = (index) => {

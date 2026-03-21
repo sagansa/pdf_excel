@@ -1,3 +1,4 @@
+from sqlalchemy import text
 from backend.db.schema import get_table_columns
 
 
@@ -130,3 +131,21 @@ def _mark_coa_join_clause(conn, report_type='real', mark_ref='m.id', mapping_ali
         ON {mapping_alias}.mark_id = {mark_ref}
        AND {mapping_scope_expr} = 'real'
     """
+def _get_reporting_start_date(conn, company_id, report_type='real'):
+    """
+    Get the reporting start date based on initial_capital_settings.
+    Any transactions before this date should be ignored.
+    """
+    if not company_id:
+        return None
+        
+    res = conn.execute(text("""
+        SELECT start_year
+        FROM initial_capital_settings
+        WHERE company_id = :company_id AND report_type = :report_type
+        LIMIT 1
+    """), {'company_id': company_id, 'report_type': report_type}).fetchone()
+    
+    if res and res.start_year:
+        return f"{res.start_year}-01-01"
+    return None

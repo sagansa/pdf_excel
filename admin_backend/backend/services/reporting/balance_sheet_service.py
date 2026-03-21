@@ -19,6 +19,7 @@ from backend.services.reporting.equity_bridges import (
 )
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
+    _get_reporting_start_date,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
 )
@@ -62,6 +63,7 @@ def _build_balance_sheet_query(conn, report_type):
             INNER JOIN marks m ON t.mark_id = m.id
             {mark_coa_join}
             WHERE t.txn_date <= :as_of_date
+                AND (:start_date IS NULL OR t.txn_date >= :start_date)
                 AND (:company_id IS NULL OR t.company_id = :company_id)
                 {split_exclusion_clause}
                 {coretax_clause}
@@ -164,8 +166,11 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     Returns calculated values and lists of items.
     """
     as_of_date_obj = datetime.strptime(as_of_date, '%Y-%m-%d').date()
+    start_date = _get_reporting_start_date(conn, company_id, report_type)
+    
     result = conn.execute(_build_balance_sheet_query(conn, report_type), {
         'as_of_date': as_of_date,
+        'start_date': start_date,
         'company_id': company_id,
     })
 

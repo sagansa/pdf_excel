@@ -289,7 +289,7 @@ const handleRetainedEarningsInput = (val) => {
 const isFormValid = computed(() => {
   const year = parseInt(formData.value.startYear, 10);
   return selectedCompany.value && 
-         formData.value.amount > 0 && 
+         formData.value.amount >= 0 && 
          !isNaN(year) &&
          year >= 2000 && 
          year <= new Date().getFullYear() + 1; // allow next year too
