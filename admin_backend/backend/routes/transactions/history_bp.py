@@ -637,12 +637,71 @@ def delete_by_source():
         if company_id:
             where_clauses.append("company_id = :company_id")
             params['company_id'] = company_id
+            
+        where_sql = ' AND '.join(where_clauses)
+        
+        # Get parent/top-level IDs and marks before deletion
+        ids_result = conn.execute(text(f"SELECT id, mark_id FROM transactions WHERE {where_sql}"), params).fetchall()
+        if not ids_result:
+            return jsonify({'message': 'Deleted 0 transactions'})
+            
+        txn_ids = [r.id for r in ids_result]
+        mark_ids = [r.mark_id for r in ids_result if r.mark_id]
+        
+        # Fetch children (splits) that belong to these parents, since they don't have source_file set
+        child_ids_result = conn.execute(
+            text("SELECT id, mark_id FROM transactions WHERE parent_id IN :pids").bindparams(bindparam('pids', expanding=True)),
+            {'pids': txn_ids}
+        ).fetchall()
+        
+        child_ids = [r.id for r in child_ids_result]
+        child_mark_ids = [r.mark_id for r in child_ids_result if r.mark_id]
+        
+        all_txn_ids = list(set(txn_ids + child_ids))
+        all_mark_ids = list(set(mark_ids + child_mark_ids))
+        
+        # 1. Clean up manual journal links first
+        if all_txn_ids:
+            conn.execute(
+                text("DELETE FROM manual_journal_links WHERE manual_txn_id IN :ids OR linked_txn_id IN :ids OR child_txn_id IN :ids")
+                .bindparams(bindparam('ids', expanding=True)),
+                {'ids': all_txn_ids}
+            )
 
-        result = conn.execute(
-            text(f"DELETE FROM transactions WHERE {' AND '.join(where_clauses)}"),
-            params
-        )
-        return jsonify({'message': f'Deleted {result.rowcount} transactions'})
+        # 2. Delete child transactions first to satisfy `fk_transactions_parent_id` constraint
+        if child_ids:
+            conn.execute(
+                text("DELETE FROM transactions WHERE id IN :child_ids")
+                .bindparams(bindparam('child_ids', expanding=True)),
+                {'child_ids': child_ids}
+            )
+        
+        # 3. Delete parent (or all remaining) transactions
+        result = conn.execute(text(f"DELETE FROM transactions WHERE {where_sql}"), params)
+        
+        # 4. Clean up orphaned marks securely
+        if all_mark_ids:
+            used_marks = conn.execute(
+                text("SELECT DISTINCT mark_id FROM transactions WHERE mark_id IN :mids")
+                .bindparams(bindparam('mids', expanding=True)),
+                {'mids': all_mark_ids}
+            ).fetchall()
+            used_mark_ids = {r.mark_id for r in used_marks if r.mark_id}
+            
+            marks_to_delete = list(set(all_mark_ids) - used_mark_ids)
+            if marks_to_delete:
+                conn.execute(
+                    text("DELETE FROM mark_coa_mapping WHERE mark_id IN :mids")
+                    .bindparams(bindparam('mids', expanding=True)),
+                    {'mids': marks_to_delete}
+                )
+                conn.execute(
+                    text("DELETE FROM marks WHERE id IN :mids")
+                    .bindparams(bindparam('mids', expanding=True)),
+                    {'mids': marks_to_delete}
+                )
+
+        return jsonify({'message': f'Deleted {len(all_txn_ids)} transactions'})
 
 
 @history_bp.route('/api/transactions/<txn_id>/assign-mark', methods=['POST'])
@@ -901,7 +960,6 @@ def bulk_assign_company_transactions():
     return jsonify({'message': f'{len(txn_ids)} transactions updated successfully'})
 
 
-@history_bp.route('/api/transactions/<txn_id>', methods=['DELETE'])
 def delete_transaction(txn_id):
     engine = require_db_engine()
 

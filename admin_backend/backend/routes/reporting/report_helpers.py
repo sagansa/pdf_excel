@@ -88,3 +88,17 @@ def apply_service_tax_adjustment(row, coa_category):
     row['effective_amount'] += tax_to_add if row['effective_amount'] >= 0 else -tax_to_add
     row['amount'] = float(row['amount']) + (tax_to_add if row['amount'] >= 0 else -tax_to_add)
     return row
+def get_reporting_start_date(conn, company_id, report_type='real'):
+    if not company_id:
+        return None
+        
+    res = conn.execute(text("""
+        SELECT start_year
+        FROM initial_capital_settings
+        WHERE company_id = :company_id AND report_type = :report_type
+        LIMIT 1
+    """), {'company_id': company_id, 'report_type': report_type}).fetchone()
+    
+    if res and res.start_year:
+        return f"{res.start_year}-01-01"
+    return None

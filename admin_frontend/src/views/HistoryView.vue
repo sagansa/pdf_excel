@@ -89,28 +89,45 @@
                     <span class="text-sm font-medium">Selected</span>
                 </div>
 
-                <div class="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-                    <div class="flex items-center gap-2">
+                <div class="flex flex-col gap-3 md:flex-row md:items-center md:gap-3 flex-1">
+                    <div class="flex flex-1 items-center gap-3">
+                        <div class="w-48 group/select">
+                           <SelectInput
+                               v-model="bulkActionForm.companyId"
+                               :options="bulkCompanyOptions"
+                               placeholder="Assign Company..."
+                               size="sm"
+                               class="bulk-bar__input"
+                           />
+                        </div>
+                        <div class="w-64 group/select">
+                           <SearchableSelect
+                               v-model="bulkActionForm.markId"
+                               :options="bulkMarkOptions"
+                               placeholder="Assign Mark..."
+                               size="sm"
+                               class="bulk-bar__input"
+                           />
+                        </div>
                         <button 
-                            @click="isBulkActionModalOpen = true"
-                            class="bulk-bar__button group"
+                            @click="handleBulkApply" 
+                            class="h-8 px-4 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-strong transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="isBulkAssigning || (!bulkActionForm.companyId && !bulkActionForm.markId)"
                         >
-                            <span class="flex h-8 items-center gap-2 px-4 rounded-xl bg-white/10 group-hover:bg-white/20 transition-all">
-                                <i class="bi bi-pencil-square text-xs"></i>
-                                <span class="text-sm font-semibold">Bulk Actions</span>
-                            </span>
+                            <span v-if="isBulkAssigning" class="spinner-border w-3 h-3 me-1"></span>
+                            Apply
                         </button>
                     </div>
+                </div>
 
-                    <div class="flex items-center gap-2 ml-2">
-                        <button class="bulk-bar__icon bulk-bar__icon--danger" title="Bulk Delete" @click="isBulkDeleteModalOpen = true">
-                             <i class="bi bi-trash3-fill"></i>
-                        </button>
+                <div class="flex items-center gap-2 pl-4 border-l border-white/10">
+                    <button class="bulk-bar__icon bulk-bar__icon--danger" title="Bulk Delete" @click="isBulkDeleteModalOpen = true">
+                         <i class="bi bi-trash3-fill text-sm"></i>
+                    </button>
 
-                        <button class="bulk-bar__icon" title="Deselect All" @click="store.deselectAll">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
-                    </div>
+                    <button class="bulk-bar__icon" title="Deselect All" @click="store.deselectAll">
+                        <i class="bi bi-x-lg text-sm"></i>
+                    </button>
                 </div>
             </div>
         </transition>
@@ -252,15 +269,6 @@
         @confirm="handleConfirmBulkDelete"
     />
 
-    <BulkActionModal
-        :isOpen="isBulkActionModalOpen"
-        :selectedCount="store.selectedTxnIds.length"
-        :companies="store.companies"
-        :sortedMarks="store.sortedMarks"
-        :loading="isBulkAssigning"
-        @close="isBulkActionModalOpen = false"
-        @apply="handleBulkApply"
-    />
   </div>
 </template>
 
@@ -270,6 +278,7 @@ import { useHistoryStore } from '../stores/history';
 import { useReportsStore } from '../stores/reports';
 import HistoryFilters from '../components/history/HistoryFilters.vue';
 import HistoryTable from '../components/history/HistoryTable.vue';
+import SearchableSelect from '../components/ui/SearchableSelect.vue';
 import ImportTransactionsModal from '../components/history/ImportTransactionsModal.vue';
 import ManualJournalModal from '../components/history/ManualJournalModal.vue';
 import TransactionDetailsModal from '../components/history/TransactionDetailsModal.vue';
@@ -281,7 +290,6 @@ import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
 import SelectInput from '../components/ui/SelectInput.vue';
 import TextInput from '../components/ui/TextInput.vue';
-import BulkActionModal from '../components/history/BulkActionModal.vue';
 import api from '../api';
 
 // Components relocated from Reports
@@ -324,8 +332,32 @@ const showExportMenu = ref(false);
 
 const isBulkDeleteModalOpen = ref(false);
 const isBulkDeleting = ref(false);
-const isBulkActionModalOpen = ref(false);
 const isBulkAssigning = ref(false);
+
+const bulkActionForm = ref({
+    companyId: '',
+    markId: ''
+});
+
+const bulkCompanyOptions = computed(() => [
+  { id: 'none', label: '-- Unassign Company --' },
+  ...(store.companies || []).map(c => ({ id: c.id, label: c.name }))
+]);
+
+const bulkMarkOptions = computed(() => [
+  { id: 'none', label: '-- Unmark --' },
+  ...(store.sortedMarks || []).map(m => ({ 
+    id: m.id, 
+    label: m.internal_report || m.personal_use || 'Marked' 
+  }))
+]);
+
+watch(() => store.selectedTxnIds.length, (newVal) => {
+    if (newVal === 0) {
+        bulkActionForm.value.companyId = '';
+        bulkActionForm.value.markId = '';
+    }
+});
 
 const reportCompanyOptions = computed(() => (
   (store.companies || []).map(company => ({
@@ -386,7 +418,8 @@ const handleSplitSaved = async () => {
     showSplitModal.value = false;
 };
 
-const handleBulkApply = async ({ companyId, markId }) => {
+const handleBulkApply = async () => {
+    const { companyId, markId } = bulkActionForm.value;
     isBulkAssigning.value = true;
     try {
         if (companyId) {
@@ -397,8 +430,9 @@ const handleBulkApply = async ({ companyId, markId }) => {
             const finalMarkId = markId === 'none' ? null : markId;
             await store.bulkAssignMark(finalMarkId);
         }
-        isBulkActionModalOpen.value = false;
-        // The store handles reloading and clearing selection
+        // Reset form on success
+        bulkActionForm.value.companyId = '';
+        bulkActionForm.value.markId = '';
     } catch (e) {
         console.error(e);
     } finally {
@@ -529,6 +563,18 @@ const handleExport = async (format) => {
 
 .bulk-bar__icon--danger {
   color: #fca5a5;
+}
+
+.bulk-bar__input :deep(.ui-input-shell) {
+  @apply !bg-white/5 !border-white/10 !rounded-xl !h-8 !border;
+}
+
+.bulk-bar__input :deep(input), .bulk-bar__input :deep(select) {
+  @apply !text-white !text-[11px] !font-medium !py-0;
+}
+
+.bulk-bar__input :deep(.text-muted) {
+  @apply !text-white/40;
 }
 
 .bulk-bar__button {

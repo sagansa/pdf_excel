@@ -30,7 +30,9 @@ export const filterSelectOptions = (options = [], query = '') => {
 
 export const findSelectOption = (options = [], value) => {
   const normalizedValue = String(value ?? '');
-  return options.find(option => String(option.id ?? '') === normalizedValue);
+  return options.find(option => 
+    option.type !== 'separator' && String(option.id ?? '') === normalizedValue
+  );
 };
 
 export const findSelectLabel = (options = [], value, fallback = '') => {

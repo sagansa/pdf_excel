@@ -114,8 +114,9 @@ export const useHistoryStore = defineStore('history', {
                     : (txnMarkId ? [txnMarkId] : []);
                 const isMissingMarkTxn = Boolean(t.has_missing_mark);
                 const isMultiMarkedTxn = Boolean(t.is_multi_marked);
-                const hasValidMarkTxn = Boolean(txnMarkId) && !isMissingMarkTxn;
-                const isUnmarkedTxn = (!txnMarkId || isMissingMarkTxn) && !isMultiMarkedTxn;
+                const isLinkedToManual = Boolean(t.is_linked_to_manual);
+                const hasValidMarkTxn = (Boolean(txnMarkId) && !isMissingMarkTxn) || isLinkedToManual;
+                const isUnmarkedTxn = (!txnMarkId || isMissingMarkTxn) && !isMultiMarkedTxn && !isLinkedToManual;
                 const isMarkedTxn = hasValidMarkTxn || isMultiMarkedTxn;
 
                 let matches = false;
@@ -648,6 +649,7 @@ export const useHistoryStore = defineStore('history', {
             this.isLoading = false;
         }
     },
+
 
     async bulkDelete() {
         if (this.selectedTxnIds.length === 0) return;

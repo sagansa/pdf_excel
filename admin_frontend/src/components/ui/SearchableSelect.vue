@@ -44,8 +44,9 @@
 
           <ComboboxOption
             v-for="option in filteredOptions"
-            :key="option.id"
+            :key="option.id || (option.type === 'separator' ? 'sep-' + option.label : Math.random())"
             :value="option.id"
+            :disabled="option.type === 'separator'"
             v-slot="{ active, selected }"
           >
             <li

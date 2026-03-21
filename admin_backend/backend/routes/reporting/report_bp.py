@@ -31,6 +31,7 @@ from backend.services.reporting.report_service import (
     fetch_monthly_revenue_data,
     fetch_payroll_salary_summary_data,
 )
+from backend.services.reporting.report_sql_fragments import _get_reporting_start_date
 
 report_bp = Blueprint('report_bp', __name__)
 
@@ -158,6 +159,9 @@ def get_coa_detail_report():
         coa_category = coa_info.get('category', '')
 
     coa_id = temp_coa_id
+    company_id = request.args.get('company_id')
+    report_type = request.args.get('report_type', 'real')
+
     start_date, end_date = resolve_coa_detail_period(
         coa_category,
         as_of_date,
@@ -165,10 +169,12 @@ def get_coa_detail_report():
         request.args.get('end_date')
     )
 
-    company_id = request.args.get('company_id')
-    report_type = request.args.get('report_type', 'real')
-
     with engine.connect() as conn:
+        reporting_start_date = _get_reporting_start_date(conn, company_id, report_type)
+        if reporting_start_date:
+            if not start_date or start_date < reporting_start_date:
+                start_date = reporting_start_date
+                
         coa_info = get_coa_or_404(conn, coa_id)
         coa_category = coa_info.get('category', '')
         split_exclusion = split_parent_exclusion_clause(conn, 't')
