@@ -38,6 +38,8 @@ export const useHistoryStore = defineStore('history', {
   state: () => ({
     allTransactions: [],
     uploadSummary: [],
+    uploadChecklist: null,
+    checklistYear: new Date().getFullYear(),
     companies: [],
     marks: [],
     coaList: [],
@@ -477,6 +479,20 @@ export const useHistoryStore = defineStore('history', {
         this.uploadSummary = res.data.summary || [];
       } catch (err) {
         this.error = "Failed to load upload summary";
+        console.error(err);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async fetchUploadChecklist(year) {
+      this.isLoading = true;
+      try {
+        const res = await historyApi.getUploadChecklist(year || this.checklistYear);
+        this.uploadChecklist = res.data;
+        this.checklistYear = res.data.year || year || this.checklistYear;
+      } catch (err) {
+        this.error = 'Failed to load upload checklist';
         console.error(err);
       } finally {
         this.isLoading = false;

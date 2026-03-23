@@ -615,6 +615,115 @@ def get_upload_summary():
         return jsonify({'summary': summary})
 
 
+MONTH_NAMES_ID = [
+    '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+]
+
+
+@history_bp.route('/api/transactions/upload-checklist', methods=['GET'])
+def get_upload_checklist():
+    """Return a per-month × per-bank upload checklist for a given year.
+
+    Query params:
+        year (int): The fiscal year to inspect (default: current year).
+
+    Response shape:
+    {
+        "year": 2025,
+        "banks": ["BCA", "DBS", ...],
+        "months": [
+            {
+                "month": 1,
+                "label": "Januari",
+                "banks": {
+                    "BCA": {
+                        "uploaded": true,
+                        "source_files": ["bca_jan_2025.pdf"],
+                        "transaction_count": 52,
+                        "total_debit": 12345000.0,
+                        "total_credit": 9876000.0,
+                        "last_upload": "2025-02-01"
+                    },
+                    "DBS": {"uploaded": false}
+                }
+            },
+            ...
+        ]
+    }
+    """
+    engine = require_db_engine()
+    current_year = datetime.now().year
+    try:
+        year = int(request.args.get('year', current_year))
+    except (TypeError, ValueError):
+        year = current_year
+
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT
+                MONTH(t.txn_date)                                        AS txn_month,
+                t.bank_code,
+                GROUP_CONCAT(DISTINCT t.source_file ORDER BY t.source_file SEPARATOR '||') AS source_files,
+                COUNT(*)                                                  AS transaction_count,
+                SUM(CASE WHEN t.db_cr = 'DB' THEN t.amount ELSE 0 END)  AS total_debit,
+                SUM(CASE WHEN t.db_cr = 'CR' THEN t.amount ELSE 0 END)  AS total_credit,
+                MAX(t.created_at)                                         AS last_upload
+            FROM transactions t
+            WHERE YEAR(t.txn_date) = :year
+              AND (t.bank_code IS NULL OR t.bank_code != 'MANUAL')
+              AND (t.parent_id IS NULL OR t.parent_id = '')
+            GROUP BY MONTH(t.txn_date), t.bank_code
+            ORDER BY txn_month ASC, t.bank_code ASC
+        """), {'year': year}).fetchall()
+
+    # Collect all banks (ordered alphabetically for stable column order)
+    banks_set = set()
+    for row in rows:
+        if row.bank_code:
+            banks_set.add(str(row.bank_code))
+    banks = sorted(banks_set)
+
+    # Build lookup: (month, bank_code) -> row data
+    cell_map = {}
+    for row in rows:
+        month = int(row.txn_month or 0)
+        bank = str(row.bank_code or '')
+        if not month or not bank:
+            continue
+        raw_files = str(row.source_files or '')
+        source_files = [f for f in raw_files.split('||') if f and f != 'MANUAL']
+        last_upload_raw = row.last_upload
+        last_upload_str = str(last_upload_raw)[:10] if last_upload_raw else None
+        cell_map[(month, bank)] = {
+            'uploaded': True,
+            'source_files': source_files,
+            'transaction_count': int(row.transaction_count or 0),
+            'total_debit': float(row.total_debit or 0),
+            'total_credit': float(row.total_credit or 0),
+            'last_upload': last_upload_str,
+        }
+
+    # Build the 12-month list
+    months_data = []
+    for m in range(1, 13):
+        bank_cells = {}
+        for bank in banks:
+            cell = cell_map.get((m, bank))
+            bank_cells[bank] = cell if cell else {'uploaded': False}
+        months_data.append({
+            'month': m,
+            'label': MONTH_NAMES_ID[m],
+            'banks': bank_cells,
+        })
+
+    return jsonify({
+        'year': year,
+        'banks': banks,
+        'months': months_data,
+    })
+
+
 @history_bp.route('/api/transactions/delete-by-source', methods=['POST'])
 def delete_by_source():
     engine = require_db_engine()

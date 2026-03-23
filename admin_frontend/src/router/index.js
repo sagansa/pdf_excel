@@ -7,6 +7,7 @@ import MarksView from '../views/MarksView.vue'
 import ChartOfAccountsView from '../views/ChartOfAccountsView.vue'
 import ReportsView from '../views/ReportsView.vue'
 import UploadSummaryView from '../views/UploadSummaryView.vue'
+import UploadChecklistView from '../views/UploadChecklistView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import ManagementView from '../views/ManagementView.vue'
 import InitialCapitalPage from '../views/InitialCapitalPage.vue'
@@ -55,6 +56,11 @@ const router = createRouter({
       path: '/upload-summary',
       name: 'upload-summary',
       component: UploadSummaryView
+    },
+    {
+      path: '/upload-checklist',
+      name: 'upload-checklist',
+      component: UploadChecklistView
     },
     {
       path: '/settings',

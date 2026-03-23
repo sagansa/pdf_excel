@@ -41,6 +41,11 @@
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Upload Summary</span>
         </router-link>
 
+        <router-link to="/upload-checklist" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Upload Checklist' : ''">
+          <i class="bi bi-check2-square text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Upload Checklist</span>
+        </router-link>
+
         <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
             <p class="sidebar-section-label px-2">HRD</p>
         </div>
@@ -181,6 +186,7 @@ const pageTitle = computed(() => {
         case 'converter': return 'Bank Statement Converter';
         case 'history': return 'Transaction History';
         case 'upload-summary': return 'Upload Summary';
+        case 'upload-checklist': return 'Upload Checklist';
         case 'companies': return 'Company Management';
         case 'marks': return 'Mark Management';
         case 'chart-of-accounts': return 'Chart of Accounts';
