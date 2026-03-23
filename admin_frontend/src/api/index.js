@@ -40,6 +40,9 @@ export const historyApi = {
   getUploadSummary() {
     return api.get('/transactions/upload-summary');
   },
+  getUploadChecklist(year) {
+    return api.get('/transactions/upload-checklist', { params: { year } });
+  },
   deleteTransaction(id) {
     return api.delete(`/transactions/${id}`);
   },
