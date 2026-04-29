@@ -22,12 +22,12 @@
             />
           </FormField>
 
-          <FormField label="Type" label-class="!text-[10px] !font-black uppercase tracking-wider">
+          <FormField label="Cash Dir" label-class="!text-[10px] !font-black uppercase tracking-wider">
             <SelectInput
               v-model="filters.type"
               :options="[
                 { value: '', label: 'All Types' },
-                ...availableTypes.map(t => ({ value: t, label: t === 'DB' ? 'Debit (DB)' : 'Credit (CR)' }))
+                ...availableTypes.map(t => ({ value: t, label: t === 'DB' ? 'Debit / Masuk (DB)' : 'Credit / Keluar (CR)' }))
               ]"
               size="sm"
             />
@@ -113,7 +113,7 @@
                   Marking
                   <i v-if="sortConfig.key === 'mark_name'" :class="sortConfig.direction === 'asc' ? 'bi-caret-up-fill' : 'bi-caret-down-fill'" class="bi ms-1"></i>
                 </th>
-                <th class="px-4 py-3 text-center text-[10px] font-black text-theme-muted uppercase tracking-widest">Type</th>
+                <th class="px-4 py-3 text-center text-[10px] font-black text-theme-muted uppercase tracking-widest">Cash Dir</th>
                 <th @click="sortBy('effective_amount')" class="px-4 py-3 text-right text-[10px] font-black text-theme-muted uppercase tracking-widest cursor-pointer hover:bg-surface-raised transition-colors">
                   Amount
                   <i v-if="sortConfig.key === 'effective_amount'" :class="sortConfig.direction === 'asc' ? 'bi-caret-up-fill' : 'bi-caret-down-fill'" class="bi ms-1"></i>
@@ -136,9 +136,9 @@
                 </td>
                 <td class="px-4 py-3 text-center">
                   <div class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter shadow-sm"
-                    :class="txn.db_cr === 'CR' ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'">
-                    <i :class="txn.db_cr === 'CR' ? 'bi-arrow-down-circle-fill' : 'bi-arrow-up-circle-fill'" class="bi text-[9px]"></i>
-                    {{ txn.db_cr === 'CR' ? 'Masuk' : 'Keluar' }}
+                    :class="txn.db_cr === 'DB' ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'">
+                    <i :class="txn.db_cr === 'DB' ? 'bi-arrow-down-circle-fill' : 'bi-arrow-up-circle-fill'" class="bi text-[9px]"></i>
+                    {{ txn.db_cr === 'DB' ? 'Masuk' : 'Keluar' }}
                   </div>
                 </td>
                 <td class="px-4 py-3 text-sm text-right font-mono font-black"

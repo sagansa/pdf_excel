@@ -51,6 +51,34 @@ def normalize_db_cr(value, default='DB'):
     return default
 
 
+def normalize_bank_db_cr(value, amount=None, default='DB'):
+    """
+    Convert raw bank statement DB/CR markers to the app's internal perspective:
+      DB = Debit to cash/bank = money IN
+      CR = Credit to cash/bank = money OUT
+
+    Most bank statements use the opposite convention:
+      CR = incoming funds, DB = outgoing funds
+    """
+    raw = str(value or '').strip().upper()
+    if raw:
+        if raw in {'CR', 'CREDIT', 'KREDIT', 'K'}:
+            return 'DB'
+        if raw in {'DB', 'DEBIT', 'D', 'DE'}:
+            return 'CR'
+        if raw.startswith('CR') or 'CREDIT' in raw or raw.startswith('K'):
+            return 'DB'
+        if raw.startswith('DB') or raw.startswith('DE') or 'DEBIT' in raw:
+            return 'CR'
+
+    parsed_amount = parse_amount(amount)
+    if parsed_amount < 0:
+        return 'CR'
+    if parsed_amount > 0:
+        return 'DB'
+    return default
+
+
 def parse_amount(value):
     raw = null_if_nan(value)
     if isinstance(raw, float):
@@ -67,6 +95,18 @@ def parse_amount(value):
         return float(raw or 0.0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def normalize_bank_account_number(value):
+    raw = null_if_nan(value)
+    if raw is None:
+        return None
+
+    candidate = str(raw).strip()
+    if not candidate:
+        return None
+
+    return candidate[:100]
 
 
 def build_transaction_record(row, bank_code, source_file, file_hash, now=None):
@@ -90,8 +130,13 @@ def build_transaction_record(row, bank_code, source_file, file_hash, now=None):
         'txn_date': txn_date,
         'description': str(description or '')[:1000],
         'amount': parse_amount(amount),
-        'db_cr': normalize_db_cr(db_cr),
+        'db_cr': normalize_bank_db_cr(db_cr, amount=amount),
         'bank_code': bank_code,
+        'bank_account_number': (
+            normalize_bank_account_number(row.get('bank_account_number'))
+            or normalize_bank_account_number(row.get('account_number'))
+            or normalize_bank_account_number(row.get('account_no'))
+        ),
         'source_file': source_file,
         'file_hash': file_hash,
         'mark_id': None,

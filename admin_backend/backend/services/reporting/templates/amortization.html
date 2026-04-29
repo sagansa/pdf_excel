@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1.2cm;
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 8.5pt;
+            line-height: 1.2;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 14px;
+            line-height: 1.1;
+        }
+        .company-name {
+            font-size: 16pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .report-title {
+            font-size: 13pt;
+            margin-bottom: 2px;
+        }
+        .period {
+            font-size: 10pt;
+            color: #666;
+        }
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+            table-layout: fixed;
+        }
+        thead {
+            display: table-header-group;
+        }
+        th {
+            text-align: center;
+            padding: 6px 4px;
+            border: 1px solid #333;
+            background-color: #f3f3f3;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+        td {
+            padding: 4px;
+            vertical-align: top;
+            border: 1px solid #333;
+        }
+        .amount {
+            text-align: right;
+            white-space: nowrap;
+        }
+        .center {
+            text-align: center;
+        }
+        .no-col {
+            width: 4%;
+        }
+        .name-col {
+            width: 23%;
+        }
+        .date-col {
+            width: 12%;
+        }
+        .amount-col {
+            width: 15%;
+        }
+        .sum-row td {
+            font-weight: bold;
+            background-color: #f3f3f3;
+        }
+        .group-row td {
+            font-weight: bold;
+            background-color: #e9ecef;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .group-title {
+            margin: 10px 0 4px;
+            font-size: 10pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .group-section {
+            page-break-before: always;
+        }
+        .group-section-first {
+            page-break-before: auto;
+        }
+        .footer {
+            margin-top: 28px;
+            width: 100%;
+        }
+        .director-name {
+            font-weight: bold;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">{{ company_name }}</div>
+        <div class="report-title">LAPORAN AMORTISASI</div>
+        <div class="period">Tahun {{ year }}</div>
+    </div>
+
+    {% if grouped_amortization_rows %}
+        {% for group_label, rows in grouped_amortization_rows.items() %}
+        <div class="{% if loop.first %}group-section-first{% else %}group-section{% endif %}">
+            <div class="group-title">{{ group_label }}</div>
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th class="no-col">No</th>
+                        <th class="name-col">Nama Barang</th>
+                        <th class="date-col">Bulan/Tahun Perolehan</th>
+                        <th class="amount-col">Harga Perolehan</th>
+                        <th class="amount-col">Penyusutan s.d. 31 Des {{ previous_year_label }}</th>
+                        <th class="amount-col">Penyusutan {{ current_year_label }}</th>
+                        <th class="amount-col">Akumulasi Penyusutan</th>
+                        <th class="amount-col">Nilai Buku per 31 Des {{ current_year_label }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td class="center">{{ row.no }}</td>
+                        <td>{{ row.asset_name }}</td>
+                        <td class="center">{{ row.acquisition_month_year }}</td>
+                        <td class="amount">{{ "{:,.0f}".format(row.original_cost or 0) }}</td>
+                        <td class="amount">{{ "{:,.0f}".format(row.depreciation_prev or 0) }}</td>
+                        <td class="amount">{{ "{:,.0f}".format(row.depreciation_current or 0) }}</td>
+                        <td class="amount">{{ "{:,.0f}".format(row.accumulated or 0) }}</td>
+                        <td class="amount">{{ "{:,.0f}".format(row.book_value_end or 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="sum-row">
+                        <td colspan="3" class="center">SUM</td>
+                        <td class="amount">{{ "{:,.0f}".format(rows|sum(attribute='original_cost') or 0) }}</td>
+                        <td class="amount">{{ "{:,.0f}".format(rows|sum(attribute='depreciation_prev') or 0) }}</td>
+                        <td class="amount">{{ "{:,.0f}".format(rows|sum(attribute='depreciation_current') or 0) }}</td>
+                        <td class="amount">{{ "{:,.0f}".format(rows|sum(attribute='accumulated') or 0) }}</td>
+                        <td class="amount">{{ "{:,.0f}".format(rows|sum(attribute='book_value_end') or 0) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    {% else %}
+    <table class="detail-table">
+        <tbody>
+            <tr>
+                <td colspan="8" class="center">Tidak ada data amortisasi.</td>
+            </tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        <table style="border: none; width: 100%;">
+            <tr style="border: none;">
+                <td style="border: none; width: 60%;"></td>
+                <td style="border: none; width: 40%; text-align: center;">
+                    <p style="margin: 0; padding: 0; line-height: 1.1;">
+                        {{ settings.location }}, 31 Desember {{ current_year_label }}<br/>
+                        <br/><br/><br/><br/>
+                        <span class="director-name">{{ settings.director_name or '(Belum diatur)' }}</span><br/>
+                        <span>{{ settings.director_title }}</span>
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

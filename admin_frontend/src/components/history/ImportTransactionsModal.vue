@@ -34,6 +34,23 @@
           </select>
         </div>
 
+        <div v-if="availableBankAccounts.length > 0">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Bank Account</label>
+          <select
+            v-model="bankAccountNumber"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="">Auto / Not Set</option>
+            <option
+              v-for="definition in availableBankAccounts"
+              :key="definition.id"
+              :value="definition.account_number"
+            >
+              {{ definition.display_name }} ({{ definition.account_number }})
+            </option>
+          </select>
+        </div>
+
         <!-- Company -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Company (Optional)</label>
@@ -54,7 +71,7 @@
           <p class="text-xs text-blue-700">
             Your file must contain: <strong>date/tanggal</strong>, 
             <strong>description/keterangan</strong>, <strong>amount</strong>, 
-            and <strong>db_cr/debit_credit</strong> (or negative amounts for credits)
+            and <strong>db_cr/debit_credit</strong> (or negative amounts for credit/outgoing rows)
           </p>
         </div>
 
@@ -83,6 +100,7 @@
 
 <script setup>
 import { ref, watch } from 'vue';
+import { historyApi } from '../../api';
 import BaseModal from '../ui/BaseModal.vue';
 
 const props = defineProps({
@@ -95,8 +113,10 @@ const emit = defineEmits(['close', 'imported']);
 const fileInput = ref(null);
 const selectedFile = ref(null);
 const bankCode = ref('MANUAL');
+const bankAccountNumber = ref('');
 const companyId = ref('');
 const isLoading = ref(false);
+const availableBankAccounts = ref([]);
 
 const handleFileChange = (e) => {
   const file = e.target.files[0];
@@ -113,7 +133,8 @@ const handleImport = async () => {
     emit('imported', {
       file: selectedFile.value,
       bankCode: bankCode.value,
-      companyId: companyId.value || null
+      companyId: companyId.value || null,
+      bankAccountNumber: bankAccountNumber.value || null
     });
     selectedFile.value = null;
     if (fileInput.value) {
@@ -124,14 +145,39 @@ const handleImport = async () => {
   }
 };
 
+const loadBankAccountDefinitions = async () => {
+  if (!bankCode.value || bankCode.value === 'MANUAL') {
+    availableBankAccounts.value = [];
+    bankAccountNumber.value = '';
+    return;
+  }
+
+  try {
+    const response = await historyApi.getBankAccountDefinitions(bankCode.value);
+    availableBankAccounts.value = response.data.definitions || [];
+    if (!availableBankAccounts.value.some((definition) => definition.account_number === bankAccountNumber.value)) {
+      bankAccountNumber.value = '';
+    }
+  } catch (error) {
+    console.error('Failed to load bank account definitions', error);
+    availableBankAccounts.value = [];
+  }
+};
+
 watch(() => props.isOpen, (newVal) => {
   if (!newVal) {
     selectedFile.value = null;
     bankCode.value = 'MANUAL';
+    bankAccountNumber.value = '';
+    availableBankAccounts.value = [];
     companyId.value = '';
     if (fileInput.value) {
       fileInput.value.value = '';
     }
   }
+});
+
+watch(bankCode, () => {
+  loadBankAccountDefinitions();
 });
 </script>

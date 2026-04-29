@@ -2,6 +2,19 @@
   <div class="space-y-6">
     <!-- Header with Actions (if any needed for Amortization) -->
 
+    <div class="flex items-center justify-end gap-3">
+      <Button
+        icon="bi bi-file-earmark-pdf"
+        variant="secondary"
+        size="sm"
+        :disabled="!companyId"
+        :loading="isExportingPdf"
+        @click="exportPdf"
+      >
+        Export PDF
+      </Button>
+    </div>
+
     <!-- Pending Transactions Alert (Compact) -->
     <Alert
       v-if="pendingTransactions?.length > 0"
@@ -945,6 +958,7 @@ const editingItem = ref(null);
 const itemToDelete = ref(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
+const isExportingPdf = ref(false);
 
 const form = ref({
   mark_id: "",
@@ -1208,6 +1222,42 @@ const generateJournalEntries = async () => {
     alert(`❌ Failed to generate journal entries: ${err.message || err}`);
   } finally {
     isSaving.value = false;
+  }
+};
+
+const exportPdf = async () => {
+  if (!props.companyId || !props.year) return;
+
+  isExportingPdf.value = true;
+  try {
+    const response = await reportsApi.exportAmortizationPdf(
+      parseInt(props.year, 10),
+      props.companyId,
+    );
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+
+    const contentDisposition = response.headers["content-disposition"];
+    let filename = `amortization_${props.year}.pdf`;
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (filenameMatch && filenameMatch.length === 2) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("Failed to export amortization PDF:", err);
+    alert(`Gagal export PDF: ${err.response?.data?.error || err.message}`);
+  } finally {
+    isExportingPdf.value = false;
   }
 };
 

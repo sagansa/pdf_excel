@@ -1,6 +1,8 @@
+import uuid
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
+from sqlalchemy import text
 
 from backend.db.schema import get_table_columns
 from backend.errors import BadRequestError
@@ -31,9 +33,51 @@ from backend.services.reporting.report_service import (
     fetch_monthly_revenue_data,
     fetch_payroll_salary_summary_data,
 )
+from backend.services.reporting.amortization_report_service import fetch_amortization_report_data
 from backend.services.reporting.report_sql_fragments import _get_reporting_start_date
 
 report_bp = Blueprint('report_bp', __name__)
+
+
+def _resolve_report_year(filters, start_date=None, as_of_date=None):
+    raw_year = filters.get('year')
+    if raw_year:
+        try:
+            return int(raw_year)
+        except (TypeError, ValueError):
+            pass
+
+    for candidate in (start_date, as_of_date):
+        if candidate:
+            try:
+                return datetime.strptime(candidate, '%Y-%m-%d').year
+            except ValueError:
+                continue
+
+    return datetime.now().year
+
+
+def _load_report_settings(conn, company_id, year):
+    settings = conn.execute(text("""
+        SELECT * FROM report_settings
+        WHERE company_id = :company_id AND year = :year
+    """), {'company_id': company_id, 'year': year}).fetchone()
+
+    if settings:
+        return serialize_row_values(settings._mapping)
+
+    return {
+        'director_name': '(Belum diatur)',
+        'director_title': 'Direktur Utama',
+        'location': 'Jakarta'
+    }
+
+
+def _load_company_name(conn, company_id):
+    company_row = conn.execute(text("SELECT name FROM companies WHERE id = :id"), {'id': company_id}).fetchone()
+    if company_row:
+        return company_row.name
+    return 'Company Name'
 
 
 @report_bp.route('/api/reports/income-statement', methods=['GET'])
@@ -182,7 +226,7 @@ def get_coa_detail_report():
         npwp_expr = "t.service_npwp" if 'service_npwp' in txn_columns else "NULL"
         method_expr = "COALESCE(t.service_calculation_method, 'BRUTO')" if 'service_calculation_method' in txn_columns else "'BRUTO'"
 
-        result = conn.execute(build_coa_detail_query(npwp_expr, method_expr, split_exclusion, report_type), {
+        result = conn.execute(build_coa_detail_query(conn, npwp_expr, method_expr, split_exclusion, report_type), {
             'coa_id': coa_id,
             'start_date': start_date,
             'end_date': end_date,
@@ -273,3 +317,220 @@ def get_prepaid_linkable_transactions():
         'transactions': [],
         'message': 'Prepaid Rent & Amortization feature has been retired'
     })
+
+
+@report_bp.route('/api/reports/settings', methods=['GET'])
+def get_report_settings():
+    engine = require_db_engine()
+    company_id = request.args.get('company_id')
+    year_str = request.args.get('year')
+
+    if not company_id or not year_str:
+        return jsonify({'error': 'company_id and year are required'}), 400
+
+    try:
+        year = int(year_str)
+    except ValueError:
+        return jsonify({'error': 'year must be integer'}), 400
+
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT * FROM report_settings 
+            WHERE company_id = :company_id AND year = :year
+        """), {'company_id': company_id, 'year': year}).fetchone()
+
+        if result:
+            return jsonify(serialize_row_values(result._mapping))
+        
+        return jsonify({
+            'company_id': company_id,
+            'year': year,
+            'director_name': '',
+            'director_title': 'Direktur Utama',
+            'location': 'Jakarta'
+        })
+
+
+@report_bp.route('/api/reports/settings', methods=['POST', 'PUT'])
+def save_report_settings():
+    engine = require_db_engine()
+    data = request.json or {}
+    company_id = data.get('company_id')
+    year_val = data.get('year')
+
+    if not company_id or not year_val:
+        return jsonify({'error': 'company_id and year are required'}), 400
+
+    try:
+        year = int(year_val)
+    except ValueError:
+        return jsonify({'error': 'year must be integer'}), 400
+
+    with engine.begin() as conn:
+        # Check if exists
+        existing = conn.execute(text("""
+            SELECT id FROM report_settings 
+            WHERE company_id = :company_id AND year = :year
+        """), {'company_id': company_id, 'year': year}).fetchone()
+
+        params = {
+            'company_id': company_id,
+            'year': year,
+            'director_name': data.get('director_name'),
+            'director_title': data.get('director_title', 'Direktur Utama'),
+            'location': data.get('location', 'Jakarta'),
+            'updated_at': datetime.now()
+        }
+
+        if existing:
+            conn.execute(text("""
+                UPDATE report_settings 
+                SET director_name = :director_name,
+                    director_title = :director_title,
+                    location = :location,
+                    updated_at = :updated_at
+                WHERE id = :id
+            """), {**params, 'id': existing.id})
+        else:
+            params['id'] = str(uuid.uuid4())
+            conn.execute(text("""
+                INSERT INTO report_settings (id, company_id, year, director_name, director_title, location)
+                VALUES (:id, :company_id, :year, :director_name, :director_title, :location)
+            """), params)
+
+    return jsonify({'success': True, 'message': 'Report settings saved'})
+
+
+@report_bp.route('/api/reports/export', methods=['POST'])
+def export_report():
+    engine = require_db_engine()
+    data = request.json or {}
+    report_type = data.get('report_type')  # 'income-statement', 'balance-sheet', etc.
+    format_type = data.get('format')  # 'excel', 'pdf', 'xml'
+    filters = data.get('filters', {})
+
+    company_id = filters.get('company_id')
+    start_date = filters.get('start_date')
+    end_date = filters.get('end_date')
+    as_of_date = filters.get('as_of_date') or filters.get('date') or end_date
+    report_mode = filters.get('report_type', 'real')
+    
+    if report_type != 'balance-sheet' and (not start_date or not end_date):
+         start_date, end_date = default_report_period(start_date, end_date)
+
+    if format_type == 'pdf' and report_mode == 'coretax' and report_type in {'income-statement', 'balance-sheet'}:
+        from backend.services.reporting.pdf_service import generate_coretax_combined_pdf
+
+        if not as_of_date:
+            as_of_date = end_date or datetime.now().strftime('%Y-%m-%d')
+
+        year = _resolve_report_year(filters, start_date, as_of_date)
+
+        with engine.connect() as conn:
+            settings = _load_report_settings(conn, company_id, year)
+            company_name = _load_company_name(conn, company_id)
+
+            income_statement_data = fetch_income_statement_data(
+                conn,
+                start_date,
+                end_date,
+                company_id,
+                report_mode,
+                comparative=filters.get('comparative', False)
+            )
+            income_statement_data['settings'] = settings
+            income_statement_data['period'] = {'start_date': start_date, 'end_date': end_date}
+            income_statement_data['company_name'] = company_name
+
+            balance_sheet_data = fetch_balance_sheet_data(
+                conn,
+                as_of_date,
+                company_id,
+                report_mode,
+            )
+            balance_sheet_data['settings'] = settings
+            balance_sheet_data['company_name'] = company_name
+
+            amortization_data = fetch_amortization_report_data(conn, year, company_id)
+            amortization_data['settings'] = settings
+            amortization_data['company_name'] = company_name
+            amortization_data['year'] = year
+
+            try:
+                pdf_path = generate_coretax_combined_pdf(
+                    income_statement_data,
+                    balance_sheet_data,
+                    amortization_data,
+                    report_filename=f"coretax_financial_statements_{year}.pdf",
+                )
+                return send_file(
+                    pdf_path,
+                    as_attachment=True,
+                    download_name=f"CoreTax_Financial_Statements_{company_name.replace(' ', '_')}_{year}.pdf",
+                    mimetype='application/pdf'
+                )
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+    if format_type == 'pdf' and report_type == 'income-statement':
+        from backend.services.reporting.pdf_service import generate_income_statement_pdf
+        
+        with engine.connect() as conn:
+            # Fetch data
+            report_data = fetch_income_statement_data(
+                conn, 
+                start_date, 
+                end_date, 
+                company_id, 
+                report_mode, 
+                comparative=filters.get('comparative', False)
+            )
+            
+            year = _resolve_report_year(filters, start_date, as_of_date)
+            report_data['settings'] = _load_report_settings(conn, company_id, year)
+            
+            report_data['period'] = {'start_date': start_date, 'end_date': end_date}
+            report_data['company_name'] = _load_company_name(conn, company_id)
+            
+            # Generate PDF
+            try:
+                pdf_path = generate_income_statement_pdf(report_data)
+                return send_file(
+                    pdf_path,
+                    as_attachment=True,
+                    download_name=f"Income_Statement_{report_data['company_name'].replace(' ', '_')}_{start_date}.pdf",
+                    mimetype='application/pdf'
+                )
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+    if format_type == 'pdf' and report_type == 'balance-sheet':
+        from backend.services.reporting.pdf_service import generate_balance_sheet_pdf
+
+        if not as_of_date:
+            as_of_date = datetime.now().strftime('%Y-%m-%d')
+
+        with engine.connect() as conn:
+            report_data = fetch_balance_sheet_data(
+                conn,
+                as_of_date,
+                company_id,
+                report_mode,
+            )
+
+            year = _resolve_report_year(filters, start_date, as_of_date)
+            report_data['settings'] = _load_report_settings(conn, company_id, year)
+            report_data['company_name'] = _load_company_name(conn, company_id)
+
+            try:
+                pdf_path = generate_balance_sheet_pdf(report_data)
+                return send_file(
+                    pdf_path,
+                    as_attachment=True,
+                    download_name=f"Balance_Sheet_{report_data['company_name'].replace(' ', '_')}_{as_of_date}.pdf",
+                    mimetype='application/pdf'
+                )
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+    return jsonify({'error': f'Export for {report_type} in {format_type} format not implemented yet'}), 400

@@ -45,10 +45,12 @@ def get_general_ledger():
 
         result = conn.execute(
             build_general_ledger_entries_query(
-                mark_coa_join=mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER'),
+                conn=conn,
+                mark_coa_join=mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT'),
                 company_filter=company_filter,
                 coretax_filter=coretax_filter_clause(conn, report_type, 'm'),
                 coa_filter=coa_filter,
+                report_type=report_type,
             ),
             params
         )
@@ -100,10 +102,12 @@ def export_general_ledger():
 
         result = conn.execute(
             build_general_ledger_entries_query(
-                mark_coa_join=mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER'),
+                conn=conn,
+                mark_coa_join=mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT'),
                 company_filter=company_filter,
                 coretax_filter=coretax_filter_clause(conn, report_type, 'm'),
                 coa_filter=coa_filter,
+                report_type=report_type,
             ),
             params
         )
@@ -140,9 +144,11 @@ def get_general_ledger_summary():
 
         result = conn.execute(
             build_general_ledger_summary_query(
-                mark_coa_join=mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER'),
+                conn=conn,
+                mark_coa_join=mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT'),
                 company_filter=company_filter,
                 coretax_filter=coretax_filter_clause(conn, report_type, 'm'),
+                report_type=report_type,
             ),
             params
         )

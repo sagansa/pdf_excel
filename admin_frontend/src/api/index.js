@@ -43,6 +43,25 @@ export const historyApi = {
   getUploadChecklist(year) {
     return api.get('/transactions/upload-checklist', { params: { year } });
   },
+  getBankAccountDefinitions(bankCode = '') {
+    const params = {};
+    if (bankCode) params.bank_code = bankCode;
+    return api.get('/bank-account-definitions', { params });
+  },
+  getBankAccountDefinitionCandidates(bankCode = '') {
+    const params = {};
+    if (bankCode) params.bank_code = bankCode;
+    return api.get('/bank-account-definitions/candidates', { params });
+  },
+  saveBankAccountDefinition(data) {
+    return api.post('/bank-account-definitions', data);
+  },
+  deleteBankAccountDefinition(definitionId) {
+    return api.delete(`/bank-account-definitions/${definitionId}`);
+  },
+  assignUploadedFileBankAccount(data) {
+    return api.post('/transactions/assign-bank-account', data);
+  },
   deleteTransaction(id) {
     return api.delete(`/transactions/${id}`);
   },
@@ -93,11 +112,12 @@ export const historyApi = {
   saveSplits(txnId, splits) {
     return api.post(`/transactions/${txnId}/splits`, { splits });
   },
-  importTransactions(file, bankCode, companyId) {
+  importTransactions(file, bankCode, companyId, bankAccountNumber = null) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('bank_code', bankCode || 'MANUAL');
     if (companyId) formData.append('company_id', companyId);
+    if (bankAccountNumber) formData.append('bank_account_number', bankAccountNumber);
     return api.post('/transactions/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -336,6 +356,12 @@ export const reportsApi = {
   },
   generateAmortizationJournals(data) {
     return api.post('/amortization-items/generate-journal', data);
+  },
+  exportAmortizationPdf(year, companyId) {
+    return api.get('/amortization-items/export-pdf', {
+      params: { year, company_id: companyId },
+      responseType: 'blob'
+    });
   },
   
   // Asset Marks (for mark-based amortization)

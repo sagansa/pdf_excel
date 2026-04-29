@@ -274,7 +274,7 @@ export const useHistoryStore = defineStore('history', {
         if (!this.filteredTransactions) return 0;
         return this.filteredTransactions.reduce((acc, t) => {
             const amt = Number(t.amount) || 0;
-            return normalizeDbCr(t.db_cr) === 'CR' ? acc + amt : acc - amt;
+            return normalizeDbCr(t.db_cr) === 'DB' ? acc + amt : acc - amt;
         }, 0);
     },
 
@@ -298,7 +298,7 @@ export const useHistoryStore = defineStore('history', {
         if (!this.paginatedTransactions) return 0;
         return this.paginatedTransactions.reduce((acc, t) => {
             const amt = Number(t.amount) || 0;
-            return normalizeDbCr(t.db_cr) === 'CR' ? acc + amt : acc - amt;
+            return normalizeDbCr(t.db_cr) === 'DB' ? acc + amt : acc - amt;
         }, 0);
     },
 
@@ -348,12 +348,37 @@ export const useHistoryStore = defineStore('history', {
                 .filter(coa => normalizeId(coa.code) && normalizeId(coa.id))
                 .map(coa => [normalizeId(coa.code), normalizeId(coa.id)])
         );
+        const coaById = new Map(
+            coas
+                .filter(coa => normalizeId(coa.id))
+                .map(coa => [normalizeId(coa.id), coa])
+        );
         const mapCoaMapping = (mapping = {}) => {
             const code = normalizeId(mapping.code);
             const name = mapping.name || '';
             const type = normalizeId(mapping.type || mapping.mapping_type);
             const coaId = normalizeId(mapping.coa_id || mapping.id) || coaIdByCode.get(code) || '';
             return { id: coaId || '', coa_id: coaId || '', code, name, type };
+        };
+        const collectDirectCoa = (coaId, bucket, idSet, uniqSet) => {
+            const normalizedCoaId = normalizeId(coaId);
+            if (!normalizedCoaId) return false;
+
+            const directCoa = coaById.get(normalizedCoaId);
+            const normalized = {
+                id: normalizedCoaId,
+                coa_id: normalizedCoaId,
+                code: normalizeId(directCoa?.code),
+                name: directCoa?.name || '',
+                type: ''
+            };
+            const uniqKey = `${normalized.coa_id}|${normalized.code}|${normalized.name}|${normalized.type}`;
+            if (!uniqSet.has(uniqKey)) {
+                uniqSet.add(uniqKey);
+                bucket.push(normalized);
+            }
+            idSet.add(normalizedCoaId);
+            return true;
         };
         const collectCoasFromMarkId = (markId, bucket, idSet, uniqSet) => {
             const normalizedMarkId = normalizeId(markId);
@@ -429,18 +454,18 @@ export const useHistoryStore = defineStore('history', {
             }
           }
 
-          // Inherit COAs from linked manual journal
+          // Reference-only manual journal links should still surface the journal mark/COA
+          // so the source transaction does not appear unclassified in history.
           if (txn.manual_mark_id) {
             txn.is_linked_to_manual = true;
-            const hasMLineMark = collectCoasFromMarkId(txn.manual_mark_id, resolvedCoas, resolvedCoaIds, uniqCoas);
-            if (hasMLineMark) {
+            const hasLinkedManualMark = collectCoasFromMarkId(txn.manual_mark_id, resolvedCoas, resolvedCoaIds, uniqCoas);
+            if (hasLinkedManualMark) {
                 relatedMarkIds.add(txn.manual_mark_id);
             }
           }
 
-          if (txn.coa_id) {
-              resolvedCoaIds.add(normalizeId(txn.coa_id));
-          }
+          collectDirectCoa(txn.coa_id, resolvedCoas, resolvedCoaIds, uniqCoas);
+          collectDirectCoa(txn.coa_id_coretax, resolvedCoas, resolvedCoaIds, uniqCoas);
 
           txn.coas = resolvedCoas;
           txn.coa_ids = Array.from(resolvedCoaIds).filter(Boolean);
@@ -611,7 +636,10 @@ export const useHistoryStore = defineStore('history', {
                     txn.related_mark_ids = [normalizeId(matchedMark.id)].filter(Boolean);
                 } else {
                     txn.coas = [];
-                    txn.coa_ids = txn.coa_id ? [normalizeId(txn.coa_id)] : [];
+                    txn.coa_ids = [
+                        normalizeId(txn.coa_id),
+                        normalizeId(txn.coa_id_coretax)
+                    ].filter(Boolean);
                     txn.related_mark_ids = [];
                 }
             }
@@ -785,10 +813,10 @@ export const useHistoryStore = defineStore('history', {
         }
     },
 
-    async importTransactions(file, bankCode, companyId) {
+    async importTransactions(file, bankCode, companyId, bankAccountNumber = null) {
         this.isLoading = true;
         try {
-            const res = await historyApi.importTransactions(file, bankCode, companyId);
+            const res = await historyApi.importTransactions(file, bankCode, companyId, bankAccountNumber);
             await this.loadData();
             return res.data;
         } catch (e) {

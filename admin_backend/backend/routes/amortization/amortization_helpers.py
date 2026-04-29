@@ -167,6 +167,12 @@ def build_registered_asset_payload(row_dict, report_year, default_rate, default_
     base_amount = float(data.get('acquisition_cost', 0))
     useful_life = int(data.get('useful_life_years') or default_life)
     start_date_val = coerce_report_date(data.get('amortization_start_date') or data.get('acquisition_date'), report_year)
+
+    acquisition_year = purchase_year_for_row(data.get('acquisition_date'), report_year)
+    amortization_start_year = purchase_year_for_row(data.get('amortization_start_date'), acquisition_year)
+    if acquisition_year > report_year or amortization_start_year > report_year:
+        return None, 0.0, 0.0
+
     current_year_amort, accum_prev, multiplier_display = calculate_amortization(
         base_amount, start_date_val, report_year, tarif_rate, allow_partial_year, data.get('use_half_rate')
     )

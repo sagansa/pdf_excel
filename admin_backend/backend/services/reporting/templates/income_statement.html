@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 10pt;
+            line-height: 1.25;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.1;
+        }
+        .company-name {
+            font-size: 16pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .report-title {
+            font-size: 14pt;
+            margin-bottom: 2px;
+        }
+        .period {
+            font-size: 11pt;
+            color: #666;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th {
+            text-align: left;
+            border-bottom: 1px solid #333;
+            padding: 8px 4px;
+            background-color: #f9f9f9;
+        }
+        td {
+            padding: 3px 4px;
+            vertical-align: top;
+        }
+        .category-row {
+            font-weight: bold;
+            background-color: #f2f2f2;
+        }
+        .subcategory-row {
+            font-weight: bold;
+            padding-left: 15px;
+        }
+        .item-row td {
+            padding-left: 30px;
+        }
+        .amount {
+            text-align: right;
+            white-space: nowrap;
+        }
+        .total-row {
+            font-weight: bold;
+            border-top: 1px solid #333;
+        }
+        .grand-total-row {
+            font-weight: bold;
+            font-size: 11pt;
+            border-top: 2px solid #333;
+            border-bottom: 2px double #333;
+            background-color: #eee;
+        }
+        .footer {
+            margin-top: 50px;
+            width: 100%;
+        }
+        .signature-box {
+            width: 250px;
+            float: right;
+            text-align: center;
+        }
+        .signature-space {
+            height: 80px;
+        }
+        .director-name {
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        .negative {
+            color: #c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">{{ company_name }}</div>
+        <div class="report-title">LAPORAN LABA RUGI</div>
+        <div class="period">Periode: {{ period.start_date }} s/d {{ period.end_date }}</div>
+    </div>
+
+    <table>
+        <tbody>
+            <!-- REVENUE -->
+            <tr class="category-row">
+                <td colspan="2">PENDAPATAN</td>
+            </tr>
+            {% for item in revenue %}
+            <tr class="item-row">
+                <td>{{ item.name }} ({{ item.code }})</td>
+                <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td>TOTAL PENDAPATAN</td>
+                <td class="amount {% if total_revenue < 0 %}negative{% endif %}">{{ "{:,.0f}".format(total_revenue or 0) }}</td>
+            </tr>
+
+            <!-- COGS / HPP -->
+            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="category-row">
+                <td colspan="2">HARGA POKOK PENJUALAN</td>
+            </tr>
+            {% set cogs = cogs_breakdown %}
+            <tr class="item-row">
+                <td>Persediaan Awal</td>
+                <td class="amount">{{ "{:,.0f}".format(cogs.beginning_inventory or 0) }}</td>
+            </tr>
+            {% for p in cogs.purchases_items %}
+            <tr class="item-row">
+                <td>{{ p.name }} ({{ p.code }})</td>
+                <td class="amount">{{ "{:,.0f}".format(p.amount or 0) }}</td>
+            </tr>
+            {% endfor %}
+            {% for o in cogs.other_cogs_items %}
+            <tr class="item-row">
+                <td>{{ o.name }} ({{ o.code }})</td>
+                <td class="amount">{{ "{:,.0f}".format(o.amount or 0) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="item-row">
+                <td>Persediaan Akhir</td>
+                <td class="amount">({{ "{:,.0f}".format(cogs.ending_inventory or 0) }})</td>
+            </tr>
+            <tr class="total-row">
+                <td>TOTAL HARGA POKOK PENJUALAN</td>
+                <td class="amount">{{ "{:,.0f}".format(cogs.total_cogs or 0) }}</td>
+            </tr>
+
+            <tr class="grand-total-row">
+                <td>LABA KOTOR</td>
+                <td class="amount">{{ "{:,.0f}".format(total_revenue - cogs.total_cogs) }}</td>
+            </tr>
+
+            <!-- EXPENSES -->
+            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="category-row">
+                <td colspan="2">BEBAN OPERASIONAL</td>
+            </tr>
+            {% for item in op_expenses %}
+            <tr class="item-row">
+                <td>{{ item.name }} ({{ item.code }})</td>
+                <td class="amount">{{ "{:,.0f}".format(item.amount or 0) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td>TOTAL BEBAN OPERASIONAL</td>
+                <td class="amount">{{ "{:,.0f}".format(total_op_expenses or 0) }}</td>
+            </tr>
+            
+            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="grand-total-row">
+                <td>LABA (RUGI) SEBELUM PAJAK PENGHASILAN</td>
+                <td class="amount {% if ebt < 0 %}negative{% endif %}">{{ "{:,.0f}".format(ebt or 0) }}</td>
+            </tr>
+
+            <!-- TAX EXPENSES -->
+            {% if tax_expenses %}
+            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="category-row">
+                <td colspan="2">BEBAN PAJAK PENGHASILAN</td>
+            </tr>
+            {% for item in tax_expenses %}
+            <tr class="item-row">
+                <td>{{ item.name }} ({{ item.code }})</td>
+                <td class="amount">{{ "{:,.0f}".format(item.amount or 0) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td>TOTAL BEBAN PAJAK PENGHASILAN</td>
+                <td class="amount">{{ "{:,.0f}".format(total_tax_expenses or 0) }}</td>
+            </tr>
+            {% endif %}
+
+            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="grand-total-row">
+                <td>LABA (RUGI) BERSIH SETELAH PAJAK</td>
+                <td class="amount {% if net_income < 0 %}negative{% endif %}">{{ "{:,.0f}".format(net_income or 0) }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <table style="border: none; margin-top: 50px; width: 100%;">
+            <tr style="border: none;">
+                <td style="border: none; width: 60%;"></td>
+                <td style="border: none; width: 40%; text-align: center;">
+                    <p style="margin: 0; padding: 0; line-height: 1.1;">
+                        {{ settings.location }}, {{ end_date_formatted }}<br/>
+                        <br/><br/><br/><br/>
+                        <span class="director-name">{{ settings.director_name or '(Belum diatur)' }}</span><br/>
+                        <span class="director-title">{{ settings.director_title }}</span>
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

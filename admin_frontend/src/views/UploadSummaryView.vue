@@ -8,7 +8,7 @@
     >
       <template #actions>
         <button
-          @click="store.fetchUploadSummary()"
+          @click="refresh"
           class="btn-secondary flex items-center gap-2 py-2"
           :disabled="store.isLoading"
         >
@@ -57,6 +57,7 @@
               </div>
             </th>
             <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted">Bank</th>
+            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted">Account</th>
             <th class="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted">Txns</th>
             <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted">Period</th>
             <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted">Totals</th>
@@ -75,12 +76,12 @@
         </thead>
         <tbody class="divide-y" style="border-color: var(--color-border)">
           <tr v-if="store.isLoading && store.uploadSummary.length === 0">
-            <td colspan="7" class="py-12 text-center">
+            <td colspan="8" class="py-12 text-center">
               <span class="spinner-border h-8 w-8" style="color: var(--color-primary)" role="status"></span>
             </td>
           </tr>
           <tr v-else-if="filteredAndSortedSummary.length === 0">
-            <td colspan="7" class="py-12 text-center text-muted italic">
+            <td colspan="8" class="py-12 text-center text-muted italic">
               {{ store.uploadSummary.length === 0 ? 'No upload history found' : 'No matches found for active filters' }}
             </td>
           </tr>
@@ -95,6 +96,28 @@
             </td>
             <td class="px-6 py-4 text-xs font-medium uppercase">
               <span class="border-b pb-0.5 text-theme upload-border">{{ formatBankCode(item.bank_code) }}</span>
+            </td>
+            <td class="px-6 py-4 text-xs">
+              <div class="flex min-w-[240px] flex-col gap-2">
+                <SelectInput
+                  :model-value="getPendingAccountNumber(item)"
+                  :options="getAccountOptions(item)"
+                  placeholder="Unmapped"
+                  size="sm"
+                  :disabled="store.isLoading || savingRowKey === getRowKey(item)"
+                  @update:model-value="updateAccountSelection(item, $event)"
+                />
+                <div class="flex flex-col gap-1">
+                  <span v-if="item.bank_account_number" class="text-muted mono">{{ item.bank_account_number }}</span>
+                  <span v-if="item.is_account_mixed" class="text-[10px] text-amber-600">Multiple accounts detected</span>
+                  <span
+                    v-if="savingRowKey === getRowKey(item)"
+                    class="text-[10px] text-[var(--color-primary)]"
+                  >
+                    Saving...
+                  </span>
+                </div>
+              </div>
             </td>
             <td class="px-6 py-4 text-center">
               <span class="upload-badge">
@@ -145,11 +168,14 @@
       @close="closeDeleteModal"
       @confirm="confirmDelete"
     />
+
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { historyApi } from '../api';
+import { useNotifications } from '../composables/useNotifications';
 import DeleteSummaryModal from '../components/history/DeleteSummaryModal.vue';
 import FormField from '../components/ui/FormField.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
@@ -159,15 +185,26 @@ import TableShell from '../components/ui/TableShell.vue';
 import { useHistoryStore } from '../stores/history';
 
 const store = useHistoryStore();
+const notifications = useNotifications();
 const filterBank = ref('');
 const filterYear = ref('');
 const sortBy = ref('last_upload');
 const sortDir = ref('desc');
 const showDeleteModal = ref(false);
 const itemToDelete = ref(null);
+const bankAccountDefinitions = ref([]);
+const pendingAssignments = ref({});
+const savingRowKey = ref('');
+
+const refresh = async () => {
+  await Promise.all([
+    store.fetchUploadSummary(),
+    loadBankAccountDefinitions()
+  ]);
+};
 
 onMounted(() => {
-  store.fetchUploadSummary();
+  refresh();
 });
 
 const availableBanks = computed(() => {
@@ -236,6 +273,68 @@ const toggleSort = (key) => {
   } else {
     sortBy.value = key;
     sortDir.value = 'asc';
+  }
+};
+
+const getRowKey = (item) => `${item.source_file}::${item.bank_code}`;
+
+const loadBankAccountDefinitions = async () => {
+  try {
+    const response = await historyApi.getBankAccountDefinitions();
+    bankAccountDefinitions.value = response.data.definitions || [];
+  } catch (error) {
+    console.error('Failed to load bank account definitions', error);
+  }
+};
+
+const getAccountOptions = (item) => {
+  const bankCode = String(item?.bank_code || '').trim().toUpperCase();
+  return bankAccountDefinitions.value
+    .filter((definition) => String(definition.bank_code || '').trim().toUpperCase() === bankCode)
+    .map((definition) => ({
+      value: definition.account_number,
+      label: `${definition.display_name} (${definition.account_number})`
+    }));
+};
+
+const getPendingAccountNumber = (item) => {
+  const key = getRowKey(item);
+  if (Object.prototype.hasOwnProperty.call(pendingAssignments.value, key)) {
+    return pendingAssignments.value[key];
+  }
+  if (item.is_account_mixed) return '';
+  return item.bank_account_number || '';
+};
+
+const updateAccountSelection = async (item, nextValue) => {
+  const key = getRowKey(item);
+  const previousValue = item.is_account_mixed ? '' : (item.bank_account_number || '');
+  pendingAssignments.value = {
+    ...pendingAssignments.value,
+    [key]: nextValue || ''
+  };
+
+  if ((nextValue || '') === previousValue) {
+    return;
+  }
+
+  savingRowKey.value = key;
+  try {
+    await historyApi.assignUploadedFileBankAccount({
+      source_file: item.source_file,
+      bank_code: item.bank_code,
+      account_number: nextValue || null,
+    });
+    await store.fetchUploadSummary();
+    notifications.success(`Account updated for ${item.source_file}`);
+  } catch (error) {
+    pendingAssignments.value = {
+      ...pendingAssignments.value,
+      [key]: previousValue
+    };
+    notifications.error(error?.response?.data?.error || 'Failed to update uploaded file account');
+  } finally {
+    savingRowKey.value = '';
   }
 };
 

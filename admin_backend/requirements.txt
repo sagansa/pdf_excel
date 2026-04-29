@@ -11,3 +11,5 @@ pycryptodome>=3.19.0
 sqlalchemy
 pymysql
 python-dotenv>=1.0.0
+xhtml2pdf>=0.2.11
+jinja2

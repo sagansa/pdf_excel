@@ -231,6 +231,7 @@
         :isOpen="isManualJournalModalOpen"
         :editId="journalEditId"
         :companies="store.companies"
+        :marks="store.sortedMarks"
         :coaList="store.coaList"
         @close="handleManualJournalClose"
         @saved="handleManualJournalSaved"
@@ -366,14 +367,26 @@ const reportCompanyOptions = computed(() => (
   }))
 ));
 
+const ensureAdjustmentCompanySelected = async () => {
+  if (reportStore.filters.companyId) return;
+
+  const fallbackCompanyId = store.filters.company || store.companies?.[0]?.id || null;
+  if (!fallbackCompanyId) return;
+
+  reportStore.filters.companyId = fallbackCompanyId;
+  await reportStore.saveFilters();
+};
+
 onMounted(async () => {
     await store.loadFilters();
-    store.loadData();
+    await store.loadData();
     
     // Ensure reportStore filters are loaded
     if (!reportStore.filters.companyId) {
       await reportStore.loadFilters();
     }
+
+    await ensureAdjustmentCompanySelected();
 });
 
 // Logic to sync history company filter with reportStore company filter
@@ -391,6 +404,10 @@ watch(() => reportStore.filters.companyId, async (newCompanyId, oldCompanyId) =>
     await store.loadData();
   }
 });
+
+watch(() => store.companies, async () => {
+  await ensureAdjustmentCompanySelected();
+}, { deep: true });
 
 const openDetails = (txn) => {
     selectedTxn.value = txn;
@@ -452,9 +469,9 @@ const handleConfirmBulkDelete = async () => {
     }
 };
 
-const handleImport = async ({ file, bankCode, companyId }) => {
+const handleImport = async ({ file, bankCode, companyId, bankAccountNumber }) => {
     try {
-        const result = await store.importTransactions(file, bankCode, companyId);
+        const result = await store.importTransactions(file, bankCode, companyId, bankAccountNumber);
         isImportModalOpen.value = false;
         alert(`Successfully imported ${result.imported_count} transactions`);
     } catch (e) {

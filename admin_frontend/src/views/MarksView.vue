@@ -67,6 +67,11 @@
               <tr v-else-if="store.marks.length === 0">
                   <td colspan="9" class="text-center py-8 text-muted">No marks found</td>
               </tr>
+              <tr v-else-if="store.error">
+                  <td colspan="9" class="text-center py-8 text-danger">
+                    Failed to load marks: {{ store.error }}
+                  </td>
+              </tr>
               <tr v-for="m in store.sortedMarks" :key="m.id" :class="{'mark-row--highlight': m.is_asset || m.is_service || m.is_salary_component || m.is_rental}" class="mark-row">
                  <td class="px-6 py-4 text-sm text-theme">{{ m.internal_report }}</td>
                  <td class="px-6 py-4 text-sm text-muted">
@@ -213,7 +218,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useMarksStore } from '../stores/marks';
 import MarkFormModal from '../components/marks/MarkFormModal.vue';
 import CoaMappingModal from '../components/marks/CoaMappingModal.vue';
@@ -257,7 +262,9 @@ const headerBadges = [
     { icon: 'bi bi-funnel', label: 'Reporting flags' }
 ];
 
-store.fetchMarks();
+onMounted(() => {
+    store.fetchMarks();
+});
 
 const getToggleKey = (markId, flagKey) => `${markId}:${flagKey}`;
 

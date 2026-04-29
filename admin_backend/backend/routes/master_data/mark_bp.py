@@ -25,10 +25,15 @@ def _normalize_mapping_report_type(value, allow_all=False):
 @mark_bp.route('/api/marks', methods=['GET'])
 def get_marks():
     engine = require_db_engine()
+    include_system = _parse_bool(request.args.get('include_system'))
 
     with engine.connect() as conn:
         mark_columns = get_table_columns(conn, 'marks')
-        result = conn.execute(text("SELECT * FROM marks ORDER BY personal_use ASC"))
+        where_sql = ""
+        params = {}
+        if 'is_system_generated' in mark_columns and not include_system:
+            where_sql = "WHERE COALESCE(is_system_generated, 0) = 0"
+        result = conn.execute(text(f"SELECT * FROM marks {where_sql} ORDER BY personal_use ASC"), params)
         marks = serialize_result_rows(result)
         marks_dict = {}
         for d in marks:
@@ -42,11 +47,14 @@ def get_marks():
                 d['is_rental'] = False
             if 'is_coretax' not in d:
                 d['is_coretax'] = False
+            if 'is_system_generated' not in d:
+                d['is_system_generated'] = False
             d['is_asset'] = _parse_bool(d.get('is_asset'))
             d['is_service'] = _parse_bool(d.get('is_service'))
             d['is_salary_component'] = _parse_bool(d.get('is_salary_component'))
             d['is_rental'] = _parse_bool(d.get('is_rental'))
             d['is_coretax'] = _parse_bool(d.get('is_coretax'))
+            d['is_system_generated'] = _parse_bool(d.get('is_system_generated'))
             d['mappings_real'] = []
             d['mappings_coretax'] = []
             d['mappings'] = d['mappings_real']

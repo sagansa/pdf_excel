@@ -7,24 +7,24 @@
         </div>
         <div>
           <h3 class="text-base font-bold">{{ editId ? 'Edit Manual Journal' : 'Manual Journal' }}</h3>
-          <p class="text-[10px] text-muted font-medium uppercase tracking-wider">
-            {{ editId ? 'Modify existing journal entry' : 'Create balanced multi-line entries' }}
+          <p class="text-[10px] font-medium uppercase tracking-wider text-muted">
+            {{ editId ? 'Update journal and references' : 'Create journal with reference links' }}
           </p>
         </div>
       </div>
     </template>
 
-    <div class="p-5 space-y-5">
-      <form @submit.prevent="handleSubmit" class="space-y-5">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <!-- Header Info -->
-          <div class="lg:col-span-2 p-4 rounded-xl border border-border bg-surface-muted/30 space-y-4">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-[10px] font-black text-primary uppercase tracking-tighter bg-primary/10 px-1.5 py-0.5 rounded">Journal Info</span>
+    <div class="space-y-5 p-5">
+      <form class="space-y-5" @submit.prevent="handleSubmit">
+        <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div class="space-y-4 rounded-xl border border-border bg-surface-muted/30 p-4 lg:col-span-2">
+            <div class="flex items-center gap-2">
+              <span class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-tighter text-primary">Journal Info</span>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div class="space-y-1.5">
-                <label class="block text-[10px] font-bold text-muted uppercase tracking-wider ml-1">Transaction Date</label>
+                <label class="ml-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Transaction Date</label>
                 <TextInput
                   v-model="header.txn_date"
                   type="date"
@@ -34,7 +34,7 @@
               </div>
 
               <div class="space-y-1.5">
-                <label class="block text-[10px] font-bold text-muted uppercase tracking-wider ml-1">Company</label>
+                <label class="ml-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Company</label>
                 <SelectInput
                   v-model="header.company_id"
                   :options="companyOptions"
@@ -43,13 +43,37 @@
                 />
               </div>
 
+              <div class="space-y-1.5">
+                <label class="ml-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Mark</label>
+                <SearchableSelect
+                  :model-value="header.mark_id"
+                  :options="markOptions"
+                  placeholder="Select mark..."
+                  @update:modelValue="val => header.mark_id = val || ''"
+                />
+              </div>
 
+              <div class="space-y-1.5">
+                <label class="ml-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Journal Total</label>
+                <TextInput
+                  v-model.number="header.amount"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  size="sm"
+                  :leadingLabel="true"
+                >
+                  <template #leading>
+                    <span class="text-[9px] font-bold">Rp</span>
+                  </template>
+                </TextInput>
+              </div>
 
-              <div class="md:col-span-2 space-y-1.5">
-                <label class="block text-[10px] font-bold text-muted uppercase tracking-wider ml-1">Journal Memo</label>
+              <div class="space-y-1.5 md:col-span-2">
+                <label class="ml-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Journal Memo</label>
                 <TextInput
                   v-model="header.description"
-                  placeholder="e.g. Reklasifikasi biaya operasional"
+                  placeholder="e.g. Pelunasan dan reklasifikasi pajak"
                   size="sm"
                   required
                 />
@@ -57,44 +81,63 @@
             </div>
           </div>
 
-          <!-- Summary Box -->
-          <div class="rounded-xl p-4 bg-gray-900 text-white shadow-lg space-y-3">
-            <div class="flex items-center gap-2 text-[10px] text-gray-400 uppercase font-bold tracking-widest">
-              <i class="bi bi-lightning-charge-fill text-yellow-400"></i>
-              Balance
+          <div class="space-y-4 rounded-xl bg-gray-900 p-4 text-white shadow-lg">
+            <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <i class="bi bi-diagram-3-fill text-cyan-400"></i>
+              Preview Summary
             </div>
-            
+
             <div class="space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-[11px] text-gray-300">Debits</span>
-                <span class="text-xs font-mono font-bold text-sky-300">Rp {{ formatCurrency(totalDebits) }}</span>
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-[11px] text-gray-300">Selected Mark</span>
+                <span class="max-w-[170px] truncate text-right text-[11px] font-semibold text-white/90" :title="selectedMarkLabel">
+                  {{ selectedMarkLabel || '-' }}
+                </span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-[11px] text-gray-300">Credits</span>
-                <span class="text-xs font-mono font-bold text-amber-300">Rp {{ formatCurrency(totalCredits) }}</span>
+                <span class="text-[11px] text-gray-300">Transaction Dir</span>
+                <span class="text-[11px] font-mono font-bold" :class="naturalDbCr === 'DB' ? 'text-emerald-300' : naturalDbCr === 'CR' ? 'text-amber-300' : 'text-slate-300'">
+                  {{ naturalDbCr === 'DB' ? 'DB · Masuk' : naturalDbCr === 'CR' ? 'CR · Keluar' : '-' }}
+                </span>
               </div>
-              
-              <div class="pt-2 border-t border-gray-700">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] text-gray-300">Generated Debit</span>
+                <span class="text-[11px] font-bold text-sky-300">{{ debitPreviewCount }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] text-gray-300">Generated Credit</span>
+                <span class="text-[11px] font-bold text-amber-300">{{ creditPreviewCount }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] text-gray-300">References</span>
+                <span class="text-[11px] font-bold text-cyan-300">{{ linkedTransactions.length }}</span>
+              </div>
+              <div class="space-y-1.5 border-t border-gray-700 pt-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] text-gray-300">Debit Total</span>
+                  <span class="text-[11px] font-mono font-bold text-sky-300">Rp {{ formatCurrency(resolvedDebitTotal) }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] text-gray-300">Credit Total</span>
+                  <span class="text-[11px] font-mono font-bold text-amber-300">Rp {{ formatCurrency(resolvedCreditTotal) }}</span>
+                </div>
                 <div class="flex items-center justify-between">
                   <span class="text-[11px] text-gray-300">Diff</span>
-                  <span class="text-base font-mono font-black" :class="difference === 0 ? 'text-emerald-400' : 'text-rose-400'">
+                  <span class="text-base font-mono font-black" :class="difference === 0 ? 'text-emerald-300' : 'text-rose-300'">
                     Rp {{ formatCurrency(difference) }}
                   </span>
-                </div>
-                <div class="text-[9px] font-bold uppercase tracking-tighter text-right" :class="difference === 0 ? 'text-emerald-400/70' : 'text-rose-400/70'">
-                    {{ difference === 0 ? 'Balanced' : 'Out of Balance' }}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Lines -->
-        <div class="p-4 rounded-xl border border-border bg-surface overflow-hidden">
+        <div class="space-y-4 rounded-xl border border-border bg-surface p-4">
+          <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-4">
-              <h4 class="text-[11px] font-bold text-theme uppercase tracking-wider flex items-center gap-2">
+              <h4 class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-theme">
                 <i class="bi bi-list-columns-reverse text-primary"></i>
-                Journal Lines
+                Generated Entries
               </h4>
               <SegmentedControl
                 v-model="activeReportType"
@@ -103,270 +146,249 @@
                 class="scale-90"
               />
             </div>
-            <button
-              type="button"
-              @click="addLine"
-              class="text-[11px] font-bold text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-all flex items-center gap-1.5"
-            >
-              <i class="bi bi-plus-circle-fill"></i> Add Line
-            </button>
-
-          <!-- Header Labels -->
-          <div class="hidden md:grid grid-cols-[30px_110px_1fr_150px_1fr_60px_36px] gap-2 text-[9px] font-bold uppercase tracking-wider text-muted px-2 mb-1">
-            <div>#</div>
-            <div>Side</div>
-            <div>Account (COA)</div>
-            <div class="text-right">Amount</div>
-            <div>Line Memo</div>
-            <div class="text-center">Link</div>
-            <div></div>
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">
+              Reference links are separate from COA lines
+            </span>
           </div>
 
-          <div class="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-            <div v-for="(line, index) in lines" :key="index"
-              class="grid grid-cols-1 md:grid-cols-[30px_110px_1fr_150px_1fr_60px_36px] gap-2 items-center p-2 rounded-lg border border-border bg-surface-muted/20 group hover:border-primary/20 transition-all shadow-sm shadow-black/5"
-              :class="activeLineIndex === index ? 'ring-1 ring-primary border-primary bg-primary/5' : ''"
-            >
-              <div class="text-[10px] font-bold text-muted flex items-center justify-center md:justify-start">
-                {{ index + 1 }}
-              </div>
+          <div v-if="generatedEntries.length > 0" class="space-y-2">
+            <div class="hidden grid-cols-[110px_1fr_170px_110px] gap-2 px-2 text-[9px] font-bold uppercase tracking-wider text-muted md:grid">
+              <div>Side</div>
+              <div>Account (COA)</div>
+              <div class="text-right">Amount</div>
+              <div>Source</div>
+            </div>
 
-              <!-- Side -->
-              <div class="relative">
-                <select
-                  v-model="line.side"
-                  class="w-full px-2 py-1.5 bg-surface border border-border rounded-lg focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none text-[10px] font-bold appearance-none pr-6 cursor-pointer"
-                  :class="line.side === 'DEBIT' ? 'text-sky-500' : 'text-amber-500'"
+            <div
+              v-for="entry in generatedEntries"
+              :key="entry.key"
+              class="grid grid-cols-1 items-center gap-2 rounded-lg border border-border bg-surface-muted/20 p-3 md:grid-cols-[110px_1fr_170px_110px]"
+            >
+              <div class="flex items-center">
+                <span
+                  class="inline-flex items-center rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase"
+                  :class="entry.side === 'DEBIT' ? 'bg-sky-500/10 text-sky-500' : 'bg-amber-500/10 text-amber-500'"
                 >
-                  <option value="DEBIT">DEBIT (Dr)</option>
-                  <option value="CREDIT">CREDIT (Cr)</option>
-                </select>
-                <i class="bi bi-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none text-muted"></i>
+                  {{ entry.side }}
+                </span>
               </div>
 
               <div class="min-w-0">
-                <SearchableSelect
-                   :model-value="activeReportType === 'real' ? line.coa_id : line.coa_id_coretax"
-                   :options="coaSelectOptions"
-                   placeholder="Account..."
-                   @update:modelValue="(val) => coaChanged(line, val)"
-                />
+                <p class="truncate text-[11px] font-semibold text-theme" :title="entry.label">{{ entry.label }}</p>
+                <p class="text-[9px] uppercase tracking-wider" :class="entry.isActiveReportMissing ? 'text-amber-500' : 'text-muted'">
+                  {{ activeReportType }}
+                  <span v-if="entry.isActiveReportMissing" class="ml-1">mapping missing</span>
+                </p>
               </div>
 
-              <!-- Amount -->
+              <div class="space-y-1">
+                <div class="relative">
+                  <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted">Rp</span>
+                  <input
+                    :value="entry.manual_amount ?? ''"
+                    type="number"
+                    min="0"
+                    placeholder="Auto / input"
+                    class="w-full rounded-lg border border-border bg-surface py-1.5 pl-8 pr-2 text-right text-[11px] font-mono font-bold text-theme outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary/20"
+                    @input="updateLineAmount(entry.key, $event.target.value)"
+                  />
+                </div>
+                <p class="text-right text-[9px]" :class="entry.amount_mode === 'auto' ? 'text-emerald-500' : entry.amount_mode === 'pending' ? 'text-amber-500' : 'text-muted'">
+                  <template v-if="entry.amount_mode === 'auto'">Auto remainder: Rp {{ formatCurrency(entry.resolved_amount) }}</template>
+                  <template v-else-if="entry.amount_mode === 'pending'">Need manual amount</template>
+                  <template v-else>Manual input</template>
+                </p>
+              </div>
+
               <div>
-                <TextInput
-                  v-model.number="line.amount"
-                  placeholder="0"
-                  type="number"
-                  min="0"
-                  :leadingLabel="true"
-                  size="sm"
-                  class="text-right font-mono font-bold text-[11px] transition-colors"
-                  :class="line.amount < 0 ? 'bg-red-500/10 !text-red-500' : ''"
+                <span
+                  class="inline-flex items-center rounded-lg px-2 py-1 text-[9px] font-bold uppercase tracking-wider"
+                  :class="entry.amount_mode === 'auto'
+                    ? 'bg-emerald-500/10 text-emerald-500'
+                    : entry.amount_mode === 'pending'
+                      ? 'bg-amber-500/10 text-amber-500'
+                      : 'bg-surface-muted/60 text-muted'"
                 >
-                  <template #leading>
-                    <span class="text-[9px] font-bold" :class="line.amount < 0 ? 'text-red-500/70' : ''">Rp</span>
-                  </template>
-                </TextInput>
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  v-model="line.description"
-                  placeholder="Memo..."
-                  class="w-full px-2 py-1.5 bg-surface border border-border rounded-lg focus:ring-1 focus:ring-primary/30 focus:border-primary transition-all outline-none text-[10px] text-theme placeholder:text-muted/50"
-                />
-              </div>
-
-              <!-- Link Button -->
-              <div class="flex justify-center">
-                <button
-                  type="button"
-                  @click="toggleLineLink(index)"
-                  class="relative w-8 h-8 flex items-center justify-center rounded-lg transition-all"
-                  :class="line.linked_transactions?.length > 0 
-                    ? 'text-primary bg-primary/10 hover:bg-primary/20' 
-                    : 'text-muted hover:text-primary hover:bg-primary/10'"
-                  :title="line.linked_transactions?.length > 0 ? `${line.linked_transactions.length} linked` : 'Link transactions'"
-                >
-                  <i class="bi bi-link-45deg text-lg"></i>
-                  <span v-if="line.linked_transactions?.length > 0" 
-                    class="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[8px] font-black text-white shadow-sm ring-1 ring-surface"
-                  >
-                    {{ line.linked_transactions.length }}
-                  </span>
-                </button>
-              </div>
-
-              <!-- Remove -->
-              <div class="flex justify-center">
-                <button
-                  type="button"
-                  @click="removeLine(index)"
-                  :disabled="lines.length <= 2"
-                  class="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
-                  title="Remove line"
-                >
-                  <i class="bi bi-trash-fill text-xs"></i>
-                </button>
+                  {{ entry.amount_mode_label }}
+                </span>
               </div>
             </div>
           </div>
+
+          <div v-else class="rounded-xl border border-dashed border-border p-6 text-center">
+            <p class="text-[11px] text-muted">{{ generatedEntriesEmptyMessage }}</p>
+          </div>
         </div>
 
-        <!-- Link to Existing Transactions -->
-        <div v-if="showLinkPanel" class="p-4 rounded-xl border border-primary/20 bg-surface shadow-lg ring-1 ring-primary/5">
-          <div class="flex items-center justify-between mb-3 pb-2 border-b border-border/50">
-            <h4 class="text-[11px] font-bold text-theme uppercase tracking-wider flex items-center gap-2">
-              <i class="bi bi-link-45deg text-primary text-base"></i>
-              Linking for Line #{{ activeLineIndex + 1 }}
-              <span v-if="lines[activeLineIndex]?.linked_transactions?.length > 0" class="bg-primary/10 text-primary text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                {{ lines[activeLineIndex].linked_transactions.length }} linked
-              </span>
+        <div class="space-y-4 rounded-xl border border-border bg-surface p-4">
+          <div class="flex items-center justify-between gap-3">
+            <h4 class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-theme">
+              <i class="bi bi-link-45deg text-primary"></i>
+              Related Transactions
             </h4>
             <button
               type="button"
-              @click="showLinkPanel = false; activeLineIndex = null"
-              class="text-muted hover:text-theme transition-colors p-1"
+              @click="showReferencePanel = !showReferencePanel"
+              class="rounded-lg px-2 py-1 text-[11px] font-bold text-primary transition-all hover:bg-primary/10"
             >
-              <i class="bi bi-x-lg text-xs"></i>
+              {{ showReferencePanel ? 'Hide Search' : 'Add Reference' }}
             </button>
           </div>
 
-          <!-- Linked chips -->
-          <div v-if="lines[activeLineIndex]?.linked_transactions?.length > 0" class="flex flex-wrap gap-1.5 mb-4 p-2 rounded-lg bg-surface-muted/30 border border-border/50">
+          <div v-if="linkedTransactions.length > 0" class="flex flex-wrap gap-1.5 rounded-lg border border-border/50 bg-surface-muted/30 p-2">
             <div
-              v-for="txn in lines[activeLineIndex].linked_transactions"
+              v-for="txn in linkedTransactions"
               :key="txn.id"
-              class="flex items-center gap-1.5 bg-primary/10 border border-primary/20 text-primary text-[10px] font-semibold px-2 py-1 rounded-lg"
+              class="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary"
             >
               <i class="bi bi-paperclip text-[9px]"></i>
-              <span class="max-w-[200px] truncate" :title="txn.description">
+              <span class="max-w-[220px] truncate" :title="txn.description">
                 {{ formatDate(txn.txn_date) }} — {{ txn.description || '(no desc)' }}
               </span>
               <span class="font-mono text-[9px] text-primary/70">Rp {{ formatCurrency(txn.amount) }}</span>
               <button
                 type="button"
-                @click="unlinkTransaction(txn.id, activeLineIndex)"
-                class="ml-1 text-primary/60 hover:text-red-500 transition-colors"
+                @click="unlinkTransaction(txn.id)"
+                class="ml-1 text-primary/60 transition-colors hover:text-red-500"
               >
                 <i class="bi bi-x text-xs"></i>
               </button>
             </div>
           </div>
-          <p v-else class="text-[10px] text-muted italic mb-4 px-2">
-            No transactions linked to this line yet. Search and add below.
+          <p v-else class="text-[10px] italic text-muted">
+            No related transactions linked yet. Gunakan ini sebagai referensi tracking lintas tanggal, tidak terikat ke COA tertentu.
           </p>
 
-          <!-- Search panel -->
-          <transition
-            enter-active-class="transition duration-200 ease-out"
-            enter-from-class="opacity-0 -translate-y-2"
-            enter-to-class="opacity-100 translate-y-0"
-          >
-            <div v-if="showLinkPanel" class="space-y-3 mt-2 pt-3 border-t border-border/50">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <input
-                  type="text"
-                  v-model="linkSearch.query"
-                  @input="debouncedSearch"
-                  placeholder="Search description..."
-                  class="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[10px] text-theme focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none placeholder:text-muted/50"
-                />
-                <input
-                  type="date"
-                  v-model="linkSearch.start_date"
-                  @change="searchLinkable"
-                  class="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[10px] text-theme focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none"
-                />
-                <input
-                  type="date"
-                  v-model="linkSearch.end_date"
-                  @change="searchLinkable"
-                  class="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[10px] text-theme focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none"
-                />
-              </div>
+          <div v-if="showReferencePanel" class="space-y-3 border-t border-border/50 pt-3">
+            <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+              <input
+                v-model="linkSearch.query"
+                type="text"
+                placeholder="Search description..."
+                class="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[10px] text-theme outline-none placeholder:text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary/30"
+                @input="debouncedSearch"
+              />
+              <input
+                v-model="linkSearch.start_date"
+                type="date"
+                class="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[10px] text-theme outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                @change="searchLinkable"
+              />
+              <input
+                v-model="linkSearch.end_date"
+                type="date"
+                class="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[10px] text-theme outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                @change="searchLinkable"
+              />
+            </div>
 
-              <!-- Results -->
-              <div v-if="linkResults.length > 0" class="space-y-1 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
-                <div
-                  v-for="txn in linkResults"
-                  :key="txn.id"
-                  class="grid grid-cols-[1fr_auto_auto] gap-2 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 cursor-pointer transition-all group"
-                  @click="linkTransaction(txn)"
-                >
-                  <div class="min-w-0">
-                    <p class="text-[10px] font-semibold text-theme truncate">{{ txn.description || '(no desc)' }}</p>
-                    <p class="text-[9px] text-muted">
-                      {{ formatDate(txn.txn_date) }}
-                      <span v-if="txn.company_name" class="ml-1">· {{ txn.company_name }}</span>
-                      <span v-if="txn.bank_code" class="ml-1 font-bold">· {{ txn.bank_code }}</span>
-                    </p>
-                  </div>
-                  <div class="flex flex-col items-end gap-0.5">
-                    <span class="text-[10px] font-mono font-bold"
-                      :class="txn.db_cr === 'CR' ? 'text-success' : 'text-danger'">
-                      <i :class="txn.db_cr === 'CR' ? 'bi-arrow-down-circle-fill' : 'bi-arrow-up-circle-fill'" class="bi mr-0.5"></i>
-                      {{ txn.db_cr === 'CR' ? 'Masuk' : 'Keluar' }} {{ formatCurrency(txn.amount) }}
+            <div v-if="linkResults.length > 0" class="max-h-[220px] space-y-1 overflow-y-auto pr-1 custom-scrollbar">
+              <div
+                v-for="txn in linkResults"
+                :key="txn.id"
+                class="grid cursor-pointer grid-cols-[1fr_auto_auto] items-center gap-2 rounded-lg border border-border px-3 py-2 transition-all hover:border-primary/30 hover:bg-primary/5 group"
+                @click="linkTransaction(txn)"
+              >
+                <div class="min-w-0">
+                  <div class="flex min-w-0 items-center gap-1.5">
+                    <p class="truncate text-[10px] font-semibold text-theme">{{ txn.description || '(no desc)' }}</p>
+                    <span
+                      v-if="txn.is_split_child"
+                      class="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-500"
+                    >
+                      Split item
                     </span>
-                    <span class="text-[8px] text-muted font-mono">bank: {{ txn.db_cr }}</span>
                   </div>
-                  <span class="text-[9px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                    <i class="bi bi-plus-circle"></i> Link
+                  <p class="text-[9px] text-muted">
+                    {{ formatDate(txn.txn_date) }}
+                    <span v-if="txn.company_name" class="ml-1">· {{ txn.company_name }}</span>
+                    <span v-if="txn.bank_code" class="ml-1 font-bold">· {{ txn.bank_code }}</span>
+                    <span v-if="txn.parent_description" class="ml-1">· parent: {{ txn.parent_description }}</span>
+                  </p>
+                </div>
+                <div class="flex flex-col items-end gap-0.5">
+                  <span class="text-[10px] font-mono font-bold" :class="txn.db_cr === 'DB' ? 'text-success' : 'text-danger'">
+                    {{ txn.db_cr === 'DB' ? 'Masuk' : 'Keluar' }} {{ formatCurrency(txn.amount) }}
                   </span>
                 </div>
+                <span class="flex items-center gap-1 text-[9px] font-bold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                  <i class="bi bi-plus-circle"></i> Link
+                </span>
               </div>
-              <p v-else-if="isSearching" class="text-[10px] text-muted text-center py-4">
-                <i class="bi bi-arrow-repeat animate-spin mr-1"></i> Searching...
-              </p>
-              <p v-else-if="linkSearchDone" class="text-[10px] text-muted text-center py-3">
-                No transactions found.
-              </p>
-              <p v-else class="text-[10px] text-muted text-center py-3">
-                Enter a keyword or date range to search.
-              </p>
             </div>
-          </transition>
+            <p v-else-if="isSearching" class="py-4 text-center text-[10px] text-muted">
+              <i class="bi bi-arrow-repeat mr-1 animate-spin"></i> Searching...
+            </p>
+            <p v-else-if="linkSearchDone" class="py-3 text-center text-[10px] text-muted">
+              No transactions found.
+            </p>
+            <p v-else class="py-3 text-center text-[10px] text-muted">
+              Enter a keyword or date range to search.
+            </p>
+          </div>
         </div>
 
-        <!-- Errors -->
         <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
-          <div v-if="hasNegativeAmount" class="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-500 text-xs font-medium flex items-center gap-3">
-            <div class="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-              <i class="bi bi-info-circle-fill"></i>
+          <div v-if="legacyMultiLine" class="flex items-center gap-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs font-medium text-cyan-600">
+            <div class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
+              <i class="bi bi-arrow-repeat"></i>
             </div>
-            Nominal jurnal harus selalu positif. Gunakan pilihan DEBIT (Dr) atau CREDIT (Cr) untuk menentukan penambahan atau pengurangan saldo akun.
+            Jurnal lama ini memakai format multi-line legacy. Data dasar sudah dipanggil; pilih 1 mark pengganti lalu simpan ulang untuk memakai format baru.
           </div>
         </transition>
 
         <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
-          <div v-if="error" class="p-4 mt-2 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 text-xs font-medium flex items-center gap-3">
-            <div class="w-6 h-6 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+          <div v-if="hasNegativeAmount" class="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs font-medium text-amber-500">
+            <div class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+              <i class="bi bi-info-circle-fill"></i>
+            </div>
+            Nominal jurnal harus selalu positif.
+          </div>
+        </transition>
+
+        <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
+          <div v-if="hasIncompleteMappings" class="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs font-medium text-amber-500">
+            <div class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+              <i class="bi bi-diagram-3-fill"></i>
+            </div>
+            Mark terpilih belum punya pasangan debit dan credit lengkap.
+          </div>
+        </transition>
+
+        <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
+          <div v-if="allocationIssueMessage" class="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs font-medium text-amber-500">
+            <div class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+              <i class="bi bi-calculator"></i>
+            </div>
+            {{ allocationIssueMessage }}
+          </div>
+        </transition>
+
+        <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
+          <div v-if="error" class="mt-2 flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs font-medium text-red-500">
+            <div class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-red-500/10">
               <i class="bi bi-exclamation-triangle-fill"></i>
             </div>
             {{ error }}
           </div>
         </transition>
 
-        <!-- Actions -->
-        <div class="flex gap-4 pt-4 border-t border-border/50">
+        <div class="flex gap-4 border-t border-border/50 pt-4">
           <button
             type="button"
-            @click="$emit('close')"
-            class="flex-1 btn-secondary py-3 text-base"
+            class="btn-secondary flex-1 py-3 text-base"
             :disabled="isLoading"
+            @click="$emit('close')"
           >
             Discard Changes
           </button>
           <button
             type="submit"
-            :disabled="isLoading || difference !== 0 || !isFormValid"
-            class="flex-1 btn-primary py-3 text-base shadow-lg shadow-primary/20"
+            class="btn-primary flex-1 py-3 text-base shadow-lg shadow-primary/20"
+            :disabled="isLoading || !isFormValid"
           >
             <div class="flex items-center justify-center gap-2">
-              <span v-if="isLoading" class="spinner-border w-5 h-5"></span>
+              <span v-if="isLoading" class="spinner-border h-5 w-5"></span>
               <template v-else>
                 <i class="bi bi-cloud-check-fill text-lg"></i>
                 <span>{{ editId ? 'Update Journal Entry' : 'Post Journal Entry' }}</span>
@@ -380,13 +402,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import BaseModal from '../ui/BaseModal.vue';
 import TextInput from '../ui/TextInput.vue';
 import SelectInput from '../ui/SelectInput.vue';
 import SearchableSelect from '../ui/SearchableSelect.vue';
 import SegmentedControl from '../ui/SegmentedControl.vue';
-import { historyApi } from '../../api';
+import { historyApi, marksApi } from '../../api';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -398,7 +420,7 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  coaList: {
+  marks: {
     type: Array,
     default: () => []
   }
@@ -408,6 +430,7 @@ const emit = defineEmits(['close', 'saved']);
 
 const isLoading = ref(false);
 const error = ref(null);
+const legacyMultiLine = ref(false);
 const activeReportType = ref('real');
 const reportTypeOptions = [
   { label: 'Real', value: 'real' },
@@ -418,44 +441,290 @@ const header = reactive({
   txn_date: new Date().toISOString().split('T')[0],
   description: '',
   company_id: '',
+  mark_id: '',
+  amount: null
 });
 
-const lines = ref([
-  { coa_id: '', coa_id_coretax: '', side: 'DEBIT', amount: null, description: '' },
-  { coa_id: '', coa_id_coretax: '', side: 'CREDIT', amount: null, description: '' }
-]);
-
-const coaChanged = (line, val) => {
-  if (activeReportType.value === 'real') {
-    line.coa_id = val;
-    if (!line.coa_id_coretax || line.coa_id_coretax === '') {
-      line.coa_id_coretax = val;
-    }
-  } else {
-    line.coa_id_coretax = val;
-    if (!line.coa_id || line.coa_id === '') {
-      line.coa_id = val;
-    }
-  }
-};
-
-// --- Link feature state ---
-const showLinkPanel = ref(false);
-const activeLineIndex = ref(null); // NEW: Track which line we are linking for
+const fallbackMarks = ref([]);
+const lineStates = ref([]);
+const linkedTransactions = ref([]);
+const showReferencePanel = ref(false);
 const linkResults = ref([]);
 const isSearching = ref(false);
 const linkSearchDone = ref(false);
+const isHydrating = ref(false);
+const pendingFetchedLines = ref([]);
 const linkSearch = reactive({
   query: '',
   start_date: '',
   end_date: ''
 });
 
+const normalizeMappingType = (value) => (
+  String(value || '').trim().toUpperCase() === 'CREDIT' ? 'CREDIT' : 'DEBIT'
+);
+
+const normalizeDbCr = (value) => {
+  const normalized = String(value || '').trim().toUpperCase();
+  if (normalized === 'CR') return 'CR';
+  if (normalized === 'DB') return 'DB';
+  return '';
+};
+
+const getMarkLabel = (mark) => {
+  if (!mark) return '';
+  return [mark.internal_report, mark.personal_use, mark.tax_report]
+    .map(value => String(value || '').trim())
+    .find(Boolean) || '';
+};
+
+const getMappingLabel = (mapping) => (
+  [mapping?.code, mapping?.name].filter(Boolean).join(' - ')
+);
+
+const companyOptions = computed(() => (
+  props.companies.map(company => ({
+    id: company.id,
+    label: company.name
+  }))
+));
+
+const availableMarks = computed(() => (
+  (props.marks && props.marks.length > 0) ? props.marks : fallbackMarks.value
+));
+
+const marksById = computed(() => new Map(
+  (availableMarks.value || [])
+    .filter(mark => mark?.id)
+    .map(mark => [String(mark.id), mark])
+));
+
+const markOptions = computed(() => (
+  [...(availableMarks.value || [])]
+    .sort((a, b) => getMarkLabel(a).localeCompare(getMarkLabel(b), 'id'))
+    .map(mark => ({
+      id: mark.id,
+      label: getMarkLabel(mark) || `Mark ${String(mark.id).slice(0, 8)}`
+    }))
+));
+
+const selectedMark = computed(() => marksById.value.get(String(header.mark_id || '').trim()) || null);
+const selectedMarkLabel = computed(() => getMarkLabel(selectedMark.value));
+const naturalDbCr = computed(() => selectedMark.value ? normalizeDbCr(selectedMark.value.natural_direction) : '');
+
+const sortMappings = (mappings = []) => (
+  [...mappings].sort((a, b) => getMappingLabel(a).localeCompare(getMappingLabel(b), 'id'))
+);
+
+const buildSideTemplates = (realMappings = [], coretaxMappings = [], side) => {
+  const count = Math.max(realMappings.length, coretaxMappings.length);
+  const rows = [];
+  for (let index = 0; index < count; index += 1) {
+    const real = realMappings[index] || null;
+    const coretax = coretaxMappings[index] || null;
+    rows.push({
+      key: `${side}-${index + 1}`,
+      side,
+      coa_id: real?.coa_id || real?.id || '',
+      coa_id_coretax: coretax?.coa_id || coretax?.id || '',
+      label_real: getMappingLabel(real),
+      label_coretax: getMappingLabel(coretax),
+    });
+  }
+  return rows;
+};
+
+const buildLineTemplates = (mark) => {
+  if (!mark) return [];
+  const realMappings = Array.isArray(mark.mappings_real) ? mark.mappings_real : [];
+  const coretaxMappings = Array.isArray(mark.mappings_coretax) ? mark.mappings_coretax : [];
+
+  const debitReal = sortMappings(realMappings.filter(mapping => normalizeMappingType(mapping.type || mapping.mapping_type) === 'DEBIT'));
+  const creditReal = sortMappings(realMappings.filter(mapping => normalizeMappingType(mapping.type || mapping.mapping_type) === 'CREDIT'));
+  const debitCoretax = sortMappings(coretaxMappings.filter(mapping => normalizeMappingType(mapping.type || mapping.mapping_type) === 'DEBIT'));
+  const creditCoretax = sortMappings(coretaxMappings.filter(mapping => normalizeMappingType(mapping.type || mapping.mapping_type) === 'CREDIT'));
+
+  return [
+    ...buildSideTemplates(debitReal, debitCoretax, 'DEBIT'),
+    ...buildSideTemplates(creditReal, creditCoretax, 'CREDIT')
+  ];
+};
+
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const getLineResolvedLabel = (line) => {
+  if (activeReportType.value === 'coretax' && line.label_coretax) return line.label_coretax;
+  if (activeReportType.value === 'real' && line.label_real) return line.label_real;
+  return line.label_real || line.label_coretax || 'Unmapped COA';
+};
+
+const isActiveReportMissing = (line) => (
+  activeReportType.value === 'coretax'
+    ? !line.coa_id_coretax
+    : !line.coa_id
+);
+
+const resetLineStates = () => {
+  lineStates.value = buildLineTemplates(selectedMark.value).map(line => ({
+    ...line,
+    manual_amount: null
+  }));
+};
+
+const findMatchingLineIndex = (templates, savedLine) => templates.findIndex(template => {
+  const sameSide = template.side === savedLine.side;
+  if (!sameSide) return false;
+  if (template.coa_id && savedLine.coa_id && template.coa_id === savedLine.coa_id) return true;
+  if (template.coa_id_coretax && savedLine.coa_id_coretax && template.coa_id_coretax === savedLine.coa_id_coretax) return true;
+  return false;
+});
+
+const applyFetchedLines = (savedLines = []) => {
+  lineStates.value = buildLineTemplates(selectedMark.value).map(line => ({
+    ...line,
+    manual_amount: null
+  }));
+
+  for (const savedLine of (savedLines || [])) {
+    const side = String(savedLine.side || '').toUpperCase() === 'CREDIT' ? 'CREDIT' : 'DEBIT';
+    const index = findMatchingLineIndex(lineStates.value, { ...savedLine, side });
+    if (index < 0) continue;
+    lineStates.value[index].manual_amount = Number(savedLine.amount) || null;
+  }
+};
+
+const debitPreviewCount = computed(() => lineStates.value.filter(line => line.side === 'DEBIT').length);
+const creditPreviewCount = computed(() => lineStates.value.filter(line => line.side === 'CREDIT').length);
+const hasIncompleteMappings = computed(() => Boolean(header.mark_id) && (!debitPreviewCount.value || !creditPreviewCount.value));
+
+const resolveSideEntries = (entries, journalAmount) => {
+  const total = Number(journalAmount) || 0;
+  let fixedSum = 0;
+  const blankEntries = [];
+  const resolved = entries.map(entry => {
+    const manualAmount = toNullableNumber(entry.manual_amount);
+    if (manualAmount !== null) {
+      fixedSum += manualAmount;
+      return {
+        ...entry,
+        label: getLineResolvedLabel(entry),
+        isActiveReportMissing: isActiveReportMissing(entry),
+        resolved_amount: manualAmount,
+        amount_mode: 'manual',
+        amount_mode_label: 'Manual'
+      };
+    }
+
+    blankEntries.push(entry.key);
+    return {
+      ...entry,
+      label: getLineResolvedLabel(entry),
+      isActiveReportMissing: isActiveReportMissing(entry),
+      resolved_amount: null,
+      amount_mode: 'pending',
+      amount_mode_label: 'Pending'
+    };
+  });
+
+  let issue = '';
+  if (blankEntries.length === 1) {
+    const remainder = total - fixedSum;
+    const targetKey = blankEntries[0];
+    for (const entry of resolved) {
+      if (entry.key === targetKey) {
+        entry.resolved_amount = remainder;
+        entry.amount_mode = 'auto';
+        entry.amount_mode_label = 'Auto';
+      }
+    }
+    if (remainder <= 0) {
+      issue = `${entries[0]?.side || 'Side'} remainder must be greater than 0`;
+    }
+  } else if (blankEntries.length > 1) {
+    issue = `${entries[0]?.side || 'Side'} still has ${blankEntries.length} empty lines`;
+  } else if (Math.abs(total - fixedSum) > 0.01) {
+    issue = `${entries[0]?.side || 'Side'} total must equal journal total`;
+  }
+
+  return { entries: resolved, issue };
+};
+
+const sideResolution = computed(() => {
+  const journalAmount = Number(header.amount) || 0;
+  return {
+    debit: resolveSideEntries(lineStates.value.filter(line => line.side === 'DEBIT'), journalAmount),
+    credit: resolveSideEntries(lineStates.value.filter(line => line.side === 'CREDIT'), journalAmount)
+  };
+});
+
+const generatedEntries = computed(() => ([
+  ...sideResolution.value.debit.entries,
+  ...sideResolution.value.credit.entries
+]));
+
+const allocationIssues = computed(() => {
+  const issues = [];
+  if (sideResolution.value.debit.issue) issues.push(sideResolution.value.debit.issue);
+  if (sideResolution.value.credit.issue) issues.push(sideResolution.value.credit.issue);
+  for (const entry of generatedEntries.value) {
+    if (entry.resolved_amount !== null && entry.resolved_amount < 0) {
+      issues.push(`${entry.label} results in a negative amount`);
+      break;
+    }
+  }
+  return issues;
+});
+
+const allocationIssueMessage = computed(() => allocationIssues.value[0] || '');
+const resolvedDebitTotal = computed(() => (
+  generatedEntries.value
+    .filter(entry => entry.side === 'DEBIT')
+    .reduce((sum, entry) => sum + (Number(entry.resolved_amount) || 0), 0)
+));
+const resolvedCreditTotal = computed(() => (
+  generatedEntries.value
+    .filter(entry => entry.side === 'CREDIT')
+    .reduce((sum, entry) => sum + (Number(entry.resolved_amount) || 0), 0)
+));
+const difference = computed(() => Math.round((resolvedDebitTotal.value - resolvedCreditTotal.value) * 100) / 100);
+const generatedEntriesEmptyMessage = computed(() => (
+  !header.mark_id ? 'Select a mark first.' : 'This mark does not have any generated journal lines yet.'
+));
+const hasNegativeAmount = computed(() => (
+  Number(header.amount) < 0 ||
+  lineStates.value.some(line => toNullableNumber(line.manual_amount) !== null && Number(line.manual_amount) < 0)
+));
+
+const isFormValid = computed(() => (
+  String(header.description || '').trim() &&
+  header.txn_date &&
+  header.mark_id &&
+  Number(header.amount) > 0 &&
+  !hasNegativeAmount.value &&
+  !hasIncompleteMappings.value &&
+  allocationIssues.value.length === 0 &&
+  difference.value === 0 &&
+  generatedEntries.value.length >= 2 &&
+  generatedEntries.value.every(entry => Number(entry.resolved_amount) > 0)
+));
+
+const updateLineAmount = (key, rawValue) => {
+  const target = lineStates.value.find(line => line.key === key);
+  if (!target) return;
+  target.manual_amount = rawValue === '' ? null : Number(rawValue);
+};
+
 let searchTimer = null;
 const debouncedSearch = () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(searchLinkable, 400);
 };
+
+const getLinkedIds = () => new Set(linkedTransactions.value.map(txn => txn.id));
 
 const searchLinkable = async () => {
   if (!linkSearch.query && !linkSearch.start_date && !linkSearch.end_date) {
@@ -466,24 +735,20 @@ const searchLinkable = async () => {
 
   isSearching.value = true;
   linkSearchDone.value = false;
-  
-  // Exclude IDs already linked to ANY line to avoid duplicates in search (optional)
-  const linkedIds = new Set();
-  lines.value.forEach(l => {
-    (l.linked_transactions || []).forEach(lt => linkedIds.add(lt.id));
-  });
+  const linkedIds = getLinkedIds();
 
   try {
     const params = {};
+    if (props.editId) params.exclude_manual_txn_id = props.editId;
     if (header.company_id) params.company_id = header.company_id;
     if (linkSearch.query) params.search = linkSearch.query;
     if (linkSearch.start_date) params.start_date = linkSearch.start_date;
     if (linkSearch.end_date) params.end_date = linkSearch.end_date;
 
     const res = await historyApi.getLinkableTransactions(params);
-    linkResults.value = (res.data.transactions || []).filter(t => !linkedIds.has(t.id));
-  } catch (e) {
-    console.error('Failed to search linkable transactions', e);
+    linkResults.value = (res.data.transactions || []).filter(txn => !linkedIds.has(txn.id));
+  } catch (err) {
+    console.error('Failed to search linkable transactions', err);
     linkResults.value = [];
   } finally {
     isSearching.value = false;
@@ -492,232 +757,159 @@ const searchLinkable = async () => {
 };
 
 const linkTransaction = (txn) => {
-  if (activeLineIndex.value === null) return;
-  const line = lines.value[activeLineIndex.value];
-  if (!line.linked_transactions) line.linked_transactions = [];
-  
-  if (!line.linked_transactions.find(t => t.id === txn.id)) {
-    line.linked_transactions.push(txn);
-    // Remove from results
-    linkResults.value = linkResults.value.filter(t => t.id !== txn.id);
-  }
+  if (linkedTransactions.value.find(item => item.id === txn.id)) return;
+  linkedTransactions.value.push(txn);
+  linkResults.value = linkResults.value.filter(item => item.id !== txn.id);
 };
 
-const unlinkTransaction = (txnId, lineIndex) => {
-  const targetIndex = lineIndex !== undefined ? lineIndex : activeLineIndex.value;
-  if (targetIndex === null) return;
-  
-  const line = lines.value[targetIndex];
-  if (line && line.linked_transactions) {
-    line.linked_transactions = line.linked_transactions.filter(t => t.id !== txnId);
-  }
+const unlinkTransaction = (txnId) => {
+  linkedTransactions.value = linkedTransactions.value.filter(item => item.id !== txnId);
 };
 
-const toggleLineLink = (index) => {
-  if (activeLineIndex.value === index) {
-      activeLineIndex.value = null;
-      showLinkPanel.value = false;
-  } else {
-      activeLineIndex.value = index;
-      showLinkPanel.value = true;
-      // Maybe trigger search if query exists
-      if (linkSearch.query || linkSearch.start_date || linkSearch.end_date) {
-          searchLinkable();
-      }
-  }
-};
-// --- End link feature ---
+const formatCurrency = (value) => (
+  new Intl.NumberFormat('id-ID').format(Math.abs(Number(value) || 0))
+);
 
-const companyOptions = computed(() => {
-  return props.companies.map(c => ({
-    id: c.id,
-    label: c.name
-  }));
-});
-
-const coaSelectOptions = computed(() => {
-  if (!props.coaList) return [];
-  const categories = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
-  const options = [];
-  
-  categories.forEach(cat => {
-    const items = props.coaList.filter(c => c.category === cat);
-    if (items.length > 0) {
-      options.push({ label: cat, type: 'separator' });
-      items.forEach(coa => {
-        options.push({
-          id: coa.id,
-          label: `${coa.code} - ${coa.name}`
-        });
-      });
-    }
+const formatDate = (value) => {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
   });
-  
-  return options;
-});
-
-const isFormValid = computed(() => {
-  return header.description && 
-         header.txn_date && 
-         lines.value.length >= 2 && 
-         lines.value.every(l => l.coa_id && l.amount > 0) &&
-         hasDebitLine.value &&
-         hasCreditLine.value;
-});
-
-const addLine = () => {
-  const lastLine = lines.value[lines.value.length - 1];
-  lines.value.push({
-    coa_id: '',
-    coa_id_coretax: '',
-    side: lastLine.side === 'DEBIT' ? 'CREDIT' : 'DEBIT',
-    amount: null,
-    description: '',
-    linked_transactions: [] // NEW
-  });
-};
-
-const removeLine = (index) => {
-  if (lines.value.length > 2) {
-    lines.value.splice(index, 1);
-  }
-};
-
-const totalDebits = computed(() => {
-  return lines.value
-    .filter(l => l.side === 'DEBIT')
-    .reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-});
-
-const totalCredits = computed(() => {
-  return lines.value
-    .filter(l => l.side === 'CREDIT')
-    .reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-});
-
-const difference = computed(() => {
-  const diff = totalDebits.value - totalCredits.value;
-  return Math.round(diff * 100) / 100;
-});
-
-const hasNegativeAmount = computed(() => lines.value.some(l => Number(l.amount) < 0));
-const hasDebitLine = computed(() => lines.value.some(l => l.side === 'DEBIT' && Number(l.amount) > 0));
-const hasCreditLine = computed(() => lines.value.some(l => l.side === 'CREDIT' && Number(l.amount) > 0));
-
-const formatCurrency = (val) => {
-  return new Intl.NumberFormat('id-ID').format(Math.abs(val));
-};
-
-const formatDate = (d) => {
-  if (!d) return '';
-  return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 const fetchJournalData = async (id) => {
   isLoading.value = true;
   error.value = null;
+  isHydrating.value = true;
+
   try {
     const res = await historyApi.getManualJournal(id);
-    const data = res.data;
-    
-    // Fill Header
-    header.txn_date = data.header.txn_date ? data.header.txn_date.substring(0, 10) : '';
-    header.description = data.header.description;
-    header.company_id = data.header.company_id || '';
-    
-    // Fill Lines
-    lines.value = data.lines.map(l => ({
-      coa_id: l.coa_id || '',
-      coa_id_coretax: l.coa_id_coretax || '',
-      side: l.side,
-      amount: l.amount,
-      description: l.description || '',
-      linked_transactions: l.linked_transactions || [] // NEW: Populate per-line links
-    }));
-    
-    // Fill Links (Legacy support for journal-level links if any)
-    // linkedTransactions.value = data.linked_transactions || [];
-    
-  } catch (e) {
-    error.value = "Failed to load journal data for editing.";
-    console.error(e);
+    const data = res.data || {};
+    const journal = data.header || {};
+
+    legacyMultiLine.value = Boolean(journal.legacy_multi_line);
+    header.txn_date = journal.txn_date ? String(journal.txn_date).substring(0, 10) : '';
+    header.description = journal.description || '';
+    header.company_id = journal.company_id || '';
+    header.mark_id = journal.mark_id || '';
+    header.amount = Number(journal.amount) || null;
+    linkedTransactions.value = [...(data.linked_transactions || [])];
+    pendingFetchedLines.value = [...(data.lines || [])];
+
+    if (header.mark_id && selectedMark.value) {
+      applyFetchedLines(pendingFetchedLines.value);
+      pendingFetchedLines.value = [];
+    } else {
+      lineStates.value = [];
+    }
+  } catch (err) {
+    error.value = err.response?.data?.error || err.message || 'Failed to load journal data for editing.';
+    console.error(err);
   } finally {
+    isHydrating.value = false;
     isLoading.value = false;
   }
 };
 
 const handleSubmit = async () => {
-  if (!hasDebitLine.value || !hasCreditLine.value) {
-    error.value = "Journal must contain at least one debit line and one credit line.";
-    return;
-  }
-
-  if (difference.value !== 0) {
-    error.value = "Journal must be balanced (Total Debits must equal Total Credits).";
-    return;
-  }
-
   isLoading.value = true;
   error.value = null;
 
   try {
     const payload = {
-      ...header,
-      lines: lines.value.map(line => ({
-        ...line,
-        description: (line.description || '').trim() || null,
-        linked_transaction_ids: (line.linked_transactions || []).map(lt => lt.id) // NEW: Send per-line IDs
+      txn_date: header.txn_date,
+      description: String(header.description || '').trim(),
+      company_id: header.company_id || null,
+      mark_id: String(header.mark_id || '').trim() || null,
+      amount: Number(header.amount) || 0,
+      lines: generatedEntries.value.map(entry => ({
+        side: entry.side,
+        amount: Number(entry.resolved_amount) || 0,
+        description: String(header.description || '').trim(),
+        label: entry.label,
+        coa_id: entry.coa_id || null,
+        coa_id_coretax: entry.coa_id_coretax || null
       })),
-      linked_transaction_ids: [] // Clear header-level links on save if redirecting to lines
+      linked_transaction_ids: linkedTransactions.value.map(txn => txn.id)
     };
-    
+
     if (props.editId) {
       await historyApi.updateManualTransaction(props.editId, payload);
     } else {
       await historyApi.createManualTransaction(payload);
     }
-    
+
     emit('saved');
     emit('close');
-  } catch (e) {
-    error.value = e.response?.data?.error || `Failed to ${props.editId ? 'update' : 'create'} manual transaction`;
-    console.error(e);
+  } catch (err) {
+    error.value = err.response?.data?.error || `Failed to ${props.editId ? 'update' : 'create'} manual journal`;
+    console.error(err);
   } finally {
     isLoading.value = false;
   }
 };
 
 const resetForm = () => {
+  header.txn_date = new Date().toISOString().split('T')[0];
   header.description = '';
   header.company_id = '';
-  header.txn_date = new Date().toISOString().split('T')[0];
+  header.mark_id = '';
+  header.amount = null;
+  lineStates.value = [];
+  linkedTransactions.value = [];
+  legacyMultiLine.value = false;
+  error.value = null;
   activeReportType.value = 'real';
-  lines.value = [
-    { coa_id: '', coa_id_coretax: '', side: 'DEBIT', amount: null, description: '', linked_transactions: [] },
-    { coa_id: '', coa_id_coretax: '', side: 'CREDIT', amount: null, description: '', linked_transactions: [] }
-  ];
-  activeLineIndex.value = null; // NEW
+  showReferencePanel.value = false;
   linkResults.value = [];
   linkSearch.query = '';
   linkSearch.start_date = '';
   linkSearch.end_date = '';
-  showLinkPanel.value = false;
   linkSearchDone.value = false;
-  error.value = null;
+  isHydrating.value = false;
+  pendingFetchedLines.value = [];
 };
 
-watch(() => props.isOpen, (newVal) => {
-  if (newVal) {
-    resetForm();
-    if (props.editId) {
-      fetchJournalData(props.editId);
-    }
+const ensureMarksLoaded = async () => {
+  if ((props.marks && props.marks.length > 0) || fallbackMarks.value.length > 0) return;
+  try {
+    const response = await marksApi.getMarks();
+    fallbackMarks.value = response.data?.marks || [];
+  } catch (err) {
+    console.error('Failed to fetch marks for manual journal modal', err);
+  }
+};
+
+watch([() => header.mark_id, availableMarks], () => {
+  if (isHydrating.value) return;
+  if (!header.mark_id) {
+    lineStates.value = [];
+    pendingFetchedLines.value = [];
+    return;
+  }
+  if (pendingFetchedLines.value.length > 0 && selectedMark.value) {
+    applyFetchedLines(pendingFetchedLines.value);
+    pendingFetchedLines.value = [];
+    return;
+  }
+  resetLineStates();
+});
+
+watch(() => props.isOpen, async (isOpen) => {
+  if (!isOpen) return;
+  resetForm();
+  await ensureMarksLoaded();
+  if (props.editId) {
+    await fetchJournalData(props.editId);
   }
 });
 
-watch(() => props.editId, (newVal) => {
-  if (props.isOpen && newVal) {
-    fetchJournalData(newVal);
+watch(() => props.editId, async (nextEditId) => {
+  if (props.isOpen && nextEditId) {
+    await ensureMarksLoaded();
+    await fetchJournalData(nextEditId);
   }
 });
 </script>
@@ -726,13 +918,16 @@ watch(() => props.editId, (newVal) => {
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 9999px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-border-strong);
 }

@@ -13,6 +13,9 @@ from backend.services.reporting.report_amortization_common import _calculate_dyn
 from backend.services.reporting.report_inventory_common import _get_inventory_balance_with_carry
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
+    _effective_coa_id_expr,
+    _effective_mapping_type_expr,
+    _effective_natural_direction_expr,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
 )
@@ -128,7 +131,10 @@ def _build_income_statement_query(conn, report_type, split_exclusion_clause, cor
         company_ref = "COALESCE(t.company_id, t_parent.company_id)"
     else:
         mark_ref = normalize_mark_ref('t.mark_id')
-    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT')
+    effective_coa_id = _effective_coa_id_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
+    effective_mapping_type = _effective_mapping_type_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
+    effective_natural_direction = _effective_natural_direction_expr(conn, report_type, txn_alias='t', mark_alias='m')
     return text(f"""
         SELECT
             coa.code,
@@ -138,24 +144,24 @@ def _build_income_statement_query(conn, report_type, split_exclusion_clause, cor
             coa.fiscal_category,
             SUM(
                 CASE
-                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'DEBIT' THEN
+                    WHEN UPPER(COALESCE({effective_mapping_type}, '')) = 'DEBIT' THEN
                         t.amount * (CASE
-                            WHEN m.natural_direction IS NOT NULL
+                            WHEN {effective_natural_direction} IS NOT NULL
                                  AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
                                  AND (
-                                    (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                    (UPPER({effective_natural_direction}) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
                                     OR
-                                    (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                    (UPPER({effective_natural_direction}) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
                                  )
                             THEN -1 ELSE 1 END)
-                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'CREDIT' THEN
+                    WHEN UPPER(COALESCE({effective_mapping_type}, '')) = 'CREDIT' THEN
                         -t.amount * (CASE
-                            WHEN m.natural_direction IS NOT NULL
+                            WHEN {effective_natural_direction} IS NOT NULL
                                  AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
                                  AND (
-                                    (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                    (UPPER({effective_natural_direction}) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
                                     OR
-                                    (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                    (UPPER({effective_natural_direction}) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
                                  )
                             THEN -1 ELSE 1 END)
                     WHEN t.db_cr = 'DB' THEN t.amount
@@ -167,12 +173,12 @@ def _build_income_statement_query(conn, report_type, split_exclusion_clause, cor
         {parent_join}
         INNER JOIN marks m ON {mark_ref} = m.id
         {mark_coa_join}
-        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        INNER JOIN chart_of_accounts coa ON {effective_coa_id} = coa.id
         WHERE t.txn_date BETWEEN :start_date AND :end_date
             AND coa.category IN ('REVENUE', 'EXPENSE')
             AND (:company_id IS NULL OR {company_ref} = :company_id)
             {split_exclusion_clause}
-                {coretax_clause}
+            {coretax_clause}
         GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory, coa.fiscal_category
         ORDER BY coa.code
     """)

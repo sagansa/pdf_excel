@@ -2,6 +2,7 @@ from sqlalchemy import text
 
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
+    _effective_coa_id_expr,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
 )
@@ -12,7 +13,8 @@ def fetch_monthly_revenue_data(conn, year, company_id=None, report_type='real'):
     """
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
     coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
-    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT')
+    effective_coa_id = _effective_coa_id_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
     query = text(f"""
         SELECT 
             MONTH(t.txn_date) as month_num,
@@ -38,7 +40,7 @@ def fetch_monthly_revenue_data(conn, year, company_id=None, report_type='real'):
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
         {mark_coa_join}
-        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        INNER JOIN chart_of_accounts coa ON {effective_coa_id} = coa.id
         WHERE YEAR(t.txn_date) = :year
             AND coa.category = 'REVENUE'
             AND (:company_id IS NULL OR t.company_id = :company_id)

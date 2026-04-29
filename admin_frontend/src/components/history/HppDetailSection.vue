@@ -82,6 +82,7 @@
     <div class="pt-2 flex flex-col md:flex-row justify-between items-center gap-4">
         <button @click="addItem" 
                 class="text-[10px] font-black text-primary hover:bg-primary/10 px-4 py-2 rounded-xl transition-all uppercase tracking-widest border border-primary/20 flex items-center gap-2"
+                :disabled="!isFeatureAvailable"
         >
             <i class="bi bi-plus-circle-fill"></i> Add Product Row
         </button>
@@ -96,7 +97,7 @@
             <button 
                 @click="saveHpp" 
                 class="btn-primary !h-10 !px-6 !text-xs"
-                :disabled="isSaving"
+                :disabled="isSaving || !isFeatureAvailable"
             >
                 <i v-if="isSaving" class="bi bi-arrow-repeat animate-spin me-2"></i>
                 <i v-else class="bi bi-cloud-check me-2"></i>
@@ -139,6 +140,9 @@ const items = ref([]);
 const isSaving = ref(false);
 const error = ref(null);
 const successMsg = ref(null);
+const isFeatureAvailable = computed(() => {
+    return typeof hppApi.getTransactionHpp === 'function' && typeof hppApi.saveTransactionHpp === 'function';
+});
 
 const transactionTotal = computed(() => {
     return Math.abs(parseFloat(props.transaction.amount) || 0);
@@ -181,6 +185,11 @@ const formatNumber = (num) => {
 
 const loadHppData = async () => {
     if (!props.transaction || !props.transaction.id) return;
+    if (!isFeatureAvailable.value) {
+        items.value = [];
+        error.value = "Detail HPP per transaksi belum tersedia di backend saat ini.";
+        return;
+    }
     try {
         const res = await hppApi.getTransactionHpp(props.transaction.id);
         if (res.data.items && res.data.items.length > 0) {
@@ -194,8 +203,10 @@ const loadHppData = async () => {
         } else {
             items.value = [];
         }
+        error.value = null;
     } catch (err) {
         console.error("Failed to load HPP:", err);
+        error.value = "Gagal memuat detail HPP transaksi.";
     }
 };
 
@@ -240,6 +251,11 @@ const onProductSelect = (item) => {
 const saveHpp = async () => {
     error.value = null;
     successMsg.value = null;
+
+    if (!isFeatureAvailable.value) {
+        error.value = "Penyimpanan HPP per transaksi belum tersedia di backend saat ini.";
+        return;
+    }
     
     // Validation
     if (items.value.some(i => !i.product_id)) {
