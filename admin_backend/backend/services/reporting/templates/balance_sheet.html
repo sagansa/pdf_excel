@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 1.6cm;
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 9.5pt;
+            line-height: 1.25;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 18px;
+            line-height: 1.1;
+        }
+        .company-name {
+            font-size: 16pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .report-title {
+            font-size: 14pt;
+            margin-bottom: 2px;
+        }
+        .period {
+            font-size: 11pt;
+            color: #666;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .columns-table {
+            table-layout: fixed;
+        }
+        th {
+            text-align: left;
+            border-bottom: 1px solid #333;
+            padding: 7px 4px;
+            background-color: #f9f9f9;
+            font-size: 8.5pt;
+        }
+        td {
+            padding: 3px 4px;
+            vertical-align: top;
+        }
+        .left-column,
+        .right-column {
+            width: 49%;
+            vertical-align: top;
+            padding: 0;
+        }
+        .column-spacer {
+            width: 2%;
+            padding: 0;
+            font-size: 1pt;
+            line-height: 1;
+        }
+        .section-table {
+            margin-bottom: 16px;
+        }
+        .section-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            background-color: #f2f2f2;
+        }
+        .subsection-title {
+            font-weight: bold;
+            background-color: #fafafa;
+        }
+        .item-row td:first-child {
+            padding-left: 16px;
+        }
+        .code {
+            color: #666;
+            white-space: nowrap;
+        }
+        .amount {
+            text-align: right;
+            white-space: nowrap;
+        }
+        .total-row {
+            font-weight: bold;
+            border-top: 1px solid #333;
+        }
+        .grand-total-row {
+            font-weight: bold;
+            border-top: 2px solid #333;
+            border-bottom: 2px double #333;
+            background-color: #eee;
+        }
+        .negative {
+            color: #c00;
+        }
+        .balance-note {
+            margin-top: 10px;
+            padding: 8px 10px;
+            background-color: #fff6d9;
+            border: 1px solid #e4d28f;
+            font-size: 9pt;
+        }
+        .footer {
+            margin-top: 36px;
+            width: 100%;
+        }
+        .director-name {
+            font-weight: bold;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">{{ company_name }}</div>
+        <div class="report-title">LAPORAN POSISI KEUANGAN</div>
+        <div class="period">Per {{ as_of_date_formatted or as_of_date }}</div>
+    </div>
+
+    <table class="columns-table">
+        <tr>
+            <td class="left-column">
+                <table class="section-table">
+                    <thead>
+                        <tr>
+                            <th colspan="3">ASET</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="section-title">
+                            <td colspan="3">ASET LANCAR</td>
+                        </tr>
+                        {% if assets.current %}
+                            {% for item in assets.current %}
+                            <tr class="item-row">
+                                <td class="code">{{ item.code }}</td>
+                                <td>{{ item.name }}</td>
+                                <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr class="item-row">
+                                <td colspan="3">Tidak ada aset lancar</td>
+                            </tr>
+                        {% endif %}
+                        <tr class="total-row">
+                            <td colspan="2">TOTAL ASET LANCAR</td>
+                            <td class="amount">{{ "{:,.0f}".format(assets.current|sum(attribute='amount') or 0) }}</td>
+                        </tr>
+
+                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="section-title">
+                            <td colspan="3">ASET TIDAK LANCAR</td>
+                        </tr>
+                        {% if assets.non_current %}
+                            {% for item in assets.non_current %}
+                            <tr class="item-row">
+                                <td class="code">{{ item.code }}</td>
+                                <td>{{ item.name }}</td>
+                                <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr class="item-row">
+                                <td colspan="3">Tidak ada aset tidak lancar</td>
+                            </tr>
+                        {% endif %}
+                        <tr class="total-row">
+                            <td colspan="2">TOTAL ASET TIDAK LANCAR</td>
+                            <td class="amount">{{ "{:,.0f}".format(assets.non_current|sum(attribute='amount') or 0) }}</td>
+                        </tr>
+
+                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="grand-total-row">
+                            <td colspan="2">TOTAL ASET</td>
+                            <td class="amount">{{ "{:,.0f}".format(total_assets or 0) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+            <td class="column-spacer">&nbsp;</td>
+            <td class="right-column">
+                <table class="section-table">
+                    <thead>
+                        <tr>
+                            <th colspan="3">LIABILITAS DAN EKUITAS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="section-title">
+                            <td colspan="3">LIABILITAS JANGKA PENDEK</td>
+                        </tr>
+                        {% if liabilities.current %}
+                            {% for item in liabilities.current %}
+                            <tr class="item-row">
+                                <td class="code">{{ item.code }}</td>
+                                <td>{{ item.name }}</td>
+                                <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr class="item-row">
+                                <td colspan="3">Tidak ada liabilitas jangka pendek</td>
+                            </tr>
+                        {% endif %}
+                        <tr class="total-row">
+                            <td colspan="2">TOTAL LIABILITAS JANGKA PENDEK</td>
+                            <td class="amount">{{ "{:,.0f}".format(total_current_liabilities or 0) }}</td>
+                        </tr>
+
+                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="section-title">
+                            <td colspan="3">LIABILITAS JANGKA PANJANG</td>
+                        </tr>
+                        {% if liabilities.non_current %}
+                            {% for item in liabilities.non_current %}
+                            <tr class="item-row">
+                                <td class="code">{{ item.code }}</td>
+                                <td>{{ item.name }}</td>
+                                <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr class="item-row">
+                                <td colspan="3">Tidak ada liabilitas jangka panjang</td>
+                            </tr>
+                        {% endif %}
+                        <tr class="total-row">
+                            <td colspan="2">TOTAL LIABILITAS JANGKA PANJANG</td>
+                            <td class="amount">{{ "{:,.0f}".format(total_non_current_liabilities or 0) }}</td>
+                        </tr>
+
+                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="subsection-title">
+                            <td colspan="3">EKUITAS</td>
+                        </tr>
+                        {% if equity_items %}
+                            {% for item in equity_items %}
+                            <tr class="item-row">
+                                <td class="code">{{ item.code }}</td>
+                                <td>{{ item.name }}</td>
+                                <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr class="item-row">
+                                <td colspan="3">Tidak ada ekuitas</td>
+                            </tr>
+                        {% endif %}
+                        <tr class="total-row">
+                            <td colspan="2">TOTAL EKUITAS</td>
+                            <td class="amount">{{ "{:,.0f}".format(equity.total or 0) }}</td>
+                        </tr>
+
+                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="grand-total-row">
+                            <td colspan="2">TOTAL LIABILITAS DAN EKUITAS</td>
+                            <td class="amount">{{ "{:,.0f}".format(total_liabilities_and_equity or 0) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    {% if has_balance_difference %}
+    <div class="balance-note">
+        Selisih saldo antara total aset dan total liabilitas serta ekuitas:
+        <strong>{{ "{:,.0f}".format(liabilities_and_equity_difference or 0) }}</strong>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <table style="border: none; margin-top: 30px; width: 100%;">
+            <tr style="border: none;">
+                <td style="border: none; width: 60%;"></td>
+                <td style="border: none; width: 40%; text-align: center;">
+                    <p style="margin: 0; padding: 0; line-height: 1.1;">
+                        {{ settings.location }}, {{ as_of_date_formatted or as_of_date }}<br/>
+                        <br/><br/><br/><br/>
+                        <span class="director-name">{{ settings.director_name or '(Belum diatur)' }}</span><br/>
+                        <span>{{ settings.director_title }}</span>
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

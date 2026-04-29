@@ -1,11 +1,11 @@
 /**
  * useBankDirection
  * 
- * Bridge between bank statement convention and company money-flow perspective.
+ * Transaction direction from the owner's / cash-account perspective.
  * 
- * Bank convention (db_cr field):
- *   CR (Kredit) = money coming INTO your account = Uang Masuk
- *   DB (Debit)  = money going OUT of your account = Uang Keluar
+ * Internal db_cr convention:
+ *   DB (Debit)  = money coming INTO your account = Uang Masuk
+ *   CR (Credit) = money going OUT of your account = Uang Keluar
  * 
  * Accounting impact on Cash/Bank asset COA is handled separately by
  * natural_direction + mapping_type — this util is DISPLAY ONLY.
@@ -16,7 +16,7 @@
  * @param {string} db_cr - 'CR' or 'DB'
  */
 export function isInflow(db_cr) {
-  return String(db_cr || '').toUpperCase().trim() === 'CR';
+  return String(db_cr || '').toUpperCase().trim() === 'DB';
 }
 
 /**

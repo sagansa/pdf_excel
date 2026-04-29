@@ -21,6 +21,7 @@ export const useMarksStore = defineStore('marks', {
   actions: {
     async fetchMarks() {
       this.isLoading = true;
+      this.error = null;
       try {
         const response = await marksApi.getMarks();
         this.marks = response.data.marks || [];

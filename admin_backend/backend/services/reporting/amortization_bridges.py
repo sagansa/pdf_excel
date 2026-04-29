@@ -7,6 +7,7 @@ from backend.services.reporting.rental_adjustments import _calculate_cumulative_
 from backend.services.reporting.report_amortization_common import _calculate_accumulated_amortization
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
+    _effective_coa_id_expr,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
 )
@@ -140,8 +141,9 @@ def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_da
 
         if use_mark_based_amortization:
             mark_coa_join_txn = _mark_coa_join_clause(
-                conn, report_type, mark_ref='t.mark_id', mapping_alias='mcm', join_type='INNER'
+                conn, report_type, mark_ref='t.mark_id', mapping_alias='mcm', join_type='LEFT'
             )
+            effective_coa_id = _effective_coa_id_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
             for row in conn.execute(text(f"""
                 SELECT DISTINCT
                     t.id,
@@ -154,7 +156,7 @@ def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_da
                 FROM transactions t
                 INNER JOIN marks m ON t.mark_id = m.id
                 {mark_coa_join_txn}
-                INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+                INNER JOIN chart_of_accounts coa ON {effective_coa_id} = coa.id
                 INNER JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
                 WHERE coa.category = 'ASSET'
                   AND t.txn_date <= :as_of_date

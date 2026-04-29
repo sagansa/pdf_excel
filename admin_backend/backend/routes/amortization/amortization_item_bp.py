@@ -1,17 +1,10 @@
 import uuid
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from datetime import datetime
+from sqlalchemy import text
 from backend.errors import BadRequestError, ConflictError, NotFoundError
 from backend.routes.accounting_utils import require_db_engine
-from backend.routes.amortization.amortization_helpers import (
-    build_manual_item_payload,
-    build_registered_asset_payload,
-    load_amortization_defaults,
-)
 from backend.routes.amortization.amortization_queries import (
-    amortization_assets_query,
-    amortization_items_query,
-    amortization_settings_query,
     coa_id_by_code_query,
     existing_manual_journal_query,
     first_company_query,
@@ -23,6 +16,8 @@ from backend.routes.amortization.amortization_queries import (
     update_amortization_item_query,
     delete_amortization_item_query,
 )
+from backend.routes.reporting.report_helpers import serialize_row_values
+from backend.services.reporting.amortization_report_service import fetch_amortization_report_data
 
 amortization_item_bp = Blueprint('amortization_item_bp', __name__)
 
@@ -44,44 +39,55 @@ def get_amortization_items():
                 raise BadRequestError('company_id is required')
 
     with engine.connect() as conn:
-        settings_rows = conn.execute(amortization_settings_query(), {'company_id': company_id}).fetchall()
-        defaults = load_amortization_defaults(settings_rows)
-        default_rate = defaults['default_rate']
-        default_life = defaults['default_life']
-        allow_partial_year = defaults['allow_partial_year']
+        return jsonify(fetch_amortization_report_data(conn, year, company_id))
 
-        items_result = conn.execute(amortization_items_query(), {'company_id': company_id, 'year': year})
-        items = []
-        manual_total_amort = 0
-        automatic_total_amort = 0
-        total_amount = 0
 
-        for row in items_result:
-            item_payload, annual_amortization = build_manual_item_payload(row._mapping, int(year), allow_partial_year)
-            if not item_payload:
-                continue
-            items.append(item_payload)
-            total_amount += float(item_payload.get('amount', 0))
-            manual_total_amort += annual_amortization
+@amortization_item_bp.route('/api/amortization-items/export-pdf', methods=['GET'])
+def export_amortization_items_pdf():
+    engine = require_db_engine()
+    year = request.args.get('year') or datetime.now().year
+    company_id = request.args.get('company_id')
 
-        assets_result = conn.execute(amortization_assets_query(), {'company_id': company_id})
+    if not company_id:
+        raise BadRequestError('company_id is required')
 
-        for row in assets_result:
-            asset_payload, current_year_amort, base_amount = build_registered_asset_payload(
-                row._mapping, int(year), default_rate, default_life, allow_partial_year
-            )
-            items.append(asset_payload)
-            total_amount += base_amount
-            automatic_total_amort += current_year_amort
+    from backend.services.reporting.pdf_service import generate_amortization_pdf
 
-        return jsonify({
-            'items': items,
-            'totalAmount': total_amount,
-            'manual_total': manual_total_amort,
-            'calculated_total': automatic_total_amort,
-            'grand_total': manual_total_amort + automatic_total_amort,
-            'settings': {}
-        })
+    with engine.connect() as conn:
+        report_data = fetch_amortization_report_data(conn, year, company_id)
+
+        company_name = 'Company Name'
+        company_row = conn.execute(
+            text("SELECT name FROM companies WHERE id = :id"),
+            {'id': company_id}
+        ).fetchone()
+        if company_row:
+            company_name = company_row.name
+
+        settings = conn.execute(text("""
+            SELECT * FROM report_settings
+            WHERE company_id = :company_id AND year = :year
+        """), {'company_id': company_id, 'year': int(year)}).fetchone()
+
+        if settings:
+            report_data['settings'] = serialize_row_values(settings._mapping)
+        else:
+            report_data['settings'] = {
+                'director_name': '(Belum diatur)',
+                'director_title': 'Direktur Utama',
+                'location': 'Jakarta'
+            }
+
+        report_data['company_name'] = company_name
+        report_data['year'] = int(year)
+
+        pdf_path = generate_amortization_pdf(report_data)
+        return send_file(
+            pdf_path,
+            as_attachment=True,
+            download_name=f"Amortization_{company_name.replace(' ', '_')}_{year}.pdf",
+            mimetype='application/pdf'
+        )
 
 
 @amortization_item_bp.route('/api/amortization-items/generate-journal', methods=['POST'])

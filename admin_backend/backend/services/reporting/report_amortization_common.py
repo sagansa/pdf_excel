@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
+    _effective_coa_id_expr,
     _mark_coa_join_clause,
 )
 from backend.services.reporting.report_value_utils import (
@@ -195,7 +196,8 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
 
         txn_company_clause = "AND t.company_id = :company_id" if company_id else ""
         coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
-        mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='t.mark_id', mapping_alias='mcm', join_type='INNER')
+        mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='t.mark_id', mapping_alias='mcm', join_type='LEFT')
+        effective_coa_id = _effective_coa_id_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
         txn_query = text(f"""
             SELECT DISTINCT
                 t.id,
@@ -207,7 +209,7 @@ def _calculate_dynamic_5314_total(conn, start_date, end_date=None, company_id=No
             FROM transactions t
             INNER JOIN marks m ON t.mark_id = m.id
             {mark_coa_join}
-            INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+            INNER JOIN chart_of_accounts coa ON {effective_coa_id} = coa.id
             LEFT JOIN amortization_asset_groups ag ON t.amortization_asset_group_id = ag.id
             WHERE coa.code = '5314'
               {txn_company_clause}

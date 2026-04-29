@@ -36,13 +36,13 @@
                           {{ t.description || t.Description || '-' }}
                       </td>
                       <td class="px-6 py-2 text-sm text-right font-mono font-bold" 
-                          :class="isCredit(t) ? 'text-green-600' : 'text-red-500'">
+                          :class="isDebit(t) ? 'text-green-600' : 'text-red-500'">
                           {{ formatAmount(t.amount || t.Amount) }}
                       </td>
                       <td class="px-6 py-2 text-center">
                            <span class="px-2 py-0.5 rounded-full text-xs font-bold"
-                             :class="isCredit(t) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
-                             {{ getDbCr(t) }}
+                             :class="isDebit(t) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                             {{ getDirectionLabel(t) }}
                            </span>
                       </td>
                   </tr>
@@ -93,8 +93,17 @@ const close = () => emit('close');
 const confirm = () => emit('confirm');
 
 // Helpers
-const getDbCr = (t) => t.db_cr || t['DB/CR'] || (t.amount < 0 ? 'DB' : 'CR');
-const isCredit = (t) => getDbCr(t) === 'CR';
+const getDbCr = (t) => {
+    const raw = String(t.db_cr || t['DB/CR'] || '').trim().toUpperCase();
+    if (raw === 'CR' || raw === 'CREDIT' || raw === 'KREDIT' || raw === 'K') return 'DB';
+    if (raw === 'DB' || raw === 'DEBIT' || raw === 'D' || raw === 'DE') return 'CR';
+    return Number(t.amount || t.Amount || 0) < 0 ? 'CR' : 'DB';
+};
+const isDebit = (t) => getDbCr(t) === 'DB';
+const getDirectionLabel = (t) => {
+    const dbCr = getDbCr(t);
+    return dbCr === 'DB' ? 'Debit / Masuk (DB)' : 'Credit / Keluar (CR)';
+};
 
 const formatAmount = (val) => {
     if (!val) return '0.00';

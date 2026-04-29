@@ -10,6 +10,19 @@
       </div>
       
       <div v-else class="space-y-2 max-h-[300px] overflow-y-auto">
+          <div
+            @click="selectUnmarked"
+            class="p-3 rounded-xl border cursor-pointer transition-all hover:bg-indigo-50 hover:border-indigo-200"
+            :class="selectedMarkId === UNMARKED_VALUE ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200'"
+          >
+              <div class="flex justify-between items-center mb-1">
+                  <span class="text-xs font-bold text-gray-500 uppercase">Clear</span>
+                  <span v-if="selectedMarkId === UNMARKED_VALUE" class="text-indigo-600"><i class="bi bi-check-circle-fill"></i></span>
+              </div>
+              <p class="text-sm font-medium text-gray-900 mb-1">No Classification</p>
+              <p class="text-xs text-gray-500">Remove mark and COA classification from this transaction.</p>
+          </div>
+
           <div 
             v-for="mark in sortedMarks" 
             :key="mark.id"
@@ -46,10 +59,10 @@
       <button 
         @click="handleSubmit" 
         class="btn-primary shadow-lg shadow-indigo-100"
-        :disabled="submitting || !selectedMarkId"
+        :disabled="submitting || selectedMarkId === null"
       >
         <span v-if="submitting" class="spinner-border w-4 h-4 me-2"></span>
-        Apply Mark
+        Apply
       </button>
     </template>
   </BaseModal>
@@ -72,10 +85,11 @@ const loading = ref(false);
 const submitting = ref(false);
 const selectedMarkId = ref(null);
 const error = ref(null);
+const UNMARKED_VALUE = '__UNMARKED__';
 
 watch(() => props.isOpen, async (newVal) => {
     if (newVal) {
-        selectedMarkId.value = props.transaction?.mark_id || null;
+        selectedMarkId.value = props.transaction?.mark_id || UNMARKED_VALUE;
         loading.value = true;
         try {
             await store.fetchMarks();
@@ -91,19 +105,24 @@ const selectMark = (mark) => {
     selectedMarkId.value = mark.id;
 };
 
+const selectUnmarked = () => {
+    selectedMarkId.value = UNMARKED_VALUE;
+};
+
 const close = () => {
     error.value = null;
     emit('close');
 };
 
 const handleSubmit = async () => {
-    if (!selectedMarkId.value) return;
+    if (selectedMarkId.value === null) return;
     
     submitting.value = true;
     error.value = null;
 
     try {
-        await store.assignMark(props.transaction.id, selectedMarkId.value);
+        const finalMarkId = selectedMarkId.value === UNMARKED_VALUE ? null : selectedMarkId.value;
+        await store.assignMark(props.transaction.id, finalMarkId);
         emit('assigned'); // Parent should refresh data
         close();
     } catch (err) {

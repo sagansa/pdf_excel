@@ -9,7 +9,7 @@
       <template #actions>
       <div class="flex items-center gap-2 relative">
             <button
-              v-if="store.hasIncomeStatement"
+              v-if="canExportCurrentTab"
               @click="showExportMenu = !showExportMenu"
               class="btn-secondary gap-2 text-sm"
             >
@@ -29,6 +29,14 @@
               >
                 <i class="bi bi-file-earmark-spreadsheet text-green-600"></i>
                 Excel (.xlsx)
+              </button>
+              <button
+                v-if="supportsPdfExport"
+                @click="handleExport('pdf')"
+                class="reports-menu__item"
+              >
+                <i class="bi bi-file-earmark-pdf text-red-600"></i>
+                {{ pdfExportLabel }}
               </button>
               <button
                 @click="handleExport('xml')"
@@ -177,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useReportsStore } from '../stores/reports';
 import { useCompanyStore } from '../stores/companies';
@@ -218,6 +226,26 @@ const normalizeTab = (tab) => {
   const tabValue = String(tab || '').trim();
   return reportTabs.has(tabValue) ? tabValue : 'income-statement';
 };
+
+const canExportCurrentTab = computed(() => {
+  if (activeTab.value === 'income-statement') {
+    return Boolean(store.incomeStatement);
+  }
+  if (activeTab.value === 'balance-sheet') {
+    return Boolean(store.balanceSheet);
+  }
+  return false;
+});
+
+const supportsPdfExport = computed(() => {
+  return activeTab.value === 'income-statement' || activeTab.value === 'balance-sheet';
+});
+
+const pdfExportLabel = computed(() => {
+  return (store.filters.reportType || 'real').toLowerCase() === 'coretax'
+    ? 'CoreTax PDF (Combined)'
+    : 'Formal PDF';
+});
 
 const handleTabClick = async (tab) => {
   const nextTab = normalizeTab(tab);
@@ -363,13 +391,14 @@ const handleExport = async (format) => {
       {
         start_date: store.filters.startDate,
         end_date: store.filters.endDate,
+        as_of_date: store.filters.asOfDate,
         company_id: store.filters.companyId,
         report_type: store.filters.reportType
       }
     );
   } catch (error) {
     console.error('Failed to export:', error);
-    alert('Failed to export report');
+    alert(error?.message || 'Failed to export report');
   }
 };
 

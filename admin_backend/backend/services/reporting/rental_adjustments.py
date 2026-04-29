@@ -5,6 +5,8 @@ from sqlalchemy import text
 from backend.db.schema import get_table_columns
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
+    _effective_coa_id_expr,
+    _effective_mapping_type_expr,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
 )
@@ -174,7 +176,9 @@ def _resolve_rent_expense_account(conn, company_id=None, templates=None):
 def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_id=None, report_type='real'):
     split_exclusion_clause = _split_parent_exclusion_clause(conn, 't')
     coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
-    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='INNER')
+    mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT')
+    effective_coa_id = _effective_coa_id_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
+    effective_mapping_type = _effective_mapping_type_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
     txn_columns = get_table_columns(conn, 'transactions')
     contract_filter = "AND t.rental_contract_id IS NULL" if 'rental_contract_id' in txn_columns else ""
 
@@ -185,8 +189,8 @@ def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_i
             coa.subcategory,
             SUM(
                 CASE
-                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'DEBIT' THEN t.amount
-                    WHEN UPPER(COALESCE(mcm.mapping_type, '')) = 'CREDIT' THEN -t.amount
+                    WHEN UPPER(COALESCE({effective_mapping_type}, '')) = 'DEBIT' THEN t.amount
+                    WHEN UPPER(COALESCE({effective_mapping_type}, '')) = 'CREDIT' THEN -t.amount
                     WHEN t.db_cr = 'DB' THEN t.amount
                     WHEN t.db_cr = 'CR' THEN -t.amount
                     ELSE 0
@@ -195,7 +199,7 @@ def _fetch_non_contract_rent_expense_items(conn, start_date, end_date, company_i
         FROM transactions t
         INNER JOIN marks m ON t.mark_id = m.id
         {mark_coa_join}
-        INNER JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        INNER JOIN chart_of_accounts coa ON {effective_coa_id} = coa.id
         WHERE t.txn_date BETWEEN :start_date AND :end_date
           AND coa.category = 'EXPENSE'
           AND coa.code IN ('5315', '5105')

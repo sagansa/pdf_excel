@@ -46,6 +46,14 @@
               Rental Contracts
             </button>
             <button
+              @click="activeTab = 'reports'"
+              class="settings-tab"
+              :class="{ 'settings-tab--active': activeTab === 'reports' }"
+            >
+              <i class="bi bi-file-earmark-pdf mr-2"></i>
+              Report Details
+            </button>
+            <button
               @click="activeTab = 'general'"
               disabled
               class="settings-tab settings-tab--disabled"
@@ -70,6 +78,9 @@
       <div v-else-if="activeTab === 'rentalContracts'">
         <rental-contract-settings :company-id="companyId" />
       </div>
+      <div v-else-if="activeTab === 'reports'">
+        <report-details-settings :company-id="companyId" />
+      </div>
     </div>
   </div>
 </template>
@@ -80,6 +91,7 @@ import AmortizationSettings from '../components/settings/AmortizationSettings.vu
 import PayrollEmployeeSettings from '../components/settings/PayrollEmployeeSettings.vue';
 import InitialCapitalSettings from '../components/settings/InitialCapitalSettings.vue';
 import RentalContractSettings from '../components/settings/RentalContractSettings.vue';
+import ReportDetailsSettings from '../components/settings/ReportDetailsSettings.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
 

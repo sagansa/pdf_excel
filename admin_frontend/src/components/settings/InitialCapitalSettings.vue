@@ -261,16 +261,28 @@ const currentData = ref({
 const formattedAmount = ref('0');
 const formattedRetainedEarnings = ref('0');
 
-const parseNumber = (str) => {
-  if (!str) return 0;
-  // Remove non-numeric characters except for decimal point
-  const cleaned = str.toString().replace(/[^\d]/g, '');
-  return parseFloat(cleaned) || 0;
+const isIncompleteNegativeInput = (value) => {
+  return String(value ?? '').trim() === '-';
+};
+
+const parseNumber = (str, { allowNegative = false } = {}) => {
+  if (str === null || str === undefined || str === '') return 0;
+
+  const raw = str.toString().trim();
+  const isNegative = allowNegative && raw.startsWith('-');
+  const cleaned = raw.replace(/[^\d]/g, '');
+
+  if (!cleaned) return 0;
+
+  const numeric = parseFloat(cleaned) || 0;
+  return isNegative ? -numeric : numeric;
 };
 
 const formatThousand = (num) => {
   if (!num && num !== 0) return '';
-  const val = typeof num === 'string' ? parseNumber(num) : num;
+  if (isIncompleteNegativeInput(num)) return '-';
+
+  const val = typeof num === 'string' ? parseNumber(num, { allowNegative: true }) : num;
   return new Intl.NumberFormat('id-ID').format(val);
 };
 
@@ -281,7 +293,13 @@ const handleAmountInput = (val) => {
 };
 
 const handleRetainedEarningsInput = (val) => {
-  const numeric = parseNumber(val);
+  if (isIncompleteNegativeInput(val)) {
+    formData.value.previousRetainedEarningsAmount = 0;
+    formattedRetainedEarnings.value = '-';
+    return;
+  }
+
+  const numeric = parseNumber(val, { allowNegative: true });
   formData.value.previousRetainedEarningsAmount = numeric;
   formattedRetainedEarnings.value = formatThousand(numeric);
 };
@@ -290,6 +308,7 @@ const isFormValid = computed(() => {
   const year = parseInt(formData.value.startYear, 10);
   return selectedCompany.value && 
          formData.value.amount >= 0 && 
+         formattedRetainedEarnings.value !== '-' &&
          !isNaN(year) &&
          year >= 2000 && 
          year <= new Date().getFullYear() + 1; // allow next year too

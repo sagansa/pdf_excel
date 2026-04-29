@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
+    _effective_coa_id_expr,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
 )
@@ -24,6 +25,7 @@ ORDERED_SECTIONS = ['operating', 'investing', 'financing', 'unclassified']
 
 def _build_cash_flow_transactions_query(conn, report_type, split_exclusion_clause, coretax_clause):
     mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT')
+    effective_coa_id = _effective_coa_id_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
     return text(f"""
         SELECT
             t.id,
@@ -49,7 +51,7 @@ def _build_cash_flow_transactions_query(conn, report_type, split_exclusion_claus
         LEFT JOIN companies c ON t.company_id = c.id
         LEFT JOIN marks m ON t.mark_id = m.id
         {mark_coa_join}
-        LEFT JOIN chart_of_accounts coa ON mcm.coa_id = coa.id
+        LEFT JOIN chart_of_accounts coa ON {effective_coa_id} = coa.id
         WHERE t.txn_date BETWEEN :start_date AND :end_date
           AND (:company_id IS NULL OR t.company_id = :company_id)
           {split_exclusion_clause}

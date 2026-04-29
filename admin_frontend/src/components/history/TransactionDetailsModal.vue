@@ -40,12 +40,12 @@
               <p class="text-sm font-bold text-theme mt-0.5">{{ formatDate(localTxn.txn_date) }}</p>
               <div class="flex items-center gap-1.5 mt-1.5">
                 <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border"
-                  :class="localTxn.db_cr === 'CR'
+                  :class="localTxn.db_cr === 'DB'
                     ? 'bg-success/10 text-success border-success/20'
                     : 'bg-danger/10 text-danger border-danger/20'"
                 >
-                  <i :class="localTxn.db_cr === 'CR' ? 'bi-arrow-down-circle-fill' : 'bi-arrow-up-circle-fill'" class="bi mr-1 text-[9px]"></i>
-                  {{ localTxn.db_cr === 'CR' ? 'Masuk' : 'Keluar' }}
+                  <i :class="localTxn.db_cr === 'DB' ? 'bi-arrow-down-circle-fill' : 'bi-arrow-up-circle-fill'" class="bi mr-1 text-[9px]"></i>
+                  {{ localTxn.db_cr === 'DB' ? 'Masuk' : 'Keluar' }}
                 </span>
                 <span class="text-[10px] text-muted font-mono">{{ localTxn.bank_code }}</span>
               </div>
@@ -53,8 +53,8 @@
             <div class="text-right">
               <p class="text-[10px] font-bold text-muted uppercase tracking-[0.2em]">Amount</p>
               <p class="text-2xl font-black font-mono tracking-tight mt-0.5"
-                :class="localTxn.db_cr === 'CR' ? 'text-success' : 'text-danger'">
-                {{ localTxn.db_cr === 'CR' ? '+' : '-' }}{{ formatAmount(localTxn.amount) }}
+                :class="localTxn.db_cr === 'DB' ? 'text-success' : 'text-danger'">
+                {{ localTxn.db_cr === 'DB' ? '+' : '-' }}{{ formatAmount(localTxn.amount) }}
               </p>
             </div>
           </div>
@@ -141,6 +141,7 @@
                 <i class="bi bi-tag-fill"></i> Classification & COA
               </div>
               <button
+                v-if="!localTxn.is_linked_to_manual"
                 class="text-[10px] font-black text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-all uppercase tracking-widest border border-primary/20"
                 @click="openAssignMark"
               >
@@ -149,6 +150,13 @@
             </div>
 
             <div v-if="markDetails" class="space-y-3">
+              <div
+                v-if="localTxn.is_linked_to_manual"
+                class="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2 text-[10px] text-primary"
+              >
+                This transaction is already referenced by a manual journal. The classification and COA shown here follow that journal so the source transaction does not appear double-counted.
+              </div>
+
               <!-- Report categories -->
               <div class="grid grid-cols-3 gap-2 pb-3 border-b border-primary/10">
                 <div class="space-y-0.5">
@@ -203,6 +211,9 @@
             <div v-else class="py-6 text-center border-2 border-dashed border-primary/10 rounded-2xl">
               <i class="bi bi-intersect text-2xl text-primary/20 mb-2 block"></i>
               <p class="text-xs text-muted font-medium">No classification assigned yet.</p>
+              <p v-if="localTxn.is_linked_to_manual" class="mt-1 text-[10px] text-primary">
+                This transaction is linked to a manual journal. Review the manual journal if the classification should be changed.
+              </p>
             </div>
           </div>
         </div>
@@ -271,8 +282,10 @@ const notesSaved = ref(false);
 const showSavedMessage = ref(false);
 
 const markDetails = computed(() => {
-  if (!localTxn.value || !localTxn.value.mark_id) return null;
-  return store.marks.find(m => m.id === localTxn.value.mark_id);
+  if (!localTxn.value) return null;
+  const effectiveMarkId = localTxn.value.mark_id || localTxn.value.manual_mark_id;
+  if (!effectiveMarkId) return null;
+  return store.marks.find(m => m.id === effectiveMarkId);
 });
 
 const close = () => {

@@ -1,100 +1,101 @@
 <template>
   <div class="space-y-6">
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 class="text-2xl font-bold text-gray-900">Amortization Settings</h2>
-      <p class="text-sm text-gray-500 mt-1">
+    <!-- Header -->
+    <SectionCard body-class="p-6">
+      <h2 class="text-2xl font-bold" style="color: var(--color-text)">Amortization Settings</h2>
+      <p class="text-sm mt-1" style="color: var(--color-text-muted)">
         Pengaturan global Coretax: kelompok aset dan mapping akun akumulasi.
       </p>
-    </div>
+    </SectionCard>
 
+    <!-- Info Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div class="info-card info-card--blue">
         <div class="flex items-center gap-2 mb-2">
-          <i class="bi bi-building text-blue-600"></i>
-          <h3 class="font-semibold text-blue-900">Harta Berwujud</h3>
+          <i class="bi bi-building text-blue-500"></i>
+          <h3 class="font-semibold" style="color: var(--color-text)">Harta Berwujud</h3>
         </div>
-        <p class="text-xs text-blue-700">
+        <p class="text-xs" style="color: var(--color-text-muted)">
           Mesin, peralatan, kendaraan, furniture, dan aset fisik lainnya.
         </p>
       </div>
-      <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+      <div class="info-card info-card--purple">
         <div class="flex items-center gap-2 mb-2">
-          <i class="bi bi-cloud text-purple-600"></i>
-          <h3 class="font-semibold text-purple-900">Harta Tidak Berwujud</h3>
+          <i class="bi bi-cloud text-purple-500"></i>
+          <h3 class="font-semibold" style="color: var(--color-text)">Harta Tidak Berwujud</h3>
         </div>
-        <p class="text-xs text-purple-700">
+        <p class="text-xs" style="color: var(--color-text-muted)">
           Hak paten, lisensi, goodwill, software, dan aset non-fisik.
         </p>
       </div>
-      <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+      <div class="info-card info-card--orange">
         <div class="flex items-center gap-2 mb-2">
-          <i class="bi bi-house-door text-orange-600"></i>
-          <h3 class="font-semibold text-orange-900">Bangunan</h3>
+          <i class="bi bi-house-door text-orange-500"></i>
+          <h3 class="font-semibold" style="color: var(--color-text)">Bangunan</h3>
         </div>
-        <p class="text-xs text-orange-700">
+        <p class="text-xs" style="color: var(--color-text-muted)">
           Bangunan permanen dan non-permanen.
         </p>
       </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h3 class="text-lg font-bold text-slate-800">Kelompok Aset & Tarif</h3>
-          <p class="text-xs text-slate-500 mt-0.5">
-            Standar tarif global yang dipakai di seluruh perusahaan.
-          </p>
+    <!-- Kelompok Aset & Tarif -->
+    <SectionCard body-class="p-0 overflow-hidden">
+      <template #header>
+        <div class="flex items-center justify-between w-full">
+          <div>
+            <h3 class="section-card__title">Kelompok Aset & Tarif</h3>
+            <p class="section-card__subtitle">Standar tarif global yang dipakai di seluruh perusahaan.</p>
+          </div>
+          <button @click="openAddGroupModal" class="btn-primary flex items-center gap-2">
+            <i class="bi bi-plus-lg"></i>
+            Tambah Kelompok
+          </button>
         </div>
-        <button
-          @click="openAddGroupModal"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
-        >
-          <i class="bi bi-plus-lg"></i>
-          Tambah Kelompok
-        </button>
-      </div>
+      </template>
 
-      <div class="p-6">
-        <div class="space-y-6">
-          <div
-            v-for="(typeGroups, assetType) in groupedGroups"
-            :key="assetType"
-            class="border border-slate-200 rounded-lg overflow-hidden"
-          >
-            <div class="bg-slate-100 px-4 py-2 border-b border-slate-200">
-              <h4 class="font-semibold text-slate-700">{{ getAssetTypeLabel(assetType) }}</h4>
-            </div>
-            <table class="w-full">
-              <thead class="bg-slate-50 border-b border-slate-200">
+      <div class="p-4 md:p-6 space-y-6">
+        <div
+          v-for="(typeGroups, assetType) in groupedGroups"
+          :key="assetType"
+          class="asset-type-group"
+        >
+          <div class="asset-type-header">
+            <h4 class="font-semibold">{{ getAssetTypeLabel(assetType) }}</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-surface-muted border-b" style="border-color: var(--color-border)">
                 <tr>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase">Kelompok</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase">Masa Manfaat</th>
-                  <th class="px-4 py-2 text-center text-xs font-medium text-slate-500 uppercase">Tarif (100%)</th>
-                  <th class="px-4 py-2 text-center text-xs font-medium text-slate-500 uppercase">Tarif (50%)</th>
-                  <th class="px-4 py-2 text-center text-xs font-medium text-slate-500 uppercase">Aksi</th>
+                  <th class="px-4 py-2 text-left font-medium uppercase tracking-wider" style="color: var(--color-text-muted); font-size: 10px;">Kelompok</th>
+                  <th class="px-4 py-2 text-left font-medium uppercase tracking-wider" style="color: var(--color-text-muted); font-size: 10px;">Masa Manfaat</th>
+                  <th class="px-4 py-2 text-center font-medium uppercase tracking-wider" style="color: var(--color-text-muted); font-size: 10px;">Tarif (100%)</th>
+                  <th class="px-4 py-2 text-center font-medium uppercase tracking-wider" style="color: var(--color-text-muted); font-size: 10px;">Tarif (50%)</th>
+                  <th class="px-4 py-2 text-center font-medium uppercase tracking-wider" style="color: var(--color-text-muted); font-size: 10px;">Aksi</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100">
-                <tr v-for="group in typeGroups" :key="group.id" class="hover:bg-slate-50">
+              <tbody class="divide-y" style="border-color: var(--color-border)">
+                <tr v-for="group in typeGroups" :key="group.id" class="hover:bg-surface-muted transition-colors">
                   <td class="px-4 py-3">
-                    <div class="font-medium text-slate-900">{{ group.group_name }}</div>
-                    <div class="text-xs text-slate-500">Kelompok {{ group.group_number }}</div>
+                    <div class="font-medium" style="color: var(--color-text)">{{ group.group_name }}</div>
+                    <div class="text-xs" style="color: var(--color-text-muted)">Kelompok {{ group.group_number }}</div>
                   </td>
-                  <td class="px-4 py-3 text-sm text-slate-600">{{ group.useful_life_years }} tahun</td>
+                  <td class="px-4 py-3" style="color: var(--color-text-muted)">{{ group.useful_life_years }} tahun</td>
                   <td class="px-4 py-3 text-center">
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                       {{ group.tarif_rate }}%
                     </span>
                   </td>
                   <td class="px-4 py-3 text-center">
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20">
                       {{ group.tarif_half_rate }}%
                     </span>
                   </td>
                   <td class="px-4 py-3 text-center">
                     <button
                       @click="editGroup(group)"
-                      class="text-slate-400 hover:text-indigo-600 transition-colors"
+                      class="p-1.5 rounded-lg hover:bg-surface-strong transition-colors"
+                      style="color: var(--color-text-muted)"
                       title="Edit"
                     >
                       <i class="bi bi-pencil-square"></i>
@@ -102,7 +103,7 @@
                   </td>
                 </tr>
                 <tr v-if="typeGroups.length === 0">
-                  <td colspan="5" class="px-4 py-6 text-center text-sm text-slate-400">
+                  <td colspan="5" class="px-4 py-8 text-center text-sm italic" style="color: var(--color-text-muted)">
                     Tidak ada data kelompok untuk tipe ini.
                   </td>
                 </tr>
@@ -111,170 +112,153 @@
           </div>
         </div>
       </div>
-    </div>
+    </SectionCard>
 
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div class="bg-purple-50 border-b border-purple-100 px-6 py-4">
-        <h3 class="text-lg font-bold text-purple-900">Mapping COA Akumulasi Penyusutan</h3>
-        <p class="text-xs text-purple-600 mt-0.5">
-          Dipakai untuk klasifikasi akumulasi penyusutan/amortisasi di Balance Sheet.
-        </p>
-      </div>
+    <!-- Mapping COA -->
+    <SectionCard>
+      <template #header>
+        <div class="w-full">
+          <h3 class="section-card__title">Mapping COA Akumulasi Penyusutan</h3>
+          <p class="section-card__subtitle">Dipakai untuk klasifikasi akumulasi penyusutan/amortisasi di Balance Sheet.</p>
+        </div>
+      </template>
 
-      <div class="p-6 space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-2">
-              Building (Bangunan) <span class="text-xs text-purple-600">- default 1524</span>
-            </label>
-            <select
-              v-model="settings.accumulated_depreciation_coa_codes.Building"
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
-              @change="saveSettings"
-            >
-              <option value="">Pilih COA...</option>
-              <option v-for="coa in availableAssetCoa" :key="coa.id" :value="coa.code">
-                {{ coa.code }} - {{ coa.name }}
-              </option>
-            </select>
-          </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pt-2">
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
+            Building (Bangunan) <span class="ml-1 text-[10px] font-normal" style="color: var(--color-primary)">- default 1524</span>
+          </label>
+          <SelectInput
+            v-model="settings.accumulated_depreciation_coa_codes.Building"
+            :options="availableAssetCoa"
+            label-key="display"
+            value-key="code"
+            placeholder="Pilih COA..."
+            @change="saveSettings"
+          />
+        </div>
 
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-2">
-              Tangible (Harta Berwujud) <span class="text-xs text-purple-600">- default 1530</span>
-            </label>
-            <select
-              v-model="settings.accumulated_depreciation_coa_codes.Tangible"
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
-              @change="saveSettings"
-            >
-              <option value="">Pilih COA...</option>
-              <option v-for="coa in availableAssetCoa" :key="coa.id" :value="coa.code">
-                {{ coa.code }} - {{ coa.name }}
-              </option>
-            </select>
-          </div>
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
+            Tangible (Harta Berwujud) <span class="ml-1 text-[10px] font-normal" style="color: var(--color-primary)">- default 1530</span>
+          </label>
+          <SelectInput
+            v-model="settings.accumulated_depreciation_coa_codes.Tangible"
+            :options="availableAssetCoa"
+            label-key="display"
+            value-key="code"
+            placeholder="Pilih COA..."
+            @change="saveSettings"
+          />
+        </div>
 
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-2">
-              LandRights (Hak Guna) <span class="text-xs text-purple-600">- default 1534</span>
-            </label>
-            <select
-              v-model="settings.accumulated_depreciation_coa_codes.LandRights"
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
-              @change="saveSettings"
-            >
-              <option value="">Pilih COA...</option>
-              <option v-for="coa in availableAssetCoa" :key="coa.id" :value="coa.code">
-                {{ coa.code }} - {{ coa.name }}
-              </option>
-            </select>
-          </div>
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
+            LandRights (Hak Guna) <span class="ml-1 text-[10px] font-normal" style="color: var(--color-primary)">- default 1534</span>
+          </label>
+          <SelectInput
+            v-model="settings.accumulated_depreciation_coa_codes.LandRights"
+            :options="availableAssetCoa"
+            label-key="display"
+            value-key="code"
+            placeholder="Pilih COA..."
+            @change="saveSettings"
+          />
+        </div>
 
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-2">
-              Intangible (Tidak Berwujud) <span class="text-xs text-purple-600">- default 1601</span>
-            </label>
-            <select
-              v-model="settings.accumulated_depreciation_coa_codes.Intangible"
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
-              @change="saveSettings"
-            >
-              <option value="">Pilih COA...</option>
-              <option v-for="coa in availableAssetCoa" :key="coa.id" :value="coa.code">
-                {{ coa.code }} - {{ coa.name }}
-              </option>
-            </select>
-          </div>
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
+            Intangible (Tidak Berwujud) <span class="ml-1 text-[10px] font-normal" style="color: var(--color-primary)">- default 1601</span>
+          </label>
+          <SelectInput
+            v-model="settings.accumulated_depreciation_coa_codes.Intangible"
+            :options="availableAssetCoa"
+            label-key="display"
+            value-key="code"
+            placeholder="Pilih COA..."
+            @change="saveSettings"
+          />
         </div>
       </div>
-    </div>
+    </SectionCard>
 
+    <!-- Modal Tambah/Edit -->
     <div
       v-if="showGroupModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-          <h3 class="text-lg font-bold text-slate-800">{{ editingGroup ? "Edit" : "Tambah" }} Kelompok Aset</h3>
-          <button @click="closeGroupModal" class="text-gray-400 hover:text-gray-600">
+      <div class="modal-content-shell max-w-lg w-full overflow-hidden flex flex-col shadow-2xl">
+        <div class="modal-header-shell flex items-center justify-between px-6 py-4 border-b" style="border-color: var(--color-border)">
+          <h3 class="text-lg font-bold" style="color: var(--color-text)">{{ editingGroup ? "Edit" : "Tambah" }} Kelompok Aset</h3>
+          <button @click="closeGroupModal" class="p-1 px-2 rounded-lg hover:bg-surface-muted transition-colors" style="color: var(--color-text-muted)">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
 
-        <div class="p-6 space-y-4">
+        <div class="p-6 space-y-4 overflow-y-auto">
           <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
                 Jenis Aset <span class="text-red-500">*</span>
               </label>
-              <select
+              <SelectInput
                 v-model="groupForm.asset_type"
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-              >
-                <option value="Tangible">Harta Berwujud</option>
-                <option value="Intangible">Harta Tidak Berwujud</option>
-                <option value="Building">Bangunan</option>
-              </select>
+                :options="assetTypeOptions"
+                placeholder="Pilih Jenis..."
+              />
             </div>
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
                 Nomor Kelompok <span class="text-red-500">*</span>
               </label>
-              <input
+              <TextInput
                 v-model.number="groupForm.group_number"
                 type="number"
                 min="1"
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-                placeholder="1, 2, 3, 4..."
+                placeholder="1, 2, 3..."
               />
             </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
               Nama Kelompok <span class="text-red-500">*</span>
             </label>
-            <input
+            <TextInput
               v-model="groupForm.group_name"
-              type="text"
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
-              placeholder="Kelompok 1 - Harta Berwujud"
+              placeholder="Contoh: Kelompok 1 - Perabot Kantor"
             />
           </div>
 
           <div class="grid grid-cols-3 gap-4">
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">
-                Masa Manfaat (th) <span class="text-red-500">*</span>
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
+                Masa Manfaat (th)
               </label>
-              <input
+              <TextInput
                 v-model.number="groupForm.useful_life_years"
                 type="number"
                 min="1"
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
                 placeholder="4"
               />
             </div>
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">
-                Tarif 100% (%) <span class="text-red-500">*</span>
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
+                Tarif 100% (%)
               </label>
-              <input
+              <TextInput
                 v-model="groupForm.tarif_rate"
                 type="text"
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
                 placeholder="25"
               />
             </div>
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">
-                Tarif 50% (%) <span class="text-red-500">*</span>
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
+                Tarif 50% (%)
               </label>
-              <input
+              <TextInput
                 v-model="groupForm.tarif_half_rate"
                 type="text"
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
                 placeholder="12.5"
               />
             </div>
@@ -282,7 +266,8 @@
 
           <div
             v-if="saveError"
-            class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3"
+            class="p-3 rounded-xl flex items-start gap-3 border"
+            style="background: rgba(var(--color-danger-rgb), 0.05); border-color: rgba(var(--color-danger-rgb), 0.2); color: var(--color-danger)"
           >
             <i class="bi bi-exclamation-circle mt-0.5"></i>
             <div class="text-xs">
@@ -292,21 +277,21 @@
           </div>
         </div>
 
-        <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-3">
+        <div class="px-6 py-4 border-t flex items-center justify-end gap-3 bg-surface-muted" style="border-color: var(--color-border)">
           <button
             @click="closeGroupModal"
-            class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium text-sm transition-all"
+            class="btn-secondary"
           >
             Batal
           </button>
           <button
             @click="saveGroup"
             :disabled="!isGroupFormValid || isSavingGroup"
-            class="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-6 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
+            class="btn-primary min-w-[100px] flex items-center justify-center gap-2"
           >
             <i class="bi bi-check-lg" v-if="!isSavingGroup"></i>
-            <i class="bi bi-arrow-repeat spin" v-else></i>
-            Simpan
+            <i class="bi bi-arrow-repeat animate-spin" v-else></i>
+            {{ editingGroup ? 'Update' : 'Simpan' }}
           </button>
         </div>
       </div>
@@ -317,6 +302,9 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useAmortizationStore } from "../../stores/amortization";
+import SectionCard from "../ui/SectionCard.vue";
+import TextInput from "../ui/TextInput.vue";
+import SelectInput from "../ui/SelectInput.vue";
 
 const props = defineProps({
   companyId: {
@@ -333,6 +321,12 @@ const editingGroup = ref(null);
 const isSavingGroup = ref(false);
 const saveError = ref(null);
 const availableAssetCoa = ref([]);
+
+const assetTypeOptions = [
+  { value: "Tangible", label: "Harta Berwujud" },
+  { value: "Intangible", label: "Harta Tidak Berwujud" },
+  { value: "Building", label: "Bangunan" },
+];
 
 const settings = ref({
   accumulated_depreciation_coa_codes: {
@@ -416,9 +410,12 @@ const fetchAvailableAssetCoa = async () => {
     const { useCoaStore } = await import("../../stores/coa");
     const coaStore = useCoaStore();
     await coaStore.fetchCoa();
-    availableAssetCoa.value = coaStore.coaList.filter(
-      (c) => c.category === "ASSET" && c.is_active !== false,
-    );
+    availableAssetCoa.value = coaStore.coaList
+      .filter((c) => c.category === "ASSET" && c.is_active !== false)
+      .map(c => ({
+        ...c,
+        display: `${c.code} - ${c.name}`
+      }));
   } catch (err) {
     console.error("Failed to fetch COA:", err);
   }
@@ -496,16 +493,31 @@ onMounted(fetchData);
 </script>
 
 <style scoped>
-.spin {
-  animation: spin 1s linear infinite;
+.info-card {
+  @apply rounded-xl border p-4 transition-all duration-200 border-opacity-20;
+  background: var(--color-surface);
+  border-color: var(--color-border);
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.info-card--blue { background: rgba(59, 130, 246, 0.05); border-color: rgba(59, 130, 246, 0.2); }
+.info-card--purple { background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.2); }
+.info-card--orange { background: rgba(249, 115, 22, 0.05); border-color: rgba(249, 115, 22, 0.2); }
+
+.asset-type-group {
+  @apply border rounded-xl overflow-hidden;
+  border-color: var(--color-border);
+}
+
+.asset-type-header {
+  @apply px-4 py-2 border-b;
+  background: var(--color-surface-muted);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.modal-content-shell {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl, 20px);
 }
 </style>

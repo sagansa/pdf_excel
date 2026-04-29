@@ -3,6 +3,7 @@ import uuid
 
 import pandas as pd
 
+from backend.db.schema import get_table_columns
 from backend.db.session import get_db_engine
 from backend.services.transactions.transaction_queries import insert_transactions_query
 from backend.services.transactions.transaction_utils import build_transaction_record
@@ -34,7 +35,30 @@ def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, 
 
     try:
         with engine.begin() as conn:
-            conn.execute(insert_transactions_query(), records)
+            transaction_columns = get_table_columns(conn, 'transactions')
+            insert_columns = [
+                column for column in [
+                    'id',
+                    'txn_date',
+                    'description',
+                    'amount',
+                    'db_cr',
+                    'bank_code',
+                    'bank_account_number',
+                    'source_file',
+                    'file_hash',
+                    'mark_id',
+                    'company_id',
+                    'created_at',
+                    'updated_at',
+                ]
+                if column in transaction_columns
+            ]
+            insert_records = [
+                {column: record.get(column) for column in insert_columns}
+                for record in records
+            ]
+            conn.execute(insert_transactions_query(insert_columns), insert_records)
         return True, None
     except Exception as exc:
         return False, f'Database Error: {exc}'

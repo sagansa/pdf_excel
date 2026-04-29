@@ -2,6 +2,12 @@ from sqlalchemy import text
 from backend.db.schema import get_table_columns
 
 
+def _trimmed_text_expr(conn, expr):
+    if conn.dialect.name == 'sqlite':
+        return f"NULLIF(TRIM(CAST({expr} AS TEXT)), '')"
+    return f"NULLIF(TRIM(CAST({expr} AS CHAR)), '')"
+
+
 def _split_parent_exclusion_clause(conn, alias='t'):
     """
     Generate SQL clause to exclude parent transactions when all children have marks.
@@ -107,30 +113,122 @@ def _mark_coa_join_clause(conn, report_type='real', mark_ref='m.id', mapping_ali
         SQL JOIN clause string
     """
     mapping_columns = get_table_columns(conn, 'mark_coa_mapping')
+    txn_columns = get_table_columns(conn, 'transactions')
+    normalized_report_type = str(report_type or 'real').strip().lower()
+    direct_coa_guard = ''
+    if normalized_report_type == 'coretax':
+        coretax_expr = _trimmed_text_expr(conn, 't.coa_id_coretax') if 'coa_id_coretax' in txn_columns else 'NULL'
+        real_expr = _trimmed_text_expr(conn, 't.coa_id') if 'coa_id' in txn_columns else 'NULL'
+        if coretax_expr != 'NULL' and real_expr != 'NULL':
+            direct_coa_guard = f" AND COALESCE({coretax_expr}, {real_expr}) IS NULL"
+        elif coretax_expr != 'NULL':
+            direct_coa_guard = f" AND {coretax_expr} IS NULL"
+        elif real_expr != 'NULL':
+            direct_coa_guard = f" AND {real_expr} IS NULL"
+    elif 'coa_id' in txn_columns:
+        direct_coa_guard = f" AND {_trimmed_text_expr(conn, 't.coa_id')} IS NULL"
+    manual_side_guard = ''
+    if 'bank_code' in txn_columns and 'parent_id' in txn_columns:
+        # Manual journal child rows represent explicit debit/credit lines.
+        # If a direct COA for the active report type is missing, only fall back to a
+        # mark-level mapping with the SAME side as the child line. This mirrors the
+        # "real" behaviour where each line resolves to a single side-specific account.
+        manual_child_condition = (
+            f"UPPER(TRIM(COALESCE(t.bank_code, ''))) = 'MANUAL' "
+            f"AND {_trimmed_text_expr(conn, 't.parent_id')} IS NOT NULL"
+        )
+        manual_side_expr = (
+            f"CASE "
+            f"WHEN UPPER(TRIM(COALESCE(t.db_cr, ''))) IN ('CR', 'CREDIT', 'K', 'KREDIT') THEN 'CREDIT' "
+            f"WHEN UPPER(TRIM(COALESCE(t.db_cr, ''))) IN ('DB', 'DEBIT', 'D', 'DE') THEN 'DEBIT' "
+            f"ELSE NULL END"
+        )
+        manual_side_guard = (
+            f" AND (NOT ({manual_child_condition}) "
+            f"OR UPPER(COALESCE({mapping_alias}.mapping_type, '')) = {manual_side_expr})"
+        )
     
     # If report_type column doesn't exist, use simple JOIN
     if 'report_type' not in mapping_columns:
-        return f"{join_type} JOIN mark_coa_mapping {mapping_alias} ON {mapping_alias}.mark_id = {mark_ref}"
+        return f"{join_type} JOIN mark_coa_mapping {mapping_alias} ON {mapping_alias}.mark_id = {mark_ref}{direct_coa_guard}{manual_side_guard}"
     
     # Use specific report_type mapping
     # This ensures 'real' reports use 'real' COA mappings
     # and 'coretax' reports use 'coretax' COA mappings
     mapping_scope_expr = _mapping_report_type_expr(conn, mapping_alias, 'real')
     
-    normalized_report_type = str(report_type or 'real').strip().lower()
-    
     if normalized_report_type == 'coretax':
         return f"""
         {join_type} JOIN mark_coa_mapping {mapping_alias}
             ON {mapping_alias}.mark_id = {mark_ref}
+           {direct_coa_guard}
+           {manual_side_guard}
            AND {mapping_scope_expr} = 'coretax'
         """
     
     return f"""
     {join_type} JOIN mark_coa_mapping {mapping_alias}
         ON {mapping_alias}.mark_id = {mark_ref}
+       {direct_coa_guard}
+       {manual_side_guard}
        AND {mapping_scope_expr} = 'real'
     """
+
+
+def _transaction_direct_coa_expr(conn, report_type='real', alias='t'):
+    txn_columns = get_table_columns(conn, 'transactions')
+    normalized_report_type = str(report_type or 'real').strip().lower()
+    column_name = 'coa_id_coretax' if normalized_report_type == 'coretax' else 'coa_id'
+    if normalized_report_type == 'coretax':
+        coretax_expr = _trimmed_text_expr(conn, f'{alias}.coa_id_coretax') if 'coa_id_coretax' in txn_columns else 'NULL'
+        real_expr = _trimmed_text_expr(conn, f'{alias}.coa_id') if 'coa_id' in txn_columns else 'NULL'
+        if coretax_expr == 'NULL' and real_expr == 'NULL':
+            return 'NULL'
+        if coretax_expr == 'NULL':
+            return real_expr
+        if real_expr == 'NULL':
+            return coretax_expr
+        # If a direct coretax COA is missing, reuse the real direct COA as the next-best
+        # fallback. This keeps manual journal lines aligned with the proven "real" side
+        # instead of dropping to mark-level mapping and risking account drift.
+        return f'COALESCE({coretax_expr}, {real_expr})'
+
+    if column_name not in txn_columns:
+        return 'NULL'
+    return _trimmed_text_expr(conn, f'{alias}.{column_name}')
+
+
+def _effective_coa_id_expr(conn, report_type='real', txn_alias='t', mapping_alias='mcm'):
+    direct_expr = _transaction_direct_coa_expr(conn, report_type, txn_alias)
+    if direct_expr == 'NULL':
+        return f'{mapping_alias}.coa_id'
+    return f'COALESCE({direct_expr}, {mapping_alias}.coa_id)'
+
+
+def _effective_mapping_type_expr(conn, report_type='real', txn_alias='t', mapping_alias='mcm'):
+    direct_expr = _transaction_direct_coa_expr(conn, report_type, txn_alias)
+    direct_mapping_expr = (
+        f"CASE "
+        f"WHEN UPPER(TRIM(COALESCE({txn_alias}.db_cr, ''))) IN ('CR', 'CREDIT', 'K', 'KREDIT') THEN 'CREDIT' "
+        f"WHEN UPPER(TRIM(COALESCE({txn_alias}.db_cr, ''))) IN ('DB', 'DEBIT', 'D', 'DE') THEN 'DEBIT' "
+        f"ELSE NULL END"
+    )
+    if direct_expr == 'NULL':
+        return f'{mapping_alias}.mapping_type'
+    return f"CASE WHEN {direct_expr} IS NOT NULL THEN {direct_mapping_expr} ELSE {mapping_alias}.mapping_type END"
+
+
+def _effective_natural_direction_expr(conn, report_type='real', txn_alias='t', mark_alias='m'):
+    direct_expr = _transaction_direct_coa_expr(conn, report_type, txn_alias)
+    direct_direction_expr = (
+        f"CASE "
+        f"WHEN UPPER(TRIM(COALESCE({txn_alias}.db_cr, ''))) IN ('CR', 'CREDIT', 'K', 'KREDIT') THEN 'CR' "
+        f"WHEN UPPER(TRIM(COALESCE({txn_alias}.db_cr, ''))) IN ('DB', 'DEBIT', 'D', 'DE') THEN 'DB' "
+        f"ELSE NULL END"
+    )
+    if direct_expr == 'NULL':
+        return f'{mark_alias}.natural_direction'
+    return f"CASE WHEN {direct_expr} IS NOT NULL THEN {direct_direction_expr} ELSE {mark_alias}.natural_direction END"
 def _get_reporting_start_date(conn, company_id, report_type='real'):
     """
     Get the reporting start date based on initial_capital_settings.

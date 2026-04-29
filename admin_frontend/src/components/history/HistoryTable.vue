@@ -69,7 +69,7 @@
                  <td class="text-xs mono">{{ t.bank_code }}</td>
                  <td class="text-xs max-w-[240px]" :title="coaTitleText(t)">
                       <div v-if="visibleCoas(t).length > 0" class="flex flex-wrap gap-1 items-center">
-                          <i v-if="t.is_linked_to_manual" class="bi bi-link-45deg text-primary text-sm -ml-0.5" title="Linked to manual journal"></i>
+                          <i v-if="t.is_linked_to_manual" class="bi bi-link-45deg text-primary text-sm -ml-0.5" title="Referenced by manual journal"></i>
                           <span
                               v-for="coa in visibleCoas(t)"
                               :key="coa.key"
@@ -132,7 +132,7 @@
                   <i class="bi bi-arrow-up-circle-fill text-danger mr-1"></i>Page Total Keluar
                 </td>
                 <td class="text-right font-bold py-1 text-danger">
-                    {{ formatAmount(store.pageDebitTotal) }}
+                    {{ formatAmount(store.pageCreditTotal) }}
                 </td>
                 <td colspan="4"></td>
             </tr>
@@ -141,7 +141,7 @@
                   <i class="bi bi-arrow-down-circle-fill text-success mr-1"></i>Page Total Masuk
                 </td>
                 <td class="text-right font-bold py-1 text-success">
-                    {{ formatAmount(store.pageCreditTotal) }}
+                    {{ formatAmount(store.pageDebitTotal) }}
                 </td>
                 <td colspan="4"></td>
             </tr>
@@ -159,7 +159,7 @@
                   <i class="bi bi-arrow-up-circle-fill text-danger mr-1"></i>Total Keluar
                 </td>
                 <td class="text-right font-black py-1 text-danger">
-                    {{ formatAmount(store.filteredDebitTotal) }}
+                    {{ formatAmount(store.filteredCreditTotal) }}
                 </td>
                 <td colspan="4"></td>
             </tr>
@@ -168,7 +168,7 @@
                   <i class="bi bi-arrow-down-circle-fill text-success mr-1"></i>Total Masuk
                 </td>
                 <td class="text-right font-black py-1 text-success">
-                    {{ formatAmount(store.filteredCreditTotal) }}
+                    {{ formatAmount(store.filteredDebitTotal) }}
                 </td>
                 <td colspan="4"></td>
             </tr>

@@ -3,8 +3,8 @@
     <PageHeader
       eyebrow="Upload Checklist"
       icon="bi bi-check2-square"
-      title="Yearly upload status per bank"
-      subtitle="Pantau kelengkapan upload file statement per bulan, per bank. Cek nilai DB dan CR apakah sudah sesuai."
+      title="Yearly upload status per bank account"
+      subtitle="Pantau kelengkapan upload file statement per bulan, per akun bank. BCA atau bank lain bisa dipisah menjadi beberapa rekening."
     >
       <template #actions>
         <div class="flex items-center gap-2">
@@ -28,6 +28,8 @@
         </div>
       </template>
     </PageHeader>
+
+    <BankAccountDefinitionsCard @changed="refresh" />
 
     <!-- Loading skeleton -->
     <div v-if="store.isLoading && !checklist" class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -100,12 +102,12 @@
             <tr>
               <th class="cl-th cl-th-month">Bulan</th>
               <th
-                v-for="bank in checklist.banks"
-                :key="bank"
+                v-for="column in checklistColumns"
+                :key="column.key"
                 class="cl-th cl-th-bank"
-                :class="{ 'bank-hidden': activeBanks.size > 0 && !activeBanks.has(bank) }"
+                :class="{ 'bank-hidden': activeBanks.size > 0 && !activeBanks.has(column.key) }"
               >
-                <span class="bank-name-label">{{ formatBankCode(bank) }}</span>
+                <span class="bank-name-label">{{ formatChecklistColumnLabel(column) }}</span>
               </th>
             </tr>
           </thead>
@@ -127,35 +129,35 @@
 
               <!-- Bank cells -->
               <td
-                v-for="bank in checklist.banks"
-                :key="bank"
+                v-for="column in checklistColumns"
+                :key="column.key"
                 class="cl-td-cell"
                 :class="{
-                  'bank-hidden': activeBanks.size > 0 && !activeBanks.has(bank),
-                  'cell-uploaded': monthRow.banks[bank]?.uploaded,
-                  'cell-missing': !monthRow.banks[bank]?.uploaded,
+                  'bank-hidden': activeBanks.size > 0 && !activeBanks.has(column.key),
+                  'cell-uploaded': monthRow.banks[column.key]?.uploaded,
+                  'cell-missing': !monthRow.banks[column.key]?.uploaded,
                 }"
               >
                 <!-- Uploaded -->
-                <template v-if="monthRow.banks[bank]?.uploaded">
+                <template v-if="monthRow.banks[column.key]?.uploaded">
                   <div class="cell-content-uploaded">
                     <div class="cell-check-row">
                       <i class="bi bi-check-circle-fill text-emerald-500 text-xs"></i>
-                      <span class="cell-txn-count">{{ monthRow.banks[bank].transaction_count }} txn</span>
+                      <span class="cell-txn-count">{{ monthRow.banks[column.key].transaction_count }} txn</span>
                       <i
-                        v-if="hasLargeImbalance(monthRow.banks[bank])"
+                        v-if="hasLargeImbalance(monthRow.banks[column.key])"
                         class="bi bi-exclamation-triangle-fill text-amber-400 text-xs"
-                        :title="`Selisih DB/CR besar: ${formatAmount(Math.abs(monthRow.banks[bank].total_debit - monthRow.banks[bank].total_credit))}`"
+                        :title="`Selisih DB/CR besar: ${formatAmount(Math.abs(monthRow.banks[column.key].total_debit - monthRow.banks[column.key].total_credit))}`"
                       ></i>
                     </div>
                     <div class="cell-amounts">
-                      <div class="amount-db">DB {{ formatCompact(monthRow.banks[bank].total_debit) }}</div>
-                      <div class="amount-cr">CR {{ formatCompact(monthRow.banks[bank].total_credit) }}</div>
+                      <div class="amount-db">DB {{ formatCompact(monthRow.banks[column.key].total_debit) }}</div>
+                      <div class="amount-cr">CR {{ formatCompact(monthRow.banks[column.key].total_credit) }}</div>
                     </div>
-                    <div v-if="monthRow.banks[bank].source_files?.length" class="cell-filename" :title="monthRow.banks[bank].source_files.join('\n')">
-                      {{ monthRow.banks[bank].source_files[0] }}
-                      <span v-if="monthRow.banks[bank].source_files.length > 1" class="more-files">
-                        +{{ monthRow.banks[bank].source_files.length - 1 }}
+                    <div v-if="monthRow.banks[column.key].source_files?.length" class="cell-filename" :title="monthRow.banks[column.key].source_files.join('\n')">
+                      {{ monthRow.banks[column.key].source_files[0] }}
+                      <span v-if="monthRow.banks[column.key].source_files.length > 1" class="more-files">
+                        +{{ monthRow.banks[column.key].source_files.length - 1 }}
                       </span>
                     </div>
                   </div>
@@ -176,15 +178,15 @@
                 <span class="font-semibold text-xs uppercase tracking-wide text-muted">Total {{ selectedYear }}</span>
               </td>
               <td
-                v-for="bank in checklist.banks"
-                :key="bank"
+                v-for="column in checklistColumns"
+                :key="column.key"
                 class="cl-td-cell cl-td-totals"
-                :class="{ 'bank-hidden': activeBanks.size > 0 && !activeBanks.has(bank) }"
+                :class="{ 'bank-hidden': activeBanks.size > 0 && !activeBanks.has(column.key) }"
               >
-                <div v-if="bankTotals[bank]?.uploaded > 0" class="totals-cell">
-                  <div class="totals-uploaded">{{ bankTotals[bank].uploaded }}/12</div>
-                  <div class="amount-db">DB {{ formatCompact(bankTotals[bank].totalDebit) }}</div>
-                  <div class="amount-cr">CR {{ formatCompact(bankTotals[bank].totalCredit) }}</div>
+                <div v-if="bankTotals[column.key]?.uploaded > 0" class="totals-cell">
+                  <div class="totals-uploaded">{{ bankTotals[column.key].uploaded }}/12</div>
+                  <div class="amount-db">DB {{ formatCompact(bankTotals[column.key].totalDebit) }}</div>
+                  <div class="amount-cr">CR {{ formatCompact(bankTotals[column.key].totalCredit) }}</div>
                 </div>
                 <span v-else class="text-muted text-xs">—</span>
               </td>
@@ -194,18 +196,18 @@
 
         <template #footer>
           <div class="flex items-center justify-between px-6 py-3 text-xs text-muted">
-            <span>Tahun {{ selectedYear }} · {{ checklist.banks.length }} bank</span>
+            <span>Tahun {{ selectedYear }} · {{ checklistColumns.length }} akun bank</span>
             <!-- Bank filter chips -->
-            <div v-if="checklist.banks.length > 1" class="flex items-center gap-1.5 flex-wrap justify-end">
-              <span class="text-muted mr-1">Filter bank:</span>
+            <div v-if="checklistColumns.length > 1" class="flex items-center gap-1.5 flex-wrap justify-end">
+              <span class="text-muted mr-1">Filter akun:</span>
               <button
-                v-for="bank in checklist.banks"
-                :key="bank"
-                @click="toggleBank(bank)"
+                v-for="column in checklistColumns"
+                :key="column.key"
+                @click="toggleBank(column.key)"
                 class="bank-chip"
-                :class="{ 'bank-chip-active': activeBanks.size === 0 || activeBanks.has(bank) }"
+                :class="{ 'bank-chip-active': activeBanks.size === 0 || activeBanks.has(column.key) }"
               >
-                {{ formatBankCode(bank) }}
+                {{ formatChecklistColumnLabel(column) }}
               </button>
             </div>
           </div>
@@ -217,6 +219,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import BankAccountDefinitionsCard from '../components/uploads/BankAccountDefinitionsCard.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
 import StatCard from '../components/ui/StatCard.vue';
@@ -236,6 +239,21 @@ const selectedYear = ref(store.checklistYear || currentYear);
 const activeBanks = ref(new Set()); // empty = show all
 
 const checklist = computed(() => store.uploadChecklist);
+const checklistColumns = computed(() => {
+  if (!checklist.value) return [];
+
+  if (Array.isArray(checklist.value.columns) && checklist.value.columns.length > 0) {
+    return checklist.value.columns;
+  }
+
+  return (checklist.value.banks || []).map((bank) => ({
+    key: bank,
+    label: formatBankCode(bank),
+    bank_code: bank,
+    account_number: null,
+    display_name: null,
+  }));
+});
 
 const isCurrentMonth = (month) => {
   const now = new Date();
@@ -254,12 +272,12 @@ const hasLargeImbalance = (cell) => {
 const summaryStats = computed(() => {
   if (!checklist.value) return { uploaded: 0, missing: 0, total: 0, pct: 0, totalDebit: 0, totalCredit: 0 };
   let uploaded = 0, missing = 0, totalDebit = 0, totalCredit = 0;
-  const banks = checklist.value.banks || [];
+  const banks = checklistColumns.value;
   const months = checklist.value.months || [];
   const totalSlots = months.length * banks.length;
   for (const m of months) {
     for (const bank of banks) {
-      const cell = m.banks[bank];
+      const cell = m.banks[bank.key];
       if (cell?.uploaded) {
         uploaded++;
         totalDebit += cell.total_debit || 0;
@@ -276,19 +294,19 @@ const summaryStats = computed(() => {
 const bankTotals = computed(() => {
   if (!checklist.value) return {};
   const result = {};
-  const banks = checklist.value.banks || [];
+  const banks = checklistColumns.value;
   const months = checklist.value.months || [];
   for (const bank of banks) {
     let up = 0, db = 0, cr = 0;
     for (const m of months) {
-      const cell = m.banks[bank];
+      const cell = m.banks[bank.key];
       if (cell?.uploaded) {
         up++;
         db += cell.total_debit || 0;
         cr += cell.total_credit || 0;
       }
     }
-    result[bank] = { uploaded: up, totalDebit: db, totalCredit: cr };
+    result[bank.key] = { uploaded: up, totalDebit: db, totalCredit: cr };
   }
   return result;
 });
@@ -309,6 +327,16 @@ const formatBankCode = (code) => {
   return val.replace('_CC', ' CC');
 };
 
+const formatChecklistColumnLabel = (column) => {
+  if (!column) return '';
+  if (column.label) return column.label;
+
+  const bankLabel = formatBankCode(column.bank_code || column.key);
+  if (column.display_name) return `${bankLabel} · ${column.display_name}`;
+  if (column.account_number) return `${bankLabel} · ${String(column.account_number).slice(-4)}`;
+  return bankLabel;
+};
+
 // ---- Actions ----
 const refresh = () => store.fetchUploadChecklist(selectedYear.value);
 
@@ -326,7 +354,7 @@ const toggleBank = (bank) => {
     next.delete(bank);
   } else if (next.size === 0) {
     // currently showing all, click isolates this bank
-    const allBanks = checklist.value?.banks || [];
+    const allBanks = checklistColumns.value.map((column) => column.key);
     allBanks.filter(b => b !== bank).forEach(b => next.add(b));
     // Actually filter to ONLY show clicked bank:
     next.clear();

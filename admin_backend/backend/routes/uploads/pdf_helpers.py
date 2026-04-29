@@ -113,12 +113,30 @@ def parse_statement(bank_key, file_path, inferred_year=None, password=None, is_c
     return standardize_statement_dates(df, 'Tanggal', 'dd/mm', inferred_year)
 
 
-def normalize_statement_dataframe(df, bank_key, inferred_year, company_id, original_name):
+def normalize_statement_dataframe(
+    df,
+    bank_key,
+    inferred_year,
+    company_id,
+    original_name,
+    bank_account_number_override=None,
+):
     if 'source_file' in df.columns:
         df['source_file'] = original_name
 
     if bank_key not in {'dbs'}:
         df = normalize_date_columns(df, inferred_year)
+
+    if 'bank_account_number' not in df.columns:
+        if 'account_no' in df.columns:
+            df['bank_account_number'] = df['account_no']
+        elif 'account_number' in df.columns:
+            df['bank_account_number'] = df['account_number']
+        else:
+            df['bank_account_number'] = None
+
+    if bank_account_number_override:
+        df['bank_account_number'] = str(bank_account_number_override).strip()
 
     df['company_id'] = company_id
     return df

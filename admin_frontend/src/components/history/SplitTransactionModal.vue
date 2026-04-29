@@ -10,7 +10,7 @@
         </div>
         <div v-if="transaction" class="flex items-center gap-2 text-[10px]">
            <span class="text-muted font-semibold uppercase tracking-widest text-[9px]">Total</span>
-           <span class="font-bold text-sm font-mono" :class="transaction.db_cr === 'CR' ? 'text-success' : 'text-danger'">
+           <span class="font-bold text-sm font-mono" :class="transaction.db_cr === 'DB' ? 'text-success' : 'text-danger'">
              {{ formatAmount(transaction.amount) }}
            </span>
         </div>

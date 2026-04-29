@@ -236,13 +236,21 @@ def convert_pdf():
 
         try:
             bank_key = bank_type.lower()
+            bank_account_number_override = (request.form.get('bank_account_number_override') or '').strip() or None
             try:
                 df = parse_statement(bank_key, pdf_path, inferred_year=inferred_year, password=password, is_csv=is_csv)
             except ValueError as exc:
                 return _error_response(str(exc), 400)
 
             original_name = os.path.basename(original_pdf_path)
-            df = normalize_statement_dataframe(df, bank_key, inferred_year, company_id, original_name)
+            df = normalize_statement_dataframe(
+                df,
+                bank_key,
+                inferred_year,
+                company_id,
+                original_name,
+                bank_account_number_override=bank_account_number_override,
+            )
 
             if is_preview:
                 records = dataframe_preview_records(df)

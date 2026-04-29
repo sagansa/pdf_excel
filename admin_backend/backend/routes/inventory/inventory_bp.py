@@ -552,14 +552,17 @@ def _fetch_monitoring_quantity_map(api_url, token, snapshot_date):
     grouped = {}
     for row in rows_raw:
         detail = row._mapping
+        monitoring_id = str(detail.get('monitoring_id') or '').strip()
         monitoring_name = str(detail.get('monitoring_name') or '').strip()
-        if not monitoring_name:
+        if not monitoring_id and not monitoring_name:
             continue
 
-        monitoring_key = _normalize_product_key(monitoring_name)
+        monitoring_key = monitoring_id or f"name:{_normalize_product_key(monitoring_name)}"
         if monitoring_key not in grouped:
             grouped[monitoring_key] = {
+                'monitoring_id': monitoring_id or None,
                 'monitoring_name': monitoring_name,
+                'normalized_name': _normalize_product_key(monitoring_name),
                 'quantity': 0.0,
                 'unit_name': str(detail.get('product_unit_name') or '').strip(),
                 'component_count': 0,
@@ -575,6 +578,96 @@ def _fetch_monitoring_quantity_map(api_url, token, snapshot_date):
             grouped[monitoring_key]['unit_name'] = str(detail.get('product_unit_name') or '').strip()
 
     return grouped, snapshot_date, 'dashboard_monitoring'
+
+
+def _fetch_inventory_monitorings():
+    engine = _require_sagansa_engine()
+
+    with engine.connect() as conn:
+        sm_columns = get_table_columns(conn, 'stock_monitorings')
+        smd_table = 'stock_monitoring_details'
+        smd_columns = get_table_columns(conn, smd_table)
+        if not smd_columns:
+            smd_table = 'detail_stock_monitorings'
+            smd_columns = get_table_columns(conn, smd_table)
+
+        if not sm_columns or not smd_columns:
+            return []
+
+        if 'stock_monitoring_id' in smd_columns:
+            smd_monitoring_fk = 'stock_monitoring_id'
+        elif 'monitoring_id' in smd_columns:
+            smd_monitoring_fk = 'monitoring_id'
+        else:
+            return []
+
+        if 'coefficient' in smd_columns:
+            coefficient_expr = "COALESCE(smd.`coefficient`, 1)"
+        elif 'coefisien' in smd_columns:
+            coefficient_expr = "COALESCE(smd.`coefisien`, 1)"
+        elif 'koefisien' in smd_columns:
+            coefficient_expr = "COALESCE(smd.`koefisien`, 1)"
+        else:
+            coefficient_expr = "1"
+
+        units_columns = get_table_columns(conn, 'units')
+        if 'nickname' in units_columns:
+            unit_column = 'nickname'
+        elif 'unit' in units_columns:
+            unit_column = 'unit'
+        elif 'name' in units_columns:
+            unit_column = 'name'
+        else:
+            unit_column = None
+
+        product_unit_select = (
+            f"pu.`{unit_column}` AS product_unit_name"
+            if unit_column else
+            "NULL AS product_unit_name"
+        )
+        category_filter = "WHERE sm.`category` = 'storage'" if 'category' in sm_columns else ''
+        monitoring_query = build_monitoring_definition_query(
+            smd_table=smd_table,
+            smd_monitoring_fk=smd_monitoring_fk,
+            coefficient_expr=coefficient_expr,
+            product_unit_select=product_unit_select,
+            category_filter=category_filter,
+        )
+        rows_raw = conn.execute(monitoring_query).fetchall()
+
+    grouped = {}
+    for row in rows_raw:
+        detail = row._mapping
+        monitoring_id = str(detail.get('monitoring_id') or '').strip()
+        monitoring_name = str(detail.get('monitoring_name') or '').strip()
+        if not monitoring_id and not monitoring_name:
+            continue
+
+        key = monitoring_id or f"name:{_normalize_product_key(monitoring_name)}"
+        current = grouped.get(key)
+        if current is None:
+            grouped[key] = {
+                'product_id': monitoring_id or key,
+                'product_name': monitoring_name or monitoring_id or key,
+                'normalized_name': _normalize_product_key(monitoring_name),
+                'unit_name': str(detail.get('product_unit_name') or '').strip(),
+                'monitoring_names': [monitoring_name] if monitoring_name else [],
+                'coefficient': 1.0,
+            }
+            continue
+
+        if monitoring_name and monitoring_name not in current['monitoring_names']:
+            current['monitoring_names'].append(monitoring_name)
+        if not current.get('unit_name'):
+            current['unit_name'] = str(detail.get('product_unit_name') or '').strip()
+
+    return sorted(
+        grouped.values(),
+        key=lambda item: (
+            str(item.get('product_name') or '').lower(),
+            str(item.get('product_id') or ''),
+        ),
+    )
 
 
 def _fetch_inventory_products(conn, company_id, coefficient_map=None):
@@ -629,7 +722,10 @@ def _calculate_inventory_snapshot(conn, company_id, year, api_url, token, invent
     for inventory_product in inventory_products:
         product_id = str(inventory_product.get('product_id') or '')
         product_name_key = _normalize_product_key(inventory_product.get('product_name'))
-        monitoring_quantity = monitoring_quantity_map.get(product_name_key)
+        monitoring_quantity = (
+            monitoring_quantity_map.get(product_id)
+            or monitoring_quantity_map.get(f"name:{product_name_key}")
+        )
         raw_quantity = 0.0
         coefficient_value = 1.0
         quantity = to_float(monitoring_quantity.get('quantity'), 0.0) if monitoring_quantity else 0.0
@@ -757,8 +853,7 @@ def get_inventory_auto_balances():
     ).strip()
     _require_remaining_storage_token(token)
     with engine.connect() as conn:
-        coefficient_map = _fetch_monitoring_product_coefficients()
-        inventory_products = _fetch_inventory_products(conn, company_id, coefficient_map)
+        inventory_products = _fetch_inventory_monitorings()
         monitoring_index = _fetch_stock_monitoring_index()
         beginning = _calculate_inventory_snapshot(conn, company_id, year - 1, api_url, token, inventory_products, monitoring_index=monitoring_index)
         ending = _calculate_inventory_snapshot(conn, company_id, year, api_url, token, inventory_products, monitoring_index=monitoring_index)

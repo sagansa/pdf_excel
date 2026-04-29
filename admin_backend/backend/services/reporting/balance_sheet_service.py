@@ -19,6 +19,9 @@ from backend.services.reporting.equity_bridges import (
 )
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
+    _effective_coa_id_expr,
+    _effective_mapping_type_expr,
+    _effective_natural_direction_expr,
     _get_reporting_start_date,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
@@ -35,25 +38,28 @@ def _build_balance_sheet_query(conn, report_type):
         report_type,
         mark_ref='m.id',
         mapping_alias='mcm',
-        join_type='INNER',
+        join_type='LEFT',
     )
+    effective_coa_id = _effective_coa_id_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
+    effective_mapping_type = _effective_mapping_type_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
+    effective_natural_direction = _effective_natural_direction_expr(conn, report_type, txn_alias='t', mark_alias='m')
     return text(f"""
         WITH coa_balances AS (
             SELECT
-                mcm.coa_id,
+                {effective_coa_id} AS coa_id,
                 SUM(
                     (CASE
-                        WHEN mcm.mapping_type = 'DEBIT' THEN t.amount
-                        WHEN mcm.mapping_type = 'CREDIT' THEN -t.amount
+                        WHEN {effective_mapping_type} = 'DEBIT' THEN t.amount
+                        WHEN {effective_mapping_type} = 'CREDIT' THEN -t.amount
                         ELSE 0
                     END)
                     * (CASE
-                        WHEN m.natural_direction IS NOT NULL
+                        WHEN {effective_natural_direction} IS NOT NULL
                              AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
                              AND (
-                                (UPPER(m.natural_direction) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                (UPPER({effective_natural_direction}) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
                                 OR
-                                (UPPER(m.natural_direction) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                (UPPER({effective_natural_direction}) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
                              )
                         THEN -1
                         ELSE 1
@@ -67,7 +73,8 @@ def _build_balance_sheet_query(conn, report_type):
                 AND (:company_id IS NULL OR t.company_id = :company_id)
                 {split_exclusion_clause}
                 {coretax_clause}
-            GROUP BY mcm.coa_id
+                AND {effective_coa_id} IS NOT NULL
+            GROUP BY {effective_coa_id}
         )
         SELECT
             coa.id,
@@ -160,6 +167,23 @@ def _append_balance_adjustment(equity, as_of_date, company_id, adjustment_amount
     return adjustment_amount
 
 
+def _remove_canceling_opening_balance_items(equity):
+    initial_capital_item = next((item for item in equity if str(item.get('code') or '') == '3100'), None)
+    balance_adjustment_item = next((item for item in equity if str(item.get('code') or '') == '3999'), None)
+
+    if not initial_capital_item or not balance_adjustment_item:
+        return
+
+    initial_capital_amount = float(initial_capital_item.get('amount', 0) or 0)
+    balance_adjustment_amount = float(balance_adjustment_item.get('amount', 0) or 0)
+
+    if abs(initial_capital_amount + balance_adjustment_amount) < 0.01:
+        equity[:] = [
+            item for item in equity
+            if str(item.get('code') or '') not in {'3100', '3999'}
+        ]
+
+
 def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='real'):
     """
     Helper function to fetch balance sheet data.
@@ -211,6 +235,7 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
     # This keeps the report balanced while making the adjustment transparent in the UI.
     balance_adjustment = calculated_assets_total - (calculated_liabilities_total + calculated_equity_total)
     calculated_equity_total += _append_balance_adjustment(equity, as_of_date, company_id, balance_adjustment)
+    _remove_canceling_opening_balance_items(equity)
     
     # Also fix top-level totals for frontend compatibility
     total_assets = calculated_assets_total

@@ -6,6 +6,28 @@ const api = axios.create({
   baseURL: '/api'
 });
 
+async function extractBlobErrorMessage(blob, fallback = 'Failed to export report') {
+  if (!(blob instanceof Blob)) {
+    return fallback;
+  }
+
+  try {
+    const text = await blob.text();
+    if (!text) {
+      return fallback;
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      return parsed?.error || parsed?.message || fallback;
+    } catch {
+      return text;
+    }
+  } catch {
+    return fallback;
+  }
+}
+
 export const useReportsStore = defineStore('reports', {
   state: () => ({
     incomeStatement: null,
@@ -268,6 +290,12 @@ export const useReportsStore = defineStore('reports', {
         }, {
           responseType: 'blob' // Important for file download
         });
+
+        const contentType = response.headers['content-type'] || response.data?.type || '';
+        if (contentType.includes('application/json')) {
+          const message = await extractBlobErrorMessage(response.data);
+          throw new Error(message);
+        }
         
         // Create download link
         const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -276,10 +304,10 @@ export const useReportsStore = defineStore('reports', {
         
         // Extract filename from header or default
         const contentDisposition = response.headers['content-disposition'];
-        let filename = `report.${format === 'excel' ? 'xlsx' : 'xml'}`;
+        let filename = `report.${format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'xml'}`;
         if (contentDisposition) {
           const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-          if (filenameMatch.length === 2)
+          if (filenameMatch && filenameMatch.length === 2)
             filename = filenameMatch[1];
         }
         
@@ -290,9 +318,12 @@ export const useReportsStore = defineStore('reports', {
         
         return true;
       } catch (err) {
-        this.error = 'Failed to export report';
+        this.error = await extractBlobErrorMessage(
+          err?.response?.data,
+          err?.message || 'Failed to export report'
+        );
         console.error(err);
-        throw err;
+        throw new Error(this.error);
       } finally {
         this.isLoading = false;
       }
@@ -344,7 +375,7 @@ export const useReportsStore = defineStore('reports', {
         };
       } catch (e) {
         console.error("Failed to fetch auto inventory balances:", e);
-        return { beginning: {}, ending: {} };
+        throw e;
       }
     },
 
@@ -451,6 +482,30 @@ export const useReportsStore = defineStore('reports', {
       } catch (e) {
         console.error("Failed to save filters:", e);
         return false;
+      }
+    },
+
+    // Report Settings (Director Name, Location, etc.)
+    async fetchReportSettings(companyId, year) {
+      if (!companyId || !year) return null;
+      try {
+        const response = await api.get('/reports/settings', {
+          params: { company_id: companyId, year: year }
+        });
+        return response.data;
+      } catch (err) {
+        console.error('Failed to fetch report settings:', err);
+        return null;
+      }
+    },
+
+    async saveReportSettings(data) {
+      try {
+        await api.post('/reports/settings', data);
+        return true;
+      } catch (err) {
+        console.error('Failed to save report settings:', err);
+        throw err;
       }
     }
   }

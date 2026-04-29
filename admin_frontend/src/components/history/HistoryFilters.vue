@@ -146,8 +146,8 @@ const bankOptions = [
 ];
 
 const typeOptions = [
-  { value: 'DB', label: 'Debit (DB)' },
-  { value: 'CR', label: 'Credit (CR)' }
+  { value: 'DB', label: 'Debit / Masuk (DB)' },
+  { value: 'CR', label: 'Credit / Keluar (CR)' }
 ];
 
 const yearOptions = computed(() => (
