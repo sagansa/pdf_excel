@@ -16,6 +16,18 @@
         <textarea v-model="form.tax_report" rows="2" class="input-base" placeholder="Keterangan pajak opsional"></textarea>
       </div>
 
+      <div class="space-y-1">
+        <label class="label-base font-bold text-theme">Kategori Fiskal (Fiscal Category)</label>
+        <select v-model="form.fiscal_category" class="input-base w-full">
+          <option value="">-- Ikut Pengaturan COA (Default) --</option>
+          <option value="DEDUCTIBLE">Deductible (Bisa Dibiayakan)</option>
+          <option value="NON_DEDUCTIBLE_PERMANENT">Non-Deductible Permanent (Koreksi Fiskal Positif)</option>
+          <option value="NON_DEDUCTIBLE_TEMPORARY">Non-Deductible Temporary (Koreksi Beda Waktu)</option>
+          <option value="NON_TAXABLE_INCOME">Non-Taxable Income (Bukan Objek Pajak)</option>
+        </select>
+        <p class="text-xs text-muted mt-1">Pengaturan ini akan menimpa (override) pengaturan kategori fiskal pada Chart of Account (COA).</p>
+      </div>
+
       <div class="flex items-center gap-2 p-3 bg-cyan-50 rounded-lg border border-cyan-100">
         <input
           type="checkbox"
@@ -145,7 +157,8 @@ const form = reactive({
     is_asset: false,
     is_service: false,
     is_salary_component: false,
-    is_rental: false
+    is_rental: false,
+    fiscal_category: ''
 });
 
 watch(() => props.markToEdit, (newVal) => {
@@ -162,6 +175,7 @@ watch(() => props.markToEdit, (newVal) => {
         form.is_service = Boolean(newVal.is_service === 1 || newVal.is_service === true);
         form.is_salary_component = Boolean(newVal.is_salary_component === 1 || newVal.is_salary_component === true);
         form.is_rental = Boolean(newVal.is_rental === 1 || newVal.is_rental === true);
+        form.fiscal_category = newVal.fiscal_category || '';
         console.log('MarkFormModal: Form populated:', form);
     } else {
         isEdit.value = false;
@@ -173,6 +187,7 @@ watch(() => props.markToEdit, (newVal) => {
         form.is_service = false;
         form.is_salary_component = false;
         form.is_rental = false;
+        form.fiscal_category = '';
         console.log('MarkFormModal: Form reset to empty');
     }
 }, { immediate: true });
@@ -191,6 +206,7 @@ watch(() => props.isOpen, (isOpen) => {
         form.is_service = Boolean(mark.is_service === 1 || mark.is_service === true);
         form.is_salary_component = Boolean(mark.is_salary_component === 1 || mark.is_salary_component === true);
         form.is_rental = Boolean(mark.is_rental === 1 || mark.is_rental === true);
+        form.fiscal_category = mark.fiscal_category || '';
         console.log('MarkFormModal: Form refreshed on modal open:', form);
     }
 });
@@ -212,7 +228,8 @@ const handleSubmit = async () => {
             is_asset: Boolean(form.is_asset),
             is_service: Boolean(form.is_service),
             is_salary_component: Boolean(form.is_salary_component),
-            is_rental: Boolean(form.is_rental)
+            is_rental: Boolean(form.is_rental),
+            fiscal_category: form.fiscal_category || null
         };
         
         // Debug logging to see what data is being sent

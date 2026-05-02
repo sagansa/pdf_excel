@@ -150,14 +150,54 @@ def apply_rental_tax_bridge(conn, asset_items, liabilities_current, liabilities_
         logger.error('Failed to include rental tax bridging in balance sheet: %s', exc)
 
 
+def calculate_current_year_net_income(conn, as_of_date_obj, as_of_date, company_id, report_type):
+    year_start = as_of_date_obj.replace(month=1, day=1).strftime('%Y-%m-%d')
+    income_statement_data = fetch_income_statement_data(
+        conn, year_start, as_of_date, company_id, report_type, comparative=False
+    )
+    return float(income_statement_data.get('net_income') or 0.0)
+
+
+def calculate_previous_year_retained_earnings(conn, as_of_date_obj, company_id, report_type):
+    report_year = as_of_date_obj.year
+    company_start_year = report_year - 1
+    configured_previous_retained_earnings = 0.0
+    start_year_result = conn.execute(text("""
+        SELECT MIN(start_year) AS min_start_year,
+               COALESCE(SUM(previous_retained_earnings_amount), 0) AS configured_previous_retained_earnings
+        FROM initial_capital_settings
+        WHERE company_id = :company_id AND report_type = :report_type
+    """), {'company_id': company_id, 'report_type': report_type}).fetchone()
+    if start_year_result and start_year_result.min_start_year:
+        company_start_year = int(start_year_result.min_start_year)
+        configured_previous_retained_earnings = float(
+            start_year_result.configured_previous_retained_earnings or 0.0
+        )
+
+    if report_year <= company_start_year:
+        return configured_previous_retained_earnings
+
+    previous_year_retained_earnings = configured_previous_retained_earnings
+    for year in range(company_start_year, report_year):
+        year_income_statement = fetch_income_statement_data(
+            conn,
+            f'{year}-01-01',
+            f'{year}-12-31',
+            company_id,
+            report_type,
+            comparative=False,
+        )
+        previous_year_retained_earnings += float(year_income_statement.get('net_income') or 0.0)
+
+    return previous_year_retained_earnings
+
+
 def append_current_year_net_income(conn, equity, as_of_date_obj, as_of_date, company_id, report_type):
     current_year_net_income = 0.0
     try:
-        year_start = as_of_date_obj.replace(month=1, day=1).strftime('%Y-%m-%d')
-        income_statement_data = fetch_income_statement_data(
-            conn, year_start, as_of_date, company_id, report_type, comparative=False
+        current_year_net_income = calculate_current_year_net_income(
+            conn, as_of_date_obj, as_of_date, company_id, report_type
         )
-        current_year_net_income = float(income_statement_data.get('net_income') or 0.0)
         if abs(current_year_net_income) >= 0.000001:
             equity.append({
                 'id': f'computed_net_income_{as_of_date}_{company_id or "all"}',
@@ -174,37 +214,11 @@ def append_current_year_net_income(conn, equity, as_of_date_obj, as_of_date, com
 
 
 def append_previous_year_retained_earnings(conn, equity, as_of_date_obj, company_id, report_type):
+    previous_year_retained_earnings = 0.0
     try:
-        report_year = as_of_date_obj.year
-        company_start_year = report_year - 1
-        configured_previous_retained_earnings = 0.0
-        start_year_result = conn.execute(text("""
-            SELECT MIN(start_year) AS min_start_year,
-                   COALESCE(SUM(previous_retained_earnings_amount), 0) AS configured_previous_retained_earnings
-            FROM initial_capital_settings
-            WHERE company_id = :company_id AND report_type = :report_type
-        """), {'company_id': company_id, 'report_type': report_type}).fetchone()
-        if start_year_result and start_year_result.min_start_year:
-            company_start_year = int(start_year_result.min_start_year)
-            configured_previous_retained_earnings = float(
-                start_year_result.configured_previous_retained_earnings or 0.0
-            )
-
-        if report_year <= company_start_year:
-            previous_year_retained_earnings = configured_previous_retained_earnings
-        else:
-            previous_year_retained_earnings = configured_previous_retained_earnings
-            for year in range(company_start_year, report_year):
-                year_income_statement = fetch_income_statement_data(
-                    conn,
-                    f'{year}-01-01',
-                    f'{year}-12-31',
-                    company_id,
-                    report_type,
-                    comparative=False,
-                )
-                previous_year_retained_earnings += float(year_income_statement.get('net_income') or 0.0)
-
+        previous_year_retained_earnings = calculate_previous_year_retained_earnings(
+            conn, as_of_date_obj, company_id, report_type
+        )
         if abs(previous_year_retained_earnings) >= 0.000001:
             equity.append({
                 'id': f'computed_prev_retained_earnings_{as_of_date_obj}_{company_id or "all"}',
@@ -217,6 +231,68 @@ def append_previous_year_retained_earnings(conn, equity, as_of_date_obj, company
             })
     except Exception as exc:
         logger.error('Failed to include previous year retained earnings in balance sheet equity: %s', exc)
+    return previous_year_retained_earnings
+
+
+def append_retained_earnings_group(conn, equity, as_of_date_obj, as_of_date, company_id, report_type):
+    current_year_net_income = 0.0
+    previous_year_retained_earnings = 0.0
+    try:
+        current_year_net_income = calculate_current_year_net_income(
+            conn, as_of_date_obj, as_of_date, company_id, report_type
+        )
+        previous_year_retained_earnings = calculate_previous_year_retained_earnings(
+            conn, as_of_date_obj, company_id, report_type
+        )
+        retained_earnings_total = previous_year_retained_earnings + current_year_net_income
+
+        if abs(retained_earnings_total) >= 0.000001:
+            equity.append({
+                'id': f'computed_retained_earnings_parent_{as_of_date}_{company_id or "all"}',
+                'code': '3200',
+                'name': 'Laba Ditahan',
+                'subcategory': 'Retained Earnings',
+                'amount': retained_earnings_total,
+                'category': 'EQUITY',
+                'is_computed': True,
+                'is_parent_row': True,
+                'previous_year_retained_earnings': previous_year_retained_earnings,
+                'current_year_net_income': current_year_net_income,
+            })
+            equity.append({
+                'id': f'computed_net_income_child_{as_of_date}_{company_id or "all"}',
+                'code': '4800',
+                'name': 'Laba/Rugi Tahun Berjalan',
+                'subcategory': 'Current Year Earnings',
+                'amount': current_year_net_income,
+                'category': 'EQUITY',
+                'is_computed': True,
+                'is_child_row': True,
+                'parent_code': '3200',
+                'exclude_from_total': True,
+                'hide_in_pdf': True,
+            })
+            equity.append({
+                'id': f'computed_prev_retained_earnings_child_{as_of_date}_{company_id or "all"}',
+                'code': '3200',
+                'name': 'Laba Ditahan Tahun Sebelumnya',
+                'subcategory': 'Retained Earnings',
+                'amount': previous_year_retained_earnings,
+                'category': 'EQUITY',
+                'is_computed': True,
+                'is_child_row': True,
+                'parent_code': '3200',
+                'exclude_from_total': True,
+                'hide_in_pdf': True,
+            })
+    except Exception as exc:
+        logger.error('Failed to include retained earnings group in balance sheet equity: %s', exc)
+
+    return {
+        'current_year_net_income': current_year_net_income,
+        'previous_year_retained_earnings': previous_year_retained_earnings,
+        'retained_earnings_total': previous_year_retained_earnings + current_year_net_income,
+    }
 
 
 def prepend_initial_capital(conn, equity, as_of_date_obj, company_id, report_type='real'):

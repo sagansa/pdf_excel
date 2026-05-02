@@ -351,7 +351,7 @@ const markOptions = computed(() => {
     for (const m of store.sortedMarks || []) {
         options.push({
             id: m.id,
-            label: m.internal_report || m.personal_use || 'Marked'
+            label: buildMarkLabel(m)
         });
     }
     return options;
@@ -368,6 +368,14 @@ const toggleSelectAll = () => {
 const onMarkSelected = (txnId, selectedValue) => {
     const normalized = selectedValue === '__UNMARKED__' ? null : (selectedValue || null);
     store.assignMark(txnId, normalized);
+};
+
+const buildMarkLabel = (mark) => {
+    const parts = [mark?.internal_report, mark?.personal_use, mark?.tax_report]
+        .map(value => String(value || '').trim())
+        .filter(Boolean);
+    const uniqueParts = [...new Set(parts)];
+    return uniqueParts.length ? uniqueParts.join(' / ') : 'Marked';
 };
 
 // Utils

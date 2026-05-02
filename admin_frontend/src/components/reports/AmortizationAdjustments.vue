@@ -210,7 +210,7 @@
                   <td class="px-3 py-2 text-right text-xs font-bold text-theme">{{ formatCurrency(typeTotals[typeName]?.cost || 0, false) }}</td>
                   <td colspan="2"></td>
                   <td class="px-3 py-2 text-right text-xs font-bold text-theme">{{ formatCurrency(typeTotals[typeName]?.amort || 0, false) }}</td>
-                  <td></td>
+                  <td class="px-3 py-2 text-right text-xs font-bold text-theme">{{ formatCurrency(typeTotals[typeName]?.accum || 0, false) }}</td>
                   <td class="px-3 py-2 text-right text-xs font-bold text-theme">{{ formatCurrency(typeTotals[typeName]?.bookVal || 0, false) }}</td>
                   <td></td>
                 </tr>
@@ -227,7 +227,7 @@
                 <td class="px-3 py-3 text-right text-xs text-theme">{{ formatCurrency(totalOriginalCost, false) }}</td>
                 <td colspan="2"></td>
                 <td class="px-3 py-3 text-right text-xs text-theme">{{ formatCurrency(calculatedTotalAmortization, false) }}</td>
-                <td></td>
+                <td class="px-3 py-3 text-right text-xs text-theme">{{ formatCurrency(totalAccumulatedEnd, false) }}</td>
                 <td class="px-3 py-3 text-right text-xs text-theme">{{ formatCurrency(totalBookValueEnd, false) }}</td>
                 <td></td>
               </tr>
@@ -487,11 +487,16 @@
       </div>
     </SectionCard>
 
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
       <StatCard
         label="Total Amortization (Curr)"
         :value="formatCurrency(grandTotalAmortization)"
         variant="primary"
+      />
+      <StatCard
+        label="Total Accumulated"
+        :value="formatCurrency(grandTotalAccumulated)"
+        variant="default"
       />
       <StatCard
         label="Total Book Value (End)"
@@ -858,15 +863,16 @@ const groupedCalculatedItems = computed(() => {
 const typeTotals = computed(() => {
   const totals = {};
   Object.entries(groupedCalculatedItems.value).forEach(([type, groups]) => {
-    let cost = 0, amort = 0, bookVal = 0;
+    let cost = 0, amort = 0, accum = 0, bookVal = 0;
     Object.values(groups).forEach(items => {
       items.forEach(item => {
         cost += item.acquisition_cost || 0;
         amort += item.annual_amortization || 0;
+        accum += item.total_accumulated_depreciation || 0;
         bookVal += item.book_value_end_year || 0;
       });
     });
-    totals[type] = { cost, amort, bookVal };
+    totals[type] = { cost, amort, accum, bookVal };
   });
   return totals;
 });
@@ -880,6 +886,13 @@ const totalOriginalCost = computed(() =>
 const totalBookValueEnd = computed(() =>
   calculatedItems.value.reduce(
     (sum, item) => sum + (item.book_value_end_year || 0),
+    0,
+  ),
+);
+
+const totalAccumulatedEnd = computed(() =>
+  calculatedItems.value.reduce(
+    (sum, item) => sum + (item.total_accumulated_depreciation || 0),
     0,
   ),
 );
@@ -933,6 +946,10 @@ const manualTotalBookValue = computed(() =>
 
 const grandTotalAmortization = computed(
   () => calculatedTotalAmortization.value + manualTotalAmortization.value,
+);
+
+const grandTotalAccumulated = computed(
+  () => totalAccumulatedEnd.value + manualTotalAccumTotal.value,
 );
 
 const grandTotalBookValue = computed(

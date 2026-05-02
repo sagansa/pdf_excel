@@ -3,6 +3,8 @@ from sqlalchemy import text
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
     _effective_coa_id_expr,
+    _effective_mapping_type_expr,
+    _effective_natural_direction_expr,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
 )
@@ -15,25 +17,37 @@ def fetch_monthly_revenue_data(conn, year, company_id=None, report_type='real'):
     coretax_clause = _coretax_filter_clause(conn, report_type, 'm')
     mark_coa_join = _mark_coa_join_clause(conn, report_type, mark_ref='m.id', mapping_alias='mcm', join_type='LEFT')
     effective_coa_id = _effective_coa_id_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
+    effective_mapping_type = _effective_mapping_type_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
+    effective_natural_direction = _effective_natural_direction_expr(conn, report_type, txn_alias='t', mark_alias='m')
+    month_expr = "CAST(strftime('%m', t.txn_date) AS INTEGER)" if conn.dialect.name == 'sqlite' else "MONTH(t.txn_date)"
+    year_expr = "CAST(strftime('%Y', t.txn_date) AS INTEGER)" if conn.dialect.name == 'sqlite' else "YEAR(t.txn_date)"
     query = text(f"""
         SELECT 
-            MONTH(t.txn_date) as month_num,
-            SUM(
+            {month_expr} as month_num,
+            -SUM(
                 CASE 
-                    -- Revenue accounts (normal balance CREDIT, except contra-revenue like 4011)
-                    WHEN coa.category = 'REVENUE' AND coa.normal_balance = 'CREDIT' THEN
-                        CASE 
-                            WHEN t.db_cr = 'CR' THEN t.amount
-                            WHEN t.db_cr = 'DB' THEN -t.amount
-                            ELSE 0
-                        END
-                    -- Contra-revenue accounts (normal balance DEBIT, like 4011)
-                    WHEN coa.category = 'REVENUE' AND coa.normal_balance = 'DEBIT' THEN
-                        CASE 
-                            WHEN t.db_cr = 'DB' THEN t.amount
-                            WHEN t.db_cr = 'CR' THEN -t.amount
-                            ELSE 0
-                        END
+                    WHEN UPPER(COALESCE({effective_mapping_type}, '')) = 'DEBIT' THEN
+                        t.amount * (CASE
+                            WHEN {effective_natural_direction} IS NOT NULL
+                                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                                 AND (
+                                    (UPPER({effective_natural_direction}) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                    OR
+                                    (UPPER({effective_natural_direction}) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                 )
+                            THEN -1 ELSE 1 END)
+                    WHEN UPPER(COALESCE({effective_mapping_type}, '')) = 'CREDIT' THEN
+                        -t.amount * (CASE
+                            WHEN {effective_natural_direction} IS NOT NULL
+                                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                                 AND (
+                                    (UPPER({effective_natural_direction}) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                                    OR
+                                    (UPPER({effective_natural_direction}) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                                 )
+                            THEN -1 ELSE 1 END)
+                    WHEN t.db_cr = 'DB' THEN t.amount
+                    WHEN t.db_cr = 'CR' THEN -t.amount
                     ELSE 0
                 END
             ) as total_amount
@@ -41,12 +55,12 @@ def fetch_monthly_revenue_data(conn, year, company_id=None, report_type='real'):
         INNER JOIN marks m ON t.mark_id = m.id
         {mark_coa_join}
         INNER JOIN chart_of_accounts coa ON {effective_coa_id} = coa.id
-        WHERE YEAR(t.txn_date) = :year
+        WHERE {year_expr} = :year
             AND coa.category = 'REVENUE'
             AND (:company_id IS NULL OR t.company_id = :company_id)
             {split_exclusion_clause}
                 {coretax_clause}
-        GROUP BY MONTH(t.txn_date)
+        GROUP BY {month_expr}
         ORDER BY month_num
     """)
     

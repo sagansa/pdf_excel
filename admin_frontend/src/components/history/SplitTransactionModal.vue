@@ -193,6 +193,14 @@ const store = useHistoryStore();
 const splits = ref([]);
 const sortedMarks = computed(() => store.sortedMarks);
 
+const buildMarkLabel = (mark) => {
+  const parts = [mark?.internal_report, mark?.personal_use, mark?.tax_report]
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+  const uniqueParts = [...new Set(parts)];
+  return uniqueParts.length ? uniqueParts.join(' / ') : 'Unnamed Mark';
+};
+
 const markOptions = computed(() => {
   if (!sortedMarks.value || sortedMarks.value.length === 0) {
     return [];
@@ -200,7 +208,7 @@ const markOptions = computed(() => {
 
   return sortedMarks.value.map(m => ({
     id: m.id,
-    label: m.internal_report || m.personal_use || 'Unnamed Mark'
+    label: buildMarkLabel(m)
   }));
 });
 

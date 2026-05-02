@@ -5,31 +5,31 @@
     <style>
         @page {
             size: A4;
-            margin: 1.6cm;
+            margin: 1.05cm 1.15cm;
         }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 9.5pt;
-            line-height: 1.25;
+            font-size: 8.2pt;
+            line-height: 1.1;
             color: #333;
         }
         .header {
             text-align: center;
-            margin-bottom: 18px;
+            margin-bottom: 9px;
             line-height: 1.1;
         }
         .company-name {
-            font-size: 16pt;
+            font-size: 13.5pt;
             font-weight: bold;
             text-transform: uppercase;
             margin-bottom: 2px;
         }
         .report-title {
-            font-size: 14pt;
+            font-size: 11.5pt;
             margin-bottom: 2px;
         }
         .period {
-            font-size: 11pt;
+            font-size: 9pt;
             color: #666;
         }
         table {
@@ -42,40 +42,60 @@
         th {
             text-align: left;
             border-bottom: 1px solid #333;
-            padding: 7px 4px;
+            padding: 4px 5px;
             background-color: #f9f9f9;
-            font-size: 8.5pt;
+            font-size: 8pt;
         }
         td {
-            padding: 3px 4px;
+            padding: 2px 4px;
             vertical-align: top;
         }
         .left-column,
         .right-column {
-            width: 49%;
+            width: 49.3%;
             vertical-align: top;
             padding: 0;
         }
         .column-spacer {
-            width: 2%;
+            width: 1.4%;
             padding: 0;
             font-size: 1pt;
             line-height: 1;
         }
         .section-table {
-            margin-bottom: 16px;
+            margin-bottom: 8px;
+            table-layout: fixed;
         }
         .section-title {
             font-weight: bold;
             text-transform: uppercase;
             background-color: #f2f2f2;
         }
+        .section-title td,
+        .subsection-title td {
+            padding: 4px 5px;
+        }
         .subsection-title {
             font-weight: bold;
             background-color: #fafafa;
         }
         .item-row td:first-child {
-            padding-left: 16px;
+            padding-left: 8px;
+            width: 15%;
+        }
+        .item-row td:nth-child(2) {
+            width: 54%;
+        }
+        .item-row td:nth-child(3) {
+            width: 31%;
+        }
+        .child-row td:nth-child(2) {
+            padding-left: 14px;
+            color: #666;
+        }
+        .child-row td:nth-child(2)::before {
+            content: "\21B3  ";
+            color: #888;
         }
         .code {
             color: #666;
@@ -89,11 +109,24 @@
             font-weight: bold;
             border-top: 1px solid #333;
         }
+        .total-row td {
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
         .grand-total-row {
             font-weight: bold;
             border-top: 2px solid #333;
             border-bottom: 2px double #333;
             background-color: #eee;
+        }
+        .grand-total-row td {
+            padding-top: 4px;
+            padding-bottom: 4px;
+        }
+        .spacer-row td {
+            padding: 4px 0;
+            font-size: 1pt;
+            line-height: 1;
         }
         .negative {
             color: #c00;
@@ -106,7 +139,7 @@
             font-size: 9pt;
         }
         .footer {
-            margin-top: 36px;
+            margin-top: 18px;
             width: 100%;
         }
         .director-name {
@@ -137,7 +170,7 @@
                         </tr>
                         {% if assets.current %}
                             {% for item in assets.current %}
-                            <tr class="item-row">
+                            <tr class="item-row {% if item.is_child_row or item.is_display_only or item.is_summary %}child-row{% endif %}">
                                 <td class="code">{{ item.code }}</td>
                                 <td>{{ item.name }}</td>
                                 <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
@@ -150,16 +183,16 @@
                         {% endif %}
                         <tr class="total-row">
                             <td colspan="2">TOTAL ASET LANCAR</td>
-                            <td class="amount">{{ "{:,.0f}".format(assets.current|sum(attribute='amount') or 0) }}</td>
+                            <td class="amount">{{ "{:,.0f}".format(total_current_assets or 0) }}</td>
                         </tr>
 
-                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="spacer-row"><td colspan="3">&nbsp;</td></tr>
                         <tr class="section-title">
                             <td colspan="3">ASET TIDAK LANCAR</td>
                         </tr>
                         {% if assets.non_current %}
                             {% for item in assets.non_current %}
-                            <tr class="item-row">
+                            <tr class="item-row {% if item.is_child_row or item.is_display_only or item.is_summary %}child-row{% endif %}">
                                 <td class="code">{{ item.code }}</td>
                                 <td>{{ item.name }}</td>
                                 <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
@@ -172,10 +205,10 @@
                         {% endif %}
                         <tr class="total-row">
                             <td colspan="2">TOTAL ASET TIDAK LANCAR</td>
-                            <td class="amount">{{ "{:,.0f}".format(assets.non_current|sum(attribute='amount') or 0) }}</td>
+                            <td class="amount">{{ "{:,.0f}".format(total_non_current_assets or 0) }}</td>
                         </tr>
 
-                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="spacer-row"><td colspan="3">&nbsp;</td></tr>
                         <tr class="grand-total-row">
                             <td colspan="2">TOTAL ASET</td>
                             <td class="amount">{{ "{:,.0f}".format(total_assets or 0) }}</td>
@@ -197,7 +230,7 @@
                         </tr>
                         {% if liabilities.current %}
                             {% for item in liabilities.current %}
-                            <tr class="item-row">
+                            <tr class="item-row {% if item.is_child_row or item.is_display_only or item.is_summary %}child-row{% endif %}">
                                 <td class="code">{{ item.code }}</td>
                                 <td>{{ item.name }}</td>
                                 <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
@@ -213,13 +246,13 @@
                             <td class="amount">{{ "{:,.0f}".format(total_current_liabilities or 0) }}</td>
                         </tr>
 
-                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="spacer-row"><td colspan="3">&nbsp;</td></tr>
                         <tr class="section-title">
                             <td colspan="3">LIABILITAS JANGKA PANJANG</td>
                         </tr>
                         {% if liabilities.non_current %}
                             {% for item in liabilities.non_current %}
-                            <tr class="item-row">
+                            <tr class="item-row {% if item.is_child_row or item.is_display_only or item.is_summary %}child-row{% endif %}">
                                 <td class="code">{{ item.code }}</td>
                                 <td>{{ item.name }}</td>
                                 <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
@@ -235,13 +268,13 @@
                             <td class="amount">{{ "{:,.0f}".format(total_non_current_liabilities or 0) }}</td>
                         </tr>
 
-                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="spacer-row"><td colspan="3">&nbsp;</td></tr>
                         <tr class="subsection-title">
                             <td colspan="3">EKUITAS</td>
                         </tr>
                         {% if equity_items %}
                             {% for item in equity_items %}
-                            <tr class="item-row">
+                            <tr class="item-row {% if item.is_child_row or item.is_display_only or item.is_summary %}child-row{% endif %}">
                                 <td class="code">{{ item.code }}</td>
                                 <td>{{ item.name }}</td>
                                 <td class="amount {% if item.amount < 0 %}negative{% endif %}">{{ "{:,.0f}".format(item.amount or 0) }}</td>
@@ -257,7 +290,7 @@
                             <td class="amount">{{ "{:,.0f}".format(equity.total or 0) }}</td>
                         </tr>
 
-                        <tr><td colspan="3">&nbsp;</td></tr>
+                        <tr class="spacer-row"><td colspan="3">&nbsp;</td></tr>
                         <tr class="grand-total-row">
                             <td colspan="2">TOTAL LIABILITAS DAN EKUITAS</td>
                             <td class="amount">{{ "{:,.0f}".format(total_liabilities_and_equity or 0) }}</td>
@@ -276,13 +309,13 @@
     {% endif %}
 
     <div class="footer">
-        <table style="border: none; margin-top: 30px; width: 100%;">
+        <table style="border: none; margin-top: 18px; width: 100%;">
             <tr style="border: none;">
                 <td style="border: none; width: 60%;"></td>
                 <td style="border: none; width: 40%; text-align: center;">
                     <p style="margin: 0; padding: 0; line-height: 1.1;">
                         {{ settings.location }}, {{ as_of_date_formatted or as_of_date }}<br/>
-                        <br/><br/><br/><br/>
+                        <br/><br/><br/>
                         <span class="director-name">{{ settings.director_name or '(Belum diatur)' }}</span><br/>
                         <span>{{ settings.director_title }}</span>
                     </p>

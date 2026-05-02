@@ -63,7 +63,7 @@
                 Total Expenses
               </p>
               <p class="text-2xl font-bold text-orange-900 mt-1 whitespace-nowrap tabular-nums">
-                {{ formatCurrency(data.total_expenses) }}
+                {{ formatCurrency(displayedExpenseTotal) }}
               </p>
             </div>
             <div
@@ -92,6 +92,27 @@
               <i class="bi bi-cash-coin text-green-700 text-xl"></i>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-sky-50 rounded-lg shadow-sm border border-sky-200 p-6">
+          <p class="text-xs font-medium text-sky-700 uppercase">Earnings Before Tax</p>
+          <p class="text-2xl font-bold text-sky-900 mt-1 whitespace-nowrap tabular-nums">
+            {{ formatCurrency(data.earnings_metrics?.earnings_before_tax || 0) }}
+          </p>
+        </div>
+        <div class="bg-emerald-50 rounded-lg shadow-sm border border-emerald-200 p-6">
+          <p class="text-xs font-medium text-emerald-700 uppercase">Earnings After Tax</p>
+          <p class="text-2xl font-bold text-emerald-900 mt-1 whitespace-nowrap tabular-nums">
+            {{ formatCurrency(data.earnings_metrics?.earnings_after_tax || 0) }}
+          </p>
+        </div>
+        <div class="bg-indigo-50 rounded-lg shadow-sm border border-indigo-200 p-6">
+          <p class="text-xs font-medium text-indigo-700 uppercase">Earnings Before Tax, Depreciation and Amortization</p>
+          <p class="text-2xl font-bold text-indigo-900 mt-1 whitespace-nowrap tabular-nums">
+            {{ formatCurrency(data.earnings_metrics?.earnings_before_tax_depreciation_and_amortization || 0) }}
+          </p>
         </div>
       </div>
 
@@ -392,12 +413,16 @@
               <tr v-if="data.expenses.length === 0">
                 <td colspan="4" class="px-6 py-8 text-center text-gray-400 text-sm">No expenses recorded</td>
               </tr>
-              <tr v-for="item in data.expenses.filter(e => e.fiscal_category !== 'NON_DEDUCTIBLE_PERMANENT')" :key="item.code" class="group dark:hover:bg-gray-800/50 transition-colors">
+              <tr v-for="item in displayedExpenses" :key="item.code" class="group dark:hover:bg-gray-800/50 transition-colors">
                 <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900 dark:text-gray-300">{{ item.code }}</td>
                 <td class="px-6 py-3 text-sm text-gray-900 dark:text-gray-200">
                   <div class="flex items-center gap-2">
                     {{ item.name }}
-                    <FiscalCategoryBadge v-if="item.fiscal_category === 'NON_DEDUCTIBLE_PERMANENT'" :category="item.fiscal_category" size="sm" />
+                    <FiscalCategoryBadge
+                      v-if="item.fiscal_category && item.fiscal_category !== 'DEDUCTIBLE'"
+                      :category="item.fiscal_category"
+                      size="sm"
+                    />
                   </div>
                 </td>
                 <td class="px-6 py-3 text-sm text-gray-500 dark:text-gray-400">{{ item.subcategory || "-" }}</td>
@@ -411,9 +436,9 @@
 
               <!-- Total Row -->
               <tr class="bg-gray-900 dark:bg-gray-800 font-bold border-t-2 border-gray-800 dark:border-gray-700">
-                <td colspan="3" class="px-6 py-4 text-sm text-white uppercase tracking-wider">Total Operational Expenses</td>
+                <td colspan="3" class="px-6 py-4 text-sm text-white uppercase tracking-wider">Total Expenses</td>
                 <td class="px-6 py-4 text-sm text-right text-white">
-                  <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(data.total_expenses - (data.fiscal_reconciliation?.total_positive_correction || 0)) }}</span>
+                  <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(displayedExpenseTotal) }}</span>
                 </td>
               </tr>
             </tbody>
@@ -424,28 +449,49 @@
        <!-- Final Net Income Summary & Reconciliation -->
        <div v-if="data.fiscal_reconciliation" class="bg-white dark:bg-[#1f2937] rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-gray-900 dark:text-gray-100 mt-6">
          
-         <!-- LABA SEBELUM PAJAK (Using fiscal_net_income values) -->
+         <!-- LABA KOMERSIAL -->
          <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-[#111827]/50">
            <div>
-             <p class="text-xs font-bold uppercase tracking-wider mb-1 text-gray-800 dark:text-gray-200">Laba (Rugi) Bersih Sebelum Pajak</p>
+             <p class="text-xs font-bold uppercase tracking-wider mb-1 text-gray-800 dark:text-gray-200">Laba (Rugi) Bersih Komersial</p>
+             <button @click="showFiscalModal = true" class="text-xs text-primary hover:text-primary-dark flex items-center gap-1 mt-2 font-medium">
+               <i class="bi bi-plus-circle"></i> Tambah Koreksi Fiskal Manual
+             </button>
            </div>
            <div class="text-right flex flex-col items-end">
              <p class="text-xl font-black whitespace-nowrap tabular-nums text-gray-900 dark:text-gray-100">
-               {{ formatCurrency(data.fiscal_reconciliation.fiscal_net_income) }}
+               {{ formatCurrency(data.fiscal_reconciliation.commercial_net_income) }}
              </p>
            </div>
          </div>
 
-         <!-- KOREKSI FISKAL POSITIF / TAX EXPENSE -->
+         <!-- KOREKSI FISKAL POSITIF -->
          <div v-if="data.fiscal_reconciliation.total_positive_correction > 0" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f2937]">
            <div class="flex items-center justify-between mb-3 text-sm">
              <div class="flex items-center gap-2">
-               <span class="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest text-xs">Non-Deductible Expenses (Koreksi Fiskal Positif)</span>
+               <span class="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest text-xs">Koreksi Fiskal Positif</span>
              </div>
-             <span class="font-bold text-rose-600 dark:text-rose-400 tabular-nums">{{ formatCurrency(data.fiscal_reconciliation.total_positive_correction) }}</span>
+             <span class="font-bold text-rose-600 dark:text-rose-400 tabular-nums">{{ formatCurrency((data.fiscal_reconciliation.positive_corrections || []).reduce((sum, item) => sum + Number(item.amount || 0), 0)) }}</span>
            </div>
            <ul class="space-y-2 pl-4">
              <li v-for="item in data.fiscal_reconciliation.positive_corrections" :key="item.code" class="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400">
+               <span class="flex items-center gap-2">
+                 <span class="font-mono">{{ item.code }}</span>
+                 {{ item.name }}
+               </span>
+               <span class="font-mono tabular-nums">{{ formatCurrency(item.amount) }}</span>
+             </li>
+           </ul>
+         </div>
+
+         <div v-if="data.fiscal_reconciliation.total_tax_expense_correction > 0" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f2937]">
+           <div class="flex items-center justify-between mb-3 text-sm">
+             <div class="flex items-center gap-2">
+               <span class="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest text-xs">Beban Pajak Non-Deductible</span>
+             </div>
+             <span class="font-bold text-amber-600 dark:text-amber-400 tabular-nums">{{ formatCurrency(data.fiscal_reconciliation.total_tax_expense_correction) }}</span>
+           </div>
+           <ul class="space-y-2 pl-4">
+             <li v-for="item in data.fiscal_reconciliation.tax_expense_corrections" :key="`tax-${item.code}-${item.name}`" class="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400">
                <span class="flex items-center gap-2">
                  <span class="font-mono">{{ item.code }}</span>
                  {{ item.name }}
@@ -474,26 +520,38 @@
            </ul>
          </div>
 
-         <!-- LABA SETELAH PAJAK (Using commercial_net_income or net_income) -->
+         <!-- PENGHASILAN NETO FISKAL -->
          <div class="px-6 py-6 bg-gradient-to-br from-gray-900 to-gray-800 dark:from-[#111827] dark:to-gray-900 text-white flex items-center justify-between">
            <div>
-             <p class="text-lg font-bold uppercase tracking-wider">Laba (Rugi) Bersih Setelah Pajak</p>
+             <p class="text-lg font-bold uppercase tracking-wider">Penghasilan Neto Fiskal</p>
            </div>
            <p class="text-3xl font-black whitespace-nowrap tabular-nums text-emerald-400">
-             {{ formatCurrency(data.net_income) }}
+             {{ formatCurrency(data.fiscal_reconciliation.fiscal_net_income) }}
            </p>
          </div>
        </div>
        </div>
     </div>
+
+    <FiscalCorrectionModal
+      v-if="showFiscalModal"
+      :is-open="showFiscalModal"
+      :period-date="data.period?.end_date"
+      @close="showFiscalModal = false"
+      @save="handleSaveCorrection"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useReportsStore } from '../../stores/reports';
 import FiscalCategoryBadge from '../ui/FiscalCategoryBadge.vue';
 import BaseBadge from '../ui/BaseBadge.vue'; // Might be needed for consistency
+import FiscalCorrectionModal from './FiscalCorrectionModal.vue';
+import api from '../../api/index';
+
+const showFiscalModal = ref(false);
 
 const props = defineProps({
   data: {
@@ -505,6 +563,7 @@ const props = defineProps({
 const emit = defineEmits(['view-coa']);
 
 const store = useReportsStore();
+const hiddenExpenseCodes = new Set(['5491', '5494']);
 
 const hasData = computed(() => {
   return store.incomeStatement !== null;
@@ -522,6 +581,14 @@ const data = computed(() => {
     net_income: 0
   };
 });
+
+const displayedExpenses = computed(() => (
+  (data.value.expenses || []).filter(item => !hiddenExpenseCodes.has(String(item?.code || '').trim()))
+));
+
+const displayedExpenseTotal = computed(() => (
+  displayedExpenses.value.reduce((sum, item) => sum + Number(item?.amount || 0), 0)
+));
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
@@ -620,5 +687,24 @@ const getGroupTotal = (items, groupName) => {
   return items
     .filter(item => item.group_name === groupName)
     .reduce((sum, item) => sum + (item.annual_amortization || 0), 0);
+};
+
+const handleSaveCorrection = async (payload) => {
+  try {
+    const response = await api.post('/api/fiscal-corrections', payload);
+    if (response.data) {
+      showFiscalModal.value = false;
+      await store.fetchIncomeStatement(
+        data.value.period.start_date,
+        data.value.period.end_date,
+        store.filters.companyId || localStorage.getItem('company_id') || null,
+        store.filters.reportType || 'real',
+        true
+      );
+    }
+  } catch (error) {
+    console.error('Error saving fiscal correction:', error);
+    alert('Failed to save manual fiscal correction.');
+  }
 };
 </script>

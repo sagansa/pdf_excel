@@ -141,6 +141,27 @@ def generate_balance_sheet_pdf(report_data):
     as_of_date = report_data.get('as_of_date', '')
     report_data['as_of_date_formatted'] = format_indo_date(as_of_date) if as_of_date else ''
 
+    assets = report_data.get('assets', {})
+    assets['current'] = [
+        item for item in assets.get('current', [])
+        if not item.get('hide_in_pdf')
+    ]
+    assets['non_current'] = [
+        item for item in assets.get('non_current', [])
+        if not item.get('hide_in_pdf')
+    ]
+    report_data['assets'] = assets
+    report_data['total_current_assets'] = sum(
+        item.get('amount', 0)
+        for item in assets.get('current', [])
+        if not item.get('exclude_from_total')
+    )
+    report_data['total_non_current_assets'] = sum(
+        item.get('amount', 0)
+        for item in assets.get('non_current', [])
+        if not item.get('exclude_from_total')
+    )
+
     liabilities = report_data.get('liabilities', {})
     equity = report_data.get('equity', {})
     report_data['total_current_liabilities'] = sum(
@@ -154,7 +175,14 @@ def generate_balance_sheet_pdf(report_data):
         - float(report_data.get('total_liabilities_and_equity', 0) or 0)
     )
     report_data['has_balance_difference'] = abs(report_data['liabilities_and_equity_difference']) >= 0.01
-    report_data['equity_items'] = equity.get('items', [])
+    report_data['equity_items'] = [
+        item for item in equity.get('items', [])
+        if (
+            not item.get('hide_in_pdf')
+            and not item.get('exclude_from_total')
+            and not item.get('is_child_row')
+        )
+    ]
 
     html_content = template.render(**report_data)
     report_filename = f"balance_sheet_{as_of_date}.pdf"
