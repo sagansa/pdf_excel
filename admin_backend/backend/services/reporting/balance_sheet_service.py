@@ -10,8 +10,7 @@ from backend.services.reporting.amortization_bridges import (
 from backend.services.reporting.equity_bridges import (
     add_or_update_asset_item,
     add_or_update_liability_item,
-    append_current_year_net_income,
-    append_previous_year_retained_earnings,
+    append_retained_earnings_group,
     apply_ending_inventory_bridge,
     apply_rental_tax_bridge,
     apply_service_tax_payable_bridge,
@@ -151,6 +150,86 @@ def _split_asset_sections(asset_items):
     return assets_current, assets_non_current
 
 
+def _sum_reportable_items(items):
+    return sum(
+        item.get('amount', 0)
+        for item in items
+        if not item.get('exclude_from_total')
+    )
+
+
+def _apply_coretax_cash_receivable_reclassification(asset_items, as_of_date, company_id, report_type):
+    if str(report_type or '').strip().lower() != 'coretax':
+        return None
+
+    cash_item = asset_items.get('1101')
+    related_receivable_item = asset_items.get('1125')
+    if not cash_item or not related_receivable_item:
+        return None
+
+    original_cash_amount = float(cash_item.get('amount') or 0.0)
+    original_related_receivable_amount = float(related_receivable_item.get('amount') or 0.0)
+    if original_cash_amount >= -0.000001 or original_related_receivable_amount <= 0.000001:
+        return None
+
+    final_cash_amount = original_related_receivable_amount + original_cash_amount
+    if final_cash_amount < 0:
+        logger.warning(
+            'Coretax cash reclassification still produces negative cash. '
+            'cash=%s related_receivable=%s as_of_date=%s company_id=%s',
+            original_cash_amount,
+            original_related_receivable_amount,
+            as_of_date,
+            company_id,
+        )
+        return None
+
+    cash_item['amount'] = final_cash_amount
+    cash_item['coretax_adjusted_amount'] = final_cash_amount
+    cash_item['historical_amount'] = original_cash_amount
+    cash_item['coretax_reclassification_source_code'] = '1125'
+
+    asset_items['1125_historical_coretax'] = {
+        'id': f'coretax_historical_related_receivable_{as_of_date}_{company_id or "all"}',
+        'code': related_receivable_item.get('code') or '1125',
+        'name': 'Piutang Lainnya - Hubungan Istimewa (Historis Coretax)',
+        'subcategory': related_receivable_item.get('subcategory') or 'Current Assets',
+        'amount': original_related_receivable_amount,
+        'category': 'ASSET',
+        'is_current': True,
+        'is_computed': True,
+        'is_display_only': True,
+        'is_child_row': True,
+        'parent_code': '1101',
+        'exclude_from_total': True,
+        'hide_in_pdf': True,
+    }
+    asset_items['1101_historical_coretax'] = {
+        'id': f'coretax_historical_cash_{as_of_date}_{company_id or "all"}',
+        'code': cash_item.get('code') or '1101',
+        'name': 'Kas dan Setara Kas (Historis Coretax)',
+        'subcategory': cash_item.get('subcategory') or 'Current Assets',
+        'amount': original_cash_amount,
+        'category': 'ASSET',
+        'is_current': True,
+        'is_computed': True,
+        'is_display_only': True,
+        'is_child_row': True,
+        'parent_code': '1101',
+        'exclude_from_total': True,
+        'hide_in_pdf': True,
+    }
+
+    del asset_items['1125']
+    return {
+        'cash_code': '1101',
+        'related_receivable_code': '1125',
+        'original_cash_amount': original_cash_amount,
+        'original_related_receivable_amount': original_related_receivable_amount,
+        'final_cash_amount': final_cash_amount,
+    }
+
+
 def _append_balance_adjustment(equity, as_of_date, company_id, adjustment_amount):
     if abs(adjustment_amount) < 0.01:
         return 0.0
@@ -213,23 +292,41 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
         conn, asset_items, liabilities_current, liabilities_non_current, as_of_date, company_id, report_type
     )
     apply_prepaid_rent_amortization_bridge(conn, asset_items, as_of_date, company_id, report_type)
-    current_year_net_income = append_current_year_net_income(
+    retained_earnings = append_retained_earnings_group(
         conn, equity, as_of_date_obj, as_of_date, company_id, report_type
     )
-    append_previous_year_retained_earnings(conn, equity, as_of_date_obj, company_id, report_type)
+    current_year_net_income = retained_earnings['current_year_net_income']
+    previous_year_retained_earnings = retained_earnings['previous_year_retained_earnings']
+    retained_earnings_total = retained_earnings['retained_earnings_total']
     prepend_initial_capital(conn, equity, as_of_date_obj, company_id, report_type)
     apply_ending_inventory_bridge(conn, asset_items, as_of_date_obj, company_id)
-    apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_date, company_id, report_type)
+    apply_manual_amortization_bridge(
+        conn,
+        asset_items,
+        liabilities_current,
+        liabilities_non_current,
+        as_of_date_obj,
+        as_of_date,
+        company_id,
+        report_type,
+    )
+    coretax_cash_reclassification = _apply_coretax_cash_receivable_reclassification(
+        asset_items, as_of_date, company_id, report_type
+    )
 
     assets_current, assets_non_current = _split_asset_sections(asset_items)
 
     # Calculate totals from arrays (more reliable than incremental calculation).
-    calculated_assets_total = sum(item.get('amount', 0) for item in assets_current + assets_non_current)
-    calculated_liabilities_total = sum(item.get('amount', 0) for item in liabilities_current + liabilities_non_current)
+    calculated_assets_total = _sum_reportable_items(assets_current + assets_non_current)
+    calculated_liabilities_total = _sum_reportable_items(liabilities_current + liabilities_non_current)
     
-    # Equity SHOULD include current year net income for the Balance Sheet to balance A = L + E
-    # We've confirmed NI matches between IS and BS via verification.
-    calculated_equity_total = sum(item.get('amount', 0) for item in equity)
+    # Equity includes retained earnings and current year net income as separate rows.
+    # Summary rows are display-only and must not be counted again.
+    calculated_equity_total = sum(
+        item.get('amount', 0)
+        for item in equity
+        if not item.get('exclude_from_total')
+    )
 
     # If there is still a residual difference, surface it explicitly as a computed equity adjustment.
     # This keeps the report balanced while making the adjustment transparent in the UI.
@@ -259,12 +356,15 @@ def fetch_balance_sheet_data(conn, as_of_date, company_id=None, report_type='rea
             'total': calculated_equity_total
         },
         'current_year_net_income': current_year_net_income,
+        'previous_year_retained_earnings': previous_year_retained_earnings,
+        'retained_earnings_total': retained_earnings_total,
         'total_assets': total_assets,  # Top-level for frontend compatibility
         'total_liabilities': total_liabilities,  # Top-level for frontend compatibility
         'total_equity': total_equity,  # Top-level for frontend compatibility
         'computed_liabilities': {
             'service_tax_payable': service_tax_payable_computed
         },
+        'coretax_cash_reclassification': coretax_cash_reclassification,
         'total_liabilities_and_equity': total_liabilities + total_equity,
         'is_balanced': abs(calculated_assets_total - (calculated_liabilities_total + calculated_equity_total)) < 0.01
     }

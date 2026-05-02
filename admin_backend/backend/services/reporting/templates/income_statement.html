@@ -5,58 +5,70 @@
     <style>
         @page {
             size: A4;
-            margin: 2cm;
+            margin: 1.15cm 1.35cm;
         }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 10pt;
-            line-height: 1.25;
+            font-size: 8.8pt;
+            line-height: 1.12;
             color: #333;
         }
         .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             line-height: 1.1;
         }
         .company-name {
-            font-size: 16pt;
+            font-size: 13.5pt;
             font-weight: bold;
             text-transform: uppercase;
             margin-bottom: 2px;
         }
         .report-title {
-            font-size: 14pt;
+            font-size: 11.5pt;
             margin-bottom: 2px;
         }
         .period {
-            font-size: 11pt;
+            font-size: 9pt;
             color: #666;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
+            table-layout: fixed;
         }
         th {
             text-align: left;
             border-bottom: 1px solid #333;
-            padding: 8px 4px;
+            padding: 4px 5px;
             background-color: #f9f9f9;
         }
         td {
-            padding: 3px 4px;
+            padding: 2px 5px;
             vertical-align: top;
         }
         .category-row {
             font-weight: bold;
             background-color: #f2f2f2;
         }
+        .category-row td {
+            padding: 4px 6px;
+        }
         .subcategory-row {
             font-weight: bold;
             padding-left: 15px;
         }
         .item-row td {
-            padding-left: 30px;
+            padding-left: 22px;
+        }
+        .item-row td:first-child {
+            width: 72%;
+        }
+        .item-row td:last-child,
+        .total-row td:last-child,
+        .grand-total-row td:last-child {
+            width: 28%;
         }
         .amount {
             text-align: right;
@@ -66,15 +78,28 @@
             font-weight: bold;
             border-top: 1px solid #333;
         }
+        .total-row td {
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
         .grand-total-row {
             font-weight: bold;
-            font-size: 11pt;
+            font-size: 9.2pt;
             border-top: 2px solid #333;
             border-bottom: 2px double #333;
             background-color: #eee;
         }
+        .grand-total-row td {
+            padding-top: 4px;
+            padding-bottom: 4px;
+        }
+        .spacer-row td {
+            padding: 4px 0;
+            font-size: 1pt;
+            line-height: 1;
+        }
         .footer {
-            margin-top: 50px;
+            margin-top: 18px;
             width: 100%;
         }
         .signature-box {
@@ -119,7 +144,7 @@
             </tr>
 
             <!-- COGS / HPP -->
-            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="spacer-row"><td colspan="2">&nbsp;</td></tr>
             <tr class="category-row">
                 <td colspan="2">HARGA POKOK PENJUALAN</td>
             </tr>
@@ -155,7 +180,7 @@
             </tr>
 
             <!-- EXPENSES -->
-            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="spacer-row"><td colspan="2">&nbsp;</td></tr>
             <tr class="category-row">
                 <td colspan="2">BEBAN OPERASIONAL</td>
             </tr>
@@ -170,7 +195,7 @@
                 <td class="amount">{{ "{:,.0f}".format(total_op_expenses or 0) }}</td>
             </tr>
             
-            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="spacer-row"><td colspan="2">&nbsp;</td></tr>
             <tr class="grand-total-row">
                 <td>LABA (RUGI) SEBELUM PAJAK PENGHASILAN</td>
                 <td class="amount {% if ebt < 0 %}negative{% endif %}">{{ "{:,.0f}".format(ebt or 0) }}</td>
@@ -178,7 +203,7 @@
 
             <!-- TAX EXPENSES -->
             {% if tax_expenses %}
-            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="spacer-row"><td colspan="2">&nbsp;</td></tr>
             <tr class="category-row">
                 <td colspan="2">BEBAN PAJAK PENGHASILAN</td>
             </tr>
@@ -194,7 +219,7 @@
             </tr>
             {% endif %}
 
-            <tr><td colspan="2">&nbsp;</td></tr>
+            <tr class="spacer-row"><td colspan="2">&nbsp;</td></tr>
             <tr class="grand-total-row">
                 <td>LABA (RUGI) BERSIH SETELAH PAJAK</td>
                 <td class="amount {% if net_income < 0 %}negative{% endif %}">{{ "{:,.0f}".format(net_income or 0) }}</td>
@@ -203,13 +228,13 @@
     </table>
 
     <div class="footer">
-        <table style="border: none; margin-top: 50px; width: 100%;">
+        <table style="border: none; margin-top: 18px; width: 100%;">
             <tr style="border: none;">
                 <td style="border: none; width: 60%;"></td>
                 <td style="border: none; width: 40%; text-align: center;">
                     <p style="margin: 0; padding: 0; line-height: 1.1;">
                         {{ settings.location }}, {{ end_date_formatted }}<br/>
-                        <br/><br/><br/><br/>
+                        <br/><br/><br/>
                         <span class="director-name">{{ settings.director_name or '(Belum diatur)' }}</span><br/>
                         <span class="director-title">{{ settings.director_title }}</span>
                     </p>

@@ -55,6 +55,7 @@ def get_marks():
             d['is_rental'] = _parse_bool(d.get('is_rental'))
             d['is_coretax'] = _parse_bool(d.get('is_coretax'))
             d['is_system_generated'] = _parse_bool(d.get('is_system_generated'))
+            d['fiscal_category'] = d.get('fiscal_category')
             d['mappings_real'] = []
             d['mappings_coretax'] = []
             d['mappings'] = d['mappings_real']
@@ -115,6 +116,7 @@ def create_mark():
             'is_salary_component': _parse_bool(data.get('is_salary_component', False)),
             'is_rental': _parse_bool(data.get('is_rental', False)),
             'is_coretax': _parse_bool(data.get('is_coretax', False)),
+            'fiscal_category': data.get('fiscal_category') or None,
             'created_at': now,
             'updated_at': now
         }
@@ -160,7 +162,8 @@ def update_or_delete_mark(mark_id):
             'is_service': 'is_service',
             'is_salary_component': 'is_salary_component',
             'is_rental': 'is_rental',
-            'is_coretax': 'is_coretax'
+            'is_coretax': 'is_coretax',
+            'fiscal_category': 'fiscal_category'
         }
 
         params = {'id': mark_id, 'updated_at': datetime.now()}
@@ -170,7 +173,10 @@ def update_or_delete_mark(mark_id):
                 if payload_key in {'is_asset', 'is_service', 'is_salary_component', 'is_rental', 'is_coretax'}:
                     params[payload_key] = _parse_bool(data.get(payload_key))
                 else:
-                    params[payload_key] = data.get(payload_key)
+                    val = data.get(payload_key)
+                    if payload_key == 'fiscal_category' and not val:
+                        val = None
+                    params[payload_key] = val
                 set_fields.append(f"{column_name} = :{payload_key}")
 
         if 'updated_at' in mark_columns:

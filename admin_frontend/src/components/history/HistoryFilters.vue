@@ -134,6 +134,14 @@ import TextInput from '../ui/TextInput.vue';
 
 const store = useHistoryStore();
 
+const buildMarkLabel = (mark) => {
+  const parts = [mark?.internal_report, mark?.personal_use, mark?.tax_report]
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+  const uniqueParts = [...new Set(parts)];
+  return uniqueParts.length ? uniqueParts.join(' / ') : 'Unnamed Mark';
+};
+
 const bankOptions = [
   { value: 'BCA', label: 'BCA' },
   { value: 'BCA_CC', label: 'BCA CC' },
@@ -173,7 +181,7 @@ const markOptions = computed(() => {
   store.sortedMarks.forEach(m => {
     options.push({
       id: m.id.toString(),
-      label: m.internal_report || m.personal_use || m.tax_report || 'Unnamed Mark'
+      label: buildMarkLabel(m)
     });
   });
 

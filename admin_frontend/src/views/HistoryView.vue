@@ -340,6 +340,14 @@ const bulkActionForm = ref({
     markId: ''
 });
 
+const buildMarkLabel = (mark) => {
+  const parts = [mark?.internal_report, mark?.personal_use, mark?.tax_report]
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+  const uniqueParts = [...new Set(parts)];
+  return uniqueParts.length ? uniqueParts.join(' / ') : 'Marked';
+};
+
 const bulkCompanyOptions = computed(() => [
   { id: 'none', label: '-- Unassign Company --' },
   ...(store.companies || []).map(c => ({ id: c.id, label: c.name }))
@@ -349,7 +357,7 @@ const bulkMarkOptions = computed(() => [
   { id: 'none', label: '-- Unmark --' },
   ...(store.sortedMarks || []).map(m => ({ 
     id: m.id, 
-    label: m.internal_report || m.personal_use || 'Marked' 
+    label: buildMarkLabel(m)
   }))
 ]);
 

@@ -58,10 +58,19 @@
                   <tr v-if="data.assets.current.length === 0">
                     <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm">No current assets</td>
                   </tr>
-                  <tr v-for="item in data.assets.current" :key="item.id" class="group">
-                    <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">{{ item.code }}</td>
-                    <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
-                    <td class="px-6 py-3 text-sm text-right font-semibold text-blue-700">
+                  <tr
+                    v-for="item in data.assets.current"
+                    :key="item.id"
+                    :class="rowClass(item, 'blue')"
+                  >
+                    <td :class="codeCellClass(item)">{{ item.code }}</td>
+                    <td :class="nameCellClass(item)">
+                      <span class="inline-flex items-center gap-2">
+                        <i v-if="isChildRow(item)" class="bi bi-arrow-return-right text-[10px] text-gray-400 dark:text-slate-500"></i>
+                        <span>{{ item.name }}</span>
+                      </span>
+                    </td>
+                    <td :class="amountCellClass(item, 'blue')">
                       <div class="flex items-center justify-end gap-2">
                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
@@ -73,6 +82,7 @@
                         </button>
                         <button
                           @click.stop.prevent="openCoaDetail(item)"
+                          v-if="!item.is_display_only && !item.is_computed"
                           class="text-gray-400 hover:text-indigo-600 transition-colors"
                           title="View transactions"
                         >
@@ -261,11 +271,16 @@
                   <tr
                     v-for="item in data.equity.items"
                     :key="item.id"
-                    :class="item.is_computed ? 'bg-green-50/40' : 'group'"
+                    :class="rowClass(item, 'green')"
                   >
-                    <td class="px-6 py-3 text-sm font-mono font-semibold text-gray-900">{{ item.code }}</td>
-                    <td class="px-6 py-3 text-sm text-gray-900">{{ item.name }}</td>
-                    <td class="px-6 py-3 text-sm text-right font-semibold text-green-700">
+                    <td :class="codeCellClass(item)">{{ item.code }}</td>
+                    <td :class="nameCellClass(item)">
+                      <span class="inline-flex items-center gap-2">
+                        <i v-if="isChildRow(item)" class="bi bi-arrow-return-right text-[10px] text-gray-400 dark:text-slate-500"></i>
+                        <span>{{ item.name }}</span>
+                      </span>
+                    </td>
+                    <td :class="amountCellClass(item, 'green')">
                       <div class="flex items-center justify-end gap-2">
                         <span class="whitespace-nowrap tabular-nums">{{ formatCurrency(item.amount) }}</span>
                         <button
@@ -323,8 +338,41 @@ const emit = defineEmits(['view-coa']);
 
 const hasData = computed(() => props.data !== null);
 
+const isChildRow = (item) => Boolean(item?.is_child_row || item?.is_display_only || item?.is_summary);
+
+const rowClass = (item, tone = 'gray') => {
+  if (isChildRow(item)) {
+    return 'bg-gray-50/80 text-gray-500 dark:bg-slate-800/70 dark:text-slate-300';
+  }
+  if (item?.is_computed) {
+    return tone === 'green'
+      ? 'bg-green-50/40 dark:bg-emerald-500/10'
+      : 'bg-blue-50/30 dark:bg-blue-500/10';
+  }
+  return 'group';
+};
+
+const codeCellClass = (item) => [
+  'px-6 py-3 text-sm font-mono font-semibold',
+  isChildRow(item) ? 'text-gray-500 dark:text-slate-400' : 'text-gray-900 dark:text-slate-100'
+];
+
+const nameCellClass = (item) => [
+  'py-3 text-sm',
+  isChildRow(item) ? 'pl-10 pr-6 text-gray-600 dark:text-slate-300' : 'px-6 text-gray-900 dark:text-slate-100'
+];
+
+const amountCellClass = (item, tone = 'blue') => [
+  'px-6 py-3 text-sm text-right font-semibold',
+  isChildRow(item)
+    ? 'text-gray-500 dark:text-slate-300'
+    : tone === 'green'
+      ? 'text-green-700 dark:text-emerald-300'
+      : 'text-blue-700 dark:text-sky-300'
+];
+
 const openCoaDetail = (item) => {
-  if (!item || item.is_computed) return;
+  if (!item || item.is_computed || item.is_display_only) return;
   emit('view-coa', item);
 };
 

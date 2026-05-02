@@ -8,6 +8,9 @@ from backend.services.reporting.report_amortization_common import _calculate_acc
 from backend.services.reporting.report_sql_fragments import (
     _coretax_filter_clause,
     _effective_coa_id_expr,
+    _effective_mapping_type_expr,
+    _effective_natural_direction_expr,
+    _get_reporting_start_date,
     _mark_coa_join_clause,
     _split_parent_exclusion_clause,
 )
@@ -15,9 +18,82 @@ from backend.services.reporting.report_value_utils import (
     _parse_bool,
     _parse_date,
 )
-from backend.services.reporting.equity_bridges import add_or_update_asset_item, resolve_prepaid_asset_code
+from backend.services.reporting.equity_bridges import (
+    add_or_update_asset_item,
+    add_or_update_liability_item,
+    resolve_prepaid_asset_code,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _calculate_registered_asset_ledger_totals(conn, as_of_date, company_id, report_type, asset_codes):
+    if not asset_codes:
+        return {}
+
+    mark_coa_join_txn = _mark_coa_join_clause(
+        conn, report_type, mark_ref='t.mark_id', mapping_alias='mcm', join_type='LEFT'
+    )
+    effective_coa_id = _effective_coa_id_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
+    effective_mapping_type = _effective_mapping_type_expr(conn, report_type, txn_alias='t', mapping_alias='mcm')
+    effective_natural_direction = _effective_natural_direction_expr(conn, report_type, txn_alias='t', mark_alias='m')
+    start_date = _get_reporting_start_date(conn, company_id, report_type)
+
+    amount_expr = f"""
+        (CASE
+            WHEN {effective_mapping_type} = 'DEBIT' THEN t.amount
+            WHEN {effective_mapping_type} = 'CREDIT' THEN -t.amount
+            ELSE 0
+        END)
+        * (CASE
+            WHEN {effective_natural_direction} IS NOT NULL
+                 AND UPPER(TRIM(COALESCE(t.db_cr, ''))) != ''
+                 AND (
+                    (UPPER({effective_natural_direction}) = 'DB' AND UPPER(TRIM(t.db_cr)) IN ('CR', 'CREDIT', 'K', 'KREDIT'))
+                    OR
+                    (UPPER({effective_natural_direction}) = 'CR' AND UPPER(TRIM(t.db_cr)) IN ('DB', 'DEBIT', 'D', 'DE'))
+                 )
+            THEN -1
+            ELSE 1
+        END)
+    """
+
+    rows = conn.execute(text(f"""
+        SELECT
+            coa.code,
+            COALESCE(SUM({amount_expr}), 0) AS total_amount
+        FROM transactions t
+        INNER JOIN marks m ON t.mark_id = m.id
+        {mark_coa_join_txn}
+        INNER JOIN chart_of_accounts coa ON {effective_coa_id} = coa.id
+        INNER JOIN amortization_assets a ON t.amortization_asset_id = a.id
+        WHERE t.txn_date <= :as_of_date
+          AND (:start_date IS NULL OR t.txn_date >= :start_date)
+          AND (:company_id IS NULL OR t.company_id = :company_id)
+          AND (a.is_active = TRUE OR a.is_active = 1)
+          AND coa.code IN :asset_codes
+          {_split_parent_exclusion_clause(conn, 't')}
+          {_coretax_filter_clause(conn, report_type, 'm')}
+        GROUP BY coa.code
+    """), {
+        'as_of_date': as_of_date,
+        'start_date': start_date,
+        'company_id': company_id,
+        'asset_codes': tuple(asset_codes),
+    })
+
+    return {str(row.code): float(row.total_amount or 0) for row in rows}
+
+
+def _remove_near_zero_liability_items(liabilities_current, liabilities_non_current):
+    liabilities_current[:] = [
+        item for item in liabilities_current
+        if abs(float(item.get('amount') or 0)) >= 0.000001
+    ]
+    liabilities_non_current[:] = [
+        item for item in liabilities_non_current
+        if abs(float(item.get('amount') or 0)) >= 0.000001
+    ]
 
 
 def apply_prepaid_rent_amortization_bridge(conn, asset_items, as_of_date, company_id, report_type):
@@ -35,7 +111,16 @@ def apply_prepaid_rent_amortization_bridge(conn, asset_items, as_of_date, compan
         logger.error('Failed to bridge prepaid rent amortization in balance sheet: %s', exc)
 
 
-def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_date, company_id, report_type):
+def apply_manual_amortization_bridge(
+    conn,
+    asset_items,
+    liabilities_current,
+    liabilities_non_current,
+    as_of_date_obj,
+    as_of_date,
+    company_id,
+    report_type,
+):
     try:
         allow_partial_year = True
         use_mark_based_amortization = False
@@ -93,6 +178,8 @@ def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_da
 
         asset_totals = {}
         accum_totals = {}
+        registered_asset_totals = {}
+        registered_asset_payable_total = 0.0
         manual_result = conn.execute(text("""
             SELECT
                 ai.id,
@@ -187,6 +274,7 @@ def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_da
         # Previously excluded for coretax, causing incomplete balance sheet data
         for row in conn.execute(text("""
             SELECT
+                a.id,
                 a.acquisition_cost,
                 a.acquisition_date,
                 a.amortization_start_date,
@@ -206,6 +294,7 @@ def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_da
             if not start_date or start_date > as_of_date_obj:
                 continue
             asset_type = row.asset_type or 'Tangible'
+            asset_code = asset_code_by_type.get(asset_type, asset_code_by_type['Tangible'])
             accum_code = accumulated_code_by_type.get(asset_type, accumulated_code_by_type['Tangible'])
             rate = float(row.tarif_rate or 20)
             accum_amount = _calculate_accumulated_amortization(
@@ -216,9 +305,27 @@ def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_da
                 use_half_rate=_parse_bool(row.use_half_rate),
                 allow_partial_year=allow_partial_year,
             )
+            registered_asset_totals[asset_code] = registered_asset_totals.get(asset_code, 0.0) + amount
             accum_totals[accum_code] = accum_totals.get(accum_code, 0.0) - accum_amount
 
-        all_codes = list(set(asset_totals.keys()) | set(accum_totals.keys()))
+        if registered_asset_totals:
+            linked_ledger_totals = _calculate_registered_asset_ledger_totals(
+                conn,
+                as_of_date,
+                company_id,
+                report_type,
+                registered_asset_totals.keys(),
+            )
+            for asset_code, registered_amount in registered_asset_totals.items():
+                linked_amount = linked_ledger_totals.get(asset_code, 0.0)
+                asset_delta = registered_amount - linked_amount
+                if abs(asset_delta) < 0.000001:
+                    continue
+                asset_totals[asset_code] = asset_totals.get(asset_code, 0.0) + asset_delta
+                registered_asset_payable_total += asset_delta
+
+        unpaid_asset_payable_code = '2195'
+        all_codes = list(set(asset_totals.keys()) | set(accum_totals.keys()) | {unpaid_asset_payable_code})
         coa_lookup = {}
         if all_codes:
             for row in conn.execute(text("""
@@ -239,6 +346,20 @@ def apply_manual_amortization_bridge(conn, asset_items, as_of_date_obj, as_of_da
                 amount,
                 force_current=False,
             )
+
+        if abs(registered_asset_payable_total) >= 0.000001:
+            coa_info = coa_lookup.get(unpaid_asset_payable_code, {})
+            add_or_update_liability_item(
+                liabilities_current,
+                liabilities_non_current,
+                coa_info.get('id', f'computed_unpaid_asset_payable_{as_of_date}_{company_id or "all"}'),
+                unpaid_asset_payable_code,
+                coa_info.get('name', 'Beban yang Masih Harus Dibayar'),
+                coa_info.get('subcategory', 'Current Liabilities'),
+                registered_asset_payable_total,
+                force_current=True,
+            )
+            _remove_near_zero_liability_items(liabilities_current, liabilities_non_current)
 
         for code, amount in accum_totals.items():
             if abs(amount) < 0.000001:

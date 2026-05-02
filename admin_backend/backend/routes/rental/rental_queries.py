@@ -1,8 +1,15 @@
 from sqlalchemy import bindparam, text
 
 
+def _rental_mark_predicate():
+    return """
+        COALESCE(m.is_rental, 0) = 1
+    """
+
+
 def build_filter_rent_transaction_ids_query():
-    return text("""
+    rental_mark_predicate = _rental_mark_predicate()
+    return text(f"""
         SELECT DISTINCT t.id
         FROM transactions t
         LEFT JOIN marks m ON t.mark_id = m.id
@@ -12,22 +19,7 @@ def build_filter_rent_transaction_ids_query():
             OR t.company_id = :company_id
             OR t.company_id IS NULL
           )
-          AND (
-            LOWER(COALESCE(m.personal_use, '')) LIKE '%%sewa tempat%%'
-            OR LOWER(COALESCE(m.internal_report, '')) LIKE '%%sewa tempat%%'
-            OR LOWER(COALESCE(m.tax_report, '')) LIKE '%%sewa tempat%%'
-            OR LOWER(COALESCE(m.personal_use, '')) LIKE '%%sewa%%'
-            OR LOWER(COALESCE(t.description, '')) LIKE '%%sewa%%'
-            OR LOWER(COALESCE(t.description, '')) LIKE '%%rent%%'
-            OR COALESCE(m.is_rental, 0) = 1
-            OR EXISTS (
-              SELECT 1
-              FROM mark_coa_mapping mcm
-              INNER JOIN chart_of_accounts coa ON coa.id = mcm.coa_id
-              WHERE mcm.mark_id = t.mark_id
-                AND coa.code IN ('5315', '5105')
-            )
-          )
+          AND ({rental_mark_predicate})
     """).bindparams(bindparam('txn_ids', expanding=True))
 
 
@@ -135,7 +127,8 @@ def build_contract_transactions_query():
 
 
 def build_linkable_transactions_query():
-    return text("""
+    rental_mark_predicate = _rental_mark_predicate()
+    return text(f"""
         SELECT
             t.*,
             m.personal_use,
@@ -151,21 +144,7 @@ def build_linkable_transactions_query():
           AND (t.rental_contract_id IS NULL OR t.rental_contract_id = :current_contract_id)
           AND (
               t.rental_contract_id = :current_contract_id
-              OR
-              LOWER(COALESCE(m.personal_use, '')) LIKE '%%sewa tempat%%'
-              OR LOWER(COALESCE(m.internal_report, '')) LIKE '%%sewa tempat%%'
-              OR LOWER(COALESCE(m.tax_report, '')) LIKE '%%sewa tempat%%'
-              OR LOWER(COALESCE(m.personal_use, '')) LIKE '%%sewa%%'
-              OR LOWER(COALESCE(t.description, '')) LIKE '%%sewa%%'
-              OR LOWER(COALESCE(t.description, '')) LIKE '%%rent%%'
-              OR COALESCE(m.is_rental, 0) = 1
-              OR EXISTS (
-                  SELECT 1
-                  FROM mark_coa_mapping mcm
-                  INNER JOIN chart_of_accounts coa ON coa.id = mcm.coa_id
-                  WHERE mcm.mark_id = t.mark_id
-                    AND coa.code IN ('5315', '5105')
-              )
+              OR ({rental_mark_predicate})
           )
         ORDER BY t.txn_date DESC, t.created_at DESC
     """)

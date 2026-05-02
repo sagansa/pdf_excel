@@ -26,7 +26,23 @@ from backend.services.reporting.report_value_utils import (
 )
 from backend.services.reporting.service_tax_adjustments import _calculate_service_tax_adjustment_for_period
 
+def _fetch_manual_fiscal_corrections(conn, start_date, end_date, company_id):
+    query = text("""
+        SELECT fc.id, fc.correction_type, fc.amount, fc.reason, c.code, c.name, c.fiscal_category
+        FROM fiscal_corrections fc
+        JOIN chart_of_accounts c ON fc.coa_id = c.id
+        WHERE fc.period_date BETWEEN :start_date AND :end_date
+          AND (:company_id IS NULL OR fc.company_id = :company_id)
+    """)
+    return conn.execute(query, {
+        'start_date': start_date,
+        'end_date': end_date,
+        'company_id': company_id
+    }).mappings().all()
+
+
 logger = logging.getLogger(__name__)
+TAX_EXPENSE_CORRECTION_CODES = {'5491', '5494'}
 
 
 def _is_coa_mapped_for_report(conn, coa_code, report_type):
@@ -93,9 +109,8 @@ def _merge_comparative_cogs(current_data, previous_year_data):
             code = str(item.get('code') or '').strip()
             item['previous_year_amount'] = prev_cogs_lookup.get(code, 0.0)
 
-    current_data['cogs_breakdown']['previous_year_purchases'] = _to_float(
-        prev_cogs.get('total_cogs', prev_cogs.get('purchases', 0.0)), 0.0
-    )
+    current_data['cogs_breakdown']['previous_year_purchases'] = _to_float(prev_cogs.get('purchases', 0.0), 0.0)
+    current_data['cogs_breakdown']['previous_year_total_other_cogs'] = _to_float(prev_cogs.get('total_other_cogs', 0.0), 0.0)
 
 
 def _apply_comparative_data(current_data, previous_year_data):
@@ -105,6 +120,20 @@ def _apply_comparative_data(current_data, previous_year_data):
     current_data['previous_year_total_expenses'] = previous_year_data['total_expenses']
     current_data['previous_year_net_income'] = previous_year_data['net_income']
     _merge_comparative_cogs(current_data, previous_year_data)
+    current_reconciliation = current_data.get('fiscal_reconciliation') or {}
+    previous_reconciliation = previous_year_data.get('fiscal_reconciliation') or {}
+    current_reconciliation['previous_year_total_positive_correction'] = previous_reconciliation.get('total_positive_correction', 0.0)
+    current_reconciliation['previous_year_total_negative_correction'] = previous_reconciliation.get('total_negative_correction', 0.0)
+    current_reconciliation['previous_year_total_tax_expense_correction'] = previous_reconciliation.get('total_tax_expense_correction', 0.0)
+    current_reconciliation['previous_year_fiscal_net_income'] = previous_reconciliation.get('fiscal_net_income', 0.0)
+    current_data['fiscal_reconciliation'] = current_reconciliation
+    current_metrics = current_data.get('earnings_metrics') or {}
+    previous_metrics = previous_year_data.get('earnings_metrics') or {}
+    current_metrics['previous_year_tax_expense'] = previous_metrics.get('tax_expense', 0.0)
+    current_metrics['previous_year_earnings_before_tax'] = previous_metrics.get('earnings_before_tax', 0.0)
+    current_metrics['previous_year_earnings_after_tax'] = previous_metrics.get('earnings_after_tax', 0.0)
+    current_metrics['previous_year_earnings_before_tax_depreciation_and_amortization'] = previous_metrics.get('earnings_before_tax_depreciation_and_amortization', 0.0)
+    current_data['earnings_metrics'] = current_metrics
     logger.debug(
         "[Income Statement] Merged comparative data revenue_count=%s expense_count=%s",
         len(current_data['revenue']),
@@ -140,8 +169,11 @@ def _build_income_statement_query(conn, report_type, split_exclusion_clause, cor
             coa.code,
             coa.name,
             coa.category,
+            coa.category,
             coa.subcategory,
             coa.fiscal_category,
+            m.fiscal_category as mark_fiscal_category,
+            m.internal_report as mark_name,
             SUM(
                 CASE
                     WHEN UPPER(COALESCE({effective_mapping_type}, '')) = 'DEBIT' THEN
@@ -179,7 +211,7 @@ def _build_income_statement_query(conn, report_type, split_exclusion_clause, cor
             AND (:company_id IS NULL OR {company_ref} = :company_id)
             {split_exclusion_clause}
             {coretax_clause}
-        GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory, coa.fiscal_category
+        GROUP BY coa.id, coa.code, coa.name, coa.category, coa.subcategory, coa.fiscal_category, m.fiscal_category, m.internal_report
         ORDER BY coa.code
     """)
 
@@ -188,7 +220,12 @@ def _merge_expense_item(expenses, item):
     for existing in expenses:
         if str(existing.get('code') or '') == str(item.get('code') or ''):
             existing['amount'] = _to_float(existing.get('amount'), 0.0) + _to_float(item.get('amount'), 0.0)
+            if 'raw_components' not in existing:
+                existing['raw_components'] = [existing.copy()]
+            existing['raw_components'].append(item)
             return
+    if 'raw_components' not in item:
+        item['raw_components'] = [item.copy()]
     expenses.append(item)
 
 
@@ -205,14 +242,21 @@ def _process_income_statement_rows(result):
         signed_amount = float(d['signed_amount']) if d['signed_amount'] else 0.0
         amount = -signed_amount if d['category'] == 'REVENUE' else signed_amount
 
+        mark_f_cat = d.get('mark_fiscal_category')
+        coa_f_cat = d.get('fiscal_category', 'DEDUCTIBLE')
+        effective_f_cat = mark_f_cat if mark_f_cat else coa_f_cat
+
         item = {
             'code': d['code'],
             'name': d['name'],
             'subcategory': d['subcategory'],
             'amount': amount,
             'category': d['category'],
-            'fiscal_category': d.get('fiscal_category', 'DEDUCTIBLE'),
+            'fiscal_category': effective_f_cat,
+            'mark_name': d.get('mark_name'),
+            'raw_components': [] # will be initialized during merge
         }
+        item['raw_components'] = [item.copy()]
 
         if d['category'] == 'REVENUE':
             revenue.append(item)
@@ -279,11 +323,6 @@ def _build_cogs_breakdown(expenses, start_date, beginning_inv, ending_inv):
 
 def _build_cogs_detail_items(cogs_breakdown):
     cogs_detail_items = []
-    purchases_items = cogs_breakdown.get('purchases_items', [])
-    other_cogs_items = cogs_breakdown.get('other_cogs_items', [])
-    cogs_breakdown['purchases_items'] = purchases_items + other_cogs_items
-    cogs_breakdown['purchases'] = cogs_breakdown.get('total_cogs', 0.0)
-
     beginning_inv = cogs_breakdown.get('beginning_inventory', 0.0)
     ending_inv = cogs_breakdown.get('ending_inventory', 0.0)
     if beginning_inv and ending_inv and beginning_inv != ending_inv:
@@ -297,6 +336,50 @@ def _build_cogs_detail_items(cogs_breakdown):
             'type': 'inventory_adjustment',
         })
     return cogs_detail_items
+
+
+def _append_positive_correction(target_list, comp):
+    name_suffix = f" ({comp['mark_name']})" if comp.get('mark_name') else ""
+    target_list.append({
+        'code': str(comp.get('code') or '').strip(),
+        'name': f"{comp['name']}{name_suffix}",
+        'amount': _to_float(comp.get('amount'), 0.0),
+        'fiscal_category': comp.get('fiscal_category', 'DEDUCTIBLE')
+    })
+
+
+def _classify_positive_corrections(items):
+    positive_corrections = []
+    tax_expense_corrections = []
+
+    for source_item in items:
+        components = source_item.get('raw_components', [source_item])
+        for comp in components:
+            f_cat = comp.get('fiscal_category', 'DEDUCTIBLE')
+            if f_cat not in ('NON_DEDUCTIBLE_PERMANENT', 'NON_DEDUCTIBLE_TEMPORARY'):
+                continue
+            code = str(comp.get('code') or '').strip()
+            target_list = tax_expense_corrections if code in TAX_EXPENSE_CORRECTION_CODES else positive_corrections
+            _append_positive_correction(target_list, comp)
+
+    return positive_corrections, tax_expense_corrections
+
+
+def _build_earnings_metrics(total_revenue, total_expenses, total_cogs, depreciation_and_amortization, expenses):
+    tax_expense = sum(
+        _to_float(item.get('amount'), 0.0)
+        for item in expenses
+        if str(item.get('code') or '').strip() in TAX_EXPENSE_CORRECTION_CODES
+    )
+    earnings_after_tax = _to_float(total_revenue, 0.0) - _to_float(total_expenses, 0.0) - _to_float(total_cogs, 0.0)
+    earnings_before_tax = earnings_after_tax + tax_expense
+    earnings_before_tax_depreciation_and_amortization = earnings_before_tax + _to_float(depreciation_and_amortization, 0.0)
+    return {
+        'tax_expense': tax_expense,
+        'earnings_before_tax': earnings_before_tax,
+        'earnings_after_tax': earnings_after_tax,
+        'earnings_before_tax_depreciation_and_amortization': earnings_before_tax_depreciation_and_amortization,
+    }
 def fetch_income_statement_data(conn, start_date, end_date, company_id=None, report_type='real', comparative=False):
     """
     Helper function to fetch income statement data.
@@ -479,46 +562,58 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
     total_expenses_calculated = sum(e['amount'] for e in final_expenses)
     
     # --- FISCAL RECONCILIATION LOGIC ---
-    positive_corrections = []
     negative_corrections = []
-    
-    # Check expenses for non-deductible items
-    for exp in final_expenses:
-        f_cat = exp.get('fiscal_category', 'DEDUCTIBLE')
-        if f_cat in ('NON_DEDUCTIBLE_PERMANENT', 'NON_DEDUCTIBLE_TEMPORARY'):
-            positive_corrections.append({
-                'code': exp['code'],
-                'name': exp['name'],
-                'amount': exp['amount'],
-                'fiscal_category': f_cat
-            })
-            
-    # Check COGS for non-deductible items
-    for cogs_item in cogs_breakdown.get('purchases_items', []) + cogs_breakdown.get('other_cogs_items', []):
-        f_cat = cogs_item.get('fiscal_category', 'DEDUCTIBLE')
-        if f_cat in ('NON_DEDUCTIBLE_PERMANENT', 'NON_DEDUCTIBLE_TEMPORARY'):
-             positive_corrections.append({
-                'code': cogs_item['code'],
-                'name': cogs_item['name'],
-                'amount': cogs_item['amount'],
-                'fiscal_category': f_cat
-            })
+    positive_corrections, tax_expense_corrections = _classify_positive_corrections(
+        final_expenses + cogs_breakdown.get('purchases_items', []) + cogs_breakdown.get('other_cogs_items', [])
+    )
 
     # Check revenue for non-taxable income
     for rev in revenue:
-        f_cat = rev.get('fiscal_category', 'DEDUCTIBLE')
-        if f_cat == 'NON_TAXABLE_INCOME':
-            negative_corrections.append({
-                'code': rev['code'],
-                'name': rev['name'],
-                'amount': rev['amount'],
-                'fiscal_category': f_cat
-            })
+        components = rev.get('raw_components', [rev])
+        for comp in components:
+            f_cat = comp.get('fiscal_category', 'DEDUCTIBLE')
+            if f_cat == 'NON_TAXABLE_INCOME':
+                name_suffix = f" ({comp['mark_name']})" if comp.get('mark_name') else ""
+                negative_corrections.append({
+                    'code': comp['code'],
+                    'name': f"{comp['name']}{name_suffix}",
+                    'amount': comp['amount'],
+                    'fiscal_category': f_cat
+                })
 
+    # Fetch and merge manual fiscal corrections
+    try:
+        manual_corrections = _fetch_manual_fiscal_corrections(conn, start_date, end_date, company_id)
+        for mc in manual_corrections:
+            correction_item = {
+                'code': mc['code'],
+                'name': mc['name'] + (f" (Manual: {mc['reason']})" if mc['reason'] else " (Manual)"),
+                'amount': _to_float(mc['amount'], 0.0),
+                'fiscal_category': 'MANUAL_CORRECTION'
+            }
+            if mc['correction_type'] == 'POSITIVE':
+                if str(mc['code'] or '').strip() in TAX_EXPENSE_CORRECTION_CODES:
+                    tax_expense_corrections.append(correction_item)
+                else:
+                    positive_corrections.append(correction_item)
+            elif mc['correction_type'] == 'NEGATIVE':
+                negative_corrections.append(correction_item)
+    except Exception as e:
+        logger.error(f"Failed to fetch manual fiscal corrections: {e}")
+
+    total_tax_expense_correction = sum(c['amount'] for c in tax_expense_corrections)
     total_positive_correction = sum(c['amount'] for c in positive_corrections)
+    total_positive_correction += total_tax_expense_correction
     total_negative_correction = sum(c['amount'] for c in negative_corrections)
     commercial_net_income = total_revenue - total_expenses_calculated - calculate_hpp
     fiscal_net_income = commercial_net_income + total_positive_correction - total_negative_correction
+    earnings_metrics = _build_earnings_metrics(
+        total_revenue,
+        total_expenses_calculated,
+        calculate_hpp,
+        dynamic_5314_amount,
+        final_expenses,
+    )
 
     return {
         'revenue': revenue,
@@ -539,11 +634,14 @@ def _fetch_income_statement_data_internal(conn, start_date, end_date, company_id
             'report_year': amortization_breakdown.get('report_year')
         },
         'net_income': commercial_net_income,
+        'earnings_metrics': earnings_metrics,
         'fiscal_reconciliation': {
             'commercial_net_income': commercial_net_income,
             'positive_corrections': positive_corrections,
+            'tax_expense_corrections': tax_expense_corrections,
             'negative_corrections': negative_corrections,
             'total_positive_correction': total_positive_correction,
+            'total_tax_expense_correction': total_tax_expense_correction,
             'total_negative_correction': total_negative_correction,
             'fiscal_net_income': fiscal_net_income
         }

@@ -50,6 +50,7 @@
                  </div>
                </th>
                <th class="px-6 py-3 text-center">Coretax?</th>
+               <th class="px-6 py-3 text-center">Fiscal Category</th>
                <th class="px-6 py-3 text-center">Aset?</th>
                <th class="px-6 py-3 text-center">Jasa?</th>
                <th class="px-6 py-3 text-center">Salary?</th>
@@ -88,6 +89,19 @@
                      <i v-else :class="m.is_coretax ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
                      {{ m.is_coretax ? 'Ya' : 'Tidak' }}
                    </button>
+                 </td>
+                 <td class="px-6 py-4 text-center">
+                   <span v-if="m.fiscal_category" class="inline-flex items-center px-2 py-1 rounded text-[10px] font-bold tracking-wide"
+                     :class="{
+                       'bg-rose-100 text-rose-800': m.fiscal_category.includes('NON_DEDUCTIBLE'),
+                       'bg-emerald-100 text-emerald-800': m.fiscal_category === 'DEDUCTIBLE',
+                       'bg-blue-100 text-blue-800': m.fiscal_category === 'NON_TAXABLE_INCOME'
+                     }"
+                   >
+                     {{ m.fiscal_category === 'NON_DEDUCTIBLE_PERMANENT' ? 'Non-Deductible' : 
+                        m.fiscal_category === 'DEDUCTIBLE' ? 'Deductible' : m.fiscal_category }}
+                   </span>
+                   <span v-else class="text-[10px] text-muted italic">Inherit COA</span>
                  </td>
                  <td class="px-6 py-4 text-center">
                    <button
