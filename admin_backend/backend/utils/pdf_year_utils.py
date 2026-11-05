@@ -1,23 +1,13 @@
 import os
 import re
-import PyPDF2
+import pypdf
 from typing import Dict, Optional
-
-try:  # Support both new and legacy PyPDF2 versions
-    from PyPDF2.errors import PdfReadError  # type: ignore[attr-defined]
-except (ImportError, AttributeError):  # pragma: no cover - fallback for older PyPDF2
-    try:
-        from PyPDF2.utils import PdfReadError  # type: ignore
-    except (ImportError, AttributeError):
-        class PdfReadError(Exception):  # type: ignore
-            """Fallback PdfReadError for very old PyPDF2 releases."""
-            pass
 
 def infer_year_from_pdf(pdf_path: str) -> Optional[int]:
     """Extract a plausible statement year by scanning the first pages of the PDF."""
     try:
         with open(pdf_path, 'rb') as fh:
-            reader = PyPDF2.PdfReader(fh)
+            reader = pypdf.PdfReader(fh)
             text_content = []
             for page in reader.pages[:2]:
                 try:

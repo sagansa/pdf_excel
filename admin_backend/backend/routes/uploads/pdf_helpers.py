@@ -2,22 +2,14 @@ import os
 import re
 
 import pandas as pd
-import PyPDF2
+import pypdf
 from werkzeug.utils import secure_filename
+from pypdf.errors import PdfReadError
 
 from backend.utils.date_helpers import normalize_date_columns, standardize_statement_dates
 from backend.utils.pdf_year_utils import infer_year_from_filename, infer_year_from_pdf
 from bank_parsers import bca, bca_cc, blu, bri, dbs, mandiri, mandiri_cc, mandiri_email, saqu
 from backend.utils.pdf_unlock import unlock_pdf
-
-try:
-    from PyPDF2.errors import PdfReadError
-except (ImportError, AttributeError):
-    try:
-        from PyPDF2.utils import PdfReadError
-    except (ImportError, AttributeError):
-        class PdfReadError(Exception):
-            pass
 
 
 def normalize_company_id(value):
@@ -44,7 +36,7 @@ def save_uploaded_file(upload_folder, file_storage):
 
 def detect_pdf_password_requirement(pdf_path):
     with open(pdf_path, 'rb') as pdf_file:
-        reader = PyPDF2.PdfReader(pdf_file)
+        reader = pypdf.PdfReader(pdf_file)
         is_protected = reader.is_encrypted
         if not is_protected:
             return False
@@ -60,7 +52,7 @@ def resolve_pdf_access_path(original_pdf_path, password=None):
     pdf_path = original_pdf_path
 
     with open(original_pdf_path, 'rb') as pdf_file:
-        reader = PyPDF2.PdfReader(pdf_file)
+        reader = pypdf.PdfReader(pdf_file)
         if reader.is_encrypted:
             if not password:
                 try:

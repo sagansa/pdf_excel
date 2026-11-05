@@ -23,15 +23,11 @@ def _require_pisa():
 def _require_pdf_merge_lib():
     try:
         from pypdf import PdfReader, PdfWriter
-        return PdfReader, PdfWriter
-    except ImportError:
-        try:
-            from PyPDF2 import PdfReader, PdfWriter
-            return PdfReader, PdfWriter
-        except ImportError as exc:  # pragma: no cover - depends on runtime environment
-            raise PdfDependencyError(
-                "PDF merge requires pypdf or PyPDF2. Install backend requirements before exporting reports."
-            ) from exc
+    except ImportError as exc:  # pragma: no cover - depends on runtime environment
+        raise PdfDependencyError(
+            "PDF merge requires pypdf. Install backend requirements before exporting reports."
+        ) from exc
+    return PdfReader, PdfWriter
 
 
 def format_indo_date(date_str):

@@ -1,14 +1,6 @@
-import PyPDF2
+import pypdf
 import os
-try:  # Support both new and legacy PyPDF2 packages
-    from PyPDF2.errors import PdfReadError  # type: ignore[attr-defined]
-except (ImportError, AttributeError):  # pragma: no cover
-    try:
-        from PyPDF2.utils import PdfReadError  # type: ignore
-    except (ImportError, AttributeError):
-        class PdfReadError(Exception):  # type: ignore
-            """Fallback PdfReadError for very old PyPDF2 releases."""
-            pass
+from pypdf.errors import PdfReadError
 
 def unlock_pdf(input_path, password, output_path=None):
     """Unlock a password-protected PDF file.
@@ -39,7 +31,7 @@ def unlock_pdf(input_path, password, output_path=None):
         # Open the PDF file
         with open(input_path, 'rb') as file:
             # Create PDF reader object
-            reader = PyPDF2.PdfReader(file)
+            reader = pypdf.PdfReader(file)
             
             # Check if PDF is encrypted
             if not reader.is_encrypted:
@@ -64,7 +56,7 @@ def unlock_pdf(input_path, password, output_path=None):
                 raise PdfReadError("Incorrect password")
             
             # Create a PDF writer object
-            writer = PyPDF2.PdfWriter()
+            writer = pypdf.PdfWriter()
             
             # Add all pages to writer
             for page in reader.pages:
