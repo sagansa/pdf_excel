@@ -31,6 +31,10 @@ def _client_ip():
     return request.remote_addr or 'unknown'
 
 
+def _normalize_email(value):
+    return str(value or '').strip().lower()
+
+
 def _too_many_attempts(key):
     now = time.time()
     attempts = [t for t in _failed_logins[key] if now - t < LOGIN_WINDOW_SECONDS]
@@ -45,7 +49,7 @@ def _record_failed_attempt(key):
 def _session_user(row):
     return {
         'id': int(row['id']),
-        'username': row['username'],
+        'email': row['email'],
         'display_name': row['display_name'],
     }
 
@@ -59,7 +63,7 @@ def _fetch_user_by_column(column, value):
     with engine.connect() as conn:
         result = conn.execute(
             text(
-                'SELECT id, username, display_name, password_hash, is_active '
+                'SELECT id, email, display_name, password_hash, is_active, credential_version '
                 f'FROM users WHERE {column} = :value'
             ),
             {'value': value},
@@ -90,27 +94,27 @@ def get_user_if_active(user_id):
 @auth_bp.route('/api/auth/login', methods=['POST'])
 def login():
     payload = request.get_json(silent=True) or {}
-    username = str(payload.get('username') or '').strip()
+    email = _normalize_email(payload.get('email'))
     password = str(payload.get('password') or '')
-    if not username or not password:
-        raise BadRequestError('Username and password are required', code='credentials_missing')
+    if not email or not password:
+        raise BadRequestError('Email and password are required', code='credentials_missing')
 
-    throttle_key = (_client_ip(), username.lower())
+    throttle_key = (_client_ip(), email)
     if _too_many_attempts(throttle_key):
         raise TooManyRequestsError(
             'Too many failed login attempts. Try again in a few minutes.'
         )
 
-    user = _fetch_user_by_column('username', username)
+    user = _fetch_user_by_column('email', email)
     if not _is_active(user) or not check_password_hash(user['password_hash'], password):
         _record_failed_attempt(throttle_key)
-        raise UnauthorizedError('Invalid username or password', code='invalid_credentials')
+        raise UnauthorizedError('Invalid email or password', code='invalid_credentials')
 
     _failed_logins.pop(throttle_key, None)
     session.clear()
     session.permanent = True
     session['user_id'] = int(user['id'])
-    session['username'] = user['username']
+    session['credential_version'] = int(user['credential_version'])
     return jsonify({'user': _session_user(user)})
 
 
