@@ -14,6 +14,8 @@ import InitialCapitalPage from '../views/InitialCapitalPage.vue'
 import GeneralLedger from '../views/GeneralLedger.vue'
 import HrdView from '../views/HrdView.vue'
 import LoginView from '../views/LoginView.vue'
+import ForgotPasswordView from '../views/ForgotPasswordView.vue'
+import ResetPasswordView from '../views/ResetPasswordView.vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
@@ -23,6 +25,18 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
+      meta: { public: true }
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: ForgotPasswordView,
+      meta: { public: true }
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: ResetPasswordView,
       meta: { public: true }
     },
     {
