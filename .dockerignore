@@ -1,0 +1,5 @@
+**/.git
+**/node_modules
+admin_backend/pdfs
+admin_backend/venv
+admin_frontend/dist

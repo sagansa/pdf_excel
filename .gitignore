@@ -39,5 +39,8 @@ admin_backend/venv/
 # Backend runtime uploads
 admin_backend/pdfs/
 
+# SQL dump lokal (berisi data — jangan pernah di-commit)
+esta.sql
+
 # ZCode session artifacts
 .zcode/
