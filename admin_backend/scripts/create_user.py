@@ -1,12 +1,13 @@
-"""Create or reset a login user for the esta admin backend.
+"""Create or reset a login user (email-based) for the esta admin backend.
 
 Usage (from admin_backend/):
-    venv/bin/python scripts/create_user.py <username> <display_name>
+    venv/bin/python scripts/create_user.py <email> <display_name>
 
-Prompts for a password (hidden input). If the username already exists,
+Prompts for a password (hidden input). If the email already exists,
 the password and display name are updated and the account re-activated.
 """
 import getpass
+import re
 import sys
 from pathlib import Path
 
@@ -23,20 +24,32 @@ from werkzeug.security import generate_password_hash
 from backend.db.session import get_db_engine
 
 MIN_PASSWORD_LENGTH = 8
+EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+
+def normalize_email(value):
+    return str(value or '').strip().lower()
+
+
+def is_valid_email(value):
+    return bool(EMAIL_RE.match(normalize_email(value)))
 
 
 def main():
     if len(sys.argv) != 3:
-        print(f'Usage: {sys.argv[0]} <username> <display_name>')
+        print(f'Usage: {sys.argv[0]} <email> <display_name>')
         sys.exit(1)
 
-    username = sys.argv[1].strip()
+    email = normalize_email(sys.argv[1])
     display_name = sys.argv[2].strip()
-    if not username or not display_name:
-        print('Username dan display name tidak boleh kosong.')
+    if not is_valid_email(email):
+        print('Email tidak valid.')
+        sys.exit(1)
+    if not display_name:
+        print('Display name tidak boleh kosong.')
         sys.exit(1)
 
-    password = getpass.getpass(f'Password untuk {username}: ')
+    password = getpass.getpass(f'Password untuk {email}: ')
     confirm = getpass.getpass('Konfirmasi password: ')
     if len(password) < MIN_PASSWORD_LENGTH:
         print(f'Password minimal {MIN_PASSWORD_LENGTH} karakter.')
@@ -53,8 +66,8 @@ def main():
     password_hash = generate_password_hash(password)
     with engine.begin() as conn:
         existing = conn.execute(
-            text('SELECT id FROM users WHERE username = :username'),
-            {'username': username},
+            text('SELECT id FROM users WHERE email = :email'),
+            {'email': email},
         ).first()
         if existing:
             conn.execute(
@@ -64,16 +77,16 @@ def main():
                 ),
                 {'password_hash': password_hash, 'display_name': display_name, 'id': existing[0]},
             )
-            print(f'User {username} diperbarui (password direset, akun diaktifkan).')
+            print(f'User {email} diperbarui (password direset, akun diaktifkan).')
         else:
             conn.execute(
                 text(
-                    'INSERT INTO users (username, password_hash, display_name) '
-                    'VALUES (:username, :password_hash, :display_name)'
+                    'INSERT INTO users (email, password_hash, display_name) '
+                    'VALUES (:email, :password_hash, :display_name)'
                 ),
-                {'username': username, 'password_hash': password_hash, 'display_name': display_name},
+                {'email': email, 'password_hash': password_hash, 'display_name': display_name},
             )
-            print(f'User {username} dibuat.')
+            print(f'User {email} dibuat.')
 
 
 if __name__ == '__main__':
