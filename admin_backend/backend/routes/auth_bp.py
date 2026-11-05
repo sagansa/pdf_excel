@@ -210,9 +210,18 @@ def reset_password():
             ),
             {'password_hash': generate_password_hash(new_password), 'uid': int(row['user_id'])},
         )
-        conn.execute(
-            text('UPDATE password_reset_tokens SET used_at = :now WHERE id = :id'),
+        marked = conn.execute(
+            text(
+                'UPDATE password_reset_tokens SET used_at = :now '
+                'WHERE id = :id AND used_at IS NULL'
+            ),
             {'now': datetime.now(), 'id': int(row['id'])},
+        )
+        if marked.rowcount == 0:
+            raise BadRequestError('This reset link is invalid or has expired', code='invalid_token')
+        conn.execute(
+            text('DELETE FROM password_reset_tokens WHERE user_id = :uid'),
+            {'uid': int(row['user_id'])},
         )
 
     # Buang cache guard agar sesi lama (credential_version beda) mati segera.

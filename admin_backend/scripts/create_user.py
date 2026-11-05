@@ -73,11 +73,16 @@ def main():
             conn.execute(
                 text(
                     'UPDATE users SET password_hash = :password_hash, '
-                    'display_name = :display_name, is_active = 1 WHERE id = :id'
+                    'display_name = :display_name, is_active = 1, '
+                    'credential_version = credential_version + 1 WHERE id = :id'
                 ),
                 {'password_hash': password_hash, 'display_name': display_name, 'id': existing[0]},
             )
-            print(f'User {email} diperbarui (password direset, akun diaktifkan).')
+            conn.execute(
+                text('DELETE FROM password_reset_tokens WHERE user_id = :id'),
+                {'id': existing[0]},
+            )
+            print(f'User {email} diperbarui (password direset, token reset dihapus, akun diaktifkan).')
         else:
             conn.execute(
                 text(

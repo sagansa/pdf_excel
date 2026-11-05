@@ -129,7 +129,7 @@ def _request_reset(client, caplog, email='admin@example.com'):
     return _reset_token_from_log(caplog)
 
 
-def test_reset_password_flow(client, make_user, caplog):
+def test_reset_password_flow(client, make_user, caplog, engine):
     make_user(email='admin@example.com', password='oldpassword123')
     token = _request_reset(client, caplog)
 
@@ -143,6 +143,12 @@ def test_reset_password_flow(client, make_user, caplog):
     assert old.status_code == 401
     new = client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'newpassword456'})
     assert new.status_code == 200
+    with engine.connect() as conn:
+        remaining = conn.execute(
+            text('SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = :uid'),
+            {'uid': 1},
+        ).scalar_one()
+    assert remaining == 0
 
 
 def test_reset_token_is_single_use(client, make_user, caplog):

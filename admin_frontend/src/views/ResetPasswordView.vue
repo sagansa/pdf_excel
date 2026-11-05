@@ -55,6 +55,10 @@
 
         <p v-if="error" class="text-sm text-red-500 dark:text-red-400">{{ error }}</p>
 
+        <router-link v-if="invalidLink" to="/forgot-password" class="btn-primary w-full flex items-center justify-center py-2.5">
+          Request a new link
+        </router-link>
+
         <button type="submit" class="btn-primary w-full" :disabled="isLoading || !password || !confirm">
           {{ isLoading ? 'Saving…' : 'Reset Password' }}
         </button>
@@ -76,6 +80,7 @@ const confirm = ref('');
 const isLoading = ref(false);
 const error = ref('');
 const done = ref(false);
+const invalidLink = ref(false);
 
 const handleSubmit = async () => {
   error.value = '';
@@ -95,6 +100,7 @@ const handleSubmit = async () => {
     const code = err.response?.data?.code;
     if (code === 'invalid_token') {
       error.value = 'This reset link is invalid or has expired. Request a new one.';
+      invalidLink.value = true;
     } else if (err.response?.status === 400) {
       error.value = err.response?.data?.error || 'Password must be at least 8 characters.';
     } else {
