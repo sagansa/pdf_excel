@@ -38,3 +38,6 @@ admin_backend/venv/
 
 # Backend runtime uploads
 admin_backend/pdfs/
+
+# ZCode session artifacts
+.zcode/
