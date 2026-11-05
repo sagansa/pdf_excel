@@ -115,7 +115,7 @@
           <div class="account-chip flex-shrink-0">{{ userInitials }}</div>
           <div class="overflow-hidden transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">
             <p class="text-xs font-bold text-theme truncate">{{ auth.user?.display_name || 'Admin' }}</p>
-            <p class="text-[10px] text-muted uppercase tracking-[0.18em] truncate">{{ auth.user?.username || '' }}</p>
+            <p class="text-[10px] text-muted uppercase tracking-[0.18em] truncate">{{ auth.user?.email || '' }}</p>
           </div>
           <button
             class="ml-auto flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
@@ -189,7 +189,7 @@ const auth = useAuthStore();
 const isLoggingOut = ref(false);
 
 const userInitials = computed(() => {
-  const name = auth.user?.display_name || auth.user?.username || 'A';
+  const name = auth.user?.display_name || auth.user?.email || 'A';
   return name
     .split(/\s+/)
     .slice(0, 2)

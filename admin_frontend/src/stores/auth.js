@@ -10,8 +10,8 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => state.user !== null,
   },
   actions: {
-    async login(username, password) {
-      const response = await authApi.login(username, password);
+    async login(email, password) {
+      const response = await authApi.login(email, password);
       this.user = response.data.user;
       return this.user;
     },

@@ -10,15 +10,15 @@
 
       <form class="surface-card rounded-2xl p-6 space-y-4" @submit.prevent="handleSubmit">
         <div>
-          <label for="username" class="block text-xs font-bold text-theme mb-1.5 uppercase tracking-wide">Username</label>
+          <label for="email" class="block text-xs font-bold text-theme mb-1.5 uppercase tracking-wide">Email</label>
           <input
-            id="username"
-            v-model="username"
-            type="text"
-            autocomplete="username"
+            id="email"
+            v-model="email"
+            type="email"
+            autocomplete="email"
             class="input-base py-2.5"
             :disabled="isLoading"
-            placeholder="Username"
+            placeholder="you@company.com"
             required
             autofocus
           />
@@ -38,15 +38,22 @@
           />
         </div>
 
+        <p v-if="resetNotice" class="text-sm text-green-600 dark:text-green-400">{{ resetNotice }}</p>
         <p v-if="error" class="text-sm text-red-500 dark:text-red-400">{{ error }}</p>
 
         <button
           type="submit"
           class="btn-primary w-full"
-          :disabled="isLoading || !username || !password"
+          :disabled="isLoading || !email || !password"
         >
           {{ isLoading ? 'Signing in…' : 'Sign In' }}
         </button>
+
+        <div class="text-center">
+          <router-link to="/forgot-password" class="text-xs text-muted hover:opacity-80">
+            Forgot password?
+          </router-link>
+        </div>
       </form>
     </div>
   </div>
@@ -61,16 +68,21 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 
-const username = ref('');
+const email = ref('');
 const password = ref('');
 const isLoading = ref(false);
 const error = ref('');
+const resetNotice = ref(
+  route.query.reset === 'success'
+    ? 'Password changed. Please sign in with your new password.'
+    : ''
+);
 
 const handleSubmit = async () => {
   isLoading.value = true;
   error.value = '';
   try {
-    await auth.login(username.value.trim(), password.value);
+    await auth.login(email.value.trim(), password.value);
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/';
     router.push(redirect);
   } catch (err) {
@@ -78,7 +90,7 @@ const handleSubmit = async () => {
     if (status === 429) {
       error.value = err.response?.data?.error || 'Too many attempts. Try again in a few minutes.';
     } else if (status === 401) {
-      error.value = err.response?.data?.error || 'Invalid username or password';
+      error.value = err.response?.data?.error || 'Invalid email or password';
     } else {
       error.value = 'Login failed. Check your connection and try again.';
     }

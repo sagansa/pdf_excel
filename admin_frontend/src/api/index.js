@@ -32,14 +32,20 @@ api.interceptors.response.use(
 export default api;
 
 export const authApi = {
-  login(username, password) {
-    return api.post('/auth/login', { username, password });
+  login(email, password) {
+    return api.post('/auth/login', { email, password });
   },
   logout() {
     return api.post('/auth/logout');
   },
   me() {
     return api.get('/auth/me');
+  },
+  forgotPassword(email) {
+    return api.post('/auth/forgot-password', { email });
+  },
+  resetPassword(token, newPassword) {
+    return api.post('/auth/reset-password', { token, new_password: newPassword });
   },
 };
 
