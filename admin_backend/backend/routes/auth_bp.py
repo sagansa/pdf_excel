@@ -1,22 +1,34 @@
+import hashlib
 import logging
+import os
+import secrets
 import time
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request, session
 from sqlalchemy import text
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from backend.errors import BadRequestError, TooManyRequestsError, UnauthorizedError
 from backend.routes.accounting_utils import require_db_engine
+from backend.services.mailer import send_reset_email
 
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth_bp', __name__)
 
-# Simple in-memory login throttling: max 5 failed attempts per (ip, username) per 5 minutes.
+# Simple in-memory throttling, keyed per (ip, identifier).
 # Sufficient for a single-process gunicorn deployment; no external storage needed.
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_WINDOW_SECONDS = 300
 _failed_logins = defaultdict(list)
+
+FORGOT_MAX_ATTEMPTS = 3
+FORGOT_WINDOW_SECONDS = 900
+_forgot_requests = defaultdict(list)
+
+RESET_TOKEN_TTL_MINUTES = 30
+MIN_PASSWORD_LENGTH = 8
 
 # Active-user cache used by the global auth guard: recheck the DB at most every 5 minutes
 # per user so deactivation takes effect without querying on every request.
@@ -35,15 +47,15 @@ def _normalize_email(value):
     return str(value or '').strip().lower()
 
 
-def _too_many_attempts(key):
+def _too_many_attempts(key, store, max_attempts, window_seconds):
     now = time.time()
-    attempts = [t for t in _failed_logins[key] if now - t < LOGIN_WINDOW_SECONDS]
-    _failed_logins[key] = attempts
-    return len(attempts) >= LOGIN_MAX_ATTEMPTS
+    attempts = [t for t in store[key] if now - t < window_seconds]
+    store[key] = attempts
+    return len(attempts) >= max_attempts
 
 
-def _record_failed_attempt(key):
-    _failed_logins[key].append(time.time())
+def _record_attempt(key, store):
+    store[key].append(time.time())
 
 
 def _session_user(row):
@@ -100,14 +112,14 @@ def login():
         raise BadRequestError('Email and password are required', code='credentials_missing')
 
     throttle_key = (_client_ip(), email)
-    if _too_many_attempts(throttle_key):
+    if _too_many_attempts(throttle_key, _failed_logins, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_SECONDS):
         raise TooManyRequestsError(
             'Too many failed login attempts. Try again in a few minutes.'
         )
 
     user = _fetch_user_by_column('email', email)
     if not _is_active(user) or not check_password_hash(user['password_hash'], password):
-        _record_failed_attempt(throttle_key)
+        _record_attempt(throttle_key, _failed_logins)
         raise UnauthorizedError('Invalid email or password', code='invalid_credentials')
 
     _failed_logins.pop(throttle_key, None)
@@ -116,6 +128,55 @@ def login():
     session['user_id'] = int(user['id'])
     session['credential_version'] = int(user['credential_version'])
     return jsonify({'user': _session_user(user)})
+
+
+def _hash_token(token):
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+
+_FORGOT_GENERIC_MESSAGE = 'If an account exists for that email, a reset link has been sent.'
+
+
+@auth_bp.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    payload = request.get_json(silent=True) or {}
+    email = _normalize_email(payload.get('email'))
+    if not email:
+        raise BadRequestError('Email is required', code='email_missing')
+
+    throttle_key = (_client_ip(), email)
+    if _too_many_attempts(throttle_key, _forgot_requests, FORGOT_MAX_ATTEMPTS, FORGOT_WINDOW_SECONDS):
+        raise TooManyRequestsError('Too many reset requests. Try again later.')
+    _record_attempt(throttle_key, _forgot_requests)
+
+    user = _fetch_user_by_column('email', email)
+    if _is_active(user):
+        try:
+            token = secrets.token_urlsafe(32)
+            engine = require_db_engine()
+            with engine.begin() as conn:
+                conn.execute(
+                    text('DELETE FROM password_reset_tokens WHERE user_id = :uid'),
+                    {'uid': int(user['id'])},
+                )
+                conn.execute(
+                    text(
+                        'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) '
+                        'VALUES (:uid, :token_hash, :expires_at)'
+                    ),
+                    {
+                        'uid': int(user['id']),
+                        'token_hash': _hash_token(token),
+                        'expires_at': datetime.now() + timedelta(minutes=RESET_TOKEN_TTL_MINUTES),
+                    },
+                )
+            base_url = (os.environ.get('APP_BASE_URL', '').strip() or request.url_root).rstrip('/')
+            send_reset_email(email, f'{base_url}/reset-password?token={token}', user['display_name'])
+        except Exception:
+            # Jangan bocorkan keberadaan akun lewat error pengiriman.
+            logger.exception('Failed to process password reset request for %s', email)
+
+    return jsonify({'ok': True, 'message': _FORGOT_GENERIC_MESSAGE})
 
 
 @auth_bp.route('/api/auth/logout', methods=['POST'])

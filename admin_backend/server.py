@@ -101,7 +101,11 @@ app.register_blueprint(auth_bp)
 # Global auth guard: every /api/* route requires a logged-in session.
 # Non-API paths (SPA shell and assets) stay public so the login page can load;
 # data protection happens at the API layer.
-PUBLIC_API_PATHS = {'/api/auth/login'}
+PUBLIC_API_PATHS = {
+    '/api/auth/login',
+    '/api/auth/forgot-password',
+    '/api/auth/reset-password',
+}
 
 
 @app.before_request
