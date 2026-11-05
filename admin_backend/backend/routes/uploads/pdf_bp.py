@@ -1,6 +1,7 @@
 import os
 import hashlib
-from flask import Blueprint, current_app as app, jsonify, request, send_file
+from flask import Blueprint, current_app as app, jsonify, request, send_file, send_from_directory
+from werkzeug.exceptions import NotFound
 
 import pandas as pd
 
@@ -25,10 +26,11 @@ from backend.routes.uploads.pdf_queries import (
 from backend.services.transactions.transaction_service import save_transactions_to_db
 
 pdf_bp = Blueprint('pdf_bp', __name__)
-BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-FRONTEND_DIST_INDEX = os.path.abspath(
-    os.path.join(BACKEND_ROOT, '..', 'admin_frontend', 'dist', 'index.html')
+# uploads -> routes -> backend -> admin_backend -> repo root -> admin_frontend/dist
+FRONTEND_DIST_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'admin_frontend', 'dist')
 )
+FRONTEND_DIST_INDEX = os.path.join(FRONTEND_DIST_DIR, 'index.html')
 
 
 def _empty_options_response():
@@ -119,6 +121,27 @@ def index():
         'message': 'API is running',
         'frontend': 'Run admin_frontend dev server or build admin_frontend/dist first.'
     })
+
+
+@pdf_bp.route('/assets/<path:filename>')
+def spa_assets(filename):
+    return send_from_directory(os.path.join(FRONTEND_DIST_DIR, 'assets'), filename)
+
+
+@pdf_bp.route('/<path:path>')
+def spa_fallback(path):
+    """Serve static files from dist and the SPA shell for client-side routes.
+
+    API paths keep returning 404 JSON so missing endpoints stay visible.
+    """
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found', 'code': 'not_found'}), 404
+    if not os.path.exists(FRONTEND_DIST_INDEX):
+        return jsonify({'error': 'Not found', 'code': 'not_found'}), 404
+    try:
+        return send_from_directory(FRONTEND_DIST_DIR, path)
+    except NotFound:
+        return send_file(FRONTEND_DIST_INDEX)
 
 @pdf_bp.route('/check_password', methods=['POST', 'OPTIONS'])
 @pdf_bp.route('/api/check-password', methods=['POST', 'OPTIONS'])

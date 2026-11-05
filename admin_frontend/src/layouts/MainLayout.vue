@@ -112,11 +112,20 @@
 
       <div class="p-4 border-t sidebar-footer overflow-hidden">
         <div class="surface-card-muted rounded-2xl p-4 flex items-center gap-3">
-          <div class="account-chip flex-shrink-0">A</div>
+          <div class="account-chip flex-shrink-0">{{ userInitials }}</div>
           <div class="overflow-hidden transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">
-            <p class="text-xs font-bold text-theme truncate">Admin Account</p>
-            <p class="text-[10px] text-muted uppercase tracking-[0.18em]">Operations Console</p>
+            <p class="text-xs font-bold text-theme truncate">{{ auth.user?.display_name || 'Admin' }}</p>
+            <p class="text-[10px] text-muted uppercase tracking-[0.18em] truncate">{{ auth.user?.username || '' }}</p>
           </div>
+          <button
+            class="ml-auto flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }"
+            title="Logout"
+            :disabled="isLoggingOut"
+            @click="handleLogout"
+          >
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
         </div>
       </div>
     </aside>
@@ -171,8 +180,32 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useTheme } from '../composables/useTheme';
+import { useAuthStore } from '../stores/auth';
+
+const router = useRouter();
+const auth = useAuthStore();
+const isLoggingOut = ref(false);
+
+const userInitials = computed(() => {
+  const name = auth.user?.display_name || auth.user?.username || 'A';
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+});
+
+const handleLogout = async () => {
+  isLoggingOut.value = true;
+  try {
+    await auth.logout();
+    router.push('/login');
+  } finally {
+    isLoggingOut.value = false;
+  }
+};
 
 const isSidebarCollapsed = ref(false);
 const isSidebarOpenMobile = ref(false);

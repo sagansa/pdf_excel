@@ -1,6 +1,9 @@
+import logging
 import os
+import secrets
+from datetime import timedelta
 from pathlib import Path
-from flask import Flask
+from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -9,6 +12,7 @@ load_dotenv(BASE_DIR / ".env")
 
 from migrate import run_migrations
 from backend.error_handlers import register_error_handlers
+from backend.routes.auth_bp import auth_bp, get_user_if_active
 from backend.routes.transactions.service_bp import service_bp
 from backend.routes.master_data.company_bp import company_bp
 from backend.routes.master_data.coa_bp import coa_bp
@@ -34,8 +38,34 @@ from backend.routes.reporting.fiscal_corrections_bp import fiscal_corrections_bp
 
 app = Flask(__name__)
 register_error_handlers(app)
-# Configure CORS
-CORS(app, resources={r"/*": {"origins": "*", "allow_headers": "*", "expose_headers": "*"}})
+
+logger = logging.getLogger(__name__)
+
+# Session configuration (HttpOnly signed cookie).
+# In production (FLASK_ENV != development) a missing SECRET_KEY is fatal: fail closed.
+_secret_key = os.environ.get('SECRET_KEY', '').strip()
+if not _secret_key:
+    if os.environ.get('FLASK_ENV') == 'development':
+        _secret_key = secrets.token_hex(32)
+        logger.warning('SECRET_KEY not set; using an ephemeral key (sessions reset on restart).')
+    else:
+        raise SystemExit('SECRET_KEY must be set (add it to admin_backend/.env).')
+
+app.config['SECRET_KEY'] = _secret_key
+app.config.update(
+    SESSION_COOKIE_NAME='esta_session',
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
+    SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE', '').strip().lower()
+    in {'1', 'true', 'yes'},
+)
+
+# CORS: same-origin by default (SPA + API are served by this app; dev uses the vite proxy).
+# Set CORS_ORIGINS (comma separated) only if a cross-origin client is really needed.
+_cors_origins = [o.strip() for o in os.environ.get('CORS_ORIGINS', '').split(',') if o.strip()]
+if _cors_origins:
+    CORS(app, resources={r"/*": {"origins": _cors_origins, "expose_headers": "*"}})
 
 # Configure upload folder
 UPLOAD_FOLDER = BASE_DIR / "pdfs"
@@ -65,6 +95,27 @@ app.register_blueprint(history_bp)
 app.register_blueprint(payroll_bp)
 app.register_blueprint(mark_bp)
 app.register_blueprint(fiscal_corrections_bp)
+app.register_blueprint(auth_bp)
+
+
+# Global auth guard: every /api/* route requires a logged-in session.
+# Non-API paths (SPA shell and assets) stay public so the login page can load;
+# data protection happens at the API layer.
+PUBLIC_API_PATHS = {'/api/auth/login'}
+
+
+@app.before_request
+def require_login():
+    if request.method == 'OPTIONS':
+        return None
+    if not request.path.startswith('/api/'):
+        return None
+    if request.path in PUBLIC_API_PATHS:
+        return None
+    if get_user_if_active(session.get('user_id')) is None:
+        session.clear()
+        return jsonify({'error': 'Authentication required', 'code': 'not_authenticated'}), 401
+    return None
 
 
 if __name__ == '__main__':

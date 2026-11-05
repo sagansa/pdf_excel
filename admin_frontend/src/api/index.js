@@ -8,7 +8,40 @@ const api = axios.create({
   },
 });
 
+// Session cookie expired or revoked: reload to the login page.
+// Auth endpoints themselves are excluded (they handle 401 in their own UI).
+// A full page load also resets all Pinia state.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url || '';
+    if (status === 401 && !url.startsWith('/auth/')) {
+      const currentPath = window.location.pathname + window.location.search;
+      const target = currentPath && currentPath !== '/login'
+        ? `/login?redirect=${encodeURIComponent(currentPath)}`
+        : '/login';
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.assign(target);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
+
+export const authApi = {
+  login(username, password) {
+    return api.post('/auth/login', { username, password });
+  },
+  logout() {
+    return api.post('/auth/logout');
+  },
+  me() {
+    return api.get('/auth/me');
+  },
+};
 
 // specialized services (can be moved to separate files later)
 export const converterApi = {

@@ -1,10 +1,5 @@
 import { defineStore } from 'pinia';
-import { reportsApi, filterApi } from '../api';
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: '/api'
-});
+import api, { reportsApi, filterApi } from '../api';
 
 async function extractBlobErrorMessage(blob, fallback = 'Failed to export report') {
   if (!(blob instanceof Blob)) {

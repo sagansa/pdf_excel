@@ -139,9 +139,7 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue';
-
-// Use backend proxy instead of direct API call to avoid CORS issues
-const API_BASE_URL = 'http://localhost:5001/api';
+import api from '../../api';
 
 const isLoading = ref(false);
 const error = ref('');
@@ -194,21 +192,11 @@ const loadData = async () => {
   error.value = '';
   try {
     // Use backend proxy which handles authentication
-    const url = `${API_BASE_URL}/stock-comparison?from_date=${fromDate.value}&to_date=${toDate.value}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+    const response = await api.get('/stock-comparison', {
+      params: { from_date: fromDate.value, to_date: toDate.value }
     });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
+
+    const data = response.data;
     items.value = Array.isArray(data.data) ? data.data : [];
     
     const s = data.summary || {};
@@ -224,7 +212,7 @@ const loadData = async () => {
     };
   } catch (err) {
     console.error('Failed to load stock comparison:', err);
-    error.value = err.message || 'Failed to load stock comparison';
+    error.value = err.response?.data?.error || err.message || 'Failed to load stock comparison';
   } finally {
     isLoading.value = false;
   }

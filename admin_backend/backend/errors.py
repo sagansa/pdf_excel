@@ -32,3 +32,13 @@ class ConflictError(ApiError):
 class ServiceUnavailableError(ApiError):
     def __init__(self, message, code='service_unavailable', payload=None):
         super().__init__(message, status_code=503, code=code, payload=payload)
+
+
+class UnauthorizedError(ApiError):
+    def __init__(self, message, code='unauthorized', payload=None):
+        super().__init__(message, status_code=401, code=code, payload=payload)
+
+
+class TooManyRequestsError(ApiError):
+    def __init__(self, message, code='too_many_requests', payload=None):
+        super().__init__(message, status_code=429, code=code, payload=payload)
