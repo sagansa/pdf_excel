@@ -54,6 +54,7 @@ def app(monkeypatch, engine):
         auth_bp_module._forgot_requests.clear()
     auth_bp_module._active_user_cache.clear()
     from server import app as flask_app
+    os.environ.pop('SMTP_HOST', None)  # re-force dev mailer: load_dotenv bisa men-set ulang dari .env
     flask_app.config['TESTING'] = True
     yield flask_app
 
