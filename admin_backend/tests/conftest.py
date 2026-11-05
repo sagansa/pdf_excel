@@ -67,7 +67,7 @@ def client(app):
 def make_user(engine):
     def _make(email='admin@example.com', password='password123', display_name='Admin', is_active=1):
         with engine.begin() as conn:
-            result = conn.execute(
+            conn.execute(
                 text(
                     'INSERT INTO users (email, password_hash, display_name, is_active) '
                     'VALUES (:email, :password_hash, :display_name, :is_active)'
@@ -79,6 +79,8 @@ def make_user(engine):
                     'is_active': is_active,
                 },
             )
-            return int(result.inserted_primary_key[0])
+            # inserted_primary_key tidak berlaku untuk INSERT via text();
+            # pakai last_insert_rowid() pada koneksi yang sama (SQLite).
+            return int(conn.execute(text('SELECT last_insert_rowid()')).scalar_one())
 
     return _make
