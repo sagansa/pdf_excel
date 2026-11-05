@@ -116,7 +116,8 @@ def require_login():
         return None
     if request.path in PUBLIC_API_PATHS:
         return None
-    if get_user_if_active(session.get('user_id')) is None:
+    user = get_user_if_active(session.get('user_id'))
+    if user is None or session.get('credential_version') != int(user['credential_version']):
         session.clear()
         return jsonify({'error': 'Authentication required', 'code': 'not_authenticated'}), 401
     return None

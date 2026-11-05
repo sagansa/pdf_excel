@@ -112,3 +112,95 @@ def test_me_returns_email_after_login(client, make_user):
 
     assert response.status_code == 200
     assert response.get_json()['user']['email'] == 'admin@example.com'
+
+
+def _reset_token_from_log(caplog):
+    for line in caplog.text.splitlines():
+        if '/reset-password?token=' in line:
+            return line.rsplit('token=', 1)[1].strip()
+    raise AssertionError('reset token not found in logs')
+
+
+def _request_reset(client, caplog, email='admin@example.com'):
+    import logging as _logging
+    with caplog.at_level(_logging.WARNING, logger='backend.services.mailer'):
+        response = client.post('/api/auth/forgot-password', json={'email': email})
+    assert response.status_code == 200
+    return _reset_token_from_log(caplog)
+
+
+def test_reset_password_flow(client, make_user, caplog):
+    make_user(email='admin@example.com', password='oldpassword123')
+    token = _request_reset(client, caplog)
+
+    response = client.post('/api/auth/reset-password', json={
+        'token': token, 'new_password': 'newpassword456',
+    })
+
+    assert response.status_code == 200
+    # Password lama ditolak, yang baru diterima.
+    old = client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'oldpassword123'})
+    assert old.status_code == 401
+    new = client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'newpassword456'})
+    assert new.status_code == 200
+
+
+def test_reset_token_is_single_use(client, make_user, caplog):
+    make_user(email='admin@example.com', password='oldpassword123')
+    token = _request_reset(client, caplog)
+    first = client.post('/api/auth/reset-password', json={'token': token, 'new_password': 'newpassword456'})
+    assert first.status_code == 200
+
+    second = client.post('/api/auth/reset-password', json={'token': token, 'new_password': 'anotherpass789'})
+
+    assert second.status_code == 400
+    assert second.get_json()['code'] == 'invalid_token'
+
+
+def test_reset_token_expired_is_rejected(client, make_user, engine):
+    from datetime import datetime as _dt, timedelta as _td
+
+    make_user(email='admin@example.com', password='oldpassword123')
+    from backend.routes.auth_bp import _hash_token
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) '
+                'VALUES (1, :th, :exp)'
+            ),
+            {'th': _hash_token('expired-token'), 'exp': _dt.now() - _td(minutes=1)},
+        )
+
+    response = client.post('/api/auth/reset-password', json={
+        'token': 'expired-token', 'new_password': 'newpassword456',
+    })
+
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'invalid_token'
+
+
+def test_reset_password_too_short_rejected(client, make_user, caplog):
+    make_user(email='admin@example.com', password='oldpassword123')
+    token = _request_reset(client, caplog)
+
+    response = client.post('/api/auth/reset-password', json={
+        'token': token, 'new_password': 'short',
+    })
+
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'password_too_short'
+
+
+def test_reset_password_invalidates_other_sessions(app, client, make_user, caplog):
+    make_user(email='admin@example.com', password='oldpassword123')
+    client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'oldpassword123'})
+    assert client.get('/api/auth/me').status_code == 200
+
+    other = app.test_client()
+    token = _request_reset(other, caplog)
+    assert other.post('/api/auth/reset-password', json={
+        'token': token, 'new_password': 'newpassword456',
+    }).status_code == 200
+
+    # Sesi lama (client pertama) harus mati.
+    assert client.get('/api/auth/me').status_code == 401

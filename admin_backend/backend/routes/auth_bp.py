@@ -179,6 +179,47 @@ def forgot_password():
     return jsonify({'ok': True, 'message': _FORGOT_GENERIC_MESSAGE})
 
 
+@auth_bp.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    payload = request.get_json(silent=True) or {}
+    token = str(payload.get('token') or '').strip()
+    new_password = str(payload.get('new_password') or '')
+    if not token or not new_password:
+        raise BadRequestError('Token and new password are required', code='reset_fields_missing')
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        raise BadRequestError(
+            f'Password must be at least {MIN_PASSWORD_LENGTH} characters', code='password_too_short'
+        )
+
+    engine = require_db_engine()
+    with engine.begin() as conn:
+        row = conn.execute(
+            text(
+                'SELECT id, user_id FROM password_reset_tokens '
+                'WHERE token_hash = :token_hash AND used_at IS NULL AND expires_at > :now'
+            ),
+            {'token_hash': _hash_token(token), 'now': datetime.now()},
+        ).mappings().first()
+        if row is None:
+            raise BadRequestError('This reset link is invalid or has expired', code='invalid_token')
+
+        conn.execute(
+            text(
+                'UPDATE users SET password_hash = :password_hash, '
+                'credential_version = credential_version + 1 WHERE id = :uid'
+            ),
+            {'password_hash': generate_password_hash(new_password), 'uid': int(row['user_id'])},
+        )
+        conn.execute(
+            text('UPDATE password_reset_tokens SET used_at = :now WHERE id = :id'),
+            {'now': datetime.now(), 'id': int(row['id'])},
+        )
+
+    # Buang cache guard agar sesi lama (credential_version beda) mati segera.
+    _active_user_cache.pop(int(row['user_id']), None)
+    return jsonify({'ok': True, 'message': 'Password updated. Please sign in with your new password.'})
+
+
 @auth_bp.route('/api/auth/logout', methods=['POST'])
 def logout():
     session.clear()
