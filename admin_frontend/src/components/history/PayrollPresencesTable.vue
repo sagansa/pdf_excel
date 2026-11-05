@@ -168,7 +168,7 @@ const message = ref('');
 const month = ref('');
 const search = ref('');
 const apiUrlOverride = ref('https://superadmin.sagansa.id/api/presences');
-const tokenOverride = ref('***REMOVED***');
+const tokenOverride = ref('');
 
 const selectedYear = computed(() => {
   const parsed = Number(props.year);

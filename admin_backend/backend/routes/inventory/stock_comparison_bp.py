@@ -12,7 +12,7 @@ DEFAULT_STOCK_COMPARISON_API_URL = os.environ.get(
 )
 DEFAULT_STOCK_COMPARISON_TOKEN = os.environ.get(
     'SAGANSA_STOCK_COMPARISON_TOKEN',
-    '***REMOVED***'
+    ''
 )
 
 

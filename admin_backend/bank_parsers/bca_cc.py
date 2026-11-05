@@ -2,6 +2,7 @@ import pdfplumber
 import pandas as pd
 import re
 from datetime import datetime
+from decimal import Decimal
 
 from bank_parsers.parser_common import (
     append_debug_log,

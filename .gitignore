@@ -28,5 +28,13 @@ dist-ssr
 __pycache__/
 *.pyc
 
+# Environment files (contain secrets — never commit)
+.env
+.env.*
+!.env.example
+
+# Python virtual environments
+admin_backend/venv/
+
 # Backend runtime uploads
 admin_backend/pdfs/
