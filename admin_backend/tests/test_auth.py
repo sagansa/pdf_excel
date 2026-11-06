@@ -210,3 +210,85 @@ def test_reset_password_invalidates_other_sessions(app, client, make_user, caplo
 
     # Sesi lama (client pertama) harus mati.
     assert client.get('/api/auth/me').status_code == 401
+
+
+def test_change_password_requires_authentication(client):
+    response = client.post('/api/auth/change-password', json={
+        'current_password': 'whatever1', 'new_password': 'newpassword123',
+    })
+
+    assert response.status_code == 401
+
+
+def test_change_password_wrong_current_rejected(client, make_user):
+    make_user(email='admin@example.com', password='oldpassword123')
+    client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'oldpassword123'})
+
+    response = client.post('/api/auth/change-password', json={
+        'current_password': 'wrongpass1', 'new_password': 'newpassword123',
+    })
+
+    assert response.status_code == 401
+    assert response.get_json()['code'] == 'invalid_credentials'
+
+
+def test_change_password_success_and_relogin(client, make_user):
+    make_user(email='admin@example.com', password='oldpassword123')
+    client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'oldpassword123'})
+
+    response = client.post('/api/auth/change-password', json={
+        'current_password': 'oldpassword123', 'new_password': 'newpassword456',
+    })
+
+    assert response.status_code == 200
+    assert response.get_json()['ok'] is True
+    old = client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'oldpassword123'})
+    assert old.status_code == 401
+    new = client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'newpassword456'})
+    assert new.status_code == 200
+
+
+def test_change_password_keeps_current_session_and_kills_others(app, client, make_user):
+    make_user(email='admin@example.com', password='oldpassword123')
+    client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'oldpassword123'})
+    other = app.test_client()
+    other.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'oldpassword123'})
+    assert other.get('/api/auth/me').status_code == 200
+
+    response = client.post('/api/auth/change-password', json={
+        'current_password': 'oldpassword123', 'new_password': 'newpassword456',
+    })
+    assert response.status_code == 200
+
+    # Sesi aktif (yang mengubah password) tetap hidup.
+    assert client.get('/api/auth/me').status_code == 200
+    # Sesi lain mati karena credential_version naik.
+    assert other.get('/api/auth/me').status_code == 401
+
+
+def test_change_password_too_short_rejected(client, make_user):
+    make_user(email='admin@example.com', password='oldpassword123')
+    client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'oldpassword123'})
+
+    response = client.post('/api/auth/change-password', json={
+        'current_password': 'oldpassword123', 'new_password': 'short',
+    })
+
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'password_too_short'
+
+
+def test_change_password_rate_limited_after_five_failures(client, make_user):
+    make_user(email='admin@example.com', password='oldpassword123')
+    client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'oldpassword123'})
+
+    for _ in range(5):
+        response = client.post('/api/auth/change-password', json={
+            'current_password': 'wrongpass1', 'new_password': 'newpassword123',
+        })
+        assert response.status_code == 401
+
+    response = client.post('/api/auth/change-password', json={
+        'current_password': 'wrongpass1', 'new_password': 'newpassword123',
+    })
+    assert response.status_code == 429
