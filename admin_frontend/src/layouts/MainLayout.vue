@@ -157,10 +157,6 @@
         </div>
         
         <div class="flex items-center gap-3">
-          <button class="theme-toggle" @click="toggleTheme">
-            <i class="bi" :class="isDark ? 'bi-sun-fill' : 'bi-moon-stars-fill'"></i>
-            <span>{{ isDark ? 'Light mode' : 'Dark mode' }}</span>
-          </button>
           <div class="status-pill hidden md:flex">
             <span class="relative flex h-2 w-2">
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -181,7 +177,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useTheme } from '../composables/useTheme';
 import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
@@ -211,7 +206,6 @@ const isSidebarCollapsed = ref(false);
 const isSidebarOpenMobile = ref(false);
 const isDesktop = ref(false);
 const route = useRoute();
-const { isDark, toggleTheme } = useTheme();
 
 const pageTitle = computed(() => {
     switch(route.name) {
