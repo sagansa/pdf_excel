@@ -3,6 +3,7 @@
     <SectionCard
       title="Tampilan"
       subtitle="Pilih mode terang, gelap, atau ikut preferensi sistem. Diterapkan seketika."
+      body-class="p-6"
     >
       <div class="max-w-xl">
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -33,6 +34,7 @@
     <SectionCard
       title="Ganti Password"
       subtitle="Perbarui password untuk akun Anda."
+      body-class="p-6"
     >
       <div class="max-w-md space-y-5">
         <div class="rounded-xl border border-blue-100 bg-blue-50 p-4 transition-colors dark:border-blue-900/50 dark:bg-blue-900/20">
