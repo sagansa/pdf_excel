@@ -1,8 +1,8 @@
 <template>
   <div class="space-y-6">
     <SectionCard
-      title="Appearance"
-      subtitle="Choose light, dark, or follow your system preference. Applied instantly."
+      title="Tampilan"
+      subtitle="Pilih mode terang, gelap, atau ikut preferensi sistem. Diterapkan seketika."
     >
       <div class="flex flex-wrap items-center gap-4">
         <SegmentedControl
@@ -17,62 +17,80 @@
           </template>
         </SegmentedControl>
         <p class="text-xs text-muted">
-          System follows your device's appearance and updates automatically.
+          Sistem mengikuti tampilan perangkat Anda dan berubah otomatis.
         </p>
       </div>
     </SectionCard>
 
-    <SectionCard title="Change password" subtitle="Update the password for your account.">
-      <form class="space-y-4 max-w-md" @submit.prevent="handleChangePassword">
+    <SectionCard
+      title="Ganti Password"
+      subtitle="Perbarui password untuk akun Anda."
+    >
+      <form class="max-w-md space-y-5" @submit.prevent="handleChangePassword">
         <div class="field-stack">
-          <label class="label-base" for="current-password">Current password</label>
+          <label class="label-base" for="current-password">Password saat ini</label>
           <TextInput
             id="current-password"
             v-model="currentPassword"
             type="password"
             autocomplete="current-password"
-            placeholder="Current password"
+            placeholder="Password saat ini"
             :disabled="isSaving"
             required
           />
         </div>
 
         <div class="field-stack">
-          <label class="label-base" for="new-password">New password</label>
+          <label class="label-base" for="new-password">Password baru</label>
           <TextInput
             id="new-password"
             v-model="newPassword"
             type="password"
             autocomplete="new-password"
-            placeholder="Minimum 8 characters"
+            placeholder="Minimal 8 karakter"
             :disabled="isSaving"
             required
             minlength="8"
           />
-          <p class="field-hint">Minimum 8 characters.</p>
+          <p class="field-hint">Minimal 8 karakter.</p>
         </div>
 
         <div class="field-stack">
-          <label class="label-base" for="confirm-password">Confirm new password</label>
+          <label class="label-base" for="confirm-password">Konfirmasi password baru</label>
           <TextInput
             id="confirm-password"
             v-model="confirmPassword"
             type="password"
             autocomplete="new-password"
-            placeholder="Repeat new password"
+            placeholder="Ulangi password baru"
             :disabled="isSaving"
             required
             minlength="8"
           />
         </div>
 
-        <p v-if="formError" class="text-sm text-red-500 dark:text-red-400">{{ formError }}</p>
+        <p v-if="formError" class="text-sm font-medium text-danger">{{ formError }}</p>
 
-        <div class="flex items-center gap-3">
-          <button type="submit" class="btn-primary" :disabled="isSaving || !canSubmit">
-            {{ isSaving ? 'Saving…' : 'Update password' }}
+        <div class="flex justify-end pt-2">
+          <button
+            type="submit"
+            :disabled="isSaving || !canSubmit"
+            class="btn-primary rounded-xl px-6 py-2.5 text-sm font-bold gap-2 flex items-center shadow-lg shadow-primary/20"
+          >
+            <i v-if="isSaving" class="bi bi-arrow-repeat animate-spin"></i>
+            <i v-else class="bi bi-shield-lock"></i>
+            {{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
           </button>
-          <p class="text-xs text-muted">Other signed-in sessions will be logged out.</p>
+        </div>
+
+        <div class="rounded-xl border border-blue-100 bg-blue-50 p-4 transition-colors dark:border-blue-900/50 dark:bg-blue-900/20">
+          <div class="flex gap-3">
+            <i class="bi bi-info-circle text-blue-600 dark:text-blue-400"></i>
+            <div class="text-xs leading-relaxed text-blue-800 dark:text-blue-200">
+              Setelah password diganti, sesi login lain di perangkat mana pun akan otomatis
+              keluar. Sesi Anda saat ini tetap aktif.
+            </div>
+          </div>
         </div>
       </form>
     </SectionCard>
@@ -92,9 +110,9 @@ const { theme, setTheme } = useTheme();
 const notify = useNotifications();
 
 const themeOptions = [
-  { label: 'Light', value: 'light', icon: 'bi-sun-fill' },
-  { label: 'Dark', value: 'dark', icon: 'bi-moon-stars-fill' },
-  { label: 'System', value: 'system', icon: 'bi-circle-half' }
+  { label: 'Terang', value: 'light', icon: 'bi-sun-fill' },
+  { label: 'Gelap', value: 'dark', icon: 'bi-moon-stars-fill' },
+  { label: 'Sistem', value: 'system', icon: 'bi-circle-half' }
 ];
 
 const currentPassword = ref('');
@@ -110,31 +128,31 @@ const canSubmit = computed(() =>
 const handleChangePassword = async () => {
   formError.value = '';
   if (newPassword.value.length < 8) {
-    formError.value = 'Password must be at least 8 characters.';
+    formError.value = 'Password minimal 8 karakter.';
     return;
   }
   if (newPassword.value !== confirmPassword.value) {
-    formError.value = 'Passwords do not match.';
+    formError.value = 'Konfirmasi password tidak cocok.';
     return;
   }
 
   isSaving.value = true;
   try {
-    const response = await authApi.changePassword(currentPassword.value, newPassword.value);
+    await authApi.changePassword(currentPassword.value, newPassword.value);
     currentPassword.value = '';
     newPassword.value = '';
     confirmPassword.value = '';
-    notify.success(response.data?.message || 'Password updated.');
+    notify.success('Password berhasil diubah.');
   } catch (err) {
     const code = err.response?.data?.code;
     if (code === 'invalid_credentials') {
-      formError.value = err.response?.data?.error || 'Current password is incorrect.';
+      formError.value = 'Password saat ini salah.';
     } else if (err.response?.status === 400) {
-      formError.value = err.response?.data?.error || 'Password must be at least 8 characters.';
+      formError.value = err.response?.data?.error || 'Password minimal 8 karakter.';
     } else if (err.response?.status === 429) {
-      formError.value = err.response?.data?.error || 'Too many attempts. Try again in a few minutes.';
+      formError.value = err.response?.data?.error || 'Terlalu banyak percobaan. Coba lagi beberapa menit.';
     } else {
-      formError.value = 'Failed to update password. Check your connection and try again.';
+      formError.value = 'Gagal mengubah password. Periksa koneksi Anda dan coba lagi.';
     }
   } finally {
     isSaving.value = false;
