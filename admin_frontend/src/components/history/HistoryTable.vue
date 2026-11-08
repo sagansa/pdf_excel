@@ -113,6 +113,15 @@
                               {{ t.manual_mark_name || 'Manual Journal' }}
                           </div>
                            <button
+                               v-if="showAiRequest(t)"
+                               @click.stop="requestSuggestion(t)"
+                               class="p-1 transition-all transform active:scale-90"
+                               :class="store.aiBusyTxnIds.includes(t.id) ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)]'"
+                               :title="store.aiBusyTxnIds.includes(t.id) ? 'Meminta saran AI...' : 'Minta saran AI untuk marking ini'"
+                           >
+                               <i class="bi text-sm" :class="store.aiBusyTxnIds.includes(t.id) ? 'bi-arrow-repeat animate-spin' : 'bi bi-stars'"></i>
+                           </button>
+                           <button
                                @click.stop="$emit('split-transaction', t)"
                                class="p-1 transition-all transform active:scale-90"
                                :class="t.is_split ? 'text-[var(--color-primary)] hover:opacity-80' : 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)]'"
@@ -120,6 +129,33 @@
                            >
                                <i class="bi bi-diagram-3-fill text-sm"></i>
                            </button>
+                      </div>
+                      <div
+                          v-if="isAiPending(t)"
+                          class="mt-1.5 flex flex-wrap items-center gap-1.5"
+                      >
+                          <span
+                              class="history-chip inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold min-w-0"
+                              :class="aiChipClass(t)"
+                              :title="aiSuggestionTooltip(t)"
+                          >
+                              <i class="bi bi-stars text-[9px] shrink-0"></i>
+                              <span class="truncate">AI: {{ aiSuggestionLabel(t) }} · {{ aiConfidencePercent(t) }}%</span>
+                          </span>
+                          <button
+                              @click.stop="acceptSuggestion(t)"
+                              class="p-0.5 transition-all hover:opacity-75 text-[var(--color-success)]"
+                              title="Terima saran AI — isi mark dengan saran ini"
+                          >
+                              <i class="bi bi-check-lg text-sm"></i>
+                          </button>
+                          <button
+                              @click.stop="rejectSuggestion(t)"
+                              class="p-0.5 transition-all hover:opacity-75 text-[var(--color-danger)]"
+                              title="Tolak saran AI"
+                          >
+                              <i class="bi bi-x-lg text-xs"></i>
+                          </button>
                       </div>
                   </td>
                 <td class="text-[10px] text-muted truncate max-w-[80px]" :title="t.source_file">{{ t.source_file }}</td>
@@ -271,8 +307,10 @@ import { getFlowLabel, getFlowIcon, getFlowColorClass, getAmountSign } from '../
 import ConfirmModal from '../ui/ConfirmModal.vue';
 import SearchableSelect from '../ui/SearchableSelect.vue';
 import TableShell from '../ui/TableShell.vue';
+import { useNotifications } from '../../composables/useNotifications';
 
 const store = useHistoryStore();
+const notify = useNotifications();
 const emit = defineEmits(['view-details', 'split-transaction']);
 
 watch(() => store.paginatedTransactions, (newVal) => {
@@ -368,6 +406,64 @@ const toggleSelectAll = () => {
 const onMarkSelected = (txnId, selectedValue) => {
     const normalized = selectedValue === '__UNMARKED__' ? null : (selectedValue || null);
     store.assignMark(txnId, normalized);
+};
+
+// ---------------------------------------------------------------- AI mark assist
+
+const aiEnabled = computed(() => Boolean(store.aiSettings?.enabled));
+
+const isAiPending = (t) => t.ai_status === 'pending' && Boolean(t.ai_suggested_mark_id);
+
+const showAiRequest = (t) =>
+    aiEnabled.value && !t.is_split && !t.is_linked_to_manual && !isAiPending(t);
+
+const aiSuggestionLabel = (t) => {
+    const markId = String(t.ai_suggested_mark_id || '');
+    const mark = (store.marks || []).find(m => String(m.id) === markId);
+    return mark ? buildMarkLabel(mark) : 'Mark tidak dikenal';
+};
+
+const aiConfidencePercent = (t) => {
+    const value = Number(t.ai_confidence);
+    return Number.isFinite(value) ? String(Math.round(value * 100)) : '-';
+};
+
+const aiChipClass = (t) => {
+    const value = Number(t.ai_confidence) || 0;
+    if (value >= 0.8) return 'history-chip--success';
+    if (value >= 0.5) return 'history-chip--warning';
+    return 'history-chip--danger';
+};
+
+const aiSuggestionTooltip = (t) => {
+    const reason = t.ai_reason ? ` — ${t.ai_reason}` : '';
+    return `Saran AI, keyakinan ${aiConfidencePercent(t)}%${reason}`;
+};
+
+const requestSuggestion = async (t) => {
+    try {
+        await store.suggestMark(t.id);
+    } catch (e) {
+        notify.error(e.message || 'Gagal meminta saran AI.');
+    }
+};
+
+const acceptSuggestion = async (t) => {
+    try {
+        await store.decideSuggestion(t.id, 'accept');
+        notify.success('Saran AI diterima — mark tersimpan.');
+    } catch (e) {
+        notify.error(e.response?.data?.error || 'Gagal menerima saran AI.');
+    }
+};
+
+const rejectSuggestion = async (t) => {
+    try {
+        await store.decideSuggestion(t.id, 'reject');
+        notify.info('Saran AI ditolak.');
+    } catch (e) {
+        notify.error(e.response?.data?.error || 'Gagal menolak saran AI.');
+    }
 };
 
 const buildMarkLabel = (mark) => {
@@ -478,6 +574,18 @@ const coaTitleText = (txn) => {
   color: var(--color-warning);
   background: rgba(180, 83, 9, 0.10);
   border-color: rgba(180, 83, 9, 0.18);
+}
+
+.history-chip--success {
+  color: var(--color-success);
+  background: rgba(22, 101, 52, 0.10);
+  border-color: rgba(22, 101, 52, 0.18);
+}
+
+.history-chip--danger {
+  color: var(--color-danger);
+  background: rgba(185, 28, 28, 0.10);
+  border-color: rgba(185, 28, 28, 0.18);
 }
 
 .history-table-foot {

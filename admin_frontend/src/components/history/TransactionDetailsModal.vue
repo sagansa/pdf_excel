@@ -149,6 +149,45 @@
               </button>
             </div>
 
+            <!-- Saran AI menunggu review -->
+            <div
+              v-if="aiSuggestion"
+              class="rounded-xl px-3 py-2.5 space-y-2 border"
+              :class="aiSuggestion.confidence >= 0.8
+                ? 'ai-suggest-box--success'
+                : aiSuggestion.confidence >= 0.5
+                  ? 'ai-suggest-box--warning'
+                  : 'ai-suggest-box--danger'"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-[9px] font-black uppercase tracking-widest flex items-center gap-1 text-muted">
+                    <i class="bi bi-stars"></i> Saran AI · keyakinan {{ Math.round(aiSuggestion.confidence * 100) }}%
+                  </p>
+                  <p class="text-[11px] font-bold text-theme mt-0.5 truncate">{{ aiSuggestion.label }}</p>
+                  <p v-if="aiSuggestion.reason" class="text-[10px] text-muted mt-0.5 leading-snug">{{ aiSuggestion.reason }}</p>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    class="text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg transition-all inline-flex items-center gap-1 border border-border text-theme hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="isAiBusy"
+                    title="Terima saran — isi mark dengan saran ini"
+                    @click="acceptAi"
+                  >
+                    <i class="bi bi-check-lg"></i> Terima
+                  </button>
+                  <button
+                    class="text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg transition-all inline-flex items-center gap-1 border border-border text-muted hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="isAiBusy"
+                    title="Tolak saran AI"
+                    @click="rejectAi"
+                  >
+                    <i class="bi bi-x-lg"></i> Tolak
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div v-if="markDetails" class="space-y-3">
               <div
                 v-if="localTxn.is_linked_to_manual"
@@ -258,6 +297,7 @@ import { useHistoryStore } from '../../stores/history';
 import { useCoaStore } from '../../stores/coa';
 import HppDetailSection from './HppDetailSection.vue';
 import FiscalCategoryBadge from '../ui/FiscalCategoryBadge.vue';
+import { useNotifications } from '../../composables/useNotifications';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -287,6 +327,47 @@ const markDetails = computed(() => {
   if (!effectiveMarkId) return null;
   return store.marks.find(m => m.id === effectiveMarkId);
 });
+
+// ---------------------------------------------------------------- AI mark assist
+
+const isAiBusy = ref(false);
+const notify = useNotifications();
+
+const buildAiMarkLabel = (mark) => {
+  const parts = [mark?.internal_report, mark?.personal_use, mark?.tax_report]
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+  const uniqueParts = [...new Set(parts)];
+  return uniqueParts.length ? uniqueParts.join(' / ') : 'Mark tidak dikenal';
+};
+
+const aiSuggestion = computed(() => {
+  const txn = localTxn.value;
+  if (!txn || txn.ai_status !== 'pending' || !txn.ai_suggested_mark_id) return null;
+  const markId = String(txn.ai_suggested_mark_id);
+  const mark = store.marks.find(m => String(m.id) === markId);
+  return {
+    label: mark ? buildAiMarkLabel(mark) : 'Mark tidak dikenal',
+    confidence: Number(txn.ai_confidence) || 0,
+    reason: txn.ai_reason || ''
+  };
+});
+
+const handleAiDecision = async (decision, successMessage) => {
+  if (!localTxn.value || isAiBusy.value) return;
+  isAiBusy.value = true;
+  try {
+    await store.decideSuggestion(localTxn.value.id, decision);
+    notify.success(successMessage);
+  } catch (e) {
+    notify.error(e.response?.data?.error || 'Gagal memproses keputusan saran AI.');
+  } finally {
+    isAiBusy.value = false;
+  }
+};
+
+const acceptAi = () => handleAiDecision('accept', 'Saran AI diterima — mark tersimpan.');
+const rejectAi = () => handleAiDecision('reject', 'Saran AI ditolak.');
 
 const close = () => {
   activeTab.value = 'info';
@@ -379,5 +460,20 @@ const updateCoaFiscal = async (coaId, fiscalCategory) => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.ai-suggest-box--success {
+  background: rgba(22, 101, 52, 0.08);
+  border-color: rgba(22, 101, 52, 0.25);
+}
+
+.ai-suggest-box--warning {
+  background: rgba(180, 83, 9, 0.08);
+  border-color: rgba(180, 83, 9, 0.25);
+}
+
+.ai-suggest-box--danger {
+  background: rgba(185, 28, 28, 0.08);
+  border-color: rgba(185, 28, 28, 0.25);
 }
 </style>

@@ -174,9 +174,12 @@ const markOptions = computed(() => {
     { id: 'marked', label: 'Marked Only' },
     { id: 'unmarked', label: 'Unmarked Only' },
     { id: 'multi_marked', label: 'Multi Marked (Split Parent)' },
-    { id: 'missing_mark', label: 'Deleted Mark / Missing Mark' },
-    { id: 'separator-1', type: 'separator' }
+    { id: 'missing_mark', label: 'Deleted Mark / Missing Mark' }
   ];
+  if (store.aiSettings?.enabled) {
+    options.push({ id: 'ai_pending', label: 'Saran AI Menunggu Review' });
+  }
+  options.push({ id: 'separator-1', type: 'separator' });
 
   store.sortedMarks.forEach(m => {
     options.push({

@@ -546,3 +546,21 @@ export const hppApi = {
     return api.get('/transactions/linkable-to-hpp', { params });
   }
 };
+
+export const aiApi = {
+  getSettings() {
+    return api.get('/ai/settings');
+  },
+  saveSettings(data) {
+    return api.put('/ai/settings', data);
+  },
+  testConnection(data) {
+    return api.post('/ai/test-connection', data);
+  },
+  suggestMarks(transactionIds) {
+    return api.post('/transactions/ai-suggest', { transaction_ids: transactionIds });
+  },
+  decideSuggestion(txnId, decision) {
+    return api.post(`/transactions/${txnId}/ai-decision`, { decision });
+  }
+};

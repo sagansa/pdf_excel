@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { historyApi, companyApi, marksApi, filterApi, coaApi } from '../api';
+import { historyApi, companyApi, marksApi, filterApi, coaApi, aiApi } from '../api';
 
 const normalizeDbCr = (value) => {
     const raw = String(value || '').trim().toUpperCase();
@@ -71,7 +71,13 @@ export const useHistoryStore = defineStore('history', {
 
     // Selection
     selectedTxnIds: [],
-    filterResetToken: 0
+    filterResetToken: 0,
+
+    // AI mark assist
+    aiSettings: null,
+    aiBusyTxnIds: [], // transaksi yang sedang diminta saran AI-nya
+    aiBulkBusy: false,
+    aiBulkProgress: { done: 0, total: 0 }
   }),
 
   getters: {
@@ -106,8 +112,9 @@ export const useHistoryStore = defineStore('history', {
                 const hasMarked = markStatus.includes('marked');
                 const hasMissingMark = markStatus.includes('missing_mark');
                 const hasMultiMarked = markStatus.includes('multi_marked');
+                const hasAiPending = markStatus.includes('ai_pending');
                 const specificMarks = markStatus
-                    .filter(m => !['marked', 'unmarked', 'missing_mark', 'multi_marked'].includes(m))
+                    .filter(m => !['marked', 'unmarked', 'missing_mark', 'multi_marked', 'ai_pending'].includes(m))
                     .map(m => String(m));
 
                 const txnMarkId = normalizeId(t.mark_id);
@@ -120,13 +127,14 @@ export const useHistoryStore = defineStore('history', {
                 const hasValidMarkTxn = (Boolean(txnMarkId) && !isMissingMarkTxn) || isLinkedToManual;
                 const isUnmarkedTxn = (!txnMarkId || isMissingMarkTxn) && !isMultiMarkedTxn && !isLinkedToManual;
                 const isMarkedTxn = hasValidMarkTxn || isMultiMarkedTxn;
+                const isAiPendingTxn = t.ai_status === 'pending' && Boolean(t.ai_suggested_mark_id);
 
                 let matches = false;
 
                 // Exclusive modes should still continue evaluating other filters (search, amount, etc).
-                if (hasUnmarked && !hasMarked && !hasMissingMark && !hasMultiMarked && specificMarks.length === 0) {
+                if (hasUnmarked && !hasMarked && !hasMissingMark && !hasMultiMarked && !hasAiPending && specificMarks.length === 0) {
                     matches = isUnmarkedTxn;
-                } else if (hasMarked && !hasUnmarked && !hasMissingMark && !hasMultiMarked && specificMarks.length === 0) {
+                } else if (hasMarked && !hasUnmarked && !hasMissingMark && !hasMultiMarked && !hasAiPending && specificMarks.length === 0) {
                     matches = isMarkedTxn;
                 } else {
                     // Check if transaction matches any selected mark criteria
@@ -140,6 +148,9 @@ export const useHistoryStore = defineStore('history', {
                         matches = true;
                     }
                     if (hasMultiMarked && isMultiMarkedTxn) {
+                        matches = true;
+                    }
+                    if (hasAiPending && isAiPendingTxn) {
                         matches = true;
                     }
                     if (specificMarks.length > 0 && relatedMarkIds.some(id => specificMarks.includes(id))) {
@@ -489,6 +500,8 @@ export const useHistoryStore = defineStore('history', {
         this.companies = compRes.data.companies || [];
         this.marks = marks;
         this.coaList = coas;
+        // Muat konfigurasi AI di latar belakang (kontrol AI muncul bila aktif).
+        this.ensureAiSettings();
       } catch (err) {
         this.error = "Failed to load data";
         console.error(err);
@@ -601,47 +614,54 @@ export const useHistoryStore = defineStore('history', {
         this.selectedTxnIds = [];
     },
     
+    /**
+     * Terapkan mark ke satu objek transaksi secara lokal (tanpa refetch):
+     * dipakai assign-mark manual maupun penerimaan saran AI.
+     */
+    applyMarkLocally(txn, markId) {
+        const normalizedMarkId = normalizeId(markId);
+        const matchedMark = normalizedMarkId
+            ? this.marks.find(m => normalizeId(m.id) === normalizedMarkId)
+            : null;
+
+        txn.mark_id = normalizedMarkId || null;
+        txn.has_missing_mark = Boolean(normalizedMarkId) && !matchedMark;
+
+        if (matchedMark && Array.isArray(matchedMark.mappings)) {
+            const coaIdByCode = new Map(
+                (this.coaList || [])
+                    .filter(coa => normalizeId(coa.code) && normalizeId(coa.id))
+                    .map(coa => [normalizeId(coa.code), normalizeId(coa.id)])
+            );
+            txn.coas = matchedMark.mappings.map(mapping => {
+                const code = normalizeId(mapping.code);
+                const coaId = normalizeId(mapping.coa_id || mapping.id) || coaIdByCode.get(code) || '';
+                return {
+                    ...mapping,
+                    id: coaId || mapping.id || '',
+                    coa_id: coaId
+                };
+            });
+            txn.coa_ids = txn.coas
+                .map(mapping => normalizeId(mapping.coa_id || mapping.id))
+                .filter(Boolean);
+            txn.related_mark_ids = [normalizeId(matchedMark.id)].filter(Boolean);
+        } else {
+            txn.coas = [];
+            txn.coa_ids = [
+                normalizeId(txn.coa_id),
+                normalizeId(txn.coa_id_coretax)
+            ].filter(Boolean);
+            txn.related_mark_ids = [];
+        }
+    },
+
     async assignMark(id, markId) {
         try {
             await historyApi.assignMark(id, markId);
-            // Optimistic update or refetch
             const txn = this.allTransactions.find(t => t.id === id);
             if (txn) {
-                const normalizedMarkId = normalizeId(markId);
-                const matchedMark = normalizedMarkId
-                    ? this.marks.find(m => normalizeId(m.id) === normalizedMarkId)
-                    : null;
-
-                txn.mark_id = normalizedMarkId || null;
-                txn.has_missing_mark = Boolean(normalizedMarkId) && !matchedMark;
-
-                if (matchedMark && Array.isArray(matchedMark.mappings)) {
-                    const coaIdByCode = new Map(
-                        (this.coaList || [])
-                            .filter(coa => normalizeId(coa.code) && normalizeId(coa.id))
-                            .map(coa => [normalizeId(coa.code), normalizeId(coa.id)])
-                    );
-                    txn.coas = matchedMark.mappings.map(mapping => {
-                        const code = normalizeId(mapping.code);
-                        const coaId = normalizeId(mapping.coa_id || mapping.id) || coaIdByCode.get(code) || '';
-                        return {
-                            ...mapping,
-                            id: coaId || mapping.id || '',
-                            coa_id: coaId
-                        };
-                    });
-                    txn.coa_ids = txn.coas
-                        .map(mapping => normalizeId(mapping.coa_id || mapping.id))
-                        .filter(Boolean);
-                    txn.related_mark_ids = [normalizeId(matchedMark.id)].filter(Boolean);
-                } else {
-                    txn.coas = [];
-                    txn.coa_ids = [
-                        normalizeId(txn.coa_id),
-                        normalizeId(txn.coa_id_coretax)
-                    ].filter(Boolean);
-                    txn.related_mark_ids = [];
-                }
+                this.applyMarkLocally(txn, markId);
             }
         } catch (e) {
             console.error(e);
@@ -662,6 +682,106 @@ export const useHistoryStore = defineStore('history', {
         } finally {
             this.isLoading = false;
         }
+    },
+
+    // --------------------------------------------------------------- AI mark assist
+
+    async ensureAiSettings() {
+        if (this.aiSettings) return this.aiSettings;
+        try {
+            const { data } = await aiApi.getSettings();
+            this.aiSettings = data.settings || { enabled: false };
+        } catch (e) {
+            console.error('Failed to load AI settings:', e);
+            this.aiSettings = { enabled: false };
+        }
+        return this.aiSettings;
+    },
+
+    applySuggestionLocally(txnId, result) {
+        const txn = this.allTransactions.find(t => t.id === txnId);
+        if (!txn) return;
+        txn.ai_suggested_mark_id = result.ai_suggested_mark_id || result.mark_id || null;
+        txn.ai_confidence = result.ai_confidence ?? null;
+        txn.ai_reason = result.ai_reason || null;
+        txn.ai_source = 'llm';
+        txn.ai_status = 'pending';
+    },
+
+    /** Minta satu saran AI untuk satu transaksi. */
+    async suggestMark(txnId) {
+        if (this.aiBusyTxnIds.includes(txnId)) return null;
+        await this.ensureAiSettings();
+        if (!this.aiSettings?.enabled) {
+            throw new Error('Fitur AI belum diaktifkan di pengaturan.');
+        }
+        this.aiBusyTxnIds.push(txnId);
+        try {
+            const { data } = await aiApi.suggestMarks([txnId]);
+            const result = (data.results || [])[0];
+            if (!result) throw new Error('Tidak ada hasil dari server AI.');
+            if (result.status !== 'suggested') {
+                throw new Error(result.error || result.reason || 'Saran AI gagal dibuat.');
+            }
+            this.applySuggestionLocally(txnId, result);
+            return result;
+        } catch (e) {
+            console.error(e);
+            throw e;
+        } finally {
+            this.aiBusyTxnIds = this.aiBusyTxnIds.filter(id => id !== txnId);
+        }
+    },
+
+    /** Minta saran AI untuk semua transaksi terpilih, per chunk dengan progres. */
+    async aiSuggestSelected() {
+        const ids = [...this.selectedTxnIds];
+        if (ids.length === 0) return { suggested: 0, skipped: 0, failed: 0 };
+        await this.ensureAiSettings();
+        if (!this.aiSettings?.enabled) {
+            throw new Error('Fitur AI belum diaktifkan di pengaturan.');
+        }
+
+        this.aiBulkBusy = true;
+        this.aiBulkProgress = { done: 0, total: ids.length };
+        const summary = { suggested: 0, skipped: 0, failed: 0 };
+        const CHUNK_SIZE = 5; // tiap transaksi = 1 panggilan LLM lokal, kirim per chunk kecil
+        try {
+            for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                const chunk = ids.slice(i, i + CHUNK_SIZE);
+                const { data } = await aiApi.suggestMarks(chunk);
+                for (const result of data.results || []) {
+                    if (result.status === 'suggested') {
+                        this.applySuggestionLocally(result.id, result);
+                        summary.suggested += 1;
+                    } else if (result.status === 'skipped') {
+                        summary.skipped += 1;
+                    } else {
+                        summary.failed += 1;
+                    }
+                }
+                this.aiBulkProgress.done = Math.min(i + CHUNK_SIZE, ids.length);
+            }
+            this.selectedTxnIds = [];
+            return summary;
+        } finally {
+            this.aiBulkBusy = false;
+        }
+    },
+
+    /** Terima/tolak saran AI untuk satu transaksi. */
+    async decideSuggestion(txnId, decision) {
+        const { data } = await aiApi.decideSuggestion(txnId, decision);
+        const updated = data.transaction || {};
+        const txn = this.allTransactions.find(t => t.id === txnId);
+        if (txn) {
+            if (decision === 'accept') {
+                this.applyMarkLocally(txn, updated.mark_id || txn.ai_suggested_mark_id);
+            }
+            txn.ai_status = updated.ai_status || (decision === 'accept' ? 'accepted' : 'rejected');
+            txn.ai_decided_at = updated.ai_decided_at || null;
+        }
+        return data;
     },
 
     async assignCompany(id, companyId) {

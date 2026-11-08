@@ -109,13 +109,24 @@
                                class="bulk-bar__input"
                            />
                         </div>
-                        <button 
-                            @click="handleBulkApply" 
+                        <button
+                            @click="handleBulkApply"
                             class="h-8 px-4 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-strong transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                             :disabled="isBulkAssigning || (!bulkActionForm.companyId && !bulkActionForm.markId)"
                         >
                             <span v-if="isBulkAssigning" class="spinner-border w-3 h-3 me-1"></span>
                             Apply
+                        </button>
+                        <button
+                            v-if="store.aiSettings?.enabled"
+                            @click="handleBulkAiSuggest"
+                            class="h-8 px-4 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border border-white/15 text-white/90 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="store.aiBulkBusy"
+                            title="Minta saran AI untuk semua transaksi terpilih — saran menunggu review Anda"
+                        >
+                            <i v-if="store.aiBulkBusy" class="bi bi-arrow-repeat animate-spin"></i>
+                            <i v-else class="bi bi-stars"></i>
+                            {{ store.aiBulkBusy ? `AI ${store.aiBulkProgress.done}/${store.aiBulkProgress.total}` : 'AI Suggest' }}
                         </button>
                     </div>
                 </div>
@@ -286,6 +297,7 @@ import TransactionDetailsModal from '../components/history/TransactionDetailsMod
 import AssignMarkModal from '../components/history/AssignMarkModal.vue';
 import SplitTransactionModal from '../components/history/SplitTransactionModal.vue';
 import ConfirmModal from '../components/ui/ConfirmModal.vue';
+import { useNotifications } from '../composables/useNotifications';
 import FormField from '../components/ui/FormField.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
@@ -346,6 +358,22 @@ const buildMarkLabel = (mark) => {
     .filter(Boolean);
   const uniqueParts = [...new Set(parts)];
   return uniqueParts.length ? uniqueParts.join(' / ') : 'Marked';
+};
+
+// ---------------------------------------------------------------- AI mark assist
+
+const handleBulkAiSuggest = async () => {
+  const notify = useNotifications();
+  try {
+    const summary = await store.aiSuggestSelected();
+    if (summary.suggested > 0) {
+      notify.success(`${summary.suggested} saran AI dibuat — menunggu review Anda di kolom Marking.`);
+    } else if (summary.skipped > 0 || summary.failed > 0) {
+      notify.info(`Tidak ada saran baru. ${summary.skipped} dilewati, ${summary.failed} gagal.`);
+    }
+  } catch (e) {
+    notify.error(e.response?.data?.error || e.message || 'Gagal meminta saran AI.');
+  }
 };
 
 const bulkCompanyOptions = computed(() => [
