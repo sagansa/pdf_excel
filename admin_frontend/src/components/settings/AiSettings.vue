@@ -6,6 +6,11 @@
       body-class="p-6"
     >
       <div class="max-w-xl space-y-6">
+        <p v-if="isLoading" class="field-hint flex items-center gap-2" role="status">
+          <i class="bi bi-arrow-repeat animate-spin"></i>
+          Memuat pengaturan AI...
+        </p>
+
         <div class="rounded-xl border border-blue-100 bg-blue-50 p-4 transition-colors dark:border-blue-900/50 dark:bg-blue-900/20">
           <div class="flex gap-3">
             <i class="bi bi-info-circle text-blue-600 dark:text-blue-400"></i>
@@ -26,7 +31,8 @@
               :key="option.value"
               type="button"
               :aria-pressed="form.enabled === option.value"
-              class="flex items-center justify-between rounded-xl px-4 py-3.5 text-sm transition-all"
+              :disabled="isLoading"
+              class="flex items-center justify-between rounded-xl px-4 py-3.5 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               :class="form.enabled === option.value
                 ? 'bg-primary/10 border-primary/20 text-primary font-bold border dark:bg-primary/20 dark:border-primary/30'
                 : 'bg-surface-muted border-transparent text-gray-600 border hover:border-gray-300 dark:text-gray-400 dark:hover:border-gray-600'"
@@ -49,7 +55,8 @@
               :key="option.value"
               type="button"
               :aria-pressed="form.provider === option.value"
-              class="flex items-center justify-between rounded-xl px-4 py-3.5 text-sm transition-all"
+              :disabled="isLoading"
+              class="flex items-center justify-between rounded-xl px-4 py-3.5 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               :class="form.provider === option.value
                 ? 'bg-primary/10 border-primary/20 text-primary font-bold border dark:bg-primary/20 dark:border-primary/30'
                 : 'bg-surface-muted border-transparent text-gray-600 border hover:border-gray-300 dark:text-gray-400 dark:hover:border-gray-600'"
@@ -74,7 +81,7 @@
             v-model="form.baseUrl"
             type="text"
             placeholder="http://localhost:1234/v1"
-            :disabled="isSaving || isTesting"
+            :disabled="isLoading || isSaving || isTesting"
           >
             <template #leading>
               <i class="bi bi-link-45deg text-gray-400 dark:text-gray-500"></i>
@@ -100,7 +107,7 @@
             v-model="form.model"
             type="text"
             placeholder="mis. qwen2.5:7b-instruct"
-            :disabled="isSaving || isTesting"
+            :disabled="isLoading || isSaving || isTesting"
           >
             <template #leading>
               <i class="bi bi-box text-gray-400 dark:text-gray-500"></i>
@@ -115,7 +122,7 @@
           <button
             type="button"
             class="btn-secondary rounded-xl px-4 py-2.5 text-sm font-bold gap-2 inline-flex items-center"
-            :disabled="isTesting || isSaving"
+            :disabled="isLoading || isTesting || isSaving"
             @click="handleTestConnection"
           >
             <i v-if="isTesting" class="bi bi-arrow-repeat animate-spin"></i>
@@ -136,13 +143,14 @@
         <div class="flex justify-end pt-2">
           <button
             type="button"
-            :disabled="isSaving || isTesting"
+            :disabled="isLoading || isSaving || isTesting"
             class="btn-primary rounded-xl px-6 py-2.5 text-sm font-bold gap-2 flex items-center shadow-lg shadow-primary/20"
             @click="handleSave"
           >
-            <i v-if="isSaving" class="bi bi-arrow-repeat animate-spin"></i>
+            <i v-if="isLoading" class="bi bi-arrow-repeat animate-spin"></i>
+            <i v-else-if="isSaving" class="bi bi-arrow-repeat animate-spin"></i>
             <i v-else class="bi bi-check2-circle"></i>
-            {{ isSaving ? 'Menyimpan...' : 'Simpan Pengaturan' }}
+            {{ isLoading ? 'Memuat...' : isSaving ? 'Menyimpan...' : 'Simpan Pengaturan' }}
           </button>
         </div>
       </div>
@@ -187,6 +195,7 @@ const form = reactive({
 const modelOptions = ref([]);
 const isSaving = ref(false);
 const isTesting = ref(false);
+const isLoading = ref(true);
 const formError = ref('');
 const testStatus = ref({ ok: null, message: '' });
 
@@ -214,6 +223,8 @@ onMounted(async () => {
     applySettings(data.settings);
   } catch (err) {
     formError.value = 'Gagal memuat pengaturan AI. Coba muat ulang halaman.';
+  } finally {
+    isLoading.value = false;
   }
 });
 
