@@ -27,6 +27,9 @@ FORGOT_MAX_ATTEMPTS = 3
 FORGOT_WINDOW_SECONDS = 900
 _forgot_requests = defaultdict(list)
 
+CHANGE_MAX_ATTEMPTS = 5
+CHANGE_WINDOW_SECONDS = 300
+
 RESET_TOKEN_TTL_MINUTES = 30
 MIN_PASSWORD_LENGTH = 8
 
@@ -227,6 +230,57 @@ def reset_password():
     # Buang cache guard agar sesi lama (credential_version beda) mati segera.
     _active_user_cache.pop(int(row['user_id']), None)
     return jsonify({'ok': True, 'message': 'Password updated. Please sign in with your new password.'})
+
+
+@auth_bp.route('/api/auth/change-password', methods=['POST'])
+def change_password():
+    payload = request.get_json(silent=True) or {}
+    current_password = str(payload.get('current_password') or '')
+    new_password = str(payload.get('new_password') or '')
+    if not current_password or not new_password:
+        raise BadRequestError(
+            'Current and new password are required', code='change_fields_missing'
+        )
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        raise BadRequestError(
+            f'Password must be at least {MIN_PASSWORD_LENGTH} characters',
+            code='password_too_short',
+        )
+
+    user_id = session.get('user_id')
+    user = get_user_if_active(user_id)
+    if user is None:
+        session.clear()
+        raise UnauthorizedError('Not authenticated', code='not_authenticated')
+
+    throttle_key = (_client_ip(), f'user:{int(user_id)}')
+    if _too_many_attempts(throttle_key, _failed_logins, CHANGE_MAX_ATTEMPTS, CHANGE_WINDOW_SECONDS):
+        raise TooManyRequestsError('Too many attempts. Try again in a few minutes.')
+
+    if not check_password_hash(user['password_hash'], current_password):
+        _record_attempt(throttle_key, _failed_logins)
+        raise UnauthorizedError('Current password is incorrect', code='invalid_credentials')
+    _failed_logins.pop(throttle_key, None)
+
+    engine = require_db_engine()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                'UPDATE users SET password_hash = :password_hash, '
+                'credential_version = credential_version + 1 WHERE id = :uid'
+            ),
+            {'password_hash': generate_password_hash(new_password), 'uid': int(user_id)},
+        )
+    updated = _fetch_user_by_column('id', user_id)
+
+    # Sesi lain mati (credential_version beda); sesi aktif dipertahankan dengan
+    # versi baru, lalu cache guard dibuang agar refetch segera.
+    session['credential_version'] = int(updated['credential_version'])
+    _active_user_cache.pop(int(user_id), None)
+    return jsonify({
+        'ok': True,
+        'message': 'Password updated. Other sessions have been signed out.',
+    })
 
 
 @auth_bp.route('/api/auth/logout', methods=['POST'])

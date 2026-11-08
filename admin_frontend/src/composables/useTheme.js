@@ -1,41 +1,50 @@
 import { computed, ref } from 'vue';
 
 const STORAGE_KEY = 'statementx-theme';
-const theme = ref('light');
+const VALID_THEMES = ['light', 'dark', 'system'];
+const theme = ref('system'); // user preference: 'light' | 'dark' | 'system'
 let initialized = false;
 let mediaQuery = null;
 
-const applyTheme = (nextTheme) => {
-  if (typeof document === 'undefined') return;
-
-  document.documentElement.classList.toggle('dark', nextTheme === 'dark');
-  document.documentElement.dataset.theme = nextTheme;
-};
-
-const getPreferredTheme = () => {
+const getSystemTheme = () => {
   if (typeof window === 'undefined') return 'light';
-
-  const storedTheme = window.localStorage.getItem(STORAGE_KEY);
-  if (storedTheme === 'dark' || storedTheme === 'light') {
-    return storedTheme;
-  }
-
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
-const handleSystemThemeChange = (event) => {
-  if (typeof window === 'undefined') return;
-  if (window.localStorage.getItem(STORAGE_KEY)) return;
+const resolveTheme = (preference) => {
+  if (preference === 'system') return getSystemTheme();
+  return preference === 'dark' ? 'dark' : 'light';
+};
 
-  theme.value = event.matches ? 'dark' : 'light';
-  applyTheme(theme.value);
+const applyTheme = (appliedTheme) => {
+  if (typeof document === 'undefined') return;
+
+  document.documentElement.classList.toggle('dark', appliedTheme === 'dark');
+  document.documentElement.dataset.theme = appliedTheme;
+};
+
+const getPreferredTheme = () => {
+  if (typeof window === 'undefined') return 'system';
+
+  const storedTheme = window.localStorage.getItem(STORAGE_KEY);
+  return VALID_THEMES.includes(storedTheme) ? storedTheme : 'system';
+};
+
+const applyFromPreference = () => {
+  applyTheme(resolveTheme(theme.value));
+};
+
+const handleSystemThemeChange = () => {
+  if (theme.value === 'system') {
+    applyFromPreference();
+  }
 };
 
 export const initializeTheme = () => {
   if (initialized || typeof window === 'undefined') return;
 
   theme.value = getPreferredTheme();
-  applyTheme(theme.value);
+  applyFromPreference();
 
   mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
   if (typeof mediaQuery.addEventListener === 'function') {
@@ -51,23 +60,18 @@ export const useTheme = () => {
   initializeTheme();
 
   const setTheme = (nextTheme) => {
-    theme.value = nextTheme === 'dark' ? 'dark' : 'light';
+    theme.value = VALID_THEMES.includes(nextTheme) ? nextTheme : 'system';
 
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(STORAGE_KEY, theme.value);
     }
 
-    applyTheme(theme.value);
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme.value === 'dark' ? 'light' : 'dark');
+    applyFromPreference();
   };
 
   return {
     theme,
-    isDark: computed(() => theme.value === 'dark'),
-    setTheme,
-    toggleTheme
+    isDark: computed(() => resolveTheme(theme.value) === 'dark'),
+    setTheme
   };
 };

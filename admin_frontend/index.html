@@ -5,8 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StatementX - Software as a service</title>
+    <script>
+      // Apply the stored theme before first paint to avoid a light flash.
+      (function () {
+        try {
+          var stored = localStorage.getItem('statementx-theme');
+          var preference = stored === 'dark' || stored === 'light' ? stored : 'system';
+          var dark = preference === 'dark'
+            || (preference === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
   </head>
-  <body class="bg-gray-50 text-gray-900 antialiased">
+  <body class="antialiased">
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
