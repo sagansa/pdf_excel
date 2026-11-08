@@ -76,8 +76,26 @@
             <div class="history-meta mt-1 flex min-w-0 items-center gap-1.5 truncate text-[11px]">
               <span class="shrink-0" :title="t.txn_date">{{ formatDateMeta(t.txn_date) }}</span>
               <span class="history-meta__dot">·</span>
-              <span class="shrink-0 font-semibold" style="color: var(--color-text)" :title="t.company_name">
-                {{ t.company_short_name || '-' }}
+              <span v-if="editingCompanyId !== t.id" class="shrink-0">
+                <button
+                  type="button"
+                  class="font-semibold underline-offset-2 transition-all hover:text-[var(--color-primary)] hover:underline"
+                  style="color: var(--color-text)"
+                  :title="`${t.company_name || 'Tanpa company'} — klik untuk mengubah company`"
+                  @click.stop="startCompanyEdit(t)"
+                >
+                  {{ t.company_short_name || '-' }}
+                </button>
+              </span>
+              <span v-else class="shrink-0" @click.stop>
+                <SearchableSelect
+                  class="w-44"
+                  size="sm"
+                  :model-value="t.company_id || ''"
+                  :options="companyOptions"
+                  placeholder="Pilih company..."
+                  @update:model-value="onCompanySelected(t, $event)"
+                />
               </span>
               <span class="history-meta__dot">·</span>
               <span class="shrink-0 inline-flex items-center gap-0.5 font-semibold" :class="getFlowColorClass(t.db_cr, 'text')">
@@ -449,6 +467,34 @@ const aiEnabled = computed(() => Boolean(store.aiSettings?.enabled));
 const isAiPending = (t) => t.ai_status === 'pending' && Boolean(t.ai_suggested_mark_id);
 
 const isAiAuto = (t) => t.ai_status === 'auto_applied' && Boolean(t.ai_suggested_mark_id);
+
+// ------------------------------------------------- ubah company langsung di tabel
+
+const editingCompanyId = ref(null);
+
+const companyOptions = computed(() => [
+  { id: '__NONE__', label: 'Tanpa Company' },
+  ...(store.companies || []).map(c => ({
+    id: c.id,
+    label: c.short_name ? `${c.name} (${c.short_name})` : c.name,
+  })),
+]);
+
+const startCompanyEdit = (t) => {
+  editingCompanyId.value = t.id;
+};
+
+const onCompanySelected = async (t, value) => {
+  editingCompanyId.value = null;
+  const companyId = value === '__NONE__' ? null : (value || null);
+  if ((t.company_id || null) === companyId) return;
+  try {
+    await store.assignCompany(t.id, companyId);
+    notify.success('Company diperbarui.');
+  } catch (e) {
+    notify.error(e.response?.data?.error || 'Gagal mengubah company.');
+  }
+};
 
 const showAiRequest = (t) =>
     aiEnabled.value && !t.is_split && !t.is_linked_to_manual
