@@ -114,8 +114,9 @@ export const useHistoryStore = defineStore('history', {
                 const hasMultiMarked = markStatus.includes('multi_marked');
                 const hasAiPending = markStatus.includes('ai_pending');
                 const hasAiAuto = markStatus.includes('ai_auto');
+                const hasAiAny = markStatus.includes('ai_any');
                 const specificMarks = markStatus
-                    .filter(m => !['marked', 'unmarked', 'missing_mark', 'multi_marked', 'ai_pending', 'ai_auto'].includes(m))
+                    .filter(m => !['marked', 'unmarked', 'missing_mark', 'multi_marked', 'ai_pending', 'ai_auto', 'ai_any'].includes(m))
                     .map(m => String(m));
 
                 const txnMarkId = normalizeId(t.mark_id);
@@ -130,13 +131,14 @@ export const useHistoryStore = defineStore('history', {
                 const isMarkedTxn = hasValidMarkTxn || isMultiMarkedTxn;
                 const isAiPendingTxn = t.ai_status === 'pending' && Boolean(t.ai_suggested_mark_id);
                 const isAiAutoTxn = t.ai_status === 'auto_applied';
+                const isAiAnyTxn = Boolean(t.ai_suggested_mark_id);
 
                 let matches = false;
 
                 // Exclusive modes should still continue evaluating other filters (search, amount, etc).
-                if (hasUnmarked && !hasMarked && !hasMissingMark && !hasMultiMarked && !hasAiPending && !hasAiAuto && specificMarks.length === 0) {
+                if (hasUnmarked && !hasMarked && !hasMissingMark && !hasMultiMarked && !hasAiPending && !hasAiAuto && !hasAiAny && specificMarks.length === 0) {
                     matches = isUnmarkedTxn;
-                } else if (hasMarked && !hasUnmarked && !hasMissingMark && !hasMultiMarked && !hasAiPending && !hasAiAuto && specificMarks.length === 0) {
+                } else if (hasMarked && !hasUnmarked && !hasMissingMark && !hasMultiMarked && !hasAiPending && !hasAiAuto && !hasAiAny && specificMarks.length === 0) {
                     matches = isMarkedTxn;
                 } else {
                     // Check if transaction matches any selected mark criteria
@@ -156,6 +158,9 @@ export const useHistoryStore = defineStore('history', {
                         matches = true;
                     }
                     if (hasAiAuto && isAiAutoTxn) {
+                        matches = true;
+                    }
+                    if (hasAiAny && isAiAnyTxn) {
                         matches = true;
                     }
                     if (specificMarks.length > 0 && relatedMarkIds.some(id => specificMarks.includes(id))) {
@@ -758,19 +763,26 @@ export const useHistoryStore = defineStore('history', {
         try {
             for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
                 const chunk = ids.slice(i, i + CHUNK_SIZE);
-                const { data } = await aiApi.suggestMarks(chunk);
-                for (const result of data.results || []) {
-                    if (result.status === 'auto_applied') {
-                        this.applySuggestionLocally(result.id, result);
-                        summary.auto_applied += 1;
-                    } else if (result.status === 'suggested') {
-                        this.applySuggestionLocally(result.id, result);
-                        summary.suggested += 1;
-                    } else if (result.status === 'skipped') {
-                        summary.skipped += 1;
-                    } else {
-                        summary.failed += 1;
+                // Tandai baris chunk sebagai "sedang diproses" agar spinner per-baris tampil.
+                this.aiBusyTxnIds.push(...chunk);
+                try {
+                    const { data } = await aiApi.suggestMarks(chunk);
+                    for (const result of data.results || []) {
+                        if (result.status === 'auto_applied') {
+                            this.applySuggestionLocally(result.id, result);
+                            summary.auto_applied += 1;
+                        } else if (result.status === 'suggested') {
+                            this.applySuggestionLocally(result.id, result);
+                            summary.suggested += 1;
+                        } else if (result.status === 'skipped') {
+                            summary.skipped += 1;
+                        } else {
+                            summary.failed += 1;
+                        }
                     }
+                } finally {
+                    const chunkSet = new Set(chunk);
+                    this.aiBusyTxnIds = this.aiBusyTxnIds.filter(id => !chunkSet.has(id));
                 }
                 this.aiBulkProgress.done = Math.min(i + CHUNK_SIZE, ids.length);
             }

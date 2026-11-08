@@ -177,6 +177,7 @@ const markOptions = computed(() => {
     { id: 'missing_mark', label: 'Deleted Mark / Missing Mark' }
   ];
   if (store.aiSettings?.enabled) {
+    options.push({ id: 'ai_any', label: 'Ada Saran AI (semua status)' });
     options.push({ id: 'ai_pending', label: 'Saran AI Menunggu Review' });
     options.push({ id: 'ai_auto', label: 'Ter-mark AI Otomatis' });
   }

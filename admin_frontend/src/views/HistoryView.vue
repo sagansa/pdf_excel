@@ -83,44 +83,43 @@
 
         <!-- Bulk Actions (Floaty) -->
         <transition enter-active-class="transition duration-200 ease-out" enter-from-class="translate-y-4 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-150 ease-in" leave-from-class="translate-y-0 opacity-100" leave-to-class="translate-y-4 opacity-0">
-            <div v-if="store.selectedTxnIds.length > 0" class="bulk-bar fixed bottom-6 left-1/2 z-50 flex w-[min(92vw,920px)] -translate-x-1/2 flex-col gap-4 rounded-3xl px-5 py-4 md:flex-row md:items-center md:justify-between">
-                <div class="flex items-center gap-3 md:pr-6 md:border-r md:border-white/10">
+            <div v-if="store.selectedTxnIds.length > 0" class="bulk-bar fixed bottom-6 left-1/2 z-50 flex w-[min(96vw,1080px)] -translate-x-1/2 flex-col gap-3 rounded-3xl px-5 py-3.5 md:flex-row md:items-center md:gap-4">
+                <div class="flex shrink-0 items-center gap-3 md:pr-2 md:border-r md:border-white/10">
                     <span class="bulk-bar__count">{{ store.selectedTxnIds.length }}</span>
-                    <span class="text-sm font-medium">Selected</span>
+                    <span class="text-sm font-medium whitespace-nowrap">Selected</span>
                 </div>
 
-                <div class="flex flex-col gap-3 md:flex-row md:items-center md:gap-3 flex-1">
-                    <div class="flex flex-1 items-center gap-3">
-                        <div class="w-48 group/select">
-                           <SelectInput
-                               v-model="bulkActionForm.companyId"
-                               :options="bulkCompanyOptions"
-                               placeholder="Assign Company..."
-                               size="sm"
-                               class="bulk-bar__input"
-                           />
-                        </div>
-                        <div class="w-64 group/select">
-                           <SearchableSelect
-                               v-model="bulkActionForm.markId"
-                               :options="bulkMarkOptions"
-                               placeholder="Assign Mark..."
-                               size="sm"
-                               class="bulk-bar__input"
-                           />
-                        </div>
+                <div class="flex min-w-0 flex-1 items-center gap-2">
+                    <div class="min-w-0 flex-1 max-w-[190px]">
+                       <SelectInput
+                           v-model="bulkActionForm.companyId"
+                           :options="bulkCompanyOptions"
+                           placeholder="Assign Company..."
+                           size="sm"
+                           class="bulk-bar__input"
+                       />
+                    </div>
+                    <div class="min-w-0 flex-[1.4] max-w-[240px]">
+                       <SearchableSelect
+                           v-model="bulkActionForm.markId"
+                           :options="bulkMarkOptions"
+                           placeholder="Assign Mark..."
+                           size="sm"
+                           class="bulk-bar__input"
+                       />
+                    </div>
+                    <button
+                        @click="handleBulkApply"
+                        class="h-8 shrink-0 whitespace-nowrap px-4 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-strong transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        :disabled="isBulkAssigning || (!bulkActionForm.companyId && !bulkActionForm.markId)"
+                    >
+                        <span v-if="isBulkAssigning" class="spinner-border w-3 h-3 me-1"></span>
+                        Apply
+                    </button>
+                    <div v-if="store.aiSettings?.enabled" class="ml-1 flex shrink-0 items-center gap-2 pl-3 border-l border-white/10">
                         <button
-                            @click="handleBulkApply"
-                            class="h-8 px-4 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-strong transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                            :disabled="isBulkAssigning || (!bulkActionForm.companyId && !bulkActionForm.markId)"
-                        >
-                            <span v-if="isBulkAssigning" class="spinner-border w-3 h-3 me-1"></span>
-                            Apply
-                        </button>
-                        <button
-                            v-if="store.aiSettings?.enabled"
                             @click="handleBulkAiSuggest"
-                            class="h-8 px-4 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border border-white/15 text-white/90 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="h-8 shrink-0 whitespace-nowrap px-3 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border border-white/15 text-white/90 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             :disabled="store.aiBulkBusy || isBulkAcceptingAi"
                             title="Minta saran AI untuk semua transaksi terpilih — kecocokan riwayat langsung ter-mark, saran LLM menunggu review"
                         >
@@ -129,9 +128,8 @@
                             {{ store.aiBulkBusy ? `AI ${store.aiBulkProgress.done}/${store.aiBulkProgress.total}` : 'AI Suggest' }}
                         </button>
                         <button
-                            v-if="store.aiSettings?.enabled"
                             @click="handleBulkAcceptAi"
-                            class="h-8 px-4 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border border-white/15 text-white/90 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="h-8 shrink-0 whitespace-nowrap px-3 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border border-white/15 text-white/90 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             :disabled="store.aiBulkBusy || isBulkAcceptingAi"
                             title="Terima semua saran AI yang menunggu review pada transaksi terpilih"
                         >
@@ -142,7 +140,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 pl-4 border-l border-white/10">
+                <div class="flex shrink-0 items-center gap-2 md:pl-3 md:border-l md:border-white/10">
                     <button class="bulk-bar__icon bulk-bar__icon--danger" title="Bulk Delete" @click="isBulkDeleteModalOpen = true">
                          <i class="bi bi-trash3-fill text-sm"></i>
                     </button>

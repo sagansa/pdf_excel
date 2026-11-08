@@ -131,11 +131,11 @@
             <!-- Rel aksi: marking + AI + split -->
           </div>
 
-          <div class="flex flex-col gap-1.5 md:shrink-0 md:items-end" @click.stop>
-            <div class="flex w-full items-center gap-1.5 md:w-auto">
+          <div class="flex flex-col gap-1.5 md:shrink-0 md:w-[300px]" @click.stop>
+            <div class="flex w-full items-center gap-1.5">
               <SearchableSelect
                 v-if="!t.is_split && !t.is_linked_to_manual"
-                class="w-full min-w-0 flex-1 md:w-44 md:flex-none"
+                class="w-full min-w-0 flex-1"
                 :model-value="t.mark_id || ''"
                 :options="markOptions"
                 placeholder="-- Unmarked --"
@@ -144,7 +144,7 @@
               />
               <div
                 v-else-if="t.is_split"
-                class="history-chip inline-flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1 text-[10px] font-bold md:w-44 md:flex-none"
+                class="history-chip inline-flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1 text-[10px] font-bold"
                 :class="t.is_multi_marked ? 'history-chip--primary' : 'history-chip--warning'"
                 :title="t.is_multi_marked ? 'Mixed Marks' : 'Split (No Active Mark)'"
               >
@@ -153,43 +153,47 @@
               </div>
               <div
                 v-else-if="t.is_linked_to_manual"
-                class="history-chip history-chip--primary inline-flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1 text-[10px] font-bold md:w-44 md:flex-none"
+                class="history-chip history-chip--primary inline-flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1 text-[10px] font-bold"
                 :title="`Linked to: ${t.manual_mark_name || 'Manual Journal'}`"
               >
                 <i class="bi bi-link-45deg shrink-0 text-sm"></i>
                 <span class="truncate">{{ t.manual_mark_name || 'Manual Journal' }}</span>
               </div>
 
-              <button
-                v-if="showAiRequest(t)"
-                type="button"
-                @click.stop="requestSuggestion(t)"
-                class="p-1 transition-all active:scale-90"
-                :class="store.aiBusyTxnIds.includes(t.id) ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)]'"
-                :title="store.aiBusyTxnIds.includes(t.id) ? 'Meminta saran AI...' : 'Minta saran AI untuk marking ini'"
-              >
-                <i class="bi bi-stars text-sm" :class="{ 'bi-arrow-repeat animate-spin': store.aiBusyTxnIds.includes(t.id) }"></i>
-              </button>
-              <button
-                type="button"
-                @click.stop="$emit('split-transaction', t)"
-                class="p-1 transition-all active:scale-90"
-                :class="t.is_split ? 'text-[var(--color-primary)] hover:opacity-80' : 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)]'"
-                :title="t.is_split ? 'Transaction is split into multiple parts' : 'Split this transaction'"
-              >
-                <i class="bi bi-diagram-3-fill text-sm"></i>
-              </button>
+              <!-- Slot tombol berukuran tetap: kolom mark tetap sebaris antar baris,
+                   meski tombol AI belum tampil / sudah berganti chip. -->
+              <div class="flex w-[64px] shrink-0 items-center justify-end gap-0.5">
+                <button
+                  v-if="showAiRequest(t) || store.aiBusyTxnIds.includes(t.id)"
+                  type="button"
+                  @click.stop="requestSuggestion(t)"
+                  class="p-1 transition-all active:scale-90"
+                  :class="store.aiBusyTxnIds.includes(t.id) ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)]'"
+                  :title="store.aiBusyTxnIds.includes(t.id) ? 'Meminta saran AI...' : 'Minta saran AI untuk marking ini'"
+                >
+                  <i class="bi bi-stars text-sm" :class="{ 'bi-arrow-repeat animate-spin': store.aiBusyTxnIds.includes(t.id) }"></i>
+                </button>
+                <button
+                  type="button"
+                  @click.stop="$emit('split-transaction', t)"
+                  class="p-1 transition-all active:scale-90"
+                  :class="t.is_split ? 'text-[var(--color-primary)] hover:opacity-80' : 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)]'"
+                  :title="t.is_split ? 'Transaction is split into multiple parts' : 'Split this transaction'"
+                >
+                  <i class="bi bi-diagram-3-fill text-sm"></i>
+                </button>
+              </div>
 
             </div>
 
-            <div v-if="isAiPending(t)" class="flex w-full min-w-0 items-center gap-1.5 md:w-auto">
+            <div v-if="isAiPending(t)" class="flex w-full items-start gap-1">
                 <span
-                  class="history-chip inline-flex min-w-0 flex-1 items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold md:flex-none md:max-w-[190px]"
+                  class="history-chip inline-flex min-w-0 flex-1 items-start gap-1 px-1.5 py-0.5 text-[10px] font-bold leading-snug"
                   :class="aiChipClass(t)"
                   :title="aiSuggestionTooltip(t)"
                 >
-                  <i class="bi bi-stars shrink-0 text-[9px]"></i>
-                  <span class="truncate">AI: {{ aiSuggestionLabel(t) }} · {{ aiConfidencePercent(t) }}%</span>
+                  <i class="bi bi-stars shrink-0 text-[9px] mt-0.5"></i>
+                  <span class="min-w-0 break-words">AI: {{ aiSuggestionLabel(t) }} · {{ aiConfidencePercent(t) }}%</span>
                 </span>
                 <button
                   type="button"
@@ -208,13 +212,13 @@
                   <i class="bi bi-x-lg text-xs"></i>
                 </button>
               </div>
-            <div v-else-if="isAiAuto(t)" class="flex w-full min-w-0 items-center gap-1.5 md:w-auto">
+            <div v-else-if="isAiAuto(t)" class="flex w-full items-start gap-1">
                 <span
-                  class="history-chip history-chip--primary inline-flex min-w-0 flex-1 items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold md:flex-none md:max-w-[190px]"
+                  class="history-chip history-chip--primary inline-flex min-w-0 flex-1 items-start gap-1 px-1.5 py-0.5 text-[10px] font-bold leading-snug"
                   :title="aiAutoTooltip(t)"
                 >
-                  <i class="bi bi-stars shrink-0 text-[9px]"></i>
-                  <span class="truncate">AI otomatis: {{ aiSuggestionLabel(t) }} · {{ aiConfidencePercent(t) }}%</span>
+                  <i class="bi bi-stars shrink-0 text-[9px] mt-0.5"></i>
+                  <span class="min-w-0 break-words">AI otomatis: {{ aiSuggestionLabel(t) }} · {{ aiConfidencePercent(t) }}%</span>
                 </span>
                 <button
                   type="button"
@@ -225,8 +229,8 @@
                   <i class="bi bi-x-lg text-xs"></i>
                 </button>
               </div>
-            </div>
         </div>
+      </div>
       </div>
       </template>
     </div>
