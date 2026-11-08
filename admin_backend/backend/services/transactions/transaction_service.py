@@ -12,9 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, file_hash: str):
+    """Simpan transaksi hasil parse; balikan (ok, error_atau_None, inserted_ids)."""
     engine, error_msg = get_db_engine()
     if engine is None:
-        return False, error_msg or 'Failed to connect to database'
+        return False, error_msg or 'Failed to connect to database', []
 
     records = []
     skipped_rows = 0
@@ -31,7 +32,7 @@ def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, 
         return False, (
             'No valid transactions were prepared for insert. '
             f'Parsed rows: {len(df)}, skipped rows: {skipped_rows}'
-        )
+        ), []
 
     try:
         with engine.begin() as conn:
@@ -59,6 +60,7 @@ def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, 
                 for record in records
             ]
             conn.execute(insert_transactions_query(insert_columns), insert_records)
-        return True, None
+        inserted_ids = [record['id'] for record in records]
+        return True, None, inserted_ids
     except Exception as exc:
-        return False, f'Database Error: {exc}'
+        return False, f'Database Error: {exc}', []

@@ -176,10 +176,64 @@ def test_settings_put_normalizes_and_saves(ai_client):
         'base_url': 'http://localhost:11434/v1',
         'model': 'qwen2.5:7b',
         'timeout': 60,
+        'auto_apply': False,
+        'auto_apply_threshold': 0.9,
+        'api_key_set': False,
     }
 
     follow_up = ai_client.get('/api/ai/settings')
     assert follow_up.get_json()['settings']['enabled'] is True
+
+
+def test_settings_zai_provider_with_api_key(ai_client):
+    """Provider cloud z.ai diterima; API key disimpan tapi tidak pernah diekspos."""
+    response = ai_client.put('/api/ai/settings', json={
+        'enabled': True, 'provider': 'zai',
+        'base_url': 'https://api.z.ai/api/paas/v4', 'model': 'glm-4.7',
+        'api_key': 'secret-key-12345',
+    })
+    assert response.status_code == 200
+    settings = response.get_json()['settings']
+    assert settings['provider'] == 'zai'
+    assert settings['api_key_set'] is True
+    assert 'api_key' not in settings
+    assert 'secret-key' not in response.get_data(as_text=True)
+
+    follow_up = ai_client.get('/api/ai/settings').get_json()['settings']
+    assert follow_up['api_key_set'] is True
+    assert 'api_key' not in follow_up
+
+    # Tanpa mengirim api_key → kunci lama tetap; dengan sentinel → terhapus.
+    keep = ai_client.put('/api/ai/settings', json={
+        'enabled': True, 'provider': 'zai',
+        'base_url': 'https://api.z.ai/api/paas/v4', 'model': 'glm-4.7',
+    }).get_json()['settings']
+    assert keep['api_key_set'] is True
+    cleared = ai_client.put('/api/ai/settings', json={
+        'enabled': True, 'provider': 'zai',
+        'base_url': 'https://api.z.ai/api/paas/v4', 'model': 'glm-4.7',
+        'api_key': '__CLEAR__',
+    }).get_json()['settings']
+    assert cleared['api_key_set'] is False
+
+
+def test_auto_apply_settings_roundtrip(ai_client):
+    response = ai_client.put('/api/ai/settings', json={
+        'enabled': True, 'provider': 'ollama',
+        'base_url': 'http://localhost:11434/v1', 'model': 'qwen2.5:7b',
+        'auto_apply': True, 'auto_apply_threshold': 0.85,
+    })
+    settings = response.get_json()['settings']
+    assert settings['auto_apply'] is True
+    assert settings['auto_apply_threshold'] == 0.85
+
+    # Threshold di luar [0,1] dikembalikan ke batas.
+    clamped = ai_client.put('/api/ai/settings', json={
+        'enabled': True, 'provider': 'ollama',
+        'base_url': 'http://localhost:11434/v1', 'model': 'qwen2.5:7b',
+        'auto_apply': True, 'auto_apply_threshold': 5,
+    }).get_json()['settings']
+    assert clamped['auto_apply_threshold'] == 1.0
 
 
 # ---------------------------------------------------------------- suggest
@@ -427,6 +481,136 @@ def test_decision_without_suggestion(ai_client, ai_engine):
     response = ai_client.post('/api/transactions/txn-1/ai-decision', json={'decision': 'accept'})
     assert response.status_code == 400
     assert response.get_json()['code'] == 'ai_no_suggestion'
+
+
+# ---------------------------------------------------------------- auto-apply & bulk
+
+
+def _enable_auto_apply(ai_engine, threshold=0.9):
+    with ai_engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO app_settings (setting_key, setting_value) VALUES ('ai_auto_apply', 'true') "
+            "ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value"
+        ))
+        conn.execute(text(
+            "INSERT INTO app_settings (setting_key, setting_value) VALUES ('ai_auto_apply_threshold', :t) "
+            "ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value"
+        ), {'t': str(threshold)})
+
+
+def test_rule_auto_applies_when_enabled(ai_client, ai_engine, monkeypatch):
+    """Kecocokan riwayat + auto_apply aktif → mark langsung terisi, status auto_applied."""
+    from backend.services.ai import llm_client
+
+    _insert_mark(ai_engine)
+    _enable_ai(ai_engine)
+    _enable_auto_apply(ai_engine)
+    with ai_engine.begin() as conn:
+        conn.execute(text(
+            'INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, mark_id) '
+            "VALUES ('hist-1', '2025-06-01', 'BIAYA ADM 12345', 5000, 'DB', 'BCA', 'mark-beban')"
+        ))
+    _insert_transaction(ai_engine, txn_id='txn-1', description='BIAYA ADM 67890', db_cr='DB')
+
+    def fail_if_called(**kwargs):
+        raise AssertionError('Rule match kuat tidak seharusnya memanggil LLM')
+
+    monkeypatch.setattr(llm_client, 'chat_completion', fail_if_called)
+
+    response = ai_client.post('/api/transactions/ai-suggest', json={'transaction_ids': ['txn-1']})
+    body = response.get_json()
+    assert body['auto_applied_count'] == 1
+    assert body['results'][0]['status'] == 'auto_applied'
+
+    row = _txn_row(ai_engine)
+    assert row['mark_id'] == 'mark-beban'       # langsung masuk ke marked
+    assert row['ai_status'] == 'auto_applied'   # tetap bertanda AI
+
+
+def test_rule_stays_pending_when_auto_apply_off(ai_client, ai_engine, monkeypatch):
+    _insert_mark(ai_engine)
+    _enable_ai(ai_engine)  # auto_apply default false
+    with ai_engine.begin() as conn:
+        conn.execute(text(
+            'INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, mark_id) '
+            "VALUES ('hist-1', '2025-06-01', 'BIAYA ADM 12345', 5000, 'DB', 'BCA', 'mark-beban')"
+        ))
+    _insert_transaction(ai_engine, txn_id='txn-1', description='BIAYA ADM 67890', db_cr='DB')
+
+    from backend.services.ai import llm_client
+    monkeypatch.setattr(llm_client, 'chat_completion',
+                        lambda **k: (_ for _ in ()).throw(AssertionError('LLM tidak boleh dipanggil')))
+
+    body = ai_client.post('/api/transactions/ai-suggest', json={'transaction_ids': ['txn-1']}).get_json()
+    assert body['auto_applied_count'] == 0
+    assert body['suggested_count'] == 1
+    row = _txn_row(ai_engine)
+    assert row['mark_id'] is None
+    assert row['ai_status'] == 'pending'
+
+
+def test_llm_suggestion_never_auto_applies(ai_client, ai_engine, monkeypatch):
+    """Saran LLM selalu pending meski confidence tinggi & auto_apply aktif."""
+    _insert_mark(ai_engine)
+    _insert_transaction(ai_engine, description='KERETA API KAI 9999', db_cr='DB')
+    _enable_ai(ai_engine)
+    _enable_auto_apply(ai_engine)
+    _stub_llm(monkeypatch, {'mark_id': 'mark-beban', 'confidence': 1.0, 'reason': 'ok'})
+
+    body = ai_client.post('/api/transactions/ai-suggest', json={'transaction_ids': ['txn-1']}).get_json()
+    assert body['suggested_count'] == 1
+    assert body['auto_applied_count'] == 0
+    row = _txn_row(ai_engine)
+    assert row['mark_id'] is None
+    assert row['ai_status'] == 'pending'
+
+
+def test_bulk_accept_and_reject_undo(ai_client, ai_engine, monkeypatch):
+    global ai_client_global  # noqa — tidak dipakai; helper di bawah pakai ai_client lokal
+    _insert_mark(ai_engine)
+    _enable_ai(ai_engine)
+    with ai_engine.begin() as conn:
+        # Dua transaksi dengan riwayat serupa → rule match saat di-suggest.
+        conn.execute(text(
+            'INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, mark_id) '
+            "VALUES ('hist-1', '2025-06-01', 'BIAYA ADM 12345', 5000, 'DB', 'BCA', 'mark-beban')"
+        ))
+    _insert_transaction(ai_engine, txn_id='txn-a', description='BIAYA ADM 111', db_cr='DB')
+    _insert_transaction(ai_engine, txn_id='txn-b', description='BIAYA ADM 222', db_cr='DB')
+
+    from backend.services.ai import llm_client
+    monkeypatch.setattr(llm_client, 'chat_completion',
+                        lambda **k: (_ for _ in ()).throw(AssertionError('LLM tidak boleh dipanggil')))
+
+    body = ai_client.post('/api/transactions/ai-suggest', json={
+        'transaction_ids': ['txn-a', 'txn-b'],
+    }).get_json()
+    assert body['suggested_count'] == 2
+
+    # Bulk accept → keduanya langsung ter-mark.
+    bulk = ai_client.post('/api/transactions/ai-decision-bulk', json={
+        'decision': 'accept', 'transaction_ids': ['txn-a', 'txn-b'],
+    }).get_json()
+    assert bulk['updated'] == 2
+    with ai_engine.connect() as conn:
+        marks = conn.execute(text(
+            "SELECT COUNT(*) FROM transactions WHERE mark_id = 'mark-beban' AND id IN ('txn-a', 'txn-b')"
+        )).scalar_one()
+    assert marks == 2
+
+    # Reject pada baris accepted → mark tetap (accept idempoten, reject bekerja di pending/auto).
+    # Auto-applied reject → undo (mark dikosongkan): simulasi dengan status auto_applied.
+    with ai_engine.begin() as conn:
+        conn.execute(text("UPDATE transactions SET ai_status = 'auto_applied' WHERE id = 'txn-a'"))
+    undo = ai_client.post('/api/transactions/ai-decision-bulk', json={
+        'decision': 'reject', 'transaction_ids': ['txn-a'],
+    }).get_json()
+    assert undo['updated'] == 1
+    with ai_engine.connect() as conn:
+        row = conn.execute(text(
+            "SELECT mark_id, ai_status FROM transactions WHERE id = 'txn-a'"
+        )).fetchone()
+    assert row[0] is None and row[1] == 'rejected'
 
 
 # ---------------------------------------------------------------- unit: kandidat

@@ -293,12 +293,25 @@ def convert_pdf():
                 df.to_excel(output_path, index=False)
             
             bank_code_for_db = dataframe_bank_code(bank_key)
-            db_success, db_error = save_transactions_to_db(df, bank_code_for_db, original_name, file_hash)
+            db_success, db_error, inserted_ids = save_transactions_to_db(df, bank_code_for_db, original_name, file_hash)
             if not db_success:
                 app.logger.error(f"Database upload failed: {db_error}")
                 return _error_response(f'Failed to save transactions to database: {db_error}', 500)
 
-            return send_file(output_path, as_attachment=True, download_name=f'{base_name}{file_extension}', mimetype=mimetype)
+            # Pass AI di latar belakang (rule riwayat + LLM; auto-apply sesuai setelan).
+            # Kegagalan pass tidak pernah memengaruhi keberhasilan upload.
+            ai_pass_queued = False
+            try:
+                from backend.services.ai.mark_pass import queue_ai_mark_pass
+                ai_pass_queued = queue_ai_mark_pass(inserted_ids)
+            except Exception:
+                app.logger.exception('Gagal menjadwalkan AI mark pass')
+
+            response = send_file(output_path, as_attachment=True, download_name=f'{base_name}{file_extension}', mimetype=mimetype)
+            if ai_pass_queued:
+                response.headers['X-AI-Pass'] = 'queued'
+                response.headers['X-AI-Pass-Count'] = str(len(inserted_ids))
+            return response
 
         except Exception as exc:
             app.logger.exception('Error processing file')

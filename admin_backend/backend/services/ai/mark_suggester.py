@@ -46,6 +46,15 @@ JSON_INSTRUCTION = (
 )
 
 
+def _normalize_direction(value):
+    raw = str(value or '').strip().upper()
+    if raw in {'CR', 'CREDIT', 'KREDIT', 'K'}:
+        return 'CR'
+    if raw in {'DB', 'DEBIT', 'D', 'DE'}:
+        return 'DB'
+    return 'DB'
+
+
 def _clean_text(value):
     return str(value or '').strip()
 
@@ -315,6 +324,7 @@ def suggest_for_transaction(txn, candidates, config, examples=None):
         temperature=0.1,
         timeout=config.get('timeout') or llm_client.DEFAULT_TIMEOUT,
         max_tokens=800,  # beri ruang untuk model reasoning agar sampai ke jawaban JSON
+        api_key=config.get('api_key') or None,
     )
     return parse_suggestion_response(raw, candidates)
 
@@ -367,8 +377,14 @@ def get_transaction(conn, txn_id):
     return dict(row._mapping)
 
 
-def store_suggestion(conn, txn_id, suggestion, source='llm'):
-    """Simpan saran ke kolom ai_* — mark_id TIDAK disentuh."""
+def store_suggestion(conn, txn_id, suggestion, source='llm', auto_apply=False):
+    """Simpan saran ke kolom ai_*.
+
+    auto_apply=False → ai_status='pending', mark_id TIDAK disentuh (menunggu review).
+    auto_apply=True  → mark_id langsung diisi dari saran, ai_status='auto_applied'
+    (tetap bertanda AI sehingga bisa difilter, direview ulang, atau dibatalkan).
+    Pemanggil wajib sudah memastikan transaksi markable (ensure_markable).
+    """
     conn.execute(text(
         'UPDATE transactions SET '
         'ai_suggested_mark_id = :mark_id, '
@@ -377,7 +393,8 @@ def store_suggestion(conn, txn_id, suggestion, source='llm'):
         'ai_reason = :reason, '
         'ai_status = :status, '
         'ai_suggested_at = :suggested_at, '
-        'ai_decided_at = NULL '
+        'ai_decided_at = :decided_at, '
+        'mark_id = :mark_id_final '
         'WHERE id = :txn_id'
     ), {
         'txn_id': txn_id,
@@ -385,18 +402,26 @@ def store_suggestion(conn, txn_id, suggestion, source='llm'):
         'confidence': suggestion['confidence'],
         'source': source,
         'reason': suggestion.get('reason'),
-        'status': 'pending',
+        'status': 'auto_applied' if auto_apply else 'pending',
         'suggested_at': datetime.now(),
+        'decided_at': datetime.now() if auto_apply else None,
+        'mark_id_final': suggestion['mark_id'] if auto_apply else None,
     })
 
 
 def apply_decision(conn, txn_id, decision):
-    """Terima/tolak saran. accept mengisi mark_id dari ai_suggested_mark_id."""
+    """Terima/tolak saran.
+
+    accept (pending)   → mark_id = ai_suggested_mark_id, ai_status='accepted'.
+    reject (pending)   → ai_status='rejected' (mark tetap kosong).
+    reject (auto_applied) → undo: mark_id dikosongkan lagi, ai_status='rejected'.
+    accept (auto_applied) → idempoten: hanya konfirmasi status.
+    """
     if decision not in ('accept', 'reject'):
         raise BadRequestError('Keputusan tidak valid. Gunakan "accept" atau "reject".')
 
     row = conn.execute(text(
-        'SELECT id, ai_suggested_mark_id, ai_status FROM transactions WHERE id = :txn_id'
+        'SELECT id, mark_id, ai_suggested_mark_id, ai_status FROM transactions WHERE id = :txn_id'
     ), {'txn_id': txn_id}).fetchone()
     if row is None:
         raise NotFoundError('Transaction not found')
@@ -404,11 +429,12 @@ def apply_decision(conn, txn_id, decision):
 
     if not _clean_text(txn.get('ai_suggested_mark_id')):
         raise BadRequestError('Transaksi ini belum memiliki saran AI.', code='ai_no_suggestion')
-    if decision == 'accept' and _clean_text(txn.get('ai_status')) == 'accepted':
-        return txn  # idempoten: sudah diterima sebelumnya
 
+    status = _clean_text(txn.get('ai_status'))
     now = datetime.now()
     if decision == 'accept':
+        if status == 'auto_applied':
+            return txn  # idempoten: memang sudah ter-mark otomatis
         ensure_markable(conn, txn_id)
         conn.execute(text(
             'UPDATE transactions SET '
@@ -421,6 +447,7 @@ def apply_decision(conn, txn_id, decision):
     else:
         conn.execute(text(
             'UPDATE transactions SET '
+            "mark_id = CASE WHEN ai_status = 'auto_applied' THEN NULL ELSE mark_id END, "
             "ai_status = 'rejected', "
             'ai_decided_at = :decided_at '
             'WHERE id = :txn_id'
@@ -432,3 +459,111 @@ def apply_decision(conn, txn_id, decision):
         'FROM transactions WHERE id = :txn_id'
     ), {'txn_id': txn_id}).fetchone()
     return dict(updated._mapping)
+
+
+def process_transaction(conn, txn_id, config, history_index=None, candidates_by_direction=None):
+    """Kaskade lengkap untuk satu transaksi: rule riwayat → (auto-apply) → LLM few-shot.
+
+    Dipakai bersama oleh endpoint ai-suggest dan pass latar belakang saat konversi.
+    Balikan dict result: {id, status: suggested|auto_applied|skipped|failed, ...}.
+    """
+    if candidates_by_direction is None:
+        candidates_by_direction = {}
+
+    txn = get_transaction(conn, txn_id)
+    if txn is None:
+        return {'id': txn_id, 'status': 'skipped', 'reason': 'Transaksi tidak ditemukan'}
+    try:
+        ensure_markable(conn, txn_id)
+    except BadRequestError as exc:
+        return {'id': txn_id, 'status': 'skipped', 'reason': exc.message}
+
+    direction = _normalize_direction(txn.get('db_cr'))
+    if direction not in candidates_by_direction:
+        candidates_by_direction[direction] = load_candidate_marks(conn, direction)
+    candidates = candidates_by_direction[direction]
+    if not candidates:
+        return {'id': txn_id, 'status': 'skipped', 'reason': 'Belum ada mark yang tersedia'}
+
+    # Lapis 1: pola dari riwayat marking user sendiri (instan, tanpa LLM).
+    rule = match_history_rule(history_index or [], txn, candidates, direction, txn.get('company_id'))
+    if rule:
+        threshold = config.get('auto_apply_threshold')
+        if threshold is None:
+            threshold = llm_client.DEFAULT_AUTO_APPLY_THRESHOLD
+        auto = bool(config.get('auto_apply')) and rule['confidence'] >= float(threshold)
+        store_suggestion(conn, txn_id, rule, source='rule', auto_apply=auto)
+        result = {
+            'id': txn_id,
+            'status': 'auto_applied' if auto else 'suggested',
+            'ai_suggested_mark_id': rule['mark_id'],
+            'mark_label': rule['mark_label'],
+            'ai_confidence': rule['confidence'],
+            'ai_reason': rule.get('reason'),
+            'ai_source': 'rule',
+        }
+        if auto:
+            result['auto_applied'] = True
+        return result
+
+    # Lapis 2: LLM dengan contoh riwayat user (few-shot) — selalu menunggu review.
+    examples = pick_history_examples(history_index or [], txn, direction, txn.get('company_id'))
+    try:
+        suggestion = suggest_for_transaction(txn, candidates, config, examples=examples)
+    except llm_client.LLMConnectionError as exc:
+        return {'id': txn_id, 'status': 'failed', 'error': str(exc)}
+    except ValueError as exc:
+        return {'id': txn_id, 'status': 'failed', 'error': str(exc)}
+
+    store_suggestion(conn, txn_id, suggestion, source='llm')
+    return {
+        'id': txn_id,
+        'status': 'suggested',
+        'ai_suggested_mark_id': suggestion['mark_id'],
+        'mark_label': suggestion['mark_label'],
+        'ai_confidence': suggestion['confidence'],
+        'ai_reason': suggestion.get('reason'),
+        'ai_source': 'llm',
+    }
+
+
+def bulk_decision(conn, decision, txn_ids=None):
+    """Terima/tolak banyak saran sekaligus.
+
+    txn_ids None → berlaku untuk SEMUA kandidat yang relevan:
+      accept → semua ai_status='pending'; reject → semua 'pending' + 'auto_applied'.
+    Baris yang gagal guard (split parent, manual journal) dilewati, bukan gagal total.
+    """
+    if decision not in ('accept', 'reject'):
+        raise BadRequestError('Keputusan tidak valid. Gunakan "accept" atau "reject".')
+
+    if decision == 'accept':
+        status_filter = "ai_status = 'pending'"
+    else:
+        status_filter = "ai_status IN ('pending', 'auto_applied')"
+
+    params = {}
+    id_filter = ''
+    if txn_ids:
+        clean_ids = [str(value or '').strip() for value in txn_ids if str(value or '').strip()]
+        if not clean_ids:
+            raise BadRequestError('transaction_ids tidak berisi id yang valid.')
+        placeholders = ', '.join(f':id{i}' for i in range(len(clean_ids)))
+        id_filter = f' AND id IN ({placeholders})'
+        params.update({f'id{i}': value for i, value in enumerate(clean_ids)})
+
+    rows = conn.execute(text(
+        f'SELECT id FROM transactions WHERE ai_suggested_mark_id IS NOT NULL '
+        f'AND {status_filter}{id_filter}'
+    ), params).fetchall()
+
+    updated = 0
+    skipped = []
+    for row in rows:
+        txn_id = str(dict(row._mapping)['id'])
+        try:
+            apply_decision(conn, txn_id, decision)
+            updated += 1
+        except (BadRequestError, NotFoundError) as exc:
+            skipped.append({'id': txn_id, 'reason': exc.message})
+    return {'updated': updated, 'skipped': skipped}
