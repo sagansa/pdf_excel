@@ -1,11 +1,18 @@
-"""Saran mark berbasis LLM lokal untuk transaksi bank statement.
+"""Saran mark berbasis data existing + LLM lokal untuk transaksi bank statement.
 
 Prinsip: **AI menyarankan, manusia memutuskan.** Saran hanya mengisi kolom ai_*
 di transactions dengan ai_status='pending'; mark_id baru berubah setelah user
 menerima saran melalui endpoint ai-decision.
+
+Rekomendasi selalu berangkat dari data existing user:
+1. Rule engine — deskripsi dinormalisasi lalu dicocokkan ke riwayat transaksi yang
+   sudah di-mark user. Pola kuat → saran langsung (source='rule', tanpa LLM).
+2. LLM lokal — bila tidak ada kecocokan kuat, prompt menyertakan contoh nyata
+   dari riwayat marking user (few-shot) agar saran mengikuti konvensi user.
 """
 
 import json
+import re
 from datetime import datetime
 
 from sqlalchemy import text
@@ -14,15 +21,21 @@ from backend.db.schema import get_table_columns
 from backend.errors import BadRequestError, NotFoundError
 from backend.services.ai import llm_client
 
-# Batas kandidat mark yang dikirim ke LLM (hemat context window model kecil).
-MAX_CANDIDATE_MARKS = 40
+# Batas kandidat mark yang dikirim ke LLM. Diurutkan mark arah-cocok lebih dulu,
+# jadi bila jumlah mark sangat besar yang terpotong adalah yang arahnya berlawanan.
+MAX_CANDIDATE_MARKS = 120
 MAX_REASON_LENGTH = 500
+# Batas contoh riwayat user yang dikirim ke LLM sebagai few-shot.
+MAX_FEW_SHOT_EXAMPLES = 8
+# Di bawah dominasi ini pola riwayat dianggap terlalu berbelit → serahkan ke LLM.
+RULE_MIN_DOMINANCE = 0.5
 
 SYSTEM_PROMPT = (
     'Anda asisten akuntansi untuk kategorisasi transaksi rekening koran bank di Indonesia. '
     'Tugas Anda memilih satu mark (kategori akuntansi) yang paling sesuai dari daftar yang diberikan. '
     'Perhatikan arah transaksi: DB = uang keluar (beban/pembelian/transfer keluar), '
     'CR = uang masuk (pendapatan/penerimaan/transfer masuk). '
+    'Utamakan konsistensi dengan pola penandaan user pada contoh riwayat yang diberikan. '
     'Jawab HANYA JSON valid tanpa teks lain.'
 )
 
@@ -74,8 +87,133 @@ def load_candidate_marks(conn, db_cr):
     return (matching + neutral + opposing)[:MAX_CANDIDATE_MARKS]
 
 
-def build_messages(txn, candidates):
-    """Prompt per transaksi: konteks transaksi + daftar kandidat bernomor id."""
+def normalize_description(desc):
+    """Normalisasi deskripsi bank: buang nomor referensi/tanggal/simbol.
+
+    'TRSF E-BANKING DB 2102/FTSCY/WS95271 2315326.00 FLIPTECH'
+      → 'TRSF E BANKING DB FTSCY WS FLIPTECH'
+    """
+    value = str(desc or '').upper()
+    value = re.sub(r'\b\d{2}/\d{2}(/\d{2,4})?\b', ' ', value)  # tanggal 21/02(/2026)
+    value = re.sub(r'\d{4,}', ' ', value)                      # nomor referensi panjang
+    value = re.sub(r'[^A-Z\s]', ' ', value)                    # simbol & sisa angka
+    return re.sub(r'\s+', ' ', value).strip()
+
+
+def build_history_index(conn):
+    """Riwayat transaksi ber-mark sebagai basis rekomendasi (sekali query per request).
+
+    Balikan list dict: {normalized, mark_id, db_cr, company_id}.
+    """
+    txn_columns = get_table_columns(conn, 'transactions')
+    company_select = ', t.company_id' if 'company_id' in txn_columns else ''
+    has_parent = 'parent_id' in txn_columns
+    parent_clause = ' AND (t.parent_id IS NULL OR t.parent_id = :no_parent)' if has_parent else ''
+    rows = conn.execute(text(
+        'SELECT t.description, t.mark_id, t.db_cr' + company_select + ' '
+        'FROM transactions t '
+        'WHERE t.mark_id IS NOT NULL AND t.description IS NOT NULL '
+        "AND TRIM(t.description) <> ''" + parent_clause
+    ), {'no_parent': None}).fetchall()
+
+    index = []
+    for row in rows:
+        mapping = dict(row._mapping)
+        normalized = normalize_description(mapping.get('description'))
+        if not normalized:
+            continue
+        index.append({
+            'normalized': normalized,
+            'raw_description': str(mapping.get('description') or ''),
+            'mark_id': str(mapping.get('mark_id') or ''),
+            'db_cr': str(mapping.get('db_cr') or '').strip().upper(),
+            'company_id': str(mapping.get('company_id') or '') if mapping.get('company_id') else '',
+        })
+    return index
+
+
+def _match_history(index, txn, direction, company_id):
+    """Cari entri riwayat dengan deskripsi ternormalisasi sama.
+
+    Skor: kecocokan persis +2 bila company sama, +1 bila arah sama.
+    Balikan (matched_list, {mark_id: total_skor}) atau (None, None) bila kosong.
+    """
+    normalized = normalize_description(txn.get('description'))
+    if not normalized:
+        return None, None
+    company = str(company_id or '')
+    matched = [entry for entry in index if entry['normalized'] == normalized]
+    if not matched:
+        return None, None
+    scores = {}
+    for entry in matched:
+        score = 1.0
+        if company and entry['company_id'] == company:
+            score += 2.0
+        if direction and entry['db_cr'] == direction:
+            score += 1.0
+        scores[entry['mark_id']] = scores.get(entry['mark_id'], 0.0) + score
+    return matched, scores
+
+
+def match_history_rule(index, txn, candidates, db_cr, company_id):
+    """Saran berbasis riwayat user. None bila tidak ada pola yang cukup jelas."""
+    matched, scores = _match_history(index, txn, db_cr, company_id)
+    if not matched or not scores:
+        return None
+
+    total = sum(scores.values())
+    dominant_mark_id, dominant_score = max(scores.items(), key=lambda item: item[1])
+    dominance = dominant_score / total if total else 0.0
+    if dominance < RULE_MIN_DOMINANCE:
+        return None
+
+    candidate = next((c for c in candidates if c['id'] == dominant_mark_id), None)
+    if candidate is None:
+        return None
+
+    samples = len(matched)
+    confidence = min(0.95, 0.65 + 0.25 * dominance + min(0.05, 0.01 * samples))
+    label = candidate['label']
+    reason = (
+        f'Mengikuti pola {samples} transaksi serupa yang sudah Anda tandai "{label}".'
+        if samples > 1 else
+        f'Deskripsi identik dengan transaksi sebelumnya yang Anda tandai "{label}".'
+    )
+    return {
+        'mark_id': candidate['id'],
+        'mark_label': label,
+        'confidence': round(confidence, 3),
+        'reason': reason,
+        'source': 'rule',
+        'matched': matched,
+    }
+
+
+def pick_history_examples(index, txn, db_cr, company_id, matched=None):
+    """Contoh riwayat user untuk few-shot prompt (prefer kemiripan, lalu terbaru)."""
+    if matched is None:
+        matched, _scores = _match_history(index, txn, db_cr, company_id)
+    examples = []
+    if matched:
+        for entry in matched[:MAX_FEW_SHOT_EXAMPLES]:
+            examples.append({'description': entry['raw_description'], 'mark_id': entry['mark_id']})
+        return examples
+
+    # Tanpa kecocokan persis: pakai contoh terbaru dengan arah yang sama agar
+    # LLM tetap melihat konvensi penandaan user.
+    direction = str(db_cr or '').strip().upper()
+    for entry in reversed(index):  # index terurut ASC (urutan query) → ambil dari akhir
+        if direction and entry['db_cr'] and entry['db_cr'] != direction:
+            continue
+        examples.append({'description': entry['raw_description'], 'mark_id': entry['mark_id']})
+        if len(examples) >= MAX_FEW_SHOT_EXAMPLES:
+            break
+    return examples
+
+
+def build_messages(txn, candidates, examples=None):
+    """Prompt per transaksi: konteks transaksi + contoh riwayat user + daftar kandidat."""
     day_of_month = ''
     txn_date = _clean_text(txn.get('txn_date'))
     if len(txn_date) >= 10:
@@ -87,9 +225,17 @@ def build_messages(txn, candidates):
         f'Nominal: {txn.get("amount")}',
         f'Tanggal (hari): {day_of_month or "-"}',
         f'Bank: {_clean_text(txn.get("bank_code")) or "-"}',
-        '',
-        'Daftar mark tersedia (urutan atas = arah wajarnya paling cocok):',
     ]
+
+    if examples:
+        lines.append('')
+        lines.append('Pola penandaan dari data Anda sendiri (deskripsi mentah → mark yang Anda pakai):')
+        for example in examples:
+            lines.append(f'- "{example["description"]}" → {example["mark_id"]}')
+        lines.append('Ikuti pola di atas bila deskripsi serupa; pilih mark yang sama seperti yang sudah Anda pakai.')
+
+    lines.append('')
+    lines.append('Daftar mark tersedia (urutan atas = arah wajarnya paling cocok):')
     for candidate in candidates:
         lines.append(f'- {candidate["id"]} | {candidate["label"]}')
     lines.append('')
@@ -159,9 +305,9 @@ def parse_suggestion_response(raw, candidates):
     }
 
 
-def suggest_for_transaction(txn, candidates, config):
+def suggest_for_transaction(txn, candidates, config, examples=None):
     """Panggil LLM lokal untuk satu transaksi; balikan dict saran tervalidasi."""
-    messages = build_messages(txn, candidates)
+    messages = build_messages(txn, candidates, examples=examples)
     raw = llm_client.chat_completion(
         base_url=config.get('base_url'),
         model=config.get('model'),
@@ -213,7 +359,7 @@ def ensure_markable(conn, txn_id):
 def get_transaction(conn, txn_id):
     """Ambil satu transaksi untuk konteks prompt; None bila tidak ada."""
     row = conn.execute(text(
-        'SELECT id, txn_date, description, amount, db_cr, bank_code, mark_id '
+        'SELECT id, txn_date, description, amount, db_cr, bank_code, company_id, mark_id '
         'FROM transactions WHERE id = :txn_id'
     ), {'txn_id': txn_id}).fetchone()
     if row is None:

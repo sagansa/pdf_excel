@@ -283,6 +283,80 @@ def test_suggest_surfaces_connection_error(ai_client, ai_engine, monkeypatch):
     assert 'tidak dapat dihubungi' in body['results'][0]['error']
 
 
+# ---------------------------------------------------------------- rule engine (data existing)
+
+
+def test_normalize_description_strips_noise():
+    from backend.services.ai.mark_suggester import normalize_description
+
+    assert normalize_description('TRSF E-BANKING DB 2102/FTSCY/WS95271  2315326.00 FLIPTECH') == \
+        'TRSF E BANKING DB FTSCY WS FLIPTECH'
+    assert normalize_description('TRANSAKSI DEBIT TGL: 08/02  QR 899 00000.00PT Tokoped') == \
+        'TRANSAKSI DEBIT TGL QR PT TOKOPED'
+    assert normalize_description(None) == ''
+
+
+def test_suggest_prefers_history_rule_without_llm(ai_client, ai_engine, monkeypatch):
+    """Deskripsi identik dengan riwayat ber-mark → saran dari data user, LLM tidak dipanggil."""
+    from backend.services.ai import llm_client
+
+    _insert_mark(ai_engine)
+    _enable_ai(ai_engine)
+    with ai_engine.begin() as conn:
+        conn.execute(text(
+            'INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, mark_id) '
+            "VALUES ('hist-1', '2025-06-01', 'TRSF E-BANKING 9999 GOJEK TOPUP', 100000, 'DB', 'BCA', 'mark-beban')"
+        ))
+    _insert_transaction(ai_engine, txn_id='txn-1',
+                        description='TRSF E-BANKING 8888 GOJEK TOPUP', db_cr='DB')
+
+    def fail_if_called(**kwargs):
+        raise AssertionError('LLM tidak seharusnya dipanggil ketika pola riwayat kuat')
+
+    monkeypatch.setattr(llm_client, 'chat_completion', fail_if_called)
+
+    response = ai_client.post('/api/transactions/ai-suggest', json={'transaction_ids': ['txn-1']})
+    body = response.get_json()
+    assert body['suggested_count'] == 1
+    result = body['results'][0]
+    assert result['ai_source'] == 'rule'
+    assert result['ai_suggested_mark_id'] == 'mark-beban'
+    assert 'transaksi serupa' in result['ai_reason'] or 'identik' in result['ai_reason']
+
+    row = _txn_row(ai_engine)
+    assert row['ai_status'] == 'pending'
+
+
+def test_llm_prompt_includes_history_examples(ai_client, ai_engine, monkeypatch):
+    """Tanpa kecocokan persis → LLM dipanggil dengan contoh riwayat user (few-shot)."""
+    _insert_mark(ai_engine)
+    _enable_ai(ai_engine)
+    with ai_engine.begin() as conn:
+        conn.execute(text(
+            'INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, mark_id) '
+            "VALUES ('hist-1', '2025-06-01', 'BELANJA LISTRIK PLN 11112222', 200000, 'DB', 'BCA', 'mark-beban')"
+        ))
+    _insert_transaction(ai_engine, txn_id='txn-1', description='KERETA API KAI 5555', db_cr='DB')
+
+    captured = {}
+    def fake_chat_completion(**kwargs):
+        captured.update(kwargs)
+        return '{"mark_id": "mark-beban", "confidence": 0.7, "reason": "mengikuti contoh"}'
+
+    from backend.services.ai import llm_client
+    monkeypatch.setattr(llm_client, 'chat_completion', fake_chat_completion)
+
+    response = ai_client.post('/api/transactions/ai-suggest', json={'transaction_ids': ['txn-1']})
+    body = response.get_json()
+    assert body['suggested_count'] == 1
+    assert body['results'][0]['ai_source'] == 'llm'
+
+    user_content = captured['messages'][1]['content']
+    assert 'Pola penandaan dari data Anda sendiri' in user_content
+    assert 'BELANJA LISTRIK PLN 11112222' in user_content
+    assert 'mark-beban' in user_content
+
+
 # ---------------------------------------------------------------- decision
 
 

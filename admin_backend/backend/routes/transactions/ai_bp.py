@@ -3,8 +3,6 @@
 Semua endpoint dilindungi guard auth global di server.py (before_request).
 """
 
-from datetime import datetime
-
 from flask import Blueprint, jsonify, request
 from sqlalchemy import text
 
@@ -115,7 +113,6 @@ def ai_suggest_marks():
         )
 
     engine = require_db_engine()
-    now = datetime.now()
     results = []
     candidates_by_direction = {}
 
@@ -132,6 +129,9 @@ def ai_suggest_marks():
                 'Model AI belum diatur di pengaturan.',
                 code='ai_model_missing',
             )
+
+        # Indeks riwayat marking user: basis rekomendasi (rule match + contoh LLM).
+        history_index = mark_suggester.build_history_index(conn)
 
         for txn_id in txn_ids:
             txn = mark_suggester.get_transaction(conn, txn_id)
@@ -152,8 +152,29 @@ def ai_suggest_marks():
                 results.append({'id': txn_id, 'status': 'skipped', 'reason': 'Belum ada mark yang tersedia'})
                 continue
 
+            # Lapis 1: pola dari riwayat marking user sendiri (instan, tanpa LLM).
+            rule = mark_suggester.match_history_rule(
+                history_index, txn, candidates, direction, txn.get('company_id'),
+            )
+            if rule:
+                mark_suggester.store_suggestion(conn, txn_id, rule, source='rule')
+                results.append({
+                    'id': txn_id,
+                    'status': 'suggested',
+                    'ai_suggested_mark_id': rule['mark_id'],
+                    'mark_label': rule['mark_label'],
+                    'ai_confidence': rule['confidence'],
+                    'ai_reason': rule.get('reason'),
+                    'ai_source': 'rule',
+                })
+                continue
+
+            # Lapis 2: LLM lokal dengan contoh riwayat user (few-shot).
+            examples = mark_suggester.pick_history_examples(
+                history_index, txn, direction, txn.get('company_id'),
+            )
             try:
-                suggestion = mark_suggester.suggest_for_transaction(txn, candidates, config)
+                suggestion = mark_suggester.suggest_for_transaction(txn, candidates, config, examples=examples)
             except llm_client.LLMConnectionError as exc:
                 results.append({'id': txn_id, 'status': 'failed', 'error': str(exc)})
                 continue
@@ -169,6 +190,7 @@ def ai_suggest_marks():
                 'mark_label': suggestion['mark_label'],
                 'ai_confidence': suggestion['confidence'],
                 'ai_reason': suggestion.get('reason'),
+                'ai_source': 'llm',
             })
 
     suggested_count = sum(1 for item in results if item['status'] == 'suggested')
