@@ -704,7 +704,7 @@ export const useHistoryStore = defineStore('history', {
         txn.ai_suggested_mark_id = result.ai_suggested_mark_id || result.mark_id || null;
         txn.ai_confidence = result.ai_confidence ?? null;
         txn.ai_reason = result.ai_reason || null;
-        txn.ai_source = 'llm';
+        txn.ai_source = result.ai_source || 'llm';
         txn.ai_status = 'pending';
     },
 
