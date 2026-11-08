@@ -32,6 +32,7 @@ from backend.routes.inventory.remaining_storage_bp import remaining_storage_bp
 from backend.routes.inventory.sales_by_date_bp import sales_by_date_bp
 from backend.routes.inventory.stock_comparison_bp import stock_comparison_bp
 from backend.routes.transactions.history_bp import history_bp
+from backend.routes.transactions.ai_bp import ai_bp
 from backend.routes.transactions.payroll_bp import payroll_bp
 from backend.routes.master_data.mark_bp import mark_bp
 from backend.routes.reporting.fiscal_corrections_bp import fiscal_corrections_bp
@@ -92,6 +93,7 @@ app.register_blueprint(remaining_storage_bp)
 app.register_blueprint(sales_by_date_bp)
 app.register_blueprint(stock_comparison_bp)
 app.register_blueprint(history_bp)
+app.register_blueprint(ai_bp)
 app.register_blueprint(payroll_bp)
 app.register_blueprint(mark_bp)
 app.register_blueprint(fiscal_corrections_bp)
