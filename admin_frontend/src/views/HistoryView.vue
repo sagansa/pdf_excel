@@ -121,12 +121,23 @@
                             v-if="store.aiSettings?.enabled"
                             @click="handleBulkAiSuggest"
                             class="h-8 px-4 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border border-white/15 text-white/90 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            :disabled="store.aiBulkBusy"
-                            title="Minta saran AI untuk semua transaksi terpilih — saran menunggu review Anda"
+                            :disabled="store.aiBulkBusy || isBulkAcceptingAi"
+                            title="Minta saran AI untuk semua transaksi terpilih — kecocokan riwayat langsung ter-mark, saran LLM menunggu review"
                         >
                             <i v-if="store.aiBulkBusy" class="bi bi-arrow-repeat animate-spin"></i>
                             <i v-else class="bi bi-stars"></i>
                             {{ store.aiBulkBusy ? `AI ${store.aiBulkProgress.done}/${store.aiBulkProgress.total}` : 'AI Suggest' }}
+                        </button>
+                        <button
+                            v-if="store.aiSettings?.enabled"
+                            @click="handleBulkAcceptAi"
+                            class="h-8 px-4 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border border-white/15 text-white/90 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="store.aiBulkBusy || isBulkAcceptingAi"
+                            title="Terima semua saran AI yang menunggu review pada transaksi terpilih"
+                        >
+                            <i v-if="isBulkAcceptingAi" class="bi bi-arrow-repeat animate-spin"></i>
+                            <i v-else class="bi bi-check2-square"></i>
+                            Terima AI
                         </button>
                     </div>
                 </div>
@@ -362,17 +373,38 @@ const buildMarkLabel = (mark) => {
 
 // ---------------------------------------------------------------- AI mark assist
 
+const isBulkAcceptingAi = ref(false);
+
 const handleBulkAiSuggest = async () => {
   const notify = useNotifications();
   try {
     const summary = await store.aiSuggestSelected();
-    if (summary.suggested > 0) {
+    const autoCount = summary.auto_applied || 0;
+    if (autoCount > 0 && summary.suggested > 0) {
+      notify.success(`${autoCount} ter-mark otomatis dari riwayat, ${summary.suggested} saran LLM menunggu review.`);
+    } else if (autoCount > 0) {
+      notify.success(`${autoCount} transaksi ter-mark otomatis dari riwayat Anda.`);
+    } else if (summary.suggested > 0) {
       notify.success(`${summary.suggested} saran AI dibuat — menunggu review Anda di kolom Marking.`);
     } else if (summary.skipped > 0 || summary.failed > 0) {
       notify.info(`Tidak ada saran baru. ${summary.skipped} dilewati, ${summary.failed} gagal.`);
     }
   } catch (e) {
     notify.error(e.response?.data?.error || e.message || 'Gagal meminta saran AI.');
+  }
+};
+
+const handleBulkAcceptAi = async () => {
+  const notify = useNotifications();
+  isBulkAcceptingAi.value = true;
+  try {
+    const result = await store.bulkDecideSuggestion('accept', [...store.selectedTxnIds]);
+    notify.success(result.message || 'Saran AI diterima.');
+    store.selectedTxnIds = [];
+  } catch (e) {
+    notify.error(e.response?.data?.error || 'Gagal menerima saran AI secara bulk.');
+  } finally {
+    isBulkAcceptingAi.value = false;
   }
 };
 

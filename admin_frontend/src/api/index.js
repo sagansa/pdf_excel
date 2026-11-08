@@ -562,5 +562,11 @@ export const aiApi = {
   },
   decideSuggestion(txnId, decision) {
     return api.post(`/transactions/${txnId}/ai-decision`, { decision });
+  },
+  bulkDecideSuggestion(transactionIds, decision) {
+    return api.post('/transactions/ai-decision-bulk', {
+      decision,
+      transaction_ids: transactionIds,
+    });
   }
 };

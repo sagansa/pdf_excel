@@ -75,12 +75,17 @@ export const useConverterStore = defineStore('converter', {
 
     async confirmSave(formData) {
         this.isLoading = true;
-        this.error = null; 
+        this.error = null;
         try {
             // Ensure preview is false
             formData.set('preview', 'false');
             const response = await converterApi.uploadFile(formData);
-            this.successMessage = "Conversion & DB Sync successful!";
+            // Header X-AI-Pass: pass penandaan AI dijadwalkan setelah konversi.
+            const aiQueued = response.headers?.['x-ai-pass'] === 'queued';
+            const aiCount = response.headers?.['x-ai-pass-count'];
+            this.successMessage = aiQueued
+                ? `Conversion & DB Sync successful! AI sedang menandai ${aiCount ?? 'baru'} transaksi di latar belakang.`
+                : "Conversion & DB Sync successful!";
             return response.data;
         } catch (err) {
             const errorMsg = err.response?.data?.error || err.message || '';

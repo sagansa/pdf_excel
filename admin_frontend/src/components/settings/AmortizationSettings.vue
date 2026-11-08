@@ -115,7 +115,7 @@
     </SectionCard>
 
     <!-- Mapping COA -->
-    <SectionCard>
+    <SectionCard body-class="p-4 md:p-6">
       <template #header>
         <div class="w-full">
           <h3 class="section-card__title">Mapping COA Akumulasi Penyusutan</h3>
@@ -123,7 +123,7 @@
         </div>
       </template>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pt-2">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
         <div class="space-y-1.5">
           <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--color-text-muted)">
             Building (Bangunan) <span class="ml-1 text-[10px] font-normal" style="color: var(--color-primary)">- default 1524</span>

@@ -178,6 +178,7 @@ const markOptions = computed(() => {
   ];
   if (store.aiSettings?.enabled) {
     options.push({ id: 'ai_pending', label: 'Saran AI Menunggu Review' });
+    options.push({ id: 'ai_auto', label: 'Ter-mark AI Otomatis' });
   }
   options.push({ id: 'separator-1', type: 'separator' });
 

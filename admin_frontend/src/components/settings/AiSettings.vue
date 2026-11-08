@@ -49,7 +49,7 @@
 
         <div class="field-stack">
           <span class="label-base">Provider AI</span>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <button
               v-for="option in providerOptions"
               :key="option.value"
@@ -70,8 +70,55 @@
             </button>
           </div>
           <p class="field-hint">
-            Server AI harus berjalan di laptop yang sama dengan aplikasi ini.
+            LM Studio &amp; Ollama berjalan lokal — data tidak keluar laptop. z.ai adalah layanan cloud.
           </p>
+        </div>
+
+        <div
+          v-if="form.provider === 'zai'"
+          class="rounded-xl border border-amber-200 bg-amber-50 p-4 transition-colors dark:border-amber-900/50 dark:bg-amber-900/20"
+        >
+          <div class="flex gap-3">
+            <i class="bi bi-exclamation-triangle text-amber-600 dark:text-amber-400"></i>
+            <div class="text-xs leading-relaxed text-amber-800 dark:text-amber-200">
+              <strong>Provider cloud:</strong> deskripsi transaksi akan terkirim ke server z.ai
+              untuk diproses — tidak lagi sepenuhnya di laptop Anda. Pastikan itu sesuai
+              kebijakan data Anda.
+            </div>
+          </div>
+        </div>
+
+        <div v-if="needsApiKey" class="field-stack">
+          <label class="label-base" for="ai-api-key">API Key</label>
+          <TextInput
+            id="ai-api-key"
+            v-model="form.apiKey"
+            type="password"
+            autocomplete="off"
+            :placeholder="apiKeySet ? 'Tersimpan — isi untuk mengganti' : 'Tempel API key z.ai di sini'"
+            :disabled="isLoading || isSaving || isTesting"
+          >
+            <template #leading>
+              <i class="bi bi-key-fill text-gray-400 dark:text-gray-500"></i>
+            </template>
+          </TextInput>
+          <div class="flex items-center justify-between gap-3">
+            <p class="field-hint">
+              {{ apiKeySet
+                ? 'Kunci tersimpan di server dan tidak pernah ditampilkan kembali.'
+                : 'Wajib untuk provider cloud.' }}
+            </p>
+            <button
+              v-if="apiKeySet"
+              type="button"
+              class="text-xs font-bold text-danger hover:underline disabled:opacity-50"
+              :disabled="isLoading || isSaving"
+              title="Hapus API key yang tersimpan"
+              @click="clearApiKey"
+            >
+              Hapus kunci
+            </button>
+          </div>
         </div>
 
         <div class="field-stack">
@@ -118,6 +165,51 @@
           </p>
         </div>
 
+        <div class="field-stack">
+          <span class="label-base">Auto-mark dari riwayat</span>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button
+              v-for="option in autoApplyOptions"
+              :key="option.value"
+              type="button"
+              :aria-pressed="form.autoApply === option.value"
+              :disabled="isLoading"
+              class="flex items-center justify-between rounded-xl px-4 py-3.5 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              :class="form.autoApply === option.value
+                ? 'bg-primary/10 border-primary/20 text-primary font-bold border dark:bg-primary/20 dark:border-primary/30'
+                : 'bg-surface-muted border-transparent text-gray-600 border hover:border-gray-300 dark:text-gray-400 dark:hover:border-gray-600'"
+              @click="form.autoApply = option.value"
+            >
+              <span class="flex items-center gap-2.5">
+                <i class="bi text-base" :class="option.icon"></i>
+                {{ option.label }}
+              </span>
+              <i v-if="form.autoApply === option.value" class="bi bi-check2-circle"></i>
+            </button>
+          </div>
+          <div v-if="form.autoApply" class="field-stack pt-1">
+            <label class="label-base" for="ai-threshold">Threshold keyakinan</label>
+            <TextInput
+              id="ai-threshold"
+              v-model="form.autoApplyThreshold"
+              type="number"
+              min="0.5"
+              max="1"
+              step="0.05"
+              :disabled="isLoading || isSaving || isTesting"
+            >
+              <template #leading>
+                <i class="bi bi-sliders text-gray-400 dark:text-gray-500"></i>
+              </template>
+            </TextInput>
+            <p class="field-hint">
+              0.9–1.0 disarankan. Hanya kecocokan dari riwayat Anda sendiri yang otomatis
+              ter-mark; saran LLM selalu menunggu review. Semua hasil tetap bertanda AI
+              dan bisa dibatalkan di History.
+            </p>
+          </div>
+        </div>
+
         <div class="flex flex-wrap items-center gap-4">
           <button
             type="button"
@@ -159,7 +251,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import SectionCard from '../ui/SectionCard.vue';
 import TextInput from '../ui/TextInput.vue';
 import SearchableSelect from '../ui/SearchableSelect.vue';
@@ -171,6 +263,7 @@ const notify = useNotifications();
 const PROVIDER_DEFAULTS = {
   lmstudio: 'http://localhost:1234/v1',
   ollama: 'http://localhost:11434/v1',
+  zai: 'https://api.z.ai/api/paas/v4',
   custom: ''
 };
 
@@ -182,22 +275,47 @@ const enabledOptions = [
 const providerOptions = [
   { label: 'LM Studio', value: 'lmstudio', icon: 'bi-pc-display' },
   { label: 'Ollama', value: 'ollama', icon: 'bi-robot' },
+  { label: 'z.ai', value: 'zai', icon: 'bi-cloud-fill' },
   { label: 'Custom', value: 'custom', icon: 'bi-gear-wide-connected' }
 ];
+
+const autoApplyOptions = [
+  { label: 'Otomatis ter-mark', value: true, icon: 'bi-lightning-charge-fill' },
+  { label: 'Review manual', value: false, icon: 'bi-eye' }
+];
+
+const API_KEY_CLEAR = '__CLEAR__';
 
 const form = reactive({
   enabled: false,
   provider: 'lmstudio',
   baseUrl: '',
-  model: ''
+  model: '',
+  autoApply: false,
+  autoApplyThreshold: '0.9',
+  apiKey: ''
 });
 
+const apiKeySet = ref(false);
+const apiKeyDirty = ref(false);
 const modelOptions = ref([]);
 const isSaving = ref(false);
 const isTesting = ref(false);
 const isLoading = ref(true);
 const formError = ref('');
 const testStatus = ref({ ok: null, message: '' });
+
+const needsApiKey = computed(() => ['zai', 'custom'].includes(form.provider));
+
+// Ganti provider mengosongkan field key; menyimpan mengabaikan key yang tidak diubah.
+watch(() => form.provider, () => {
+  form.apiKey = '';
+  apiKeyDirty.value = false;
+});
+
+watch(() => form.apiKey, (value) => {
+  apiKeyDirty.value = Boolean(value && value.trim());
+});
 
 const selectProvider = (value) => {
   const previousDefault = PROVIDER_DEFAULTS[form.provider] || '';
@@ -215,6 +333,10 @@ const applySettings = (settings) => {
   form.provider = settings.provider || 'lmstudio';
   form.baseUrl = settings.base_url || PROVIDER_DEFAULTS[form.provider] || '';
   form.model = settings.model || '';
+  form.autoApply = Boolean(settings.auto_apply);
+  form.autoApplyThreshold = String(settings.auto_apply_threshold ?? '0.9');
+  apiKeySet.value = Boolean(settings.api_key_set);
+  apiKeyDirty.value = false;
 };
 
 onMounted(async () => {
@@ -236,7 +358,11 @@ const handleTestConnection = async () => {
   }
   isTesting.value = true;
   try {
-    const { data } = await aiApi.testConnection({ base_url: form.baseUrl, model: form.model });
+    const payload = { base_url: form.baseUrl, model: form.model };
+    if (needsApiKey.value && apiKeyDirty.value && form.apiKey.trim()) {
+      payload.api_key = form.apiKey.trim();
+    }
+    const { data } = await aiApi.testConnection(payload);
     modelOptions.value = (data.models || []).map((id) => ({ id, label: id }));
     let message = data.message || 'Koneksi berhasil.';
     if (form.model && !data.model_found) {
@@ -258,18 +384,52 @@ const handleSave = async () => {
     formError.value = 'Base URL server AI wajib diisi.';
     return;
   }
+  if (needsApiKey.value && !apiKeySet.value && !form.apiKey.trim()) {
+    formError.value = 'API key wajib diisi untuk provider cloud.';
+    return;
+  }
   isSaving.value = true;
+  try {
+    const payload = {
+      enabled: form.enabled,
+      provider: form.provider,
+      base_url: form.baseUrl.trim(),
+      model: form.model.trim(),
+      auto_apply: form.autoApply,
+      auto_apply_threshold: Number(form.autoApplyThreshold) || 0.9,
+    };
+    if (apiKeyDirty.value && form.apiKey.trim()) {
+      payload.api_key = form.apiKey.trim();
+    }
+    const { data } = await aiApi.saveSettings(payload);
+    applySettings(data.settings);
+    form.apiKey = '';
+    notify.success('Pengaturan AI tersimpan.');
+  } catch (err) {
+    formError.value = err.response?.data?.error || 'Gagal menyimpan pengaturan AI. Coba lagi.';
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+const clearApiKey = async () => {
+  isSaving.value = true;
+  formError.value = '';
   try {
     const { data } = await aiApi.saveSettings({
       enabled: form.enabled,
       provider: form.provider,
       base_url: form.baseUrl.trim(),
-      model: form.model.trim()
+      model: form.model.trim(),
+      auto_apply: form.autoApply,
+      auto_apply_threshold: Number(form.autoApplyThreshold) || 0.9,
+      api_key: API_KEY_CLEAR,
     });
     applySettings(data.settings);
-    notify.success('Pengaturan AI tersimpan.');
+    form.apiKey = '';
+    notify.success('API key dihapus.');
   } catch (err) {
-    formError.value = err.response?.data?.error || 'Gagal menyimpan pengaturan AI. Coba lagi.';
+    formError.value = err.response?.data?.error || 'Gagal menghapus API key.';
   } finally {
     isSaving.value = false;
   }
