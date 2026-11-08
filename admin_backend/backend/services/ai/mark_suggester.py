@@ -13,6 +13,7 @@ Rekomendasi selalu berangkat dari data existing user:
 
 import json
 import re
+import time
 from datetime import datetime
 
 from sqlalchemy import text
@@ -315,9 +316,13 @@ def parse_suggestion_response(raw, candidates):
 
 
 def suggest_for_transaction(txn, candidates, config, examples=None):
-    """Panggil LLM lokal untuk satu transaksi; balikan dict saran tervalidasi."""
+    """Panggil LLM lokal untuk satu transaksi; balikan dict saran tervalidasi.
+
+    Satu kali percobaan ulang untuk kegagalan koneksi (model cold-load / server
+    sedang sibuk) sebelum menyerah — kegagalan parsing JSON tidak diulang.
+    """
     messages = build_messages(txn, candidates, examples=examples)
-    raw = llm_client.chat_completion(
+    kwargs = dict(
         base_url=config.get('base_url'),
         model=config.get('model'),
         messages=messages,
@@ -326,6 +331,11 @@ def suggest_for_transaction(txn, candidates, config, examples=None):
         max_tokens=800,  # beri ruang untuk model reasoning agar sampai ke jawaban JSON
         api_key=config.get('api_key') or None,
     )
+    try:
+        raw = llm_client.chat_completion(**kwargs)
+    except llm_client.LLMConnectionError:
+        time.sleep(2)
+        raw = llm_client.chat_completion(**kwargs)
     return parse_suggestion_response(raw, candidates)
 
 

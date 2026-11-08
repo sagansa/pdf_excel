@@ -175,7 +175,7 @@ def test_settings_put_normalizes_and_saves(ai_client):
         'provider': 'ollama',
         'base_url': 'http://localhost:11434/v1',
         'model': 'qwen2.5:7b',
-        'timeout': 60,
+        'timeout': 120,
         'auto_apply': False,
         'auto_apply_threshold': 0.9,
         'api_key_set': False,

@@ -33,6 +33,15 @@
             </div>
         </div>
 
+        <!-- Monitoring Items Warning (non-fatal) -->
+        <div v-if="itemsWarning" class="hpp-batch-alert hpp-batch-alert--warning">
+            <i class="bi bi-exclamation-triangle mt-0.5"></i>
+            <div>
+                <h4 class="font-bold text-sm">Item monitoring tidak termuat</h4>
+                <p class="text-xs">{{ itemsWarning }}</p>
+            </div>
+        </div>
+
         <!-- 1. General Info -->
         <div>
           <label class="label-base">Batch Memo / Description</label>
@@ -232,12 +241,20 @@
                         >
                       </td>
                       <td class="p-2">
-                        <input
-                          v-model.number="item.foreign_price"
-                          type="number"
-                          step="0.01"
-                          class="input-base min-h-[36px] !px-2 !py-1.5 text-right text-xs mono"
-                        >
+                        <div class="flex items-center gap-1">
+                          <span
+                            class="shrink-0 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface-muted)] px-1.5 py-1.5 text-[10px] font-bold text-muted mono"
+                            :title="`Mata uang asing (${item.foreign_currency || 'USD'})`"
+                          >{{ item.foreign_currency || 'USD' }}</span>
+                          <input
+                            v-model.number="item.foreign_price"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            class="input-base min-h-[36px] w-full !px-2 !py-1.5 text-right text-xs mono"
+                            placeholder="0"
+                          >
+                        </div>
                       </td>
                       <td class="p-2">
                         <div class="input-base flex min-h-[36px] items-center justify-end !px-2 text-xs mono text-theme">
@@ -340,6 +357,7 @@ const isLoadingTxns = ref(false);
 
 const isSaving = ref(false);
 const error = ref('');
+const itemsWarning = ref('');
 
 // Sorting and Filtering State
 const searchMark = ref('');
@@ -438,24 +456,19 @@ const syncStatus = computed(() => {
 // Initialization
 const init = async () => {
     error.value = '';
+    itemsWarning.value = '';
     form.value = { memo: '', transactions: [], items: [] };
 
     if (!props.companyId) {
         error.value = 'Company ID is required. Please select a company first.';
         return;
     }
-    
-    // Load monitoring items list if empty
-    if (availableItems.value.length === 0) {
-        const response = await hppApi.getItems('storage');
-        availableItems.value = response.data.items || [];
-    }
-    
+
     if (props.batchId) {
-        // Load existing batch
+        // Muat dulu data batch (sumber lokal) — jangan terhalang kegagalan API eksternal.
         try {
             const data = await batchStore.fetchBatchDetails(props.batchId);
-            
+
             form.value.memo = data.batch.memo;
             form.value.transactions = data.transactions;
             const batchItems = data.items || data.products || [];
@@ -467,7 +480,7 @@ const init = async () => {
                 quantity: p.quantity,
                 foreign_price: p.foreign_price
             }));
-            
+
             // Set filter month to the batch date for editing (ensure YYYY-MM format)
             if (data.batch.batch_date) {
                 const batchDateStr = String(data.batch.batch_date);
@@ -476,10 +489,22 @@ const init = async () => {
             }
         } catch (e) {
             error.value = "Failed to load batch details: " + (e.response?.data?.error || e.message || 'Unknown error');
+            return;
         }
     } else {
         // Init with 1 empty row for new batch
         addItemRow();
+    }
+
+    // Daftar monitoring item berasal dari API eksternal — kegagalan jangan sampai
+    // mematikan seluruh form; cukup peringatan dan data batch tetap terlihat.
+    try {
+        if (availableItems.value.length === 0) {
+            const response = await hppApi.getItems('storage');
+            availableItems.value = response.data.items || [];
+        }
+    } catch (e) {
+        itemsWarning.value = 'Daftar monitoring item tidak dapat dimuat (server StockMonitoring tidak terjangkau). Data batch tetap tampil; hubungkan kembali internet lalu buka ulang untuk memetakan item.';
     }
 };
 

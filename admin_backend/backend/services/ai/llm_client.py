@@ -12,7 +12,7 @@ from urllib import request as urlrequest
 
 from sqlalchemy import text
 
-DEFAULT_TIMEOUT = 60
+DEFAULT_TIMEOUT = 120
 LIST_MODELS_TIMEOUT = 15
 
 # URL default per provider. LM Studio & Ollama berjalan lokal; z.ai adalah layanan

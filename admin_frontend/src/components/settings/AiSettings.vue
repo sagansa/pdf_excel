@@ -307,10 +307,14 @@ const testStatus = ref({ ok: null, message: '' });
 
 const needsApiKey = computed(() => ['zai', 'custom'].includes(form.provider));
 
-// Ganti provider mengosongkan field key; menyimpan mengabaikan key yang tidak diubah.
+// Ganti provider mengosongkan field key DAN daftar/nilai model — model milik
+// masing-masing server (Ollama ≠ LM Studio ≠ z.ai), tidak boleh terbawa global.
 watch(() => form.provider, () => {
   form.apiKey = '';
   apiKeyDirty.value = false;
+  modelOptions.value = [];
+  form.model = '';
+  testStatus.value = { ok: null, message: '' };
 });
 
 watch(() => form.apiKey, (value) => {
@@ -347,6 +351,18 @@ onMounted(async () => {
     formError.value = 'Gagal memuat pengaturan AI. Coba muat ulang halaman.';
   } finally {
     isLoading.value = false;
+  }
+  // Muat daftar model milik provider aktif di latar belakang (diam bila gagal)
+  // supaya dropdown model langsung sesuai server yang dipilih.
+  if (form.enabled && form.baseUrl) {
+    try {
+      const payload = { base_url: form.baseUrl, model: form.model };
+      if (needsApiKey.value && apiKeySet.value && form.apiKey.trim()) payload.api_key = form.apiKey.trim();
+      const { data } = await aiApi.testConnection(payload);
+      modelOptions.value = (data.models || []).map((id) => ({ id, label: id }));
+    } catch (err) {
+      // Diamkan: pengguna bisa memicu "Tes Koneksi" manual.
+    }
   }
 });
 
