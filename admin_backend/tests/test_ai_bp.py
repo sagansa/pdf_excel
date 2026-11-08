@@ -411,6 +411,79 @@ def test_llm_prompt_includes_history_examples(ai_client, ai_engine, monkeypatch)
     assert 'mark-beban' in user_content
 
 
+# ---------------------------------------------------------------- fuzzy & recurring
+
+
+def test_fuzzy_similar_description_suggests_from_history(ai_client, ai_engine, monkeypatch):
+    """Deskripsi mirip (bukan identik) → rule menyimpulkan dari riwayat, confidence dibatasi."""
+    from backend.services.ai import llm_client
+
+    _insert_mark(ai_engine, mark_id='mark-gaji', label='Gaji Pegawai')
+    _enable_ai(ai_engine)
+    with ai_engine.begin() as conn:
+        # Dua riwayat mirip (beda nomor referensi & nama penerima) ke mark yang sama.
+        conn.execute(text(
+            'INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, mark_id) '
+            "VALUES ('hist-1', '2025-06-01', 'NBMB DITYO ENGGAR K TO BUDI SANTOSO ESB:NBMB:0001500F:1111 Transfer Ke Budi via BRImo', 600000, 'DB', 'BRIBA', 'mark-gaji'),"
+            "('hist-2', '2025-07-01', 'NBMB DITYO ENGGAR K TO CICI PERMATA ESB:NBMB:0001500F:2222 Transfer Ke Cici via BRImo', 650000, 'DB', 'BRIBA', 'mark-gaji')"
+        ))
+    _insert_transaction(ai_engine, txn_id='txn-1',
+                        description='NBMB DITYO ENGGAR K TO RIKI ARIF RIYANTO ESB:NBMB:0001500F:3333 Transfer Ke Riki via BRImo',
+                        db_cr='DB')
+
+    def fail_if_called(**kwargs):
+        raise AssertionError('Kemiripan >= ambang tidak seharusnya memanggil LLM')
+
+    monkeypatch.setattr(llm_client, 'chat_completion', fail_if_called)
+
+    body = ai_client.post('/api/transactions/ai-suggest', json={'transaction_ids': ['txn-1']}).get_json()
+    assert body['suggested_count'] == 1
+    result = body['results'][0]
+    assert result['ai_source'] == 'rule'
+    assert result['ai_suggested_mark_id'] == 'mark-gaji'
+    assert result['ai_confidence'] <= 0.85  # fuzzy tidak pernah auto-apply di threshold bawaan
+    assert 'Mirip' in result['ai_reason']
+
+
+def test_split_exact_marks_surfaces_recurring_to_llm(ai_client, ai_engine, monkeypatch):
+    """Deskripsi identik dipakai 2 mark → LLM menerima blok 'PERSIS sama' dgn rentang nominal."""
+    _insert_mark(ai_engine, mark_id='mark-gaji', label='Gaji Pegawai')
+    _insert_mark(ai_engine, mark_id='mark-warung', label='Pembelian Warung')
+    _enable_ai(ai_engine)
+    with ai_engine.begin() as conn:
+        # Deskripsi identik (normalisasi menyamakan nomor referensi), mark terbagi + nominal beda.
+        conn.execute(text(
+            'INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, mark_id) VALUES '
+            "('h1', '2025-06-01', 'NBMB DITYO ENGGAR K TO RIKI ESB:NBMB:0001500F:1111 Transfer Ke Riki via BRImo', 1800000, 'DB', 'BRIBA', 'mark-gaji'),"
+            "('h2', '2025-06-02', 'NBMB DITYO ENGGAR K TO RIKI ESB:NBMB:0001500F:2222 Transfer Ke Riki via BRImo', 2100000, 'DB', 'BRIBA', 'mark-gaji'),"
+            "('h3', '2025-07-01', 'NBMB DITYO ENGGAR K TO RIKI ESB:NBMB:0001500F:3333 Transfer Ke Riki via BRImo', 150000, 'DB', 'BRIBA', 'mark-warung'),"
+            "('h4', '2025-07-02', 'NBMB DITYO ENGGAR K TO RIKI ESB:NBMB:0001500F:4444 Transfer Ke Riki via BRImo', 90000, 'DB', 'BRIBA', 'mark-warung')"
+        ))
+    _insert_transaction(ai_engine, txn_id='txn-1',
+                        description='NBMB DITYO ENGGAR K TO RIKI ESB:NBMB:0001500F:5555 Transfer Ke Riki via BRImo',
+                        db_cr='DB')
+
+    captured = {}
+    def fake_chat_completion(**kwargs):
+        captured.update(kwargs)
+        return '{"mark_id": "mark-warung", "confidence": 0.75, "reason": "nominal kecil seperti pembelian warung"}'
+
+    from backend.services.ai import llm_client
+    monkeypatch.setattr(llm_client, 'chat_completion', fake_chat_completion)
+
+    body = ai_client.post('/api/transactions/ai-suggest', json={'transaction_ids': ['txn-1']}).get_json()
+    assert body['suggested_count'] == 1
+    assert body['results'][0]['ai_source'] == 'llm'
+
+    user_content = captured['messages'][1]['content']
+    assert 'PERSIS sama' in user_content
+    assert 'Gaji Pegawai' in user_content and 'Pembelian Warung' in user_content
+    assert 'nominal' in user_content
+    # Contoh few-shot menyertakan label dan nominal, bukan hanya UUID mentah.
+    assert 'Gaji Pegawai [' in user_content
+    assert '1.800.000' in user_content or '2.100.000' in user_content
+
+
 # ---------------------------------------------------------------- decision
 
 
