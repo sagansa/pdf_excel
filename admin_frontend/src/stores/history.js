@@ -34,6 +34,16 @@ const toNumeric = (value) => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
+// Ukuran chunk fetch transaksi & slice pemrosesan agar progress tetap bergerak
+// dan UI tidak membeku saat dataset besar.
+const TXN_CHUNK_SIZE = 2000;
+const PROCESS_SLICE_SIZE = 400;
+const yieldToUi = () => new Promise(resolve => setTimeout(resolve, 0));
+
+// Debounce penyimpanan filter: satu panggilan API setelah ketikan berhenti,
+// bukan satu panggilan per huruf.
+let filterSaveTimer = null;
+
 export const useHistoryStore = defineStore('history', {
   state: () => ({
     allTransactions: [],
@@ -45,6 +55,10 @@ export const useHistoryStore = defineStore('history', {
     coaList: [],
     isLoading: false,
     error: null,
+
+    // Progress fetch bertahap — persentase mengikuti pekerjaan nyata yang selesai.
+    loadProgress: { active: false, phase: 'idle', percent: 0, loaded: 0, total: null, message: '' },
+    hasLoadedOnce: false,
 
     // Filters
     filters: {
@@ -242,6 +256,22 @@ export const useHistoryStore = defineStore('history', {
     totalPages(state) {
         return Math.ceil(this.filteredTransactions.length / state.itemsPerPage);
     },
+
+    // Jumlah filter aktif — dipakai badge toggle filter lanjutan & empty state.
+    activeFilterCount(state) {
+        const f = state.filters;
+        let count = 0;
+        if (f.search) count += 1;
+        if (f.year || f.dateStart || f.dateEnd) count += 1; // grup Periode = 1
+        if (f.company) count += 1;
+        if (f.bank) count += 1;
+        if (f.dbCr) count += 1;
+        if (f.amountMin !== null && f.amountMin !== '') count += 1;
+        if (f.amountMax !== null && f.amountMax !== '') count += 1;
+        if (f.markStatus.length > 0) count += 1;
+        if (f.coaIds.length > 0) count += 1;
+        return count;
+    },
     
     availableYears(state) {
         // Extract unique years from transactions
@@ -341,24 +371,99 @@ export const useHistoryStore = defineStore('history', {
   },
 
   actions: {
+    /**
+     * Muat seluruh data History dalam tiga fase dengan persentase nyata:
+     *  1. meta    (0–8%)  : company, mark, COA, dan hitung total transaksi.
+     *  2. fetch   (8–80%) : transaksi diambil per chunk — progress = loaded/total.
+     *  3. process (80–100%): resolusi mark/split/COA per slice — progress = processed/total.
+     */
     async loadData() {
+      // Load yang sudah berjalan jangan digandakan; antrekan satu refresh ekstra.
+      if (this.loadProgress.active) {
+        this._reloadQueued = true;
+        return;
+      }
       this.isLoading = true;
+      this.loadProgress = { active: true, phase: 'meta', percent: 2, loaded: 0, total: null, message: 'Menyiapkan data referensi…' };
       try {
         // Load persistence filters first if not already loaded
         if (!this.allTransactions.length) {
             await this.loadFilters();
         }
 
-        const [txnRes, compRes, markRes, coaRes] = await Promise.all([
-            historyApi.getTransactions(),
+        const [compRes, markRes, coaRes, countRes] = await Promise.all([
             companyApi.getCompanies(),
             marksApi.getMarks(),
-            coaApi.getCoa()
+            coaApi.getCoa(),
+            historyApi.getTransactionCount().catch(() => null)
         ]);
 
-        let transactions = txnRes.data.transactions || [];
         const marks = markRes.data.marks || [];
         const coas = coaRes.data.coa || [];
+        const total = countRes?.data?.count != null ? Number(countRes.data.count) : null;
+        this.loadProgress.percent = 8;
+        this.loadProgress.total = total;
+
+        // Fase fetch: ambil transaksi per chunk agar progress benar-benar bergerak.
+        this.loadProgress.phase = 'fetch';
+        this.loadProgress.message = 'Mengambil transaksi…';
+
+        let transactions = [];
+        if (total != null && total > 0) {
+            for (let offset = 0; offset < total; offset += TXN_CHUNK_SIZE) {
+                const res = await historyApi.getTransactions({ limit: TXN_CHUNK_SIZE, offset });
+                const chunk = res.data.transactions || [];
+                transactions = transactions.concat(chunk);
+                this.loadProgress.loaded = transactions.length;
+                this.loadProgress.percent = 8 + 72 * Math.min(transactions.length / total, 1);
+                if (chunk.length < TXN_CHUNK_SIZE) break;
+            }
+        } else {
+            // Fallback: endpoint count tidak tersedia (backend lama) — ambil sekali penuh.
+            const res = await historyApi.getTransactions();
+            transactions = res.data.transactions || [];
+            this.loadProgress.total = transactions.length;
+            this.loadProgress.loaded = transactions.length;
+        }
+
+        // Fase proses: resolusi mark/split/COA, dipecah per slice agar UI tetap hidup.
+        this.loadProgress.phase = 'process';
+        this.loadProgress.message = 'Memproses marking & COA…';
+        await this._decorateTransactions(transactions, marks, coas, (done, totalRows) => {
+            this.loadProgress.loaded = done;
+            this.loadProgress.percent = 80 + 20 * (totalRows > 0 ? done / totalRows : 1);
+        });
+
+        this.allTransactions = transactions;
+        this.companies = compRes.data.companies || [];
+        this.marks = marks;
+        this.coaList = coas;
+        this.hasLoadedOnce = true;
+        // Muat konfigurasi AI di latar belakang (kontrol AI muncul bila aktif).
+        this.ensureAiSettings();
+      } catch (err) {
+        this.error = "Failed to load data";
+        console.error(err);
+      } finally {
+        this.isLoading = false;
+        this.loadProgress.percent = 100;
+        this.loadProgress.loaded = this.allTransactions.length;
+        // Biarkan bar mencapai 100% sekejap sebelum menghilang.
+        setTimeout(() => {
+            const shouldReload = this._reloadQueued && !this.error;
+            this._reloadQueued = false;
+            this.loadProgress = { active: false, phase: 'idle', percent: 0, loaded: 0, total: null, message: '' };
+            if (shouldReload) this.loadData();
+        }, 350);
+      }
+    },
+
+    /**
+     * Resolusi sisi klien untuk setiap transaksi: status split, mark hilang,
+     * mapping COA dari mark sendiri/child/manual, dan normalisasi db_cr.
+     * Dijalankan per slice dengan jeda ke UI supaya progress bar tetap bernafas.
+     */
+    async _decorateTransactions(transactions, marks, coas, onProgress) {
         const marksById = new Map(
             marks
                 .filter(mark => normalizeId(mark.id))
@@ -420,15 +525,8 @@ export const useHistoryStore = defineStore('history', {
 
             return true;
         };
-        
-        // Debug: Check if parent_id is present in any transaction
-        const sampleWithParent = transactions.find(t => t.parent_id);
-        console.log('HistoryStore: Sample transaction with parent_id:', sampleWithParent ? {id: sampleWithParent.id, parent_id: sampleWithParent.parent_id} : 'None found');
-        
-        // Mark transactions that have splits
-        console.log('HistoryStore: Checking for split transactions...');
-        
-        // Get all parent IDs of split transactions
+
+        // Pass 1: kumpulkan seluruh parent split (butuh dataset penuh).
         const parentIds = new Set();
         const childrenByParentId = new Map();
         for (const txn of transactions) {
@@ -441,83 +539,73 @@ export const useHistoryStore = defineStore('history', {
             childrenByParentId.get(parentId).push(txn);
           }
         }
-        
+
         console.log('HistoryStore: Found', parentIds.size, 'unique parent IDs');
-        
-        // Mark transactions that have children
-        for (const txn of transactions) {
-          const txnId = normalizeId(txn.id);
-          const txnMarkId = normalizeId(txn.mark_id);
-          txn.is_split = txnId ? parentIds.has(txnId) : false;
-          txn.has_missing_mark = Boolean(txnMarkId) && !marksById.has(txnMarkId);
 
-          // Populate COA mappings from own mark + split child marks.
-          const resolvedCoas = [];
-          const resolvedCoaIds = new Set();
-          const uniqCoas = new Set();
-          const relatedMarkIds = new Set();
+        // Pass 2: enrich per slice.
+        const totalRows = transactions.length;
+        for (let start = 0; start < totalRows; start += PROCESS_SLICE_SIZE) {
+          const slice = transactions.slice(start, start + PROCESS_SLICE_SIZE);
+          for (const txn of slice) {
+            const txnId = normalizeId(txn.id);
+            const txnMarkId = normalizeId(txn.mark_id);
+            txn.is_split = txnId ? parentIds.has(txnId) : false;
+            txn.has_missing_mark = Boolean(txnMarkId) && !marksById.has(txnMarkId);
 
-          const hasOwnValidMark = collectCoasFromMarkId(txnMarkId, resolvedCoas, resolvedCoaIds, uniqCoas);
-          if (hasOwnValidMark) {
-              relatedMarkIds.add(txnMarkId);
-          }
+            // Populate COA mappings from own mark + split child marks.
+            const resolvedCoas = [];
+            const resolvedCoaIds = new Set();
+            const uniqCoas = new Set();
+            const relatedMarkIds = new Set();
 
-          let splitMarkedCount = 0;
-          if (txn.is_split) {
-            const children = childrenByParentId.get(txnId) || [];
-            for (const childTxn of children) {
-                const childMarkId = normalizeId(childTxn.mark_id);
-                const hasChildMark = collectCoasFromMarkId(childMarkId, resolvedCoas, resolvedCoaIds, uniqCoas);
-                if (hasChildMark) {
-                    splitMarkedCount += 1;
-                    relatedMarkIds.add(childMarkId);
-                }
+            const hasOwnValidMark = collectCoasFromMarkId(txnMarkId, resolvedCoas, resolvedCoaIds, uniqCoas);
+            if (hasOwnValidMark) {
+                relatedMarkIds.add(txnMarkId);
+            }
+
+            let splitMarkedCount = 0;
+            if (txn.is_split) {
+              const children = childrenByParentId.get(txnId) || [];
+              for (const childTxn of children) {
+                  const childMarkId = normalizeId(childTxn.mark_id);
+                  const hasChildMark = collectCoasFromMarkId(childMarkId, resolvedCoas, resolvedCoaIds, uniqCoas);
+                  if (hasChildMark) {
+                      splitMarkedCount += 1;
+                      relatedMarkIds.add(childMarkId);
+                  }
+              }
+            }
+
+            // Reference-only manual journal links should still surface the journal mark/COA
+            // so the source transaction does not appear unclassified in history.
+            if (txn.manual_mark_id) {
+              txn.is_linked_to_manual = true;
+              const hasLinkedManualMark = collectCoasFromMarkId(txn.manual_mark_id, resolvedCoas, resolvedCoaIds, uniqCoas);
+              if (hasLinkedManualMark) {
+                  relatedMarkIds.add(txn.manual_mark_id);
+              }
+            }
+
+            collectDirectCoa(txn.coa_id, resolvedCoas, resolvedCoaIds, uniqCoas);
+            collectDirectCoa(txn.coa_id_coretax, resolvedCoas, resolvedCoaIds, uniqCoas);
+
+            txn.coas = resolvedCoas;
+            txn.coa_ids = Array.from(resolvedCoaIds).filter(Boolean);
+            txn.related_mark_ids = Array.from(relatedMarkIds);
+            txn.is_multi_marked = txn.is_split && splitMarkedCount > 0;
+
+            const normalizedDbCr = normalizeDbCr(txn.db_cr);
+            if (normalizedDbCr) {
+              txn.db_cr = normalizedDbCr;
             }
           }
-
-          // Reference-only manual journal links should still surface the journal mark/COA
-          // so the source transaction does not appear unclassified in history.
-          if (txn.manual_mark_id) {
-            txn.is_linked_to_manual = true;
-            const hasLinkedManualMark = collectCoasFromMarkId(txn.manual_mark_id, resolvedCoas, resolvedCoaIds, uniqCoas);
-            if (hasLinkedManualMark) {
-                relatedMarkIds.add(txn.manual_mark_id);
-            }
-          }
-
-          collectDirectCoa(txn.coa_id, resolvedCoas, resolvedCoaIds, uniqCoas);
-          collectDirectCoa(txn.coa_id_coretax, resolvedCoas, resolvedCoaIds, uniqCoas);
-
-          txn.coas = resolvedCoas;
-          txn.coa_ids = Array.from(resolvedCoaIds).filter(Boolean);
-          txn.related_mark_ids = Array.from(relatedMarkIds);
-          txn.is_multi_marked = txn.is_split && splitMarkedCount > 0;
-
-          const normalizedDbCr = normalizeDbCr(txn.db_cr);
-          if (normalizedDbCr) {
-            txn.db_cr = normalizedDbCr;
-          }
+          onProgress?.(Math.min(start + PROCESS_SLICE_SIZE, totalRows), totalRows);
+          await yieldToUi();
         }
-        
-        // Debug: Check a few transactions that should be marked as split
+
         const splitTxns = transactions.filter(t => t.is_split);
         console.log('HistoryStore: Marked', splitTxns.length, 'transactions as having splits');
-        if (splitTxns.length > 0) {
-            console.log('HistoryStore: Sample split transactions:', splitTxns.slice(0, 3).map(t => ({id: t.id, is_split: t.is_split, description: t.description?.substring(0, 50)})));
-        }
-
-        this.allTransactions = transactions;
-        this.companies = compRes.data.companies || [];
-        this.marks = marks;
-        this.coaList = coas;
-        // Muat konfigurasi AI di latar belakang (kontrol AI muncul bila aktif).
-        this.ensureAiSettings();
-      } catch (err) {
-        this.error = "Failed to load data";
-        console.error(err);
-      } finally {
-        this.isLoading = false;
-      }
+        return transactions;
     },
     
     async fetchUploadSummary() {
@@ -550,6 +638,45 @@ export const useHistoryStore = defineStore('history', {
     setFilter(key, value) {
         this.filters[key] = value;
         this.currentPage = 1; // Reset page on filter change
+        this.saveFilters();
+    },
+
+    /** Set tahun periode; tahun dan rentang tanggal saling menggantikan, bukan di-AND diam-diam. */
+    setYearFilter(year) {
+        this.filters.year = year || '';
+        if (this.filters.year) {
+            this.filters.dateStart = '';
+            this.filters.dateEnd = '';
+        }
+        this.currentPage = 1;
+        this.saveFilters();
+    },
+
+    /** Set tanggal periode (dateStart/dateEnd); mengganti filter tahun bila diisi. */
+    setDateFilter(key, value) {
+        if (key !== 'dateStart' && key !== 'dateEnd') return;
+        this.filters[key] = value || '';
+        if ((this.filters.dateStart || this.filters.dateEnd) && this.filters.year) {
+            this.filters.year = '';
+        }
+        this.currentPage = 1;
+        this.saveFilters();
+    },
+
+    /** Hapus satu grup filter berdasarkan kunci (dipakai chip filter aktif). */
+    clearFilterKeys(keys) {
+        for (const key of keys) {
+            if (key === 'year' || key === 'dateStart' || key === 'dateEnd') {
+                this.filters[key] = '';
+            } else if (key === 'amountMin' || key === 'amountMax') {
+                this.filters[key] = null;
+            } else if (Array.isArray(this.filters[key])) {
+                this.filters[key] = [];
+            } else {
+                this.filters[key] = '';
+            }
+        }
+        this.currentPage = 1;
         this.saveFilters();
     },
 
@@ -589,12 +716,20 @@ export const useHistoryStore = defineStore('history', {
     },
 
     async saveFilters() {
-        try {
-            // Simplified: Save on every significant change
-            await filterApi.saveFilters('history', this.filters);
-        } catch (e) {
-            console.error("Failed to save history filters:", e);
-        }
+        // Debounced: filter tersimpan 600ms setelah perubahan terakhir,
+        // bukan satu panggilan API per ketikan.
+        if (filterSaveTimer) clearTimeout(filterSaveTimer);
+        return new Promise((resolve) => {
+            filterSaveTimer = setTimeout(async () => {
+                filterSaveTimer = null;
+                try {
+                    await filterApi.saveFilters('history', this.filters);
+                } catch (e) {
+                    console.error("Failed to save history filters:", e);
+                }
+                resolve();
+            }, 600);
+        });
     },
 
     toggleSort(key) {

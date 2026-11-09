@@ -83,6 +83,9 @@ export const historyApi = {
   getTransactions(params = {}) {
     return api.get('/transactions', { params });
   },
+  getTransactionCount() {
+    return api.get('/transactions/count');
+  },
   getUploadSummary() {
     return api.get('/transactions/upload-summary');
   },

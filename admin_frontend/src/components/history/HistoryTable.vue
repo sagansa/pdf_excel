@@ -1,5 +1,18 @@
 <template>
   <TableShell>
+    <!-- Bar refresh tipis: data sudah pernah dimuat, tabel tetap tampil saat reload -->
+    <div
+      v-if="store.loadProgress.active && store.hasLoadedOnce"
+      class="history-refreshbar"
+      role="progressbar"
+      :aria-valuenow="Math.round(store.loadProgress.percent)"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      :aria-label="`Memuat ulang data, ${Math.round(store.loadProgress.percent)}%`"
+    >
+      <div class="history-refreshbar__fill" :style="{ width: `${store.loadProgress.percent}%` }"></div>
+    </div>
+
     <!-- Ledger header: select-all + sort -->
     <div class="history-head px-4 py-2.5 flex items-center gap-3 flex-wrap">
       <input
@@ -27,17 +40,66 @@
         </button>
       </div>
       <div class="flex-1"></div>
+      <span
+        v-if="store.loadProgress.active && store.hasLoadedOnce"
+        class="history-refresh-status"
+      >
+        <i class="bi bi-arrow-repeat animate-spin"></i>
+        {{ progressLabel }}
+      </span>
       <span class="history-head__label hidden md:inline">Marking</span>
     </div>
 
     <!-- Ledger rows -->
     <div class="history-body">
-      <div v-if="store.isLoading" class="py-12 flex items-center justify-center">
-        <span class="spinner-border w-8 h-8" style="color: var(--color-primary)" role="status"></span>
+      <!-- Muat pertama: progress nyata per fase + skeleton baris agar layout stabil -->
+      <div v-if="isInitialLoading" class="history-loading">
+        <div class="history-loading__status">
+          <span class="history-loading__percent mono">{{ Math.round(store.loadProgress.percent) }}%</span>
+          <div class="history-loading__bar">
+            <div class="history-loading__fill" :style="{ width: `${store.loadProgress.percent}%` }"></div>
+          </div>
+          <span class="history-loading__meta">
+            {{ store.loadProgress.message }}
+            <template v-if="store.loadProgress.total > 0">
+              · {{ formatAmount(store.loadProgress.loaded) }}/{{ formatAmount(store.loadProgress.total) }} transaksi
+            </template>
+          </span>
+        </div>
+        <div v-for="n in 8" :key="n" class="history-skeleton" aria-hidden="true">
+          <span class="history-skeleton__check"></span>
+          <div class="history-skeleton__lines">
+            <span class="history-skeleton__bar" style="width: 52%"></span>
+            <span class="history-skeleton__bar history-skeleton__bar--meta" style="width: 36%"></span>
+          </div>
+          <span class="history-skeleton__bar history-skeleton__bar--end" style="width: 140px"></span>
+        </div>
       </div>
-      <div v-else-if="store.paginatedTransactions.length === 0" class="py-12 text-center text-sm" style="color: var(--color-text-muted)">
-        <i class="bi bi-inbox text-3xl mb-2 block"></i>
-        Tidak ada transaksi ditemukan
+      <div v-else-if="store.error" class="history-empty py-14 text-center">
+        <i class="bi bi-cloud-slash text-3xl mb-2 block" style="color: var(--color-danger)"></i>
+        <p class="text-sm font-medium" style="color: var(--color-text-muted)">
+          Gagal memuat data transaksi.
+        </p>
+        <button type="button" class="btn-secondary !mt-3 !rounded-xl !text-xs" @click="store.loadData()">
+          <i class="bi bi-arrow-clockwise me-1"></i> Coba Lagi
+        </button>
+      </div>
+      <div v-else-if="store.paginatedTransactions.length === 0" class="history-empty py-14 text-center">
+        <i class="bi bi-inbox text-3xl mb-2 block" style="color: var(--color-text-muted)"></i>
+        <p class="text-sm font-medium" style="color: var(--color-text-muted)">
+          {{ store.activeFilterCount > 0 ? 'Tidak ada transaksi yang cocok dengan filter aktif' : 'Belum ada transaksi tercatat' }}
+        </p>
+        <p v-if="store.activeFilterCount > 0" class="mt-1 text-xs" style="color: var(--color-text-muted)">
+          {{ store.activeFilterCount }} filter aktif membatasi hasil.
+        </p>
+        <button
+          v-if="store.activeFilterCount > 0"
+          type="button"
+          class="btn-secondary !mt-3 !rounded-xl !text-xs"
+          @click="store.resetFilters()"
+        >
+          <i class="bi bi-x-circle me-1"></i> Reset Filter
+        </button>
       </div>
 
       <template v-else>
@@ -237,7 +299,7 @@
 
     <!-- Strip total ringkas -->
     <div
-      v-if="!store.isLoading && store.filteredTransactions.length > 0"
+      v-if="!isInitialLoading && store.filteredTransactions.length > 0"
       class="history-totals flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 text-xs"
     >
       <span class="history-totals__group">Halaman ini</span>
@@ -274,7 +336,7 @@
     </div>
 
     <template #footer>
-      <div class="history-pagination px-6 py-4 flex items-center justify-between" v-if="!store.isLoading && store.paginatedTransactions.length > 0">
+      <div class="history-pagination px-6 py-4 flex items-center justify-between" v-if="!isInitialLoading && store.paginatedTransactions.length > 0">
         <div class="flex flex-col md:flex-row md:items-center gap-4 w-full justify-between">
           <p class="text-[10px] font-medium whitespace-nowrap" style="color: var(--color-text-muted)">
             Menampilkan {{ ((store.currentPage - 1) * store.itemsPerPage) + 1 }}–{{ Math.min(store.currentPage * store.itemsPerPage, store.filteredTransactions.length) }} dari {{ store.filteredTransactions.length }}
@@ -366,6 +428,15 @@ import { useNotifications } from '../../composables/useNotifications';
 const store = useHistoryStore();
 const notify = useNotifications();
 const emit = defineEmits(['view-details', 'split-transaction']);
+
+// Muat pertama = tampilkan skeleton + progress; reload berikutnya = tabel tetap tampil.
+const isInitialLoading = computed(() => store.loadProgress.active && !store.hasLoadedOnce);
+
+const progressLabel = computed(() => {
+  const p = store.loadProgress;
+  if (p.total > 0) return `${Math.round(p.percent)}% · ${formatAmount(p.loaded)}/${formatAmount(p.total)}`;
+  return `${Math.round(p.percent)}%`;
+});
 
 // Individual Delete State
 const isDeleteModalOpen = ref(false);
@@ -635,6 +706,101 @@ const hiddenCoaCount = (txn) => {
 </script>
 
 <style scoped>
+.history-refreshbar {
+  height: 3px;
+  width: 100%;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+.history-refreshbar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-strong));
+  transition: width 250ms ease-out;
+}
+
+.history-refresh-status {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold;
+  background: rgba(15, 118, 110, 0.10);
+  color: var(--color-primary);
+}
+
+.history-loading__status {
+  @apply flex items-center gap-3 px-4 pb-2 pt-4;
+}
+
+.history-loading__percent {
+  @apply w-10 shrink-0 text-right text-sm font-bold;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-loading__bar {
+  @apply h-1.5 min-w-0 flex-1 overflow-hidden rounded-full;
+  background: var(--color-surface-muted);
+}
+
+.history-loading__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-strong));
+  transition: width 250ms ease-out;
+}
+
+.history-loading__meta {
+  @apply shrink-0 text-[11px] font-medium;
+  color: var(--color-text-muted);
+}
+
+.history-skeleton {
+  @apply flex items-center gap-3 px-4 py-2.5;
+}
+
+.history-skeleton + .history-skeleton {
+  border-top: 1px solid var(--color-border);
+}
+
+.history-skeleton__check {
+  @apply h-4 w-4 shrink-0 rounded border;
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.history-skeleton__lines {
+  @apply flex min-w-0 flex-1 flex-col gap-1.5;
+}
+
+.history-skeleton__bar {
+  @apply block h-2.5 rounded-full;
+  background: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--color-surface-raised) 45%, var(--color-surface-muted) 65%);
+  background-size: 200% 100%;
+  animation: history-skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+.history-skeleton__bar--meta {
+  height: 9px;
+}
+
+.history-skeleton__bar--end {
+  @apply ml-auto shrink-0;
+  height: 10px;
+}
+
+@keyframes history-skeleton-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-skeleton__bar {
+    animation: none;
+  }
+}
+
+.history-empty {
+  @apply px-4;
+}
+
 .history-head {
   background: var(--color-surface-muted);
   border-bottom: 1px solid var(--color-border);

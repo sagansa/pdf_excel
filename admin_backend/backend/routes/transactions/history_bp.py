@@ -562,12 +562,45 @@ def get_linkable_transactions():
         return jsonify({'transactions': results})
 
 
+@history_bp.route('/api/transactions/count', methods=['GET'])
+def get_transactions_count():
+    """Total row count of the transactions ledger.
+
+    Used by the frontend to stream /api/transactions in chunks and show real
+    fetch progress.
+    """
+    engine = require_db_engine()
+
+    with engine.connect() as conn:
+        # Count must mirror the row count that /api/transactions actually delivers:
+        # the manual_journal_links join fans out for transactions linked to more
+        # than one manual journal, so a plain COUNT(transactions) undercounts.
+        count = conn.execute(text("""
+            SELECT COUNT(*) FROM transactions t
+            LEFT JOIN manual_journal_links mjl ON t.id = mjl.linked_txn_id
+        """)).scalar()
+
+    return jsonify({'count': int(count or 0)})
+
+
 @history_bp.route('/api/transactions', methods=['GET'])
 def get_transactions():
     engine = require_db_engine()
 
+    # Optional limit/offset lets the frontend fetch the ledger in chunks so it
+    # can report real progress. Without params the full dataset is returned
+    # (backward compatible).
+    limit = request.args.get('limit', type=int)
+    offset = max(request.args.get('offset', type=int) or 0, 0)
+
+    limit_sql = ""
+    query_params = {}
+    if limit is not None and limit > 0:
+        limit_sql = " LIMIT :limit OFFSET :offset"
+        query_params = {'limit': limit, 'offset': offset}
+
     with engine.connect() as conn:
-        result = conn.execute(text("""
+        result = conn.execute(text(f"""
             SELECT t.*, m.internal_report, m.personal_use, m.tax_report,
                    c.name as company_name, c.short_name as company_short_name,
                    mjl.manual_txn_id as linked_manual_id,
@@ -579,8 +612,9 @@ def get_transactions():
             LEFT JOIN manual_journal_links mjl ON t.id = mjl.linked_txn_id
             LEFT JOIN transactions mt ON mjl.manual_txn_id = mt.id
             LEFT JOIN marks mm ON mt.mark_id = mm.id
-            ORDER BY t.txn_date DESC, t.created_at DESC
-        """))
+            ORDER BY t.txn_date DESC, t.created_at DESC, t.id DESC
+            {limit_sql}
+        """), query_params)
         transactions = serialize_result_rows(result)
         for d in transactions:
             d['db_cr'] = _normalize_db_cr(d.get('db_cr'))
