@@ -846,3 +846,78 @@ def test_prepare_validates_and_guards(ai_client, ai_engine):
     response = ai_client.post('/api/transactions/ai-suggest/prepare', json={'transaction_ids': ['tidak-ada']})
     assert response.status_code == 200
     assert response.get_json()['results'][0]['status'] == 'skipped'
+
+
+# ---------------------------------------------------------------- submit (bridge 2/2)
+
+
+def _prepare_one_pending(ai_client, ai_engine, txn_id='txn-sub'):
+    _insert_mark(ai_engine)
+    _insert_transaction(ai_engine, txn_id=txn_id, description='TRSF SUBMIT TANPA RIWAYAT 777')
+    _enable_ai(ai_engine)
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={'transaction_ids': [txn_id]})
+    assert response.status_code == 200
+    assert len(response.get_json()['pending']) == 1
+
+
+def test_submit_stores_valid_raw(ai_client, ai_engine):
+    _prepare_one_pending(ai_client, ai_engine, 'txn-ok')
+    raw = json.dumps({'mark_id': 'mark-beban', 'confidence': 0.87, 'reason': 'Kategori belanja'})
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={
+        'items': [{'id': 'txn-ok', 'raw': raw}]})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['suggested_count'] == 1 and data['failed_count'] == 0
+    result = data['results'][0]
+    assert result['status'] == 'suggested'
+    assert result['ai_suggested_mark_id'] == 'mark-beban'
+    assert result['ai_source'] == 'llm'
+    assert 'auto_applied' not in result  # saran LLM tidak pernah auto-apply
+
+    with ai_engine.connect() as conn:
+        row = conn.execute(text(
+            "SELECT ai_status, ai_source FROM transactions WHERE id='txn-ok'"
+        )).fetchone()._mapping
+    assert row['ai_status'] == 'pending' and row['ai_source'] == 'llm'
+
+
+def test_submit_rejects_bad_raw_and_unknown_ids(ai_client, ai_engine):
+    _prepare_one_pending(ai_client, ai_engine, 'txn-bad')
+
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={'items': [
+        {'id': 'txn-bad', 'raw': 'bukan json sama sekali'},        # parse gagal → failed
+        {'id': 'tidak-ada', 'raw': '{"mark_id": "mark-beban"}'},   # transaksi hilang → skipped
+        {'id': 'txn-err', 'error': 'Server AI tidak menjawab.'},   # error browser → failed
+    ]})
+    assert response.status_code == 200
+    data = response.get_json()
+    by_id = {r['id']: r for r in data['results']}
+    assert by_id['txn-bad']['status'] == 'failed'
+    assert by_id['tidak-ada']['status'] == 'skipped'
+    assert by_id['txn-err']['status'] == 'failed'
+    assert data['failed_count'] == 2 and data['skipped_count'] == 1
+
+    # item gagal TIDAK menyimpan apa pun
+    with ai_engine.connect() as conn:
+        row = conn.execute(text(
+            "SELECT ai_suggested_mark_id FROM transactions WHERE id='txn-bad'"
+        )).fetchone()._mapping
+    assert row['ai_suggested_mark_id'] is None
+
+
+def test_submit_validates_mark_against_db_candidates(ai_client, ai_engine):
+    """Browser tidak dipercaya: mark di luar kandidat DB → failed."""
+    _prepare_one_pending(ai_client, ai_engine, 'txn-forged')
+    raw = json.dumps({'mark_id': 'mark-palsu-dari-browser', 'confidence': 0.99})
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={
+        'items': [{'id': 'txn-forged', 'raw': raw}]})
+    data = response.get_json()
+    assert data['results'][0]['status'] == 'failed'
+    assert data['failed_count'] == 1
+
+
+def test_submit_rejects_bad_body(ai_client, ai_engine):
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={'items': []})
+    assert response.status_code == 400
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={})
+    assert response.status_code == 400

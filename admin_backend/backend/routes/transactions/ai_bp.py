@@ -221,6 +221,56 @@ def ai_suggest_prepare():
     })
 
 
+@ai_bp.route('/api/transactions/ai-suggest/submit', methods=['POST'])
+def ai_suggest_submit():
+    """Tahap bridge 2/2: parse & simpan jawaban mentah server AI lokal.
+
+    Browser mengirim jawaban mentah (atau error per item); server memvalidasi
+    terhadap kandidat DB. Shape agregat identik dengan endpoint lama.
+    """
+    data = request.json or {}
+    items = data.get('items')
+    if not isinstance(items, list) or not items:
+        raise BadRequestError('items wajib berupa daftar {id, raw|error}.')
+
+    engine = require_db_engine()
+    if len(items) > MAX_SUGGEST_BATCH:
+        raise BadRequestError(
+            f'Maksimal {MAX_SUGGEST_BATCH} transaksi per permintaan. '
+            'Kirim dalam beberapa batch kecil.'
+        )
+    results = []
+    with engine.begin() as conn:
+        mark_suggester.ensure_ai_columns(conn)
+        for item in items[:MAX_SUGGEST_BATCH]:
+            if not isinstance(item, dict):
+                raise BadRequestError('Setiap item wajib objek {id, raw|error}.')
+            txn_id = str(item.get('id') or '').strip()
+            if not txn_id:
+                raise BadRequestError('Setiap item wajib memiliki id transaksi.')
+            error = item.get('error')
+            if error:
+                results.append({'id': txn_id, 'status': 'failed', 'error': str(error)[:500]})
+                continue
+            results.append(mark_suggester.parse_bridge_submission(conn, txn_id, item.get('raw')))
+
+    suggested_count = sum(1 for r in results if r['status'] == 'suggested')
+    auto_applied_count = sum(1 for r in results if r['status'] == 'auto_applied')
+    skipped_count = sum(1 for r in results if r['status'] == 'skipped')
+    failed_count = sum(1 for r in results if r['status'] == 'failed')
+    return jsonify({
+        'results': results,
+        'suggested_count': suggested_count,
+        'auto_applied_count': auto_applied_count,
+        'skipped_count': skipped_count,
+        'failed_count': failed_count,
+        'message': (
+            f'{suggested_count} saran AI menunggu review, '
+            f'{failed_count} gagal.'
+        ),
+    })
+
+
 @ai_bp.route('/api/transactions/ai-decision-bulk', methods=['POST'])
 def ai_decision_bulk():
     """Terima/tolak banyak saran AI sekaligus.

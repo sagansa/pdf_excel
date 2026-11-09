@@ -27,6 +27,7 @@ from backend.services.ai import llm_client
 # jadi bila jumlah mark sangat besar yang terpotong adalah yang arahnya berlawanan.
 MAX_CANDIDATE_MARKS = 120
 MAX_REASON_LENGTH = 500
+MAX_BRIDGE_RAW_LENGTH = 64000  # jawaban mentah dari browser dipotong defensif
 # Batas contoh riwayat user yang dikirim ke LLM sebagai few-shot.
 MAX_FEW_SHOT_EXAMPLES = 8
 # Rule persis hanya berani menyimpulkan bila satu mark sangat dominan — di bawah
@@ -827,6 +828,45 @@ def process_transaction(conn, txn_id, config, history_index=None, candidates_by_
         )
     except llm_client.LLMConnectionError as exc:
         return {'id': txn_id, 'status': 'failed', 'error': str(exc)}
+    except ValueError as exc:
+        return {'id': txn_id, 'status': 'failed', 'error': str(exc)}
+
+    store_suggestion(conn, txn_id, suggestion, source='llm')
+    return {
+        'id': txn_id,
+        'status': 'suggested',
+        'ai_suggested_mark_id': suggestion['mark_id'],
+        'mark_label': suggestion['mark_label'],
+        'ai_confidence': suggestion['confidence'],
+        'ai_reason': suggestion.get('reason'),
+        'ai_source': 'llm',
+    }
+
+
+def parse_bridge_submission(conn, txn_id, raw):
+    """Validasi & simpan jawaban LLM mentah dari browser (bridge) untuk satu transaksi.
+
+    Browser tidak dipercaya: transaksi, guard markable, dan kandidat diambil ulang
+    dari DB; raw dipotong; parsing memvalidasi mark_id terhadap kandidat DB.
+    Balikan result dict dengan status suggested|skipped|failed. Saran LLM tidak
+    pernah auto-apply — selalu menunggu review (paritas endpoint lama).
+    """
+    txn = get_transaction(conn, txn_id)
+    if txn is None:
+        return {'id': txn_id, 'status': 'skipped', 'reason': 'Transaksi tidak ditemukan'}
+    try:
+        ensure_markable(conn, txn_id)
+    except BadRequestError as exc:
+        return {'id': txn_id, 'status': 'skipped', 'reason': exc.message}
+
+    direction = _normalize_direction(txn.get('db_cr'))
+    candidates = load_candidate_marks(conn, direction)
+    if not candidates:
+        return {'id': txn_id, 'status': 'skipped', 'reason': 'Belum ada mark yang tersedia'}
+
+    raw = str(raw or '')[:MAX_BRIDGE_RAW_LENGTH]
+    try:
+        suggestion = parse_suggestion_response(raw, candidates)
     except ValueError as exc:
         return {'id': txn_id, 'status': 'failed', 'error': str(exc)}
 
