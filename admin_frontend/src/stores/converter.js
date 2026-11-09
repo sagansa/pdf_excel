@@ -8,6 +8,8 @@ export const useConverterStore = defineStore('converter', {
     previewData: null,
     error: null,
     successMessage: null,
+    // Pass AI lokal yang ditunda setelah konversi (provider AI lokal — dijalankan dari browser).
+    aiPendingLocal: null,
     isPasswordProtected: false,
     requiresPassword: false,
     pdfPassword: null
@@ -80,23 +82,43 @@ export const useConverterStore = defineStore('converter', {
             // Ensure preview is false
             formData.set('preview', 'false');
             const response = await converterApi.uploadFile(formData);
-            // Header X-AI-Pass: pass penandaan AI dijadwalkan setelah konversi.
-            const aiQueued = response.headers?.['x-ai-pass'] === 'queued';
-            const aiCount = response.headers?.['x-ai-pass-count'];
-            this.successMessage = aiQueued
+            // Header X-AI-Pass: hasil penjadwalan pass penandaan AI setelah konversi.
+            // skipped-local = provider AI lokal: server tidak dapat memanggil LLM di
+            // laptop user — saran dijalankan manual dari browser (banner + tombol).
+            const aiHeader = response.headers?.['x-ai-pass'];
+            const aiCount = Number(response.headers?.['x-ai-pass-count']) || 0;
+            const aiIds = String(response.headers?.['x-ai-pass-ids'] || '')
+              .split(',').map((id) => id.trim()).filter(Boolean);
+            this.aiPendingLocal = aiHeader === 'skipped-local'
+              ? { count: aiCount || aiIds.length, ids: aiIds }
+              : null;
+            this.successMessage = aiHeader === 'queued'
                 ? `Conversion & DB Sync successful! AI sedang menandai ${aiCount ?? 'baru'} transaksi di latar belakang.`
-                : "Conversion & DB Sync successful!";
+                : aiHeader === 'skipped-local'
+                    ? `Conversion & DB Sync successful! ${this.aiPendingLocal.count} transaksi baru siap untuk saran AI.`
+                    : "Conversion & DB Sync successful!";
             return response.data;
         } catch (err) {
             const errorMsg = err.response?.data?.error || err.message || '';
         if (err.response?.data?.require_password || errorMsg.toLowerCase().includes('password')) {
             this.requiresPassword = true;
         }
-        this.error = errorMsg;
+            this.error = errorMsg;
             throw err;
         } finally {
             this.isLoading = false;
         }
+    },
+
+    /** Jalankan saran AI (via bridge browser) untuk transaksi hasil konversi yang ditunda. */
+    async runLocalAiPass() {
+      const pending = this.aiPendingLocal;
+      if (!pending || pending.ids.length === 0) return null;
+      const { useHistoryStore } = await import('./history');
+      const historyStore = useHistoryStore();
+      const summary = await historyStore.aiSuggestSelected(pending.ids);
+      this.aiPendingLocal = null;
+      return summary;
     }
   }
 });

@@ -134,9 +134,24 @@
           v-if="converterStore.successMessage"
           class="feedback-box feedback-box--success rounded-2xl p-4 text-sm"
         >
-          <div class="flex items-center">
-            <i class="bi bi-check-circle-fill me-3 text-lg"></i>
-            <span>{{ converterStore.successMessage }}</span>
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center">
+              <i class="bi bi-check-circle-fill me-3 text-lg"></i>
+              <span>{{ converterStore.successMessage }}</span>
+            </div>
+            <button
+              v-if="converterStore.aiPendingLocal?.count"
+              type="button"
+              class="btn-primary shrink-0 rounded-xl px-4 py-2 text-xs font-bold inline-flex items-center gap-2"
+              :disabled="historyStore.aiBulkBusy"
+              @click="handleRunLocalAiPass"
+            >
+              <i v-if="historyStore.aiBulkBusy" class="bi bi-arrow-repeat animate-spin"></i>
+              <i v-else class="bi bi-stars"></i>
+              {{ historyStore.aiBulkBusy
+                ? `Menandai... (${historyStore.aiBulkProgress.done}/${historyStore.aiBulkProgress.total})`
+                : `Tandai ${converterStore.aiPendingLocal.count} transaksi dengan AI` }}
+            </button>
           </div>
         </div>
       </form>
@@ -166,6 +181,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { historyApi } from '../api';
 import { useCompanyStore } from '../stores/companies';
 import { useConverterStore } from '../stores/converter';
+import { useHistoryStore } from '../stores/history';
 import FileDropZone from '../components/converter/FileDropZone.vue';
 import PasswordModal from '../components/converter/PasswordModal.vue';
 import PreviewModal from '../components/converter/PreviewModal.vue';
@@ -182,6 +198,7 @@ import logoSaqu from '../../logo/saqu.svg';
 
 const converterStore = useConverterStore();
 const companyStore = useCompanyStore();
+const historyStore = useHistoryStore();
 
 onMounted(() => {
   companyStore.fetchCompanies();
@@ -434,6 +451,19 @@ const handleConfirmSave = async () => {
     showPreview.value = false;
   } catch (error) {
     // Error handled in store
+  }
+};
+
+const handleRunLocalAiPass = async () => {
+  try {
+    const summary = await converterStore.runLocalAiPass();
+    if (summary) {
+      const ok = (summary.suggested || 0) + (summary.auto_applied || 0);
+      const failed = summary.failed || 0;
+      alert(`Saran AI selesai: ${ok} saran dibuat, ${failed} gagal.`);
+    }
+  } catch (e) {
+    alert(`Gagal menjalankan saran AI: ${e.message}`);
   }
 };
 
