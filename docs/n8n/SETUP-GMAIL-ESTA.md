@@ -164,7 +164,7 @@ Toggle **Active** di workflow. Selesai.
 | HTTP 400 `parse_failed` | `bank_type` tidak cocok dengan isi file, atau format file berubah. Cek parser di `admin_backend/bank_parsers/`. |
 | HTTP 400 `require_password` | PDF terkunci tapi `password` di SENDER_MAP kosong/salah. |
 | Node Simpan ke Disk error ENOENT | Folder arsip hilang — ulangi Langkah 2. |
-| Email tidak memicu workflow | Email sudah terbaca sebelumnya (trigger default hanya unread — ubah filter *Read Status* ke *Both* untuk tes), atau pengirim tidak ada di `SENDER_MAP`, atau workflow belum Active. |
+| Email tidak memicu workflow | Email tiba **sebelum workflow diaktifkan** (trigger hanya mengambil email yang masuk setelah aktif — filter waktu `after:`; email lama yang belum dibaca pun dilewati). Solusi: **forward emailnya ke akun sendiri**. Kemungkinan lain: emailnya sudah terbaca sebelum sempat ter-poll (ubah *Read Status* ke *Both* — hanya membantu untuk email baru), pengirim/subjek tidak cocok dengan `SENDER_MAP`, atau workflow belum Active. |
 | Eksekusi kosong/tidak ada item | Mapping Pengirim mem-filter semuanya — cek output node di Executions. |
 | Lampiran > 10 MB | esta menolak file > 10 MB (sama seperti upload manual). |
 
