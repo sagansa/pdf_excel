@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { runBridgeSuggest } from '../services/localAiBridge';
 
 // Create generic axios instance
 const api = axios.create({
@@ -563,8 +564,20 @@ export const aiApi = {
   testConnection(data) {
     return api.post('/ai/test-connection', data);
   },
-  suggestMarks(transactionIds) {
+  suggestMarks(transactionIds, settings = null) {
+    // Provider lokal (lmstudio/ollama): LLM dipanggil dari BROWSER — backend
+    // di Docker/VPS tidak dapat menjangkau localhost laptop user.
+    if (settings?.bridge && settings.enabled) {
+      return runBridgeSuggest(aiApi, transactionIds, settings)
+        .then((data) => ({ data }));
+    }
     return api.post('/transactions/ai-suggest', { transaction_ids: transactionIds });
+  },
+  prepareSuggest(transactionIds) {
+    return api.post('/transactions/ai-suggest/prepare', { transaction_ids: transactionIds });
+  },
+  submitSuggest(items) {
+    return api.post('/transactions/ai-suggest/submit', { items });
   },
   decideSuggestion(txnId, decision) {
     return api.post(`/transactions/${txnId}/ai-decision`, { decision });

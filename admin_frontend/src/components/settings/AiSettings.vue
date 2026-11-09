@@ -88,6 +88,28 @@
           </div>
         </div>
 
+        <!-- Provider lokal: LLM dipanggil dari browser user (bridge). Origin ini
+             harus diizinkan oleh server AI di laptop user. -->
+        <div
+          v-if="isBridgeProvider"
+          class="rounded-xl border border-sky-200 bg-sky-50 p-4 transition-colors dark:border-sky-900/50 dark:bg-sky-900/20"
+        >
+          <div class="flex gap-3">
+            <i class="bi bi-pc-display text-sky-600 dark:text-sky-400"></i>
+            <div class="text-xs leading-relaxed text-sky-800 dark:text-sky-200">
+              <strong>Dijalankan dari browser Anda:</strong> server AI dihubungi langsung dari
+              browser ini (origin <code class="font-mono">{{ currentOrigin }}</code>), bukan dari server
+              aplikasi. Di laptop Anda, izinkan origin tersebut:
+              <span v-if="form.provider === 'ollama'">
+                jalankan Ollama dengan <code class="font-mono">OLLAMA_ORIGINS="{{ currentOrigin }},http://localhost:*"</code>.
+              </span>
+              <span v-else>
+                di LM Studio tab Developer, aktifkan <strong>Enable CORS</strong>.
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div v-if="needsApiKey" class="field-stack">
           <label class="label-base" for="ai-api-key">API Key</label>
           <TextInput
@@ -256,6 +278,8 @@ import SectionCard from '../ui/SectionCard.vue';
 import TextInput from '../ui/TextInput.vue';
 import SearchableSelect from '../ui/SearchableSelect.vue';
 import { aiApi } from '../../api';
+import { useHistoryStore } from '../../stores/history';
+import { listLocalModels } from '../../services/localAiBridge';
 import { useNotifications } from '../../composables/useNotifications';
 
 const notify = useNotifications();
@@ -307,6 +331,11 @@ const testStatus = ref({ ok: null, message: '' });
 
 const needsApiKey = computed(() => ['zai', 'custom'].includes(form.provider));
 
+// Provider lokal dipanggil langsung dari browser (bridge) — backend di VPS
+// tidak dapat menjangkau localhost laptop user.
+const isBridgeProvider = computed(() => ['lmstudio', 'ollama'].includes(form.provider));
+const currentOrigin = window.location.origin;
+
 // Ganti provider mengosongkan field key DAN daftar/nilai model — model milik
 // masing-masing server (Ollama ≠ LM Studio ≠ z.ai), tidak boleh terbawa global.
 watch(() => form.provider, () => {
@@ -356,10 +385,15 @@ onMounted(async () => {
   // supaya dropdown model langsung sesuai server yang dipilih.
   if (form.enabled && form.baseUrl) {
     try {
-      const payload = { base_url: form.baseUrl, model: form.model };
-      if (needsApiKey.value && apiKeySet.value && form.apiKey.trim()) payload.api_key = form.apiKey.trim();
-      const { data } = await aiApi.testConnection(payload);
-      modelOptions.value = (data.models || []).map((id) => ({ id, label: id }));
+      if (isBridgeProvider.value) {
+        const models = await listLocalModels({ base_url: form.baseUrl, provider: form.provider });
+        modelOptions.value = models.map((id) => ({ id, label: id }));
+      } else {
+        const payload = { base_url: form.baseUrl, model: form.model };
+        if (needsApiKey.value && apiKeySet.value && form.apiKey.trim()) payload.api_key = form.apiKey.trim();
+        const { data } = await aiApi.testConnection(payload);
+        modelOptions.value = (data.models || []).map((id) => ({ id, label: id }));
+      }
     } catch (err) {
       // Diamkan: pengguna bisa memicu "Tes Koneksi" manual.
     }
@@ -374,6 +408,16 @@ const handleTestConnection = async () => {
   }
   isTesting.value = true;
   try {
+    if (isBridgeProvider.value) {
+      const models = await listLocalModels({ base_url: form.baseUrl, provider: form.provider });
+      modelOptions.value = models.map((id) => ({ id, label: id }));
+      let message = `Koneksi berhasil. ${models.length} model tersedia.`;
+      if (form.model && !models.includes(form.model)) {
+        message += ` Model "${form.model}" belum termuat di server.`;
+      }
+      testStatus.value = { ok: true, message };
+      return;
+    }
     const payload = { base_url: form.baseUrl, model: form.model };
     if (needsApiKey.value && apiKeyDirty.value && form.apiKey.trim()) {
       payload.api_key = form.apiKey.trim();
@@ -386,7 +430,7 @@ const handleTestConnection = async () => {
     }
     testStatus.value = { ok: true, message };
   } catch (err) {
-    const detail = err.response?.data?.error || 'Server AI tidak dapat dihubungi.';
+    const detail = err?.response?.data?.error || err?.message || 'Server AI tidak dapat dihubungi.';
     testStatus.value = { ok: false, message: detail };
     modelOptions.value = [];
   } finally {
@@ -419,6 +463,7 @@ const handleSave = async () => {
     }
     const { data } = await aiApi.saveSettings(payload);
     applySettings(data.settings);
+    useHistoryStore().invalidateAiSettings();
     form.apiKey = '';
     notify.success('Pengaturan AI tersimpan.');
   } catch (err) {
@@ -442,6 +487,7 @@ const clearApiKey = async () => {
       api_key: API_KEY_CLEAR,
     });
     applySettings(data.settings);
+    useHistoryStore().invalidateAiSettings();
     form.apiKey = '';
     notify.success('API key dihapus.');
   } catch (err) {

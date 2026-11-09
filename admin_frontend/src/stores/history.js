@@ -708,6 +708,11 @@ export const useHistoryStore = defineStore('history', {
         return this.aiSettings;
     },
 
+    /** Buang cache settings AI — dipanggil setelah pengaturan disimpan/dihapus. */
+    invalidateAiSettings() {
+        this.aiSettings = null;
+    },
+
     applySuggestionLocally(txnId, result) {
         const txn = this.allTransactions.find(t => t.id === txnId);
         if (!txn) return;
@@ -731,7 +736,7 @@ export const useHistoryStore = defineStore('history', {
         }
         this.aiBusyTxnIds.push(txnId);
         try {
-            const { data } = await aiApi.suggestMarks([txnId]);
+            const { data } = await aiApi.suggestMarks([txnId], this.aiSettings);
             const result = (data.results || [])[0];
             if (!result) throw new Error('Tidak ada hasil dari server AI.');
             if (result.status !== 'suggested') {
@@ -748,8 +753,10 @@ export const useHistoryStore = defineStore('history', {
     },
 
     /** Minta saran AI untuk semua transaksi terpilih, per chunk dengan progres. */
-    async aiSuggestSelected() {
-        const ids = [...this.selectedTxnIds];
+    async aiSuggestSelected(ids = null) {
+        // Simpan argumen asli: ids eksplisit (alur banner converter) tidak boleh menghapus seleksi History.
+        const idsArg = ids;
+        ids = ids || [...this.selectedTxnIds];
         if (ids.length === 0) return { suggested: 0, skipped: 0, failed: 0 };
         await this.ensureAiSettings();
         if (!this.aiSettings?.enabled) {
@@ -766,7 +773,7 @@ export const useHistoryStore = defineStore('history', {
                 // Tandai baris chunk sebagai "sedang diproses" agar spinner per-baris tampil.
                 this.aiBusyTxnIds.push(...chunk);
                 try {
-                    const { data } = await aiApi.suggestMarks(chunk);
+                    const { data } = await aiApi.suggestMarks(chunk, this.aiSettings);
                     for (const result of data.results || []) {
                         if (result.status === 'auto_applied') {
                             this.applySuggestionLocally(result.id, result);
@@ -786,7 +793,9 @@ export const useHistoryStore = defineStore('history', {
                 }
                 this.aiBulkProgress.done = Math.min(i + CHUNK_SIZE, ids.length);
             }
-            this.selectedTxnIds = [];
+            if (idsArg == null) {
+                this.selectedTxnIds = [];
+            }
             return summary;
         } finally {
             this.aiBulkBusy = false;

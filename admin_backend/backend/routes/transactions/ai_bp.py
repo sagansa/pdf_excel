@@ -16,6 +16,26 @@ ai_bp = Blueprint('ai_bp', __name__)
 MAX_SUGGEST_BATCH = 15
 
 
+def _parse_txn_ids(data):
+    """Validasi transaction_ids body: daftar string non-kosong, dedup, maks batch."""
+    raw_ids = data.get('transaction_ids')
+    if not isinstance(raw_ids, list) or not raw_ids:
+        raise BadRequestError('transaction_ids wajib berupa daftar id transaksi.')
+    txn_ids = []
+    for value in raw_ids:
+        txn_id = str(value or '').strip()
+        if txn_id and txn_id not in txn_ids:
+            txn_ids.append(txn_id)
+    if not txn_ids:
+        raise BadRequestError('transaction_ids tidak berisi id yang valid.')
+    if len(txn_ids) > MAX_SUGGEST_BATCH:
+        raise BadRequestError(
+            f'Maksimal {MAX_SUGGEST_BATCH} transaksi per permintaan. '
+            'Kirim dalam beberapa batch kecil.'
+        )
+    return txn_ids
+
+
 def _validate_settings_payload(data):
     enabled = _parse_bool(data.get('enabled'))
     provider = str(data.get('provider') or '').strip().lower()
@@ -115,21 +135,7 @@ def test_ai_connection():
 @ai_bp.route('/api/transactions/ai-suggest', methods=['POST'])
 def ai_suggest_marks():
     data = request.json or {}
-    raw_ids = data.get('transaction_ids')
-    if not isinstance(raw_ids, list) or not raw_ids:
-        raise BadRequestError('transaction_ids wajib berupa daftar id transaksi.')
-    txn_ids = []
-    for value in raw_ids:
-        txn_id = str(value or '').strip()
-        if txn_id and txn_id not in txn_ids:
-            txn_ids.append(txn_id)
-    if not txn_ids:
-        raise BadRequestError('transaction_ids tidak berisi id yang valid.')
-    if len(txn_ids) > MAX_SUGGEST_BATCH:
-        raise BadRequestError(
-            f'Maksimal {MAX_SUGGEST_BATCH} transaksi per permintaan. '
-            'Kirim dalam beberapa batch kecil.'
-        )
+    txn_ids = _parse_txn_ids(data)
 
     engine = require_db_engine()
     results = []
@@ -169,6 +175,98 @@ def ai_suggest_marks():
         'message': (
             f'{auto_applied_count} transaksi ter-mark otomatis, '
             f'{suggested_count} saran menunggu review.'
+        ),
+    })
+
+
+@ai_bp.route('/api/transactions/ai-suggest/prepare', methods=['POST'])
+def ai_suggest_prepare():
+    """Tahap bridge 1/2: kaskade rule TANPA LLM.
+
+    Rule match langsung disimpan (instan & deterministik); sisanya dikembalikan
+    sebagai prompt siap pakai untuk dipanggilkan ke server AI lokal oleh browser.
+    """
+    txn_ids = _parse_txn_ids(request.json or {})
+    engine = require_db_engine()
+
+    results, pending = [], []
+    with engine.begin() as conn:
+        mark_suggester.ensure_ai_columns(conn)
+        config = llm_client.get_ai_settings(conn)
+        if not config['enabled']:
+            raise BadRequestError('Fitur AI belum diaktifkan di pengaturan.', code='ai_disabled')
+        if not config['model']:
+            raise BadRequestError('Model AI belum diatur di pengaturan.', code='ai_model_missing')
+
+        history_index = mark_suggester.build_history_index(conn)
+        candidates_by_direction = {}
+        for txn_id in txn_ids:
+            resolved = mark_suggester.resolve_transaction_rules(
+                conn, txn_id, config,
+                history_index=history_index,
+                candidates_by_direction=candidates_by_direction,
+            )
+            if resolved['kind'] == 'done':
+                results.append(resolved['result'])
+            else:
+                pending.append(resolved['prompt'])  # tanpa api_key — provider lokal
+
+    return jsonify({
+        'results': results,
+        'pending': pending,
+        'message': (
+            f'{len(results)} selesai via aturan riwayat, '
+            f'{len(pending)} menunggu jawaban server AI lokal.'
+        ),
+    })
+
+
+@ai_bp.route('/api/transactions/ai-suggest/submit', methods=['POST'])
+def ai_suggest_submit():
+    """Tahap bridge 2/2: parse & simpan jawaban mentah server AI lokal.
+
+    Browser mengirim jawaban mentah (atau error per item); server memvalidasi
+    terhadap kandidat DB. Shape agregat identik dengan endpoint lama.
+    """
+    data = request.json or {}
+    items = data.get('items')
+    if not isinstance(items, list) or not items:
+        raise BadRequestError('items wajib berupa daftar {id, raw|error}.')
+
+    engine = require_db_engine()
+    if len(items) > MAX_SUGGEST_BATCH:
+        raise BadRequestError(
+            f'Maksimal {MAX_SUGGEST_BATCH} transaksi per permintaan. '
+            'Kirim dalam beberapa batch kecil.'
+        )
+    results = []
+    with engine.begin() as conn:
+        mark_suggester.ensure_ai_columns(conn)
+        for item in items[:MAX_SUGGEST_BATCH]:
+            if not isinstance(item, dict):
+                raise BadRequestError('Setiap item wajib objek {id, raw|error}.')
+            txn_id = str(item.get('id') or '').strip()
+            if not txn_id:
+                raise BadRequestError('Setiap item wajib memiliki id transaksi.')
+            error = item.get('error')
+            if error:
+                results.append({'id': txn_id, 'status': 'failed', 'error': str(error)[:500]})
+                continue
+            results.append(mark_suggester.parse_bridge_submission(conn, txn_id, item.get('raw')))
+
+    suggested_count = sum(1 for r in results if r['status'] == 'suggested')
+    auto_applied_count = sum(1 for r in results if r['status'] == 'auto_applied')
+    skipped_count = sum(1 for r in results if r['status'] == 'skipped')
+    failed_count = sum(1 for r in results if r['status'] == 'failed')
+    return jsonify({
+        'results': results,
+        'suggested_count': suggested_count,
+        'auto_applied_count': auto_applied_count,
+        'skipped_count': skipped_count,
+        'failed_count': failed_count,
+        'message': (
+            f'{suggested_count} saran AI menunggu review, '
+            f'{failed_count} gagal.'
         ),
     })
 

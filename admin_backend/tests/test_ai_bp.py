@@ -178,6 +178,7 @@ def test_settings_put_normalizes_and_saves(ai_client):
         'timeout': 120,
         'auto_apply': False,
         'auto_apply_threshold': 0.9,
+        'bridge': True,  # provider ollama → bridge
         'api_key_set': False,
     }
 
@@ -710,3 +711,228 @@ def test_load_candidate_marks_orders_by_direction(ai_engine):
     # Mark arah-cocok mendapat prioritas urutan.
     assert db_ids[0] == 'm-db'
     assert cr_ids[0] == 'm-cr'
+
+
+def test_settings_expose_bridge_flag(ai_client, ai_engine):
+    """Provider lokal (lmstudio/ollama) → bridge=True; zai → bridge=False."""
+    def _get():
+        response = ai_client.get('/api/ai/settings')
+        assert response.status_code == 200
+        return response.get_json()['settings']
+
+    # app_settings masih kosong → provider default 'lmstudio' → bridge True.
+    assert _get()['bridge'] is True
+
+    with ai_engine.begin() as conn:
+        conn.execute(text('DELETE FROM app_settings'))
+        conn.execute(text(
+            "INSERT INTO app_settings (setting_key, setting_value) VALUES "
+            "('ai_provider', 'zai'), ('ai_api_key', 'k')"
+        ))
+    assert _get()['bridge'] is False
+
+
+# ---------------------------------------------------------------- unit: resolve_transaction_rules
+
+
+def test_resolve_rules_returns_llm_prompt_without_calling_llm(ai_engine, monkeypatch):
+    """Transaksi tanpa kecocokan riwayat → prompt LLM siap pakai, TANPA panggilan LLM."""
+    from backend.services.ai import llm_client, mark_suggester
+
+    _insert_mark(ai_engine)
+    _insert_transaction(ai_engine, txn_id='txn-bridge', description='TRSF UNIK TANPA RIWAYAT')
+    _enable_ai(ai_engine)
+
+    def _explode(**kwargs):
+        raise AssertionError('LLM TIDAK boleh dipanggil di tahap resolve')
+
+    monkeypatch.setattr(llm_client, 'chat_completion', _explode)
+
+    with ai_engine.connect() as conn:
+        config = llm_client.get_ai_settings(conn)
+        history_index = mark_suggester.build_history_index(conn)
+        resolved = mark_suggester.resolve_transaction_rules(
+            conn, 'txn-bridge', config, history_index=history_index,
+        )
+
+    assert resolved['kind'] == 'llm'
+    prompt = resolved['prompt']
+    assert prompt['id'] == 'txn-bridge'
+    assert prompt['model'] == 'qwen2.5:7b'
+    assert prompt['temperature'] == 0.1
+    assert prompt['max_tokens'] == 800
+    assert isinstance(prompt['messages'], list) and prompt['messages']
+    assert 'api_key' not in prompt  # kunci z.ai tidak pernah masuk prompt bridge
+
+
+def test_resolve_rules_rule_match_stores_and_finishes(ai_engine):
+    """Kecocokan riwayat persis → result final tanpa LLM, saran tersimpan source=rule."""
+    from backend.services.ai import llm_client, mark_suggester
+
+    _insert_mark(ai_engine)
+    _insert_transaction(ai_engine, txn_id='txn-hist-1', description='TRSF E-BANKING 123 GOJEK', mark_id='mark-beban')
+    _insert_transaction(ai_engine, txn_id='txn-hist-2', description='TRSF E-BANKING 123 GOJEK')
+    _enable_ai(ai_engine)
+
+    with ai_engine.connect() as conn:
+        config = llm_client.get_ai_settings(conn)
+        history_index = mark_suggester.build_history_index(conn)
+        resolved = mark_suggester.resolve_transaction_rules(
+            conn, 'txn-hist-2', config, history_index=history_index,
+        )
+
+    assert resolved['kind'] == 'done'
+    assert resolved['result']['status'] == 'suggested'
+    assert resolved['result']['ai_source'] == 'rule'
+
+
+# ---------------------------------------------------------------- prepare (bridge 1/2)
+
+
+def test_prepare_resolves_rules_and_returns_pending(ai_client, ai_engine, monkeypatch):
+    """Rule match → masuk results (tersimpan); tanpa kecocokan → pending prompt."""
+    from backend.services.ai import llm_client
+
+    def _explode(**kwargs):
+        raise AssertionError('prepare TIDAK boleh memanggil LLM')
+
+    monkeypatch.setattr(llm_client, 'chat_completion', _explode)
+
+    _insert_mark(ai_engine)
+    _insert_transaction(ai_engine, txn_id='txn-rule', description='TRSF E-BANKING 123 GOJEK', mark_id='mark-beban')
+    _insert_transaction(ai_engine, txn_id='txn-llm', description='TRSF BARU TANPA RIWAYAT 999')
+    _enable_ai(ai_engine)
+
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={
+        'transaction_ids': ['txn-rule', 'txn-llm'],
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    assert [r['id'] for r in data['results']] == ['txn-rule']
+    assert data['results'][0]['ai_source'] == 'rule'
+    assert len(data['pending']) == 1
+    prompt = data['pending'][0]
+    assert prompt['id'] == 'txn-llm'
+    assert prompt['model'] == 'qwen2.5:7b'
+    assert isinstance(prompt['messages'], list) and prompt['messages']
+    assert 'api_key' not in prompt
+
+    # Rule sudah tersimpan di prepare (source=rule, pending review).
+    with ai_engine.connect() as conn:
+        status = conn.execute(text(
+            "SELECT ai_suggested_mark_id, ai_source FROM transactions WHERE id='txn-rule'"
+        )).fetchone()._mapping
+    assert status['ai_suggested_mark_id'] == 'mark-beban'
+    assert status['ai_source'] == 'rule'
+
+
+def test_prepare_validates_and_guards(ai_client, ai_engine):
+    """ai_disabled, batch kosong/oversize, id tak dikenal → perilaku endpoint lama."""
+    _enable_ai(ai_engine, enabled=False)
+    _insert_transaction(ai_engine, txn_id='txn-x')
+
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={'transaction_ids': ['txn-x']})
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'ai_disabled'
+
+    _enable_ai(ai_engine)
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={'transaction_ids': []})
+    assert response.status_code == 400
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={
+        'transaction_ids': [f'txn-{i}' for i in range(16)]})
+    assert response.status_code == 400
+
+    # id tak dikenal → skipped di results, bukan error
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={'transaction_ids': ['tidak-ada']})
+    assert response.status_code == 200
+    assert response.get_json()['results'][0]['status'] == 'skipped'
+
+
+# ---------------------------------------------------------------- submit (bridge 2/2)
+
+
+def _prepare_one_pending(ai_client, ai_engine, txn_id='txn-sub'):
+    _insert_mark(ai_engine)
+    _insert_transaction(ai_engine, txn_id=txn_id, description='TRSF SUBMIT TANPA RIWAYAT 777')
+    _enable_ai(ai_engine)
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={'transaction_ids': [txn_id]})
+    assert response.status_code == 200
+    assert len(response.get_json()['pending']) == 1
+
+
+def test_submit_stores_valid_raw(ai_client, ai_engine):
+    _prepare_one_pending(ai_client, ai_engine, 'txn-ok')
+    raw = json.dumps({'mark_id': 'mark-beban', 'confidence': 0.87, 'reason': 'Kategori belanja'})
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={
+        'items': [{'id': 'txn-ok', 'raw': raw}]})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['suggested_count'] == 1 and data['failed_count'] == 0
+    result = data['results'][0]
+    assert result['status'] == 'suggested'
+    assert result['ai_suggested_mark_id'] == 'mark-beban'
+    assert result['ai_source'] == 'llm'
+    assert 'auto_applied' not in result  # saran LLM tidak pernah auto-apply
+
+    with ai_engine.connect() as conn:
+        row = conn.execute(text(
+            "SELECT ai_status, ai_source FROM transactions WHERE id='txn-ok'"
+        )).fetchone()._mapping
+    assert row['ai_status'] == 'pending' and row['ai_source'] == 'llm'
+
+
+def test_submit_rejects_bad_raw_and_unknown_ids(ai_client, ai_engine):
+    _prepare_one_pending(ai_client, ai_engine, 'txn-bad')
+
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={'items': [
+        {'id': 'txn-bad', 'raw': 'bukan json sama sekali'},        # parse gagal → failed
+        {'id': 'tidak-ada', 'raw': '{"mark_id": "mark-beban"}'},   # transaksi hilang → skipped
+        {'id': 'txn-err', 'error': 'Server AI tidak menjawab.'},   # error browser → failed
+    ]})
+    assert response.status_code == 200
+    data = response.get_json()
+    by_id = {r['id']: r for r in data['results']}
+    assert by_id['txn-bad']['status'] == 'failed'
+    assert by_id['tidak-ada']['status'] == 'skipped'
+    assert by_id['txn-err']['status'] == 'failed'
+    assert data['failed_count'] == 2 and data['skipped_count'] == 1
+
+    # item gagal TIDAK menyimpan apa pun
+    with ai_engine.connect() as conn:
+        row = conn.execute(text(
+            "SELECT ai_suggested_mark_id FROM transactions WHERE id='txn-bad'"
+        )).fetchone()._mapping
+    assert row['ai_suggested_mark_id'] is None
+
+
+def test_submit_validates_mark_against_db_candidates(ai_client, ai_engine):
+    """Browser tidak dipercaya: mark di luar kandidat DB → failed."""
+    _prepare_one_pending(ai_client, ai_engine, 'txn-forged')
+    raw = json.dumps({'mark_id': 'mark-palsu-dari-browser', 'confidence': 0.99})
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={
+        'items': [{'id': 'txn-forged', 'raw': raw}]})
+    data = response.get_json()
+    assert data['results'][0]['status'] == 'failed'
+    assert data['failed_count'] == 1
+
+
+def test_submit_rejects_bad_body(ai_client, ai_engine):
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={'items': []})
+    assert response.status_code == 400
+    response = ai_client.post('/api/transactions/ai-suggest/submit', json={})
+    assert response.status_code == 400
+
+
+# ---------------------------------------------------------------- unit: resolve_ai_pass_mode
+
+
+def test_resolve_ai_pass_mode():
+    """Bridge + enabled → skip; selain itu thread (termasuk disabled — thread sendiri yang me-skip)."""
+    from backend.services.ai.mark_pass import resolve_ai_pass_mode
+
+    assert resolve_ai_pass_mode({'enabled': True, 'provider': 'ollama'}) == 'skip'
+    assert resolve_ai_pass_mode({'enabled': True, 'provider': 'lmstudio'}) == 'skip'
+    assert resolve_ai_pass_mode({'enabled': True, 'provider': 'zai'}) == 'thread'
+    assert resolve_ai_pass_mode({'enabled': True, 'provider': 'custom'}) == 'thread'
+    assert resolve_ai_pass_mode({'enabled': False, 'provider': 'ollama'}) == 'thread'
+    assert resolve_ai_pass_mode({}) == 'thread'
