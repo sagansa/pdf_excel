@@ -31,6 +31,8 @@ SETTING_KEYS = (
     'ai_auto_apply', 'ai_auto_apply_threshold',
 )
 ALLOWED_PROVIDERS = ('lmstudio', 'ollama', 'zai', 'custom')
+# Provider lokal yang nanti dipanggil langsung dari browser user (bukan dari server).
+BRIDGE_PROVIDERS = {'lmstudio', 'ollama'}
 DEFAULT_AUTO_APPLY_THRESHOLD = 0.9
 API_KEY_CLEAR_SENTINEL = '__CLEAR__'
 
@@ -181,6 +183,7 @@ def get_ai_settings(conn):
         'timeout': DEFAULT_TIMEOUT,
         'auto_apply': auto_apply,
         'auto_apply_threshold': threshold,
+        'bridge': provider in BRIDGE_PROVIDERS,
         'api_key': api_key,           # untuk pemakaian internal server (LLM call)
         'api_key_set': bool(api_key),  # untuk frontend — nilai kunci tidak diekspos
     }

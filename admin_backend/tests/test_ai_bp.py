@@ -178,6 +178,7 @@ def test_settings_put_normalizes_and_saves(ai_client):
         'timeout': 120,
         'auto_apply': False,
         'auto_apply_threshold': 0.9,
+        'bridge': True,  # provider ollama → bridge
         'api_key_set': False,
     }
 
@@ -710,3 +711,22 @@ def test_load_candidate_marks_orders_by_direction(ai_engine):
     # Mark arah-cocok mendapat prioritas urutan.
     assert db_ids[0] == 'm-db'
     assert cr_ids[0] == 'm-cr'
+
+
+def test_settings_expose_bridge_flag(ai_client, ai_engine):
+    """Provider lokal (lmstudio/ollama) → bridge=True; zai → bridge=False."""
+    def _get():
+        response = ai_client.get('/api/ai/settings')
+        assert response.status_code == 200
+        return response.get_json()['settings']
+
+    # app_settings masih kosong → provider default 'lmstudio' → bridge True.
+    assert _get()['bridge'] is True
+
+    with ai_engine.begin() as conn:
+        conn.execute(text('DELETE FROM app_settings'))
+        conn.execute(text(
+            "INSERT INTO app_settings (setting_key, setting_value) VALUES "
+            "('ai_provider', 'zai'), ('ai_api_key', 'k')"
+        ))
+    assert _get()['bridge'] is False
