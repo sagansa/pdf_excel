@@ -730,3 +730,57 @@ def test_settings_expose_bridge_flag(ai_client, ai_engine):
             "('ai_provider', 'zai'), ('ai_api_key', 'k')"
         ))
     assert _get()['bridge'] is False
+
+
+# ---------------------------------------------------------------- unit: resolve_transaction_rules
+
+
+def test_resolve_rules_returns_llm_prompt_without_calling_llm(ai_engine, monkeypatch):
+    """Transaksi tanpa kecocokan riwayat → prompt LLM siap pakai, TANPA panggilan LLM."""
+    from backend.services.ai import llm_client, mark_suggester
+
+    _insert_mark(ai_engine)
+    _insert_transaction(ai_engine, txn_id='txn-bridge', description='TRSF UNIK TANPA RIWAYAT')
+    _enable_ai(ai_engine)
+
+    def _explode(**kwargs):
+        raise AssertionError('LLM TIDAK boleh dipanggil di tahap resolve')
+
+    monkeypatch.setattr(llm_client, 'chat_completion', _explode)
+
+    with ai_engine.connect() as conn:
+        config = llm_client.get_ai_settings(conn)
+        history_index = mark_suggester.build_history_index(conn)
+        resolved = mark_suggester.resolve_transaction_rules(
+            conn, 'txn-bridge', config, history_index=history_index,
+        )
+
+    assert resolved['kind'] == 'llm'
+    prompt = resolved['prompt']
+    assert prompt['id'] == 'txn-bridge'
+    assert prompt['model'] == 'qwen2.5:7b'
+    assert prompt['temperature'] == 0.1
+    assert prompt['max_tokens'] == 800
+    assert isinstance(prompt['messages'], list) and prompt['messages']
+    assert 'api_key' not in prompt  # kunci z.ai tidak pernah masuk prompt bridge
+
+
+def test_resolve_rules_rule_match_stores_and_finishes(ai_engine):
+    """Kecocokan riwayat persis → result final tanpa LLM, saran tersimpan source=rule."""
+    from backend.services.ai import llm_client, mark_suggester
+
+    _insert_mark(ai_engine)
+    _insert_transaction(ai_engine, txn_id='txn-hist-1', description='TRSF E-BANKING 123 GOJEK', mark_id='mark-beban')
+    _insert_transaction(ai_engine, txn_id='txn-hist-2', description='TRSF E-BANKING 123 GOJEK')
+    _enable_ai(ai_engine)
+
+    with ai_engine.connect() as conn:
+        config = llm_client.get_ai_settings(conn)
+        history_index = mark_suggester.build_history_index(conn)
+        resolved = mark_suggester.resolve_transaction_rules(
+            conn, 'txn-hist-2', config, history_index=history_index,
+        )
+
+    assert resolved['kind'] == 'done'
+    assert resolved['result']['status'] == 'suggested'
+    assert resolved['result']['ai_source'] == 'rule'

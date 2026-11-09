@@ -560,30 +560,6 @@ def parse_suggestion_response(raw, candidates):
     }
 
 
-def suggest_for_transaction(txn, candidates, config, examples=None, recurring_marks=None):
-    """Panggil LLM lokal untuk satu transaksi; balikan dict saran tervalidasi.
-
-    Satu kali percobaan ulang untuk kegagalan koneksi (model cold-load / server
-    sedang sibuk) sebelum menyerah — kegagalan parsing JSON tidak diulang.
-    """
-    messages = build_messages(txn, candidates, examples=examples, recurring_marks=recurring_marks)
-    kwargs = dict(
-        base_url=config.get('base_url'),
-        model=config.get('model'),
-        messages=messages,
-        temperature=0.1,
-        timeout=config.get('timeout') or llm_client.DEFAULT_TIMEOUT,
-        max_tokens=800,  # beri ruang untuk model reasoning agar sampai ke jawaban JSON
-        api_key=config.get('api_key') or None,
-    )
-    try:
-        raw = llm_client.chat_completion(**kwargs)
-    except llm_client.LLMConnectionError:
-        time.sleep(2)
-        raw = llm_client.chat_completion(**kwargs)
-    return parse_suggestion_response(raw, candidates)
-
-
 def ensure_ai_columns(conn):
     """Pastikan kolom ai_* sudah ada (migration 072 sudah jalan)."""
     txn_columns = get_table_columns(conn, 'transactions')
@@ -716,29 +692,39 @@ def apply_decision(conn, txn_id, decision):
     return dict(updated._mapping)
 
 
-def process_transaction(conn, txn_id, config, history_index=None, candidates_by_direction=None):
-    """Kaskade lengkap untuk satu transaksi: rule riwayat → (auto-apply) → LLM few-shot.
+def resolve_transaction_rules(conn, txn_id, config, history_index=None, candidates_by_direction=None):
+    """Tahap TANPA LLM dari kaskade suggest: ambil transaksi, guard markable,
+    kandidat, rule riwayat, rule disambiguasi nominal.
 
-    Dipakai bersama oleh endpoint ai-suggest dan pass latar belakang saat konversi.
-    Balikan dict result: {id, status: suggested|auto_applied|skipped|failed, ...}.
+    Dipakai bersama oleh process_transaction (endpoint lama + thread PDF untuk
+    provider server-side) dan endpoint bridge prepare. Rule yang cocok tetap
+    langsung di-store di sini (perilaku instan yang sudah ada).
+
+    Balikan:
+      {'kind': 'done', 'result': {...}}  — selesai tanpa LLM (suggested|auto_applied|skipped)
+      {'kind': 'llm', 'txn': ..., 'candidates': [...],
+       'prompt': {'id', 'model', 'messages', 'temperature', 'max_tokens'}}
     """
     if candidates_by_direction is None:
         candidates_by_direction = {}
 
     txn = get_transaction(conn, txn_id)
     if txn is None:
-        return {'id': txn_id, 'status': 'skipped', 'reason': 'Transaksi tidak ditemukan'}
+        return {'kind': 'done', 'result': {
+            'id': txn_id, 'status': 'skipped', 'reason': 'Transaksi tidak ditemukan'}}
     try:
         ensure_markable(conn, txn_id)
     except BadRequestError as exc:
-        return {'id': txn_id, 'status': 'skipped', 'reason': exc.message}
+        return {'kind': 'done', 'result': {
+            'id': txn_id, 'status': 'skipped', 'reason': exc.message}}
 
     direction = _normalize_direction(txn.get('db_cr'))
     if direction not in candidates_by_direction:
         candidates_by_direction[direction] = load_candidate_marks(conn, direction)
     candidates = candidates_by_direction[direction]
     if not candidates:
-        return {'id': txn_id, 'status': 'skipped', 'reason': 'Belum ada mark yang tersedia'}
+        return {'kind': 'done', 'result': {
+            'id': txn_id, 'status': 'skipped', 'reason': 'Belum ada mark yang tersedia'}}
 
     # Analisis riwayat marking user: kecocokan persis + mirip (fuzzy).
     context = build_history_context(history_index or [], txn, direction, txn.get('company_id'))
@@ -762,14 +748,14 @@ def process_transaction(conn, txn_id, config, history_index=None, candidates_by_
         }
         if auto:
             result['auto_applied'] = True
-        return result
+        return {'kind': 'done', 'result': result}
 
     # Lapis 1c: deskripsi identik dipakai lintas mark, tapi nominal hanya muat di
     # rentang satu mark → simpulkan deterministik (kasus gaji vs pembelian warung).
     amount_rule = match_amount_disambiguated_rule(context, txn, candidates)
     if amount_rule:
         store_suggestion(conn, txn_id, amount_rule, source='rule', auto_apply=False)
-        return {
+        return {'kind': 'done', 'result': {
             'id': txn_id,
             'status': 'suggested',
             'ai_suggested_mark_id': amount_rule['mark_id'],
@@ -777,15 +763,67 @@ def process_transaction(conn, txn_id, config, history_index=None, candidates_by_
             'ai_confidence': amount_rule['confidence'],
             'ai_reason': amount_rule.get('reason'),
             'ai_source': 'rule',
-        }
+        }}
 
-    # Lapis 2: LLM dengan pola riwayat user (few-shot kaya + mark berulang) —
-    # selalu menunggu review.
+    # Tahap LLM: prompt siap pakai (few-shot riwayat + mark berulang).
     examples = pick_history_examples(context, history_index or [], txn, direction, txn.get('company_id'))
     recurring_marks = summarize_recurring_marks(context, txn_amount=_safe_amount(txn))
+    messages = build_messages(txn, candidates, examples=examples, recurring_marks=recurring_marks)
+    return {
+        'kind': 'llm',
+        'txn': txn,
+        'candidates': candidates,
+        'prompt': {
+            'id': txn_id,
+            'model': config.get('model'),
+            'messages': messages,
+            'temperature': 0.1,
+            'max_tokens': 800,  # ruang untuk model reasoning sampai ke JSON jawaban
+        },
+    }
+
+
+def execute_suggestion_prompt(txn, candidates, prompt, config):
+    """Panggil LLM untuk satu prompt hasil resolve_transaction_rules.
+
+    Satu retry kegagalan koneksi (model cold-load / server sibuk); kegagalan
+    parsing JSON tidak diulang. Raise LLMConnectionError / ValueError.
+    """
+    kwargs = dict(
+        base_url=config.get('base_url'),
+        model=prompt.get('model') or config.get('model'),
+        messages=prompt['messages'],
+        temperature=prompt.get('temperature', 0.1),
+        timeout=config.get('timeout') or llm_client.DEFAULT_TIMEOUT,
+        max_tokens=prompt.get('max_tokens', 800),
+        api_key=config.get('api_key') or None,
+    )
     try:
-        suggestion = suggest_for_transaction(
-            txn, candidates, config, examples=examples, recurring_marks=recurring_marks,
+        raw = llm_client.chat_completion(**kwargs)
+    except llm_client.LLMConnectionError:
+        time.sleep(2)
+        raw = llm_client.chat_completion(**kwargs)
+    return parse_suggestion_response(raw, candidates)
+
+
+def process_transaction(conn, txn_id, config, history_index=None, candidates_by_direction=None):
+    """Kaskade lengkap untuk satu transaksi: rule riwayat → (auto-apply) → LLM few-shot.
+
+    Dipakai bersama oleh endpoint ai-suggest dan pass latar belakang saat konversi.
+    Balikan dict result: {id, status: suggested|auto_applied|skipped|failed, ...}.
+    """
+    resolved = resolve_transaction_rules(
+        conn, txn_id, config,
+        history_index=history_index,
+        candidates_by_direction=candidates_by_direction,
+    )
+    if resolved['kind'] == 'done':
+        return resolved['result']
+
+    prompt = resolved['prompt']
+    try:
+        suggestion = execute_suggestion_prompt(
+            resolved['txn'], resolved['candidates'], prompt, config,
         )
     except llm_client.LLMConnectionError as exc:
         return {'id': txn_id, 'status': 'failed', 'error': str(exc)}
