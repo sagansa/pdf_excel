@@ -1,0 +1,334 @@
+{
+  "id": "898510a9-6efb-4439-a0d9-e068cb3f3b31",
+  "name": "BACKFILL: Gmail → esta (riwayat e-statement lama)",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## BACKFILL SEKALI JALAN — riwayat e-statement lama\n\nWorkflow utama (auto-import) HANYA mengambil email baru setelah aktif.\nWorkflow ini menarik SEMUA email lama yang cocok filter pencarian Gmail,\nlalu memprosesnya lewat jalur yang sama.\n\n**Cara pakai:** buka workflow ini → klik **Execute workflow** → tunggu\nselesai. Duplikat aman: statement yang sudah pernah diupload dijawab\n`duplicate` oleh esta dan dilewati.\n\nFilter pencarian ada di node \"Gmail: Ambil Riwayat\" (parameter `q`).\nPassword PDF di node \"Mapping Pengirim\" (sama seperti workflow utama).\nSetelah selesai, workflow ini boleh dinonaktifkan/dihapus.",
+        "height": 380,
+        "width": 400,
+        "color": 5
+      },
+      "id": "9d4f21b6-99e2-4807-b4ff-677c8d05ef00",
+      "name": "Catatan",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -760,
+        -200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e2668dd3-cfe9-43a8-8403-637ffd73f5ce",
+      "name": "Mulai Manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": true,
+        "simple": true,
+        "filters": {
+          "q": "digibank \"e-Statement\" has:attachment",
+          "readStatus": "both"
+        },
+        "options": {
+          "downloadAttachments": true,
+          "dataPropertyAttachmentsPrefixName": "attachment_"
+        }
+      },
+      "id": "8713859c-78d2-4737-a5f9-2bc14e565820",
+      "name": "Gmail: Ambil Riwayat",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -300,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ============ KONFIGURASI — ubah di sini ============\n// Mapping email e-statement -> konfigurasi bank untuk esta.\n// Key dicocokkan sebagai SUBSTRING (huruf kecil) terhadap\n// NAMA+ALAMAT PENGIRIM dan SUBJEK email.\n// bank_type valid: bca, mandiri, mandiri_email, dbs, ccbca,\n//   ccmandiri, bri, saqu, blu\n// password : password PDF e-statement (kosongkan jika tidak terkunci)\n// company_id : UUID company di esta (opsional)\nconst SENDER_MAP = {\n  // Kartu kredit digibank DBS (judul email mengandung \"digibank\")\n  'digibank': { bank_type: 'dbs', password: 'GANTI-DENGAN-PASSWORD-PDF', company_id: '' },\n\n  // Tambahkan bank lain di sini nanti, contoh:\n  // 'livin': { bank_type: 'mandiri_email', password: 'xxx', company_id: '' },\n};\n\n// Folder arsip di dalam container n8n (host: docker/n8n/data/files/gmail)\nconst SAVE_DIR = '/home/node/.n8n/files/gmail';\n// =====================================================\n\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json || {};\n  // Output Gmail memakai header kapital (From/Subject); beberapa versi kecil.\n  const fromRaw = String(j.from || j.From || (j.headers || {}).from || '');\n  const subject = String(j.subject || j.Subject || '');\n  const haystack = (fromRaw + ' ' + subject).toLowerCase();\n\n  let cfg = null;\n  let matched = '';\n  for (const [key, value] of Object.entries(SENDER_MAP)) {\n    if (haystack.includes(key.toLowerCase())) {\n      cfg = value;\n      matched = key;\n      break;\n    }\n  }\n  if (!cfg) continue; // email tidak dikenal — abaikan\n\n  const when = j.internalDate\n    ? new Date(Number(j.internalDate))\n    : (j.date ? new Date(j.date) : new Date());\n  const stampTime = isNaN(when.getTime()) ? new Date() : when;\n  const stamp = stampTime.toISOString().replace(/[:.]/g, '-').slice(0, 19);\n  const emailDate = j.date ? String(j.date) : (j.internalDate ? stampTime.toISOString() : '');\n\n  for (const [prop, binary] of Object.entries(item.binary || {})) {\n    const fileName = String(binary.fileName || binary.filename || 'statement.pdf');\n    if (!/\\.(pdf|csv)$/i.test(fileName)) continue; // hanya PDF & CSV\n    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');\n    out.push({\n      json: {\n        bank_type: cfg.bank_type,\n        password: cfg.password || '',\n        company_id: cfg.company_id || '',\n        email_from: fromRaw.slice(0, 300),\n        email_subject: subject.slice(0, 300),\n        email_date: emailDate.slice(0, 300),\n        message_id: String(j.id || j.messageId || ''),\n        file_name: fileName,\n        matched_sender: matched,\n        save_path: SAVE_DIR + '/' + stamp + '_' + (out.length + 1) + '_' + safeName,\n      },\n      binary: { data: binary },\n    });\n  }\n}\nreturn out;"
+      },
+      "id": "543cf0d3-d54d-453d-b792-30b2a766f924",
+      "name": "Mapping Pengirim",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.save_path }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "53472e6f-2590-4daf-a448-a4f5a63629ff",
+      "name": "Simpan ke Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        140,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.21.0.1:8090/api/integrations/statement",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "GANTI-DENGAN-INTEGRATION_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "pdf_file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "bank_type",
+              "value": "={{ $json.bank_type }}"
+            },
+            {
+              "name": "password",
+              "value": "={{ $json.password }}"
+            },
+            {
+              "name": "company_id",
+              "value": "={{ $json.company_id }}"
+            },
+            {
+              "name": "email_from",
+              "value": "={{ $json.email_from }}"
+            },
+            {
+              "name": "email_subject",
+              "value": "={{ $json.email_subject }}"
+            },
+            {
+              "name": "email_date",
+              "value": "={{ $json.email_date }}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $json.message_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "0c810321-acaf-4cc7-a060-34ca5c16634f",
+      "name": "Kirim ke esta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        360,
+        60
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "imported",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "duplicate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "3be1cbf2-9547-4b0b-9de9-9c5ad5e03d86",
+      "name": "Cek Hasil",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        580,
+        60
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d11d5103-9e8d-4674-92da-010ac7550c57",
+      "name": "Sukses",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -20
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "daa6b758-fe69-49ba-82ce-24cecc9f26a4",
+      "name": "Gagal — cek log",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        800,
+        140
+      ]
+    }
+  ],
+  "connections": {
+    "Mulai Manual": {
+      "main": [
+        [
+          {
+            "node": "Gmail: Ambil Riwayat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: Ambil Riwayat": {
+      "main": [
+        [
+          {
+            "node": "Mapping Pengirim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapping Pengirim": {
+      "main": [
+        [
+          {
+            "node": "Simpan ke Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simpan ke Disk": {
+      "main": [
+        [
+          {
+            "node": "Kirim ke esta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kirim ke esta": {
+      "main": [
+        [
+          {
+            "node": "Cek Hasil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Hasil": {
+      "main": [
+        [
+          {
+            "node": "Sukses",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gagal — cek log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-11-09T06:47:10.579Z",
+      "createdAt": "2026-11-09T06:47:10.579Z",
+      "role": "workflow:owner",
+      "workflowId": "898510a9-6efb-4439-a0d9-e068cb3f3b31",
+      "projectId": "5Sh7dnjSGIqJVjkG",
+      "project": {
+        "updatedAt": "2026-11-04T17:29:21.128Z",
+        "createdAt": "2026-08-27T00:21:02.501Z",
+        "id": "5Sh7dnjSGIqJVjkG",
+        "name": "Dityo Enggar <dityo.enggar@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "b8b756dd-4d06-4a91-8eaf-f9dfc70c5715"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

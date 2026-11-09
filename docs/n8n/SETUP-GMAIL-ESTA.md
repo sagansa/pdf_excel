@@ -134,6 +134,32 @@ tersebut ke akun Gmail yang sama** (hasil forward = email unread baru dengan
 lampiran tetap utuh), atau ubah sementara filter *Read Status* di node
 Gmail Trigger ke *Both*.
 
+## Backfill: memproses seluruh riwayat email lama sekali jalan
+
+Workflow utama **hanya** mengambil email yang tiba setelah ia diaktifkan
+(filter waktu `after:` di Gmail Trigger — email lama yang belum dibaca pun
+dilewati). Untuk mengisi database dengan seluruh riwayat e-statement lama,
+disediakan workflow terpisah: **"BACKFILL: Gmail → esta (riwayat
+e-statement lama)"** (`docs/n8n/gmail-esta-backfill.json`).
+
+Cara pakai:
+
+1. Pastikan password PDF sudah benar di node **Mapping Pengirim** workflow
+   backfill (salin dari workflow utama).
+2. Buka workflow backfill → klik **Execute workflow** (manual, sekali saja;
+   tidak perlu di-activate).
+3. Node "Gmail: Ambil Riwayat" mencari email dengan query Gmail
+   `digibank "e-Statement" has:attachment` — ubah `q` bila perlu mencakup
+   bank lain.
+4. Semua lampiran cocok diarsipkan + dikirim ke esta. Statement yang sudah
+   pernah ada (manual maupun hasil backfill sebelumnya) otomatis dijawab
+   `duplicate` — aman dijalankan berulang.
+5. Setelah selesai, biarkan workflow utama yang menangani email baru.
+
+Setelah backfill selesai, workflow backfill boleh dihapus atau disimpan
+untuk dipakai lagi nanti (mis. setelah menambah bank baru di mapping —
+jalankan ulang untuk menarik riwayat bank tersebut).
+
 ## Langkah 6 — Aktifkan
 
 Toggle **Active** di workflow. Selesai.
