@@ -278,6 +278,7 @@ import SectionCard from '../ui/SectionCard.vue';
 import TextInput from '../ui/TextInput.vue';
 import SearchableSelect from '../ui/SearchableSelect.vue';
 import { aiApi } from '../../api';
+import { useHistoryStore } from '../../stores/history';
 import { listLocalModels } from '../../services/localAiBridge';
 import { useNotifications } from '../../composables/useNotifications';
 
@@ -462,6 +463,7 @@ const handleSave = async () => {
     }
     const { data } = await aiApi.saveSettings(payload);
     applySettings(data.settings);
+    useHistoryStore().invalidateAiSettings();
     form.apiKey = '';
     notify.success('Pengaturan AI tersimpan.');
   } catch (err) {
@@ -485,6 +487,7 @@ const clearApiKey = async () => {
       api_key: API_KEY_CLEAR,
     });
     applySettings(data.settings);
+    useHistoryStore().invalidateAiSettings();
     form.apiKey = '';
     notify.success('API key dihapus.');
   } catch (err) {

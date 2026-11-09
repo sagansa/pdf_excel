@@ -140,7 +140,7 @@
               <span>{{ converterStore.successMessage }}</span>
             </div>
             <button
-              v-if="converterStore.aiPendingLocal?.count"
+              v-if="converterStore.aiPendingLocal?.ids?.length"
               type="button"
               class="btn-primary shrink-0 rounded-xl px-4 py-2 text-xs font-bold inline-flex items-center gap-2"
               :disabled="historyStore.aiBulkBusy"
@@ -150,8 +150,14 @@
               <i v-else class="bi bi-stars"></i>
               {{ historyStore.aiBulkBusy
                 ? `Menandai... (${historyStore.aiBulkProgress.done}/${historyStore.aiBulkProgress.total})`
-                : `Tandai ${converterStore.aiPendingLocal.count} transaksi dengan AI` }}
+                : `Tandai ${converterStore.aiPendingLocal.ids.length} transaksi dengan AI` }}
             </button>
+            <span
+              v-if="converterStore.aiPendingLocal && !converterStore.aiPendingLocal.ids.length"
+              class="text-xs opacity-70"
+            >
+              Lebih dari 100 transaksi — pilih barisnya di halaman History lalu jalankan saran AI dari sana.
+            </span>
           </div>
         </div>
       </form>
