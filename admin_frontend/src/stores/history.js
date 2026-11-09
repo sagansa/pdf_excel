@@ -731,7 +731,7 @@ export const useHistoryStore = defineStore('history', {
         }
         this.aiBusyTxnIds.push(txnId);
         try {
-            const { data } = await aiApi.suggestMarks([txnId]);
+            const { data } = await aiApi.suggestMarks([txnId], this.aiSettings);
             const result = (data.results || [])[0];
             if (!result) throw new Error('Tidak ada hasil dari server AI.');
             if (result.status !== 'suggested') {
@@ -748,8 +748,8 @@ export const useHistoryStore = defineStore('history', {
     },
 
     /** Minta saran AI untuk semua transaksi terpilih, per chunk dengan progres. */
-    async aiSuggestSelected() {
-        const ids = [...this.selectedTxnIds];
+    async aiSuggestSelected(ids = null) {
+        ids = ids || [...this.selectedTxnIds];
         if (ids.length === 0) return { suggested: 0, skipped: 0, failed: 0 };
         await this.ensureAiSettings();
         if (!this.aiSettings?.enabled) {
@@ -766,7 +766,7 @@ export const useHistoryStore = defineStore('history', {
                 // Tandai baris chunk sebagai "sedang diproses" agar spinner per-baris tampil.
                 this.aiBusyTxnIds.push(...chunk);
                 try {
-                    const { data } = await aiApi.suggestMarks(chunk);
+                    const { data } = await aiApi.suggestMarks(chunk, this.aiSettings);
                     for (const result of data.results || []) {
                         if (result.status === 'auto_applied') {
                             this.applySuggestionLocally(result.id, result);
