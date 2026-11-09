@@ -784,3 +784,65 @@ def test_resolve_rules_rule_match_stores_and_finishes(ai_engine):
     assert resolved['kind'] == 'done'
     assert resolved['result']['status'] == 'suggested'
     assert resolved['result']['ai_source'] == 'rule'
+
+
+# ---------------------------------------------------------------- prepare (bridge 1/2)
+
+
+def test_prepare_resolves_rules_and_returns_pending(ai_client, ai_engine, monkeypatch):
+    """Rule match → masuk results (tersimpan); tanpa kecocokan → pending prompt."""
+    from backend.services.ai import llm_client
+
+    def _explode(**kwargs):
+        raise AssertionError('prepare TIDAK boleh memanggil LLM')
+
+    monkeypatch.setattr(llm_client, 'chat_completion', _explode)
+
+    _insert_mark(ai_engine)
+    _insert_transaction(ai_engine, txn_id='txn-rule', description='TRSF E-BANKING 123 GOJEK', mark_id='mark-beban')
+    _insert_transaction(ai_engine, txn_id='txn-llm', description='TRSF BARU TANPA RIWAYAT 999')
+    _enable_ai(ai_engine)
+
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={
+        'transaction_ids': ['txn-rule', 'txn-llm'],
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    assert [r['id'] for r in data['results']] == ['txn-rule']
+    assert data['results'][0]['ai_source'] == 'rule'
+    assert len(data['pending']) == 1
+    prompt = data['pending'][0]
+    assert prompt['id'] == 'txn-llm'
+    assert prompt['model'] == 'qwen2.5:7b'
+    assert isinstance(prompt['messages'], list) and prompt['messages']
+    assert 'api_key' not in prompt
+
+    # Rule sudah tersimpan di prepare (source=rule, pending review).
+    with ai_engine.connect() as conn:
+        status = conn.execute(text(
+            "SELECT ai_suggested_mark_id, ai_source FROM transactions WHERE id='txn-rule'"
+        )).fetchone()._mapping
+    assert status['ai_suggested_mark_id'] == 'mark-beban'
+    assert status['ai_source'] == 'rule'
+
+
+def test_prepare_validates_and_guards(ai_client, ai_engine):
+    """ai_disabled, batch kosong/oversize, id tak dikenal → perilaku endpoint lama."""
+    _enable_ai(ai_engine, enabled=False)
+    _insert_transaction(ai_engine, txn_id='txn-x')
+
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={'transaction_ids': ['txn-x']})
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'ai_disabled'
+
+    _enable_ai(ai_engine)
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={'transaction_ids': []})
+    assert response.status_code == 400
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={
+        'transaction_ids': [f'txn-{i}' for i in range(16)]})
+    assert response.status_code == 400
+
+    # id tak dikenal → skipped di results, bukan error
+    response = ai_client.post('/api/transactions/ai-suggest/prepare', json={'transaction_ids': ['tidak-ada']})
+    assert response.status_code == 200
+    assert response.get_json()['results'][0]['status'] == 'skipped'
