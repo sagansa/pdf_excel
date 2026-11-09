@@ -26,18 +26,21 @@
         "pollTimes": {
           "item": [
             {
-              "mode": "everyX",
-              "value": 5,
-              "unit": "minutes"
+              "mode": "everyDay",
+              "hour": 0,
+              "minute": 0
             }
           ]
         },
-        "filters": {},
         "simple": false,
+        "filters": {
+          "readStatus": "both"
+        },
         "options": {
-          "downloadAttachments": true,
-          "dataPropertyAttachmentsPrefixName": "attachment_"
-        }
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        },
+        "maxResults": 200
       },
       "id": "88217d82-8807-4f16-924f-133901617f54",
       "name": "Gmail Trigger",
@@ -283,7 +286,7 @@
   "nodeGroups": [],
   "pinData": {},
   "activeVersionId": null,
-  "versionCounter": 11,
+  "versionCounter": 14,
   "triggerCount": 0,
   "sourceWorkflowId": null,
   "tags": [],

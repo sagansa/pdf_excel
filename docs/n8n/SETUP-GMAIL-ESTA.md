@@ -79,7 +79,13 @@ Anda, atau paste lewat **Import from URL/Clipboard**).
 ## Langkah 5 — Konfigurasi workflow (3 titik)
 
 1. **Gmail Trigger** → pilih kredensial Gmail dari Langkah 3.
-   Poll default 5 menit; filter default hanya email **unread**.
+   Poll: **sekali sehari jam 00:00** (mode *Every Day*, trigger menyimpan waktu
+   poll terakhir sehingga tiap tengah malam otomatis mengambil seluruh email
+   sejak poll terakhir). *Read Status* = **Both** (email yang sudah dibaca
+   tetap ikut — penting karena batch tengah malam), *Max Emails per Poll* =
+   200 (lebih dari itu akan menunggu poll berikutnya, yaitu 24 jam lagi).
+   Ingin e-statement masuk lebih cepat? Kecilkan intervalnya (mis. *Every X*
+   60 menit) — beban server polling Gmail sendiri sebenarnya sangat kecil.
 2. **Kirim ke esta** → ganti nilai header `X-API-Key` dengan nilai
    `INTEGRATION_API_KEY` dari `admin_backend/.env`:
    ```bash
@@ -191,7 +197,7 @@ Toggle **Active** di workflow. Selesai.
 | HTTP 400 `require_password` | PDF terkunci tapi `password` di SENDER_MAP kosong/salah. |
 | Node Simpan ke Disk error ENOENT | Folder arsip hilang — ulangi Langkah 2. |
 | Email terambil tapi tidak diproses / lampiran tidak muncul | Node Gmail/Trigger memakai **Simplify = ON**: pada mode itu opsi *Download Attachments* **diabaikan** oleh n8n (tersembunyi di balik `hide: {simple:[true]}` di kode node). Pastikan **Simplify = OFF** agar lampiran ikut ter-download (output JSON-nya jadi bentuk mentah — node Mapping sudah menanganinya). |
-| Email tidak memicu workflow | Email tiba **sebelum workflow diaktifkan** (trigger hanya mengambil email yang masuk setelah aktif — filter waktu `after:`; email lama yang belum dibaca pun dilewati). Solusi: **forward emailnya ke akun sendiri**. Kemungkinan lain: emailnya sudah terbaca sebelum sempat ter-poll (ubah *Read Status* ke *Both* — hanya membantu untuk email baru), pengirim/subjek tidak cocok dengan `SENDER_MAP`, atau workflow belum Active. |
+| Email tidak memicu workflow | Email tiba **sebelum workflow diaktifkan** (trigger hanya mengambil email yang masuk setelah aktif — filter waktu `after:`; email lama yang belum dibaca pun dilewati). Solusi: **forward emailnya ke akun sendiri** atau jalankan workflow BACKFILL. Kemungkinan lain: pengirim/subjek tidak cocok dengan `SENDER_MAP`, workflow belum Active, atau email datang **setelah jam 00:00 terakhir** dan baru akan diproses poll tengah malam berikutnya (poll harian). |
 | Eksekusi kosong/tidak ada item | Mapping Pengirim mem-filter semuanya — cek output node di Executions. |
 | Lampiran > 10 MB | esta menolak file > 10 MB (sama seperti upload manual). |
 
