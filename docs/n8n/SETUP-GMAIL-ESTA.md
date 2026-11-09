@@ -102,9 +102,12 @@ Anda, atau paste lewat **Import from URL/Clipboard**).
    ```js
    const SENDER_MAP = {
      'digibank': { bank_type: 'dbs', password: 'password-pdf', company_id: '' },
-     'livin':    { bank_type: 'mandiri_email', password: 'xxx', company_id: '' },
+     'mandiri':  { bank_type: 'mandiri_email', password: 'password-pdf', company_id: '' },
    };
    ```
+   Catatan: e-statement Mandiri "Consolidated Statement" dicoba dengan parser
+   `mandiri_email` — jika formatnya berbeda dan gagal `parse_failed`, parser
+   perlu disesuaikan di `admin_backend/bank_parsers/`.
    - Key = substring yang dicocokkan terhadap **nama+alamat pengirim DAN
      subjek email** (longgar, huruf kecil) — mis. key `digibank` cocok dengan
      subjek "CONFIDENTIAL - digibank Visa Travel Platinum Card e-Statement …".
