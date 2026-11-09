@@ -88,21 +88,51 @@ Anda, atau paste lewat **Import from URL/Clipboard**).
    URL default `http://172.21.0.1:8090/api/integrations/statement` (jalur
    internal docker host → sudah diverifikasi konektifnya). Alternatif:
    `https://esta.sagansa.id/api/integrations/statement`.
-3. **Mapping Pengirim** → isi `SENDER_MAP`:
+3. **Mapping Pengirim** → isi `SENDER_MAP` (lihat juga bagian
+   [Meletakkan password PDF](#meletakkan-password-pdf) di bawah):
    ```js
    const SENDER_MAP = {
-     'notification@livin.mandiri.com': { bank_type: 'mandiri_email', password: 'password-pdf', company_id: '' },
-     'e-statement@bank.com':           { bank_type: 'bca',           password: '',            company_id: '' },
+     'digibank': { bank_type: 'dbs', password: 'password-pdf', company_id: '' },
+     'livin':    { bank_type: 'mandiri_email', password: 'xxx', company_id: '' },
    };
    ```
-   - Key = substring alamat pengirim (dicocokkan longgar, huruf kecil).
+   - Key = substring yang dicocokkan terhadap **nama+alamat pengirim DAN
+     subjek email** (longgar, huruf kecil) — mis. key `digibank` cocok dengan
+     subjek "CONFIDENTIAL - digibank Visa Travel Platinum Card e-Statement …".
    - `bank_type` valid: `bca, mandiri, mandiri_email, dbs, ccbca, ccmandiri,
      bri, saqu, blu` (BRI = CSV saja; bank lain = PDF).
    - `password` = password PDF (kosongkan jika tidak terkunci).
    - `company_id` = UUID company di esta (opsional).
 
-Email dari pengirim yang **tidak** ada di map akan diabaikan. Lampiran non
+Email yang tidak cocok dengan map akan diabaikan. Lampiran non
 PDF/CSV diabaikan.
+
+## Meletakkan password PDF
+
+Password e-statement disimpan di **node "Mapping Pengirim"**, dalam tabel
+`SENDER_MAP` — kolom `password`:
+
+1. Buka workflow di n8n → klik node **Mapping Pengirim**.
+2. Di editor kode, cari baris:
+   ```js
+   'digibank': { bank_type: 'dbs', password: 'GANTI-DENGAN-PASSWORD-PDF', company_id: '' },
+   ```
+3. Ganti `GANTI-DENGAN-PASSWORD-PDF` dengan password PDF Anda (tanpa tanda
+   kutip diubah), lalu **Save**.
+
+Password dikirim otomatis oleh workflow ke esta saat memproses lampiran —
+sama seperti Anda mengetiknya di form upload manual. Kalau password salah,
+eksekusi berakhir di cabang "Gagal" dengan respons
+`require_password`/error dari esta, dan emailnya tinggal diproses manual
+via UI esta seperti biasa.
+
+### Menguji dengan email lama (sudah terbaca)
+
+Gmail Trigger default hanya memicu email **unread**. Email e-statement lama
+yang sudah terbaca tidak akan diproses. Cara mengujinya: **forward email
+tersebut ke akun Gmail yang sama** (hasil forward = email unread baru dengan
+lampiran tetap utuh), atau ubah sementara filter *Read Status* di node
+Gmail Trigger ke *Both*.
 
 ## Langkah 6 — Aktifkan
 
