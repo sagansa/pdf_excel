@@ -22,6 +22,7 @@ from backend.routes.amortization.amortization_item_bp import amortization_item_b
 from backend.routes.amortization.amortization_asset_bp import amortization_asset_bp
 from backend.routes.amortization.amortization_config_bp import amortization_config_bp
 from backend.routes.uploads.pdf_bp import pdf_bp
+from backend.routes.integrations.n8n_bp import integrations_bp
 from backend.routes.rental.rental_location_bp import rental_location_bp
 from backend.routes.rental.rental_store_bp import rental_store_bp
 from backend.routes.rental.rental_contract_bp import rental_contract_bp
@@ -83,6 +84,7 @@ app.register_blueprint(amortization_item_bp)
 app.register_blueprint(amortization_asset_bp)
 app.register_blueprint(amortization_config_bp)
 app.register_blueprint(pdf_bp)
+app.register_blueprint(integrations_bp)
 app.register_blueprint(rental_location_bp)
 app.register_blueprint(rental_store_bp)
 app.register_blueprint(rental_contract_bp)
@@ -107,6 +109,8 @@ PUBLIC_API_PATHS = {
     '/api/auth/login',
     '/api/auth/forgot-password',
     '/api/auth/reset-password',
+    # Integrasi n8n: tanpa session — diautentikasi API key di blueprint-nya.
+    '/api/integrations/statement',
 }
 
 

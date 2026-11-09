@@ -1,0 +1,281 @@
+{
+  "id": "22298cc6-b334-4298-9e2f-00ded7746497",
+  "name": "Gmail → esta: auto-import e-statement",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Gmail → esta: auto-import e-statement\n\n**Yang perlu diatur setelah import:**\n1. Node **Gmail Trigger** → pilih kredensial Gmail (OAuth2).\n2. Node **Kirim ke esta** → ganti header `X-API-Key` dengan nilai\n   `INTEGRATION_API_KEY` dari `admin_backend/.env`.\n3. Node **Mapping Pengirim** → isi `SENDER_MAP` (pengirim → bank_type,\n   password PDF, company_id).\n\nArsip file: `/home/gargar/docker/n8n/data/files/gmail/` (host).\nAlur: email → mapping → simpan file → POST ke esta → sukses/gagal.",
+        "height": 340,
+        "width": 420,
+        "color": 4
+      },
+      "id": "15fca32f-ae4b-4bf4-b0d1-4fa44fa8c33c",
+      "name": "Catatan",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "unit": "minutes",
+              "value": 5
+            }
+          ]
+        },
+        "options": {
+          "downloadAttachments": true,
+          "dataPropertyAttachmentsPrefixName": "attachment_"
+        }
+      },
+      "id": "88217d82-8807-4f16-924f-133901617f54",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -420,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ============ KONFIGURASI — ubah di sini ============\n// Mapping pengirim e-statement -> konfigurasi bank untuk esta.\n// Key dicocokkan sebagai SUBSTRING alamat pengirim (huruf kecil).\n// bank_type yang valid: bca, mandiri, mandiri_email, dbs, ccbca,\n//   ccmandiri, bri, saqu, blu\n// password: password PDF e-statement (kosongkan jika tidak terkunci).\n// company_id: UUID company di esta (opsional, kosongkan jika tidak dipakai).\nconst SENDER_MAP = {\n  // Contoh — sesuaikan dengan pengirim e-statement Anda:\n  // 'notification@livin.mandiri.com': { bank_type: 'mandiri_email', password: 'xxxxxx', company_id: '' },\n  // 'e-statement@bca.co.id':          { bank_type: 'bca',           password: '',       company_id: '' },\n  // 'bri':                            { bank_type: 'bri',           password: '',       company_id: '' },\n};\n\n// Folder arsip di dalam container n8n.\n// Di host: /home/gargar/docker/n8n/data/files/gmail/\nconst SAVE_DIR = '/home/node/.n8n/files/gmail';\n// =====================================================\n\nconst out = [];\nfor (const item of $input.all()) {\n  const fromRaw = String(item.json.from || (item.json.headers || {}).from || '');\n  const match = fromRaw.match(/<([^>]+)>/);\n  const sender = (match ? match[1] : fromRaw).toLowerCase().trim();\n\n  let cfg = null;\n  let matched = '';\n  for (const [key, value] of Object.entries(SENDER_MAP)) {\n    if (sender.includes(key.toLowerCase())) {\n      cfg = value;\n      matched = key;\n      break;\n    }\n  }\n  if (!cfg) continue; // pengirim tidak dikenal — abaikan emailnya\n\n  for (const [prop, binary] of Object.entries(item.binary || {})) {\n    const fileName = String(binary.fileName || binary.filename || 'statement.pdf');\n    if (!/\\.(pdf|csv)$/i.test(fileName)) continue; // hanya PDF & CSV\n    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);\n    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');\n    out.push({\n      json: {\n        bank_type: cfg.bank_type,\n        password: cfg.password || '',\n        company_id: cfg.company_id || '',\n        email_from: fromRaw.slice(0, 300),\n        email_subject: String(item.json.subject || '').slice(0, 300),\n        email_date: String(item.json.date || ''),\n        message_id: String(item.json.id || ''),\n        file_name: fileName,\n        matched_sender: matched,\n        save_path: SAVE_DIR + '/' + stamp + '_' + safeName,\n      },\n      binary: { data: binary },\n    });\n  }\n}\nreturn out;"
+      },
+      "id": "bec07242-dd53-4392-b44d-6bf681f6cd4e",
+      "name": "Mapping Pengirim",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.save_path }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "71be5f26-b109-4718-a824-d3e2bf57d14b",
+      "name": "Simpan ke Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        20,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.21.0.1:8090/api/integrations/statement",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "GANTI-DENGAN-INTEGRATION_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "pdf_file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "bank_type",
+              "value": "={{ $json.bank_type }}"
+            },
+            {
+              "name": "password",
+              "value": "={{ $json.password }}"
+            },
+            {
+              "name": "company_id",
+              "value": "={{ $json.company_id }}"
+            },
+            {
+              "name": "email_from",
+              "value": "={{ $json.email_from }}"
+            },
+            {
+              "name": "email_subject",
+              "value": "={{ $json.email_subject }}"
+            },
+            {
+              "name": "email_date",
+              "value": "={{ $json.email_date }}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $json.message_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "46902074-a3a1-4c97-80c6-a45d69c6b414",
+      "name": "Kirim ke esta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        240,
+        40
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-imported",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "imported",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c-duplicate",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "duplicate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "38d9849c-0f87-4fdd-83d3-fdd5ca963ae4",
+      "name": "Cek Hasil",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        40
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4a5ef0d3-b3e0-4346-9c15-dbb29463ac09",
+      "name": "Sukses — terimport ke esta",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        680,
+        -40
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "a2638f77-02a7-4389-9d36-93c661d50157",
+      "name": "Gagal — cek Executions & log esta",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        680,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Mapping Pengirim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapping Pengirim": {
+      "main": [
+        [
+          {
+            "node": "Simpan ke Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simpan ke Disk": {
+      "main": [
+        [
+          {
+            "node": "Kirim ke esta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kirim ke esta": {
+      "main": [
+        [
+          {
+            "node": "Cek Hasil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Hasil": {
+      "main": [
+        [
+          {
+            "node": "Sukses — terimport ke esta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gagal — cek Executions & log esta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
