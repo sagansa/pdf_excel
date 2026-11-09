@@ -921,3 +921,18 @@ def test_submit_rejects_bad_body(ai_client, ai_engine):
     assert response.status_code == 400
     response = ai_client.post('/api/transactions/ai-suggest/submit', json={})
     assert response.status_code == 400
+
+
+# ---------------------------------------------------------------- unit: resolve_ai_pass_mode
+
+
+def test_resolve_ai_pass_mode():
+    """Bridge + enabled → skip; selain itu thread (termasuk disabled — thread sendiri yang me-skip)."""
+    from backend.services.ai.mark_pass import resolve_ai_pass_mode
+
+    assert resolve_ai_pass_mode({'enabled': True, 'provider': 'ollama'}) == 'skip'
+    assert resolve_ai_pass_mode({'enabled': True, 'provider': 'lmstudio'}) == 'skip'
+    assert resolve_ai_pass_mode({'enabled': True, 'provider': 'zai'}) == 'thread'
+    assert resolve_ai_pass_mode({'enabled': True, 'provider': 'custom'}) == 'thread'
+    assert resolve_ai_pass_mode({'enabled': False, 'provider': 'ollama'}) == 'thread'
+    assert resolve_ai_pass_mode({}) == 'thread'

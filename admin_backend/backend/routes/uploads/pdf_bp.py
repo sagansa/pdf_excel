@@ -298,12 +298,26 @@ def convert_pdf():
                 app.logger.error(f"Database upload failed: {db_error}")
                 return _error_response(f'Failed to save transactions to database: {db_error}', 500)
 
-            # Pass AI di latar belakang (rule riwayat + LLM; auto-apply sesuai setelan).
-            # Kegagalan pass tidak pernah memengaruhi keberhasilan upload.
+            # Pass AI setelah konversi: thread latar belakang untuk provider
+            # server-side; provider lokal (laptop user) dilewati — dijalankan
+            # dari browser. Kegagalan pass tidak pernah memengaruhi upload.
             ai_pass_queued = False
+            ai_pass_mode = 'off'
             try:
-                from backend.services.ai.mark_pass import queue_ai_mark_pass
-                ai_pass_queued = queue_ai_mark_pass(inserted_ids)
+                from backend.db.session import get_db_engine
+                from backend.services.ai.llm_client import get_ai_settings
+                from backend.services.ai.mark_pass import (
+                    BRIDGE_PASS_ID_LIMIT,
+                    queue_ai_mark_pass,
+                    resolve_ai_pass_mode,
+                )
+                ai_engine, _ = get_db_engine()
+                if ai_engine is not None:
+                    with ai_engine.connect() as conn:
+                        ai_config = get_ai_settings(conn)
+                    ai_pass_mode = resolve_ai_pass_mode(ai_config)
+                if ai_pass_mode == 'thread':
+                    ai_pass_queued = queue_ai_mark_pass(inserted_ids)
             except Exception:
                 app.logger.exception('Gagal menjadwalkan AI mark pass')
 
@@ -311,6 +325,11 @@ def convert_pdf():
             if ai_pass_queued:
                 response.headers['X-AI-Pass'] = 'queued'
                 response.headers['X-AI-Pass-Count'] = str(len(inserted_ids))
+            elif ai_pass_mode == 'skip':
+                response.headers['X-AI-Pass'] = 'skipped-local'
+                response.headers['X-AI-Pass-Count'] = str(len(inserted_ids))
+                if len(inserted_ids) <= BRIDGE_PASS_ID_LIMIT:
+                    response.headers['X-AI-Pass-Ids'] = ','.join(str(i) for i in inserted_ids)
             return response
 
         except Exception as exc:

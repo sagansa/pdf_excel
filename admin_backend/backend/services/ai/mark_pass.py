@@ -14,6 +14,23 @@ from backend.services.ai import llm_client, mark_suggester
 
 logger = logging.getLogger(__name__)
 
+# Provider lokal dijalankan dari BROWSER (laptop user) — server tidak dapat
+# menjangkau localhost user, jadi pass latar belakang dilewati untuk mereka.
+BRIDGE_PASS_ID_LIMIT = 100
+
+
+def resolve_ai_pass_mode(config):
+    """Putuskan jalur pass AI setelah konversi PDF berdasarkan settings AI.
+
+    'skip'   — provider lokal (browser-bridge): server tidak dapat memanggil
+               LLM di laptop user; pengguna menjalankan saran dari browser.
+    'thread' — jalur lama: queue daemon thread (z.ai/custom; thread sendiri
+               me-skip bila AI disabled atau model belum diatur).
+    """
+    if config.get('enabled') and config.get('provider') in llm_client.BRIDGE_PROVIDERS:
+        return 'skip'
+    return 'thread'
+
 
 def queue_ai_mark_pass(txn_ids):
     """Jadwalkan pass AI untuk daftar id transaksi; balikan tanpa memblokir."""
