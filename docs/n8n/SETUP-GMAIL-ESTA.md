@@ -81,9 +81,12 @@ Anda, atau paste lewat **Import from URL/Clipboard**).
 1. **Gmail Trigger** → pilih kredensial Gmail dari Langkah 3.
    Poll: **sekali sehari jam 00:00** (mode *Every Day*, trigger menyimpan waktu
    poll terakhir sehingga tiap tengah malam otomatis mengambil seluruh email
-   sejak poll terakhir). *Read Status* = **Both** (email yang sudah dibaca
-   tetap ikut — penting karena batch tengah malam), *Max Emails per Poll* =
-   200 (lebih dari itu akan menunggu poll berikutnya, yaitu 24 jam lagi).
+   sejak poll terakhir). *Search Filter (q)* = `digibank` (hanya email
+   e-statement yang discan — listing Gmail maks 100/halaman, tanpa filter ini
+   mailbox ramai bisa menggeser e-statement keluar halaman), *Read Status* =
+   **Both** (email yang sudah dibaca tetap ikut), *Max Emails per Poll* = 200.
+   **Saat menambah bank baru: ubah filter `q` ini juga** (mis.
+   `digibank OR livin`), selain `SENDER_MAP` di node Mapping.
    Ingin e-statement masuk lebih cepat? Kecilkan intervalnya (mis. *Every X*
    60 menit) — beban server polling Gmail sendiri sebenarnya sangat kecil.
 2. **Kirim ke esta** → ganti nilai header `X-API-Key` dengan nilai

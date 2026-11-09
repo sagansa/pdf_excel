@@ -7,7 +7,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Gmail → esta: auto-import e-statement\n\n**Yang perlu diatur setelah import:**\n1. Node **Gmail Trigger** → pilih kredensial Gmail (OAuth2).\n2. Node **Kirim ke esta** → ganti header `X-API-Key` dengan nilai\n   `INTEGRATION_API_KEY` dari `admin_backend/.env`.\n3. Node **Mapping Pengirim** → isi `SENDER_MAP` (pengirim → bank_type,\n   password PDF, company_id).\n\nArsip file: `/home/gargar/docker/n8n/data/files/gmail/` (host).\nAlur: email → mapping → simpan file → POST ke esta → sukses/gagal.",
+        "content": "## Gmail → esta: auto-import e-statement\n\n**Yang perlu diatur setelah import:**\n1. Node **Gmail Trigger** → pilih kredensial Gmail (OAuth2).\n2. Node **Kirim ke esta** → ganti header `X-API-Key` dengan nilai\n   `INTEGRATION_API_KEY` dari `admin_backend/.env`.\n3. Node **Mapping Pengirim** → isi `SENDER_MAP` (pengirim → bank_type,\n   password PDF, company_id).\n\n**PENTING saat menambah bank baru:** ubah DUA tempat —\n- Filter pencarian di node **Gmail Trigger** (mis. `digibank OR livin`)\n- `SENDER_MAP` di node **Mapping Pengirim**\n\nJadwal: scan harian jam 00:00 (email sejak poll terakhir, termasuk\nyang sudah dibaca). Arsip file: `/home/gargar/docker/n8n/data/files/gmail/`.\nRiwayat lama: jalankan workflow \"BACKFILL: Gmail → esta\".",
         "height": 340,
         "width": 420,
         "color": 4
@@ -34,6 +34,7 @@
         },
         "simple": false,
         "filters": {
+          "q": "digibank",
           "readStatus": "both"
         },
         "options": {
@@ -286,7 +287,7 @@
   "nodeGroups": [],
   "pinData": {},
   "activeVersionId": null,
-  "versionCounter": 14,
+  "versionCounter": 15,
   "triggerCount": 0,
   "sourceWorkflowId": null,
   "tags": [],
