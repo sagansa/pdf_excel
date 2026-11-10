@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from bank_parsers.parser_common import (
     conversion_timestamp,
@@ -70,8 +70,8 @@ def parse_statement(csv_path):
             description = f"{desk_tran} {remark_custom}".strip() if remark_custom else desk_tran
             
             # Amount - use MUTASI_DEBET or MUTASI_KREDIT (whichever is non-zero)
-            mutasi_debet = _parse_decimal(str(row.get('MUTASI_DEBET', '0')))
-            mutasi_kredit = _parse_decimal(str(row.get('MUTASI_KREDIT', '0')))
+            mutasi_debet = _parse_decimal(row.get('MUTASI_DEBET', '0'))
+            mutasi_kredit = _parse_decimal(row.get('MUTASI_KREDIT', '0'))
             
             # Determine amount and DB/CR
             if mutasi_debet > 0:
@@ -89,7 +89,7 @@ def parse_statement(csv_path):
             amount_str = format(amount, '.2f')
             
             # Balance
-            balance = _parse_decimal(str(row.get('SALDO_AKHIR_MUTASI', '0')))
+            balance = _parse_decimal(row.get('SALDO_AKHIR_MUTASI', '0'))
             balance_str = format(balance, '.2f')
             
             standard_rows.append({
@@ -137,12 +137,24 @@ def _parse_date(date_str: str) -> str:
     return date_str
 
 
-def _parse_decimal(value: str) -> Decimal:
+def _parse_decimal(value) -> Decimal:
     """Parse decimal value from string, handling BRI format"""
-    if not value or value == '.00' or value.lower() == 'nan':
+    value_str = str(value) if value is not None else ''
+    if not value_str or value_str == '.00' or value_str.lower() == 'nan':
         return Decimal('0')
 
-    cleaned = ''.join(c for c in value.strip().replace(' ', '') if c.isdigit() or c in '.-')
+    # read_csv bisa meng-koerce kolom numerik ke float — str(float) seperti
+    # '1250000.0' akan salah dibaca heuristik pemisah ribuan di bawah
+    # (titik dibuang → 10x lipat). Angka asli diteruskan langsung.
+    if isinstance(value, (int, float, Decimal)):
+        try:
+            return Decimal(str(value))
+        except InvalidOperation:
+            return Decimal('0')
+
+    # Koma dipertahankan — parse_decimal_amount yang menentukan desimal vs
+    # pemisah ribuan (format lokal '1.250.000,00' → 1250000.00).
+    cleaned = ''.join(c for c in value_str.strip().replace(' ', '') if c.isdigit() or c in '.,-')
     if not cleaned or cleaned == '.':
         return Decimal('0')
 

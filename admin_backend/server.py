@@ -29,6 +29,7 @@ from backend.routes.rental.rental_contract_bp import rental_contract_bp
 from backend.routes.inventory.hpp_bp import hpp_bp
 from backend.routes.master_data.initial_capital_bp import initial_capital_bp
 from backend.routes.reporting.general_ledger_bp import general_ledger_bp
+from backend.routes.reporting.integrity_bp import integrity_bp
 from backend.routes.inventory.remaining_storage_bp import remaining_storage_bp
 from backend.routes.inventory.sales_by_date_bp import sales_by_date_bp
 from backend.routes.inventory.stock_comparison_bp import stock_comparison_bp
@@ -91,6 +92,7 @@ app.register_blueprint(rental_contract_bp)
 app.register_blueprint(hpp_bp)
 app.register_blueprint(initial_capital_bp)
 app.register_blueprint(general_ledger_bp)
+app.register_blueprint(integrity_bp)
 app.register_blueprint(remaining_storage_bp)
 app.register_blueprint(sales_by_date_bp)
 app.register_blueprint(stock_comparison_bp)
@@ -111,6 +113,7 @@ PUBLIC_API_PATHS = {
     '/api/auth/reset-password',
     # Integrasi n8n: tanpa session — diautentikasi API key di blueprint-nya.
     '/api/integrations/statement',
+    '/api/integrations/statement-check',
 }
 
 

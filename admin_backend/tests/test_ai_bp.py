@@ -936,3 +936,63 @@ def test_resolve_ai_pass_mode():
     assert resolve_ai_pass_mode({'enabled': True, 'provider': 'custom'}) == 'thread'
     assert resolve_ai_pass_mode({'enabled': False, 'provider': 'ollama'}) == 'thread'
     assert resolve_ai_pass_mode({}) == 'thread'
+
+
+# ------------------------------------------------- Fase 3: review queue endpoint
+
+
+def _insert_pending(ai_engine, txn_id, confidence, status='pending', description='TRSF GOJEK'):
+    with ai_engine.begin() as conn:
+        conn.execute(text(
+            'INSERT INTO transactions (id, txn_date, description, amount, db_cr, bank_code, '
+            'ai_suggested_mark_id, ai_confidence, ai_source, ai_status) VALUES '
+            '(:id, :d, :desc, 50000, :dbcr, :bank, :mark, :conf, :source, :status)'
+        ), {
+            'id': txn_id, 'd': '2026-01-15', 'desc': description,
+            'dbcr': 'CR', 'bank': 'BCA', 'mark': 'mark-beban',
+            'conf': confidence, 'source': 'llm', 'status': status,
+        })
+
+
+def test_review_queue_menampilkan_pending_di_bawah_threshold(ai_client, ai_engine):
+    _insert_mark(ai_engine)
+    _insert_pending(ai_engine, 'txn-low', 0.55)     # di bawah → masuk queue
+    _insert_pending(ai_engine, 'txn-mid', 0.75)     # di bawah → masuk
+    _insert_pending(ai_engine, 'txn-high', 0.95)    # di atas threshold → tidak
+    _insert_pending(ai_engine, 'txn-done', 0.55, status='accepted')  # sudah diputus → tidak
+
+    response = ai_client.get('/api/transactions/ai-review-queue')
+    assert response.status_code == 200
+    data = response.get_json()
+    ids = [item['id'] for item in data['items']]
+    assert 'txn-low' in ids
+    assert 'txn-mid' in ids
+    assert 'txn-high' not in ids
+    assert 'txn-done' not in ids
+    assert data['total'] == 2
+    assert data['threshold'] == pytest.approx(0.9)
+
+
+def test_review_queue_threshold_bisa_dioverride(ai_client, ai_engine):
+    _insert_mark(ai_engine)
+    _insert_pending(ai_engine, 'txn-low', 0.55)
+    _insert_pending(ai_engine, 'txn-mid', 0.75)
+
+    response = ai_client.get('/api/transactions/ai-review-queue?threshold=0.6')
+    data = response.get_json()
+    ids = [item['id'] for item in data['items']]
+    assert 'txn-low' in ids
+    assert 'txn-mid' not in ids
+
+
+def test_review_queue_tanpa_ai_columns_tidak_error(ai_client, ai_engine):
+    """Skema lama (belum migrasi) → queue kosong, bukan 500."""
+    with ai_engine.begin() as conn:
+        conn.execute(text('DROP TABLE transactions'))
+        conn.execute(text('''CREATE TABLE transactions (
+            id TEXT PRIMARY KEY, txn_date TEXT, description TEXT,
+            amount REAL, db_cr TEXT, bank_code TEXT, mark_id TEXT
+        )'''))
+    response = ai_client.get('/api/transactions/ai-review-queue')
+    assert response.status_code == 200
+    assert response.get_json()['items'] == []

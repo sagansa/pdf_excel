@@ -109,7 +109,7 @@ def normalize_bank_account_number(value):
     return candidate[:100]
 
 
-def build_transaction_record(row, bank_code, source_file, file_hash, now=None):
+def build_transaction_record(row, bank_code, source_file, file_hash, now=None, email_meta=None):
     now = now or datetime.now()
     txn_date = (
         null_if_nan(row.get('txn_date'))
@@ -124,6 +124,18 @@ def build_transaction_record(row, bank_code, source_file, file_hash, now=None):
     amount = null_if_nan(row.get('amount')) or null_if_nan(row.get('Amount'))
     db_cr = null_if_nan(row.get('db_cr')) or null_if_nan(row.get('DB/CR')) or 'DB'
     created_at = null_if_nan(row.get('created_at')) or now
+    email_meta = email_meta or {}
+
+    def _email_field(key, limit):
+        value = str(email_meta.get(key) or '').strip()
+        return value[:limit] or None
+
+    # Saldo berjalan hasil parse statement (kolom "balance") — parser semua
+    # bank sudah menghasilkannya; dipakai laporan cek kontinuitas saldo.
+    balance_raw = null_if_nan(row.get('balance'))
+    running_balance = parse_amount(balance_raw) if balance_raw is not None else None
+    currency_raw = null_if_nan(row.get('currency'))
+    currency = str(currency_raw).strip()[:8] or None if currency_raw is not None else None
 
     return {
         'id': row.get('id') or None,
@@ -143,4 +155,10 @@ def build_transaction_record(row, bank_code, source_file, file_hash, now=None):
         'company_id': normalize_company_id(row.get('company_id')),
         'created_at': created_at,
         'updated_at': now,
+        'email_from': _email_field('email_from', 300),
+        'email_subject': _email_field('email_subject', 300),
+        'email_date': _email_field('email_date', 60),
+        'email_message_id': _email_field('email_message_id', 300),
+        'running_balance': running_balance,
+        'currency': currency,
     }

@@ -11,7 +11,8 @@ from backend.services.transactions.transaction_utils import build_transaction_re
 logger = logging.getLogger(__name__)
 
 
-def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, file_hash: str):
+def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, file_hash: str,
+                            email_meta=None):
     """Simpan transaksi hasil parse; balikan (ok, error_atau_None, inserted_ids)."""
     engine, error_msg = get_db_engine()
     if engine is None:
@@ -21,7 +22,9 @@ def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, 
     skipped_rows = 0
     for _, row in df.iterrows():
         try:
-            record = build_transaction_record(row, bank_code, source_file, file_hash)
+            record = build_transaction_record(
+                row, bank_code, source_file, file_hash, email_meta=email_meta,
+            )
             record['id'] = str(uuid.uuid4())
             records.append(record)
         except (TypeError, ValueError, AttributeError) as exc:
@@ -52,6 +55,12 @@ def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, 
                     'company_id',
                     'created_at',
                     'updated_at',
+                    'email_from',
+                    'email_subject',
+                    'email_date',
+                    'email_message_id',
+                    'running_balance',
+                    'currency',
                 ]
                 if column in transaction_columns
             ]

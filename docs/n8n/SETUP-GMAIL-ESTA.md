@@ -6,11 +6,16 @@ transaksi otomatis masuk database (termasuk AI mark pass, sama seperti upload
 manual).
 
 ```
-Gmail ──(poll 5 menit)──> n8n "Gmail → esta: auto-import e-statement"
+Gmail ──(poll harian 00:00)──> n8n "Gmail → esta: auto-import e-statement"
   │ 1. Mapping Pengirim   : cocokkan pengirim → bank_type/password/company_id
   │ 2. Simpan ke Disk     : /home/gargar/docker/n8n/data/files/gmail/
   │ 3. Kirim ke esta      : POST http://172.21.0.1:8090/api/integrations/statement
   └ 4. Cek Hasil          : imported/duplicate = sukses, selain itu = gagal
+
+Jadwal 00:30 ──> "Cek Statement Hilang"
+  └ POST http://172.21.0.1:8090/api/integrations/statement-check
+    → esta mengecek statement bulan lalu per akun; yang belum masuk
+      dikirim alert Telegram (jika dikonfigurasi).
 ```
 
 Yang sudah disiapkan di repo ini:
@@ -18,9 +23,11 @@ Yang sudah disiapkan di repo ini:
 | Perubahan | File |
 |---|---|
 | Endpoint integrasi (API key) | `admin_backend/backend/routes/integrations/n8n_bp.py` |
+| Endpoint cek statement hilang | `admin_backend/backend/routes/integrations/n8n_bp.py` |
+| Notifikasi Telegram (fail-soft) | `admin_backend/backend/services/notifications/telegram.py` |
 | Registrasi endpoint | `admin_backend/server.py` |
-| Template env | `admin_backend/.env.example` (var `INTEGRATION_API_KEY`) |
-| Test | `admin_backend/tests/test_integrations_bp.py` |
+| Template env | `admin_backend/.env.example` (var `INTEGRATION_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) |
+| Test | `admin_backend/tests/test_integrations_bp.py`, `test_telegram.py`, `test_statement_expectations.py` |
 | Workflow n8n siap import | `docs/n8n/gmail-esta-e-statement.json` |
 
 Endpoint esta membaca API key dari env `INTEGRATION_API_KEY` di
@@ -81,10 +88,11 @@ Anda, atau paste lewat **Import from URL/Clipboard**).
 1. **Gmail Trigger** → pilih kredensial Gmail dari Langkah 3.
    Poll: **sekali sehari jam 00:00** (mode *Every Day*, trigger menyimpan waktu
    poll terakhir sehingga tiap tengah malam otomatis mengambil seluruh email
-   sejak poll terakhir). *Search Filter (q)* = `digibank` (hanya email
+   sejak poll terakhir). *Search Filter (q)* =
+   `digibank OR "Consolidated Statement Bank Mandiri"` (hanya email
    e-statement yang discan — listing Gmail maks 100/halaman, tanpa filter ini
    mailbox ramai bisa menggeser e-statement keluar halaman), *Read Status* =
-   **Both** (email yang sudah dibaca tetap ikut), *Max Emails per Poll* = 200.
+   **Both** (email yang sudah dibaca tetap ikut), *Max Emails per Poll* = 50.
    **Saat menambah bank baru: ubah filter `q` ini juga** (mis.
    `digibank OR livin`), selain `SENDER_MAP` di node Mapping.
    Ingin e-statement masuk lebih cepat? Kecilkan intervalnya (mis. *Every X*
@@ -95,8 +103,10 @@ Anda, atau paste lewat **Import from URL/Clipboard**).
    grep INTEGRATION_API_KEY /home/gargar/esta/admin_backend/.env
    ```
    URL default `http://172.21.0.1:8090/api/integrations/statement` (jalur
-   internal docker host → sudah diverifikasi konektifnya). Alternatif:
+   internal docker host → sudah diverifikasi konektivitasnya). Alternatif:
    `https://esta.sagansa.id/api/integrations/statement`.
+   Node **Cek Statement Hilang** di branch bawah memakai key yang sama —
+   ganti juga header `X-API-Key`-nya.
 3. **Mapping Pengirim** → isi `SENDER_MAP` (lihat juga bagian
    [Meletakkan password PDF](#meletakkan-password-pdf) di bawah):
    ```js
@@ -172,6 +182,52 @@ Setelah backfill selesai, workflow backfill boleh dihapus atau disimpan
 untuk dipakai lagi nanti (mis. setelah menambah bank baru di mapping —
 jalankan ulang untuk menarik riwayat bank tersebut).
 
+## Notifikasi Telegram (opsional, tapi disarankan)
+
+esta mengirim alert Telegram saat ada masalah pipeline — **bukan** setiap
+import sukses:
+
+1. **Import gagal**: `parse_failed`, PDF tidak bisa dibuka (password salah),
+   atau error database. Pesan berisi bank, nama file, kode error, dan
+   Message-ID email sumber.
+2. **Statement bulanan belum masuk**: dicek branch "Cek Statement Hilang"
+   (jadwal harian 00:30). Untuk setiap akun di halaman *Management → akun
+   bank* (`bank_account_definitions`) yang aktif bulan lalu tapi tidak punya
+   transaksi bulan itu, dikirim satu baris alert — dengan grace period
+   sampai tanggal 5 (bank butuh beberapa hari awal bulan untuk mengirim
+   e-statement). Akun yang didefinisikan tapi belum pernah dipakai tidak
+   di-alert.
+
+Setup:
+
+1. Buat bot via [@BotFather](https://t.me/BotFather) → dapatkan token.
+2. Kirim pesan apa pun ke bot Anda, lalu buka
+   `https://api.telegram.org/bot<TOKEN>/getUpdates` → salin `chat.id`.
+3. Isi `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` di `admin_backend/.env`,
+   lalu redeploy (`./deploy.sh --no-pull`).
+
+**Fail-soft**: tanpa env Telegram, semua tetap jalan — notifikasi hanya
+dilewati (tercatat di log). Kegagalan kirim tidak pernah menggagalkan import.
+
+Cek manual kapan saja (mis. untuk bulan lalu):
+
+```bash
+curl -s -X POST -H "X-API-Key: $INTEGRATION_API_KEY" \
+  http://localhost:8090/api/integrations/statement-check
+```
+
+## Idempotensi dua lapis
+
+Import otomatis aman diulang berkat dua cek duplikat di endpoint integrasi:
+
+| Lapis | Dasar | Menangani kasus |
+|---|---|---|
+| 1 | `email_message_id` (disimpan per transaksi sejak migrasi 073) | Bank **me-regenerate PDF** (byte berbeda → hash berbeda) untuk email yang sama |
+| 2 | MD5 `file_hash` | Email yang sama ter-poll ulang / upload ulang file identik |
+
+Keduanya dijawab HTTP 200 `{"status": "duplicate"}` sehingga re-poll workflow
+tidak dianggap error.
+
 ## Langkah 6 — Aktifkan
 
 Toggle **Active** di workflow. Selesai.
@@ -182,7 +238,8 @@ Toggle **Active** di workflow. Selesai.
 
 1. Kirim email ke Gmail yang dipantau, lampirkan PDF/CSV e-statement (bisa
    dari akun lain), biarkan **unread**.
-2. Tunggu maksimal ±5 menit, lalu cek:
+2. Tunggu poll tengah malam berikutnya (atau klik **Execute workflow** untuk
+   tes instan), lalu cek:
    - **n8n → Executions**: harus ada eksekusi sukses (jalur hijau ke
      "Sukses — terimport ke esta").
    - **File**: `ls -la /home/gargar/docker/n8n/data/files/gmail/` — ada
@@ -192,6 +249,10 @@ Toggle **Active** di workflow. Selesai.
    - **Log**: `docker logs esta --tail 20` → baris `Integrasi n8n: menerima ...`.
 3. Kirim ulang email yang sama → eksekusi berikutnya berakhir `duplicate`
    (aman, tidak ada transaksi ganda).
+4. Uji notifikasi: `curl -s -X POST -H "X-API-Key: $INTEGRATION_API_KEY"
+   http://localhost:8090/api/integrations/statement-check` → jika ada akun
+   aktif tanpa statement bulan lalu, alert Telegram masuk dalam hitungan
+   detik.
 
 ## Troubleshooting
 
