@@ -12,6 +12,8 @@ import SettingsView from '../views/SettingsView.vue'
 import ManagementView from '../views/ManagementView.vue'
 import InitialCapitalPage from '../views/InitialCapitalPage.vue'
 import GeneralLedger from '../views/GeneralLedger.vue'
+import BalanceCheckView from '../views/BalanceCheckView.vue'
+import TrialBalanceView from '../views/TrialBalanceView.vue'
 import HrdView from '../views/HrdView.vue'
 import LoginView from '../views/LoginView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
@@ -103,6 +105,16 @@ const router = createRouter({
       path: '/general-ledger',
       name: 'general-ledger',
       component: GeneralLedger
+    },
+    {
+      path: '/balance-check',
+      name: 'balance-check',
+      component: BalanceCheckView
+    },
+    {
+      path: '/trial-balance',
+      name: 'trial-balance',
+      component: TrialBalanceView
     },
     {
       path: '/hrd',

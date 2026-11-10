@@ -59,6 +59,8 @@ def save_transactions_to_db(df: pd.DataFrame, bank_code: str, source_file: str, 
                     'email_subject',
                     'email_date',
                     'email_message_id',
+                    'running_balance',
+                    'currency',
                 ]
                 if column in transaction_columns
             ]

@@ -130,6 +130,13 @@ def build_transaction_record(row, bank_code, source_file, file_hash, now=None, e
         value = str(email_meta.get(key) or '').strip()
         return value[:limit] or None
 
+    # Saldo berjalan hasil parse statement (kolom "balance") — parser semua
+    # bank sudah menghasilkannya; dipakai laporan cek kontinuitas saldo.
+    balance_raw = null_if_nan(row.get('balance'))
+    running_balance = parse_amount(balance_raw) if balance_raw is not None else None
+    currency_raw = null_if_nan(row.get('currency'))
+    currency = str(currency_raw).strip()[:8] or None if currency_raw is not None else None
+
     return {
         'id': row.get('id') or None,
         'txn_date': txn_date,
@@ -152,4 +159,6 @@ def build_transaction_record(row, bank_code, source_file, file_hash, now=None, e
         'email_subject': _email_field('email_subject', 300),
         'email_date': _email_field('email_date', 60),
         'email_message_id': _email_field('email_message_id', 300),
+        'running_balance': running_balance,
+        'currency': currency,
     }

@@ -97,6 +97,16 @@
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Financial Reports</span>
         </router-link>
 
+        <router-link to="/trial-balance" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Trial Balance' : ''">
+          <i class="bi bi-columns-gap text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Trial Balance</span>
+        </router-link>
+
+        <router-link to="/balance-check" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Cek Kontinuitas Saldo' : ''">
+          <i class="bi bi-shield-check text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Cek Kontinuitas Saldo</span>
+        </router-link>
+
         <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
             <p class="sidebar-section-label px-2">Configuration</p>
         </div>
