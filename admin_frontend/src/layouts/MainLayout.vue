@@ -36,6 +36,11 @@
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">History & DB</span>
         </router-link>
 
+        <router-link to="/ai-review" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Review Saran AI' : ''">
+          <i class="bi bi-stars text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Review Saran AI</span>
+        </router-link>
+
         <router-link to="/upload-summary" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Upload Summary' : ''">
           <i class="bi bi-file-check-fill text-lg flex-shrink-0"></i>
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Upload Summary</span>

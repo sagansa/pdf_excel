@@ -79,5 +79,15 @@ def run_ai_mark_pass(txn_ids):
                         logger.info('AI mark pass %s: %s', txn_id, result.get('status'))
             except Exception:
                 logger.exception('AI mark pass gagal pada chunk %s-%s', start, start + CHUNK_SIZE)
+
+            # Enrichment deskripsi rule-based untuk semua provider (tanpa model,
+            # jadi aman juga bila pass mark dilewati bridge browser nanti).
+            try:
+                from backend.services.ai import description_enricher
+                result = description_enricher.enrich_transactions(engine, chunk)
+                if result['enriched']:
+                    logger.info('Description enrichment: %d baris chunk %s', result['enriched'], start)
+            except Exception:
+                logger.exception('Description enrichment gagal pada chunk %s (tidak fatal)', start)
     except Exception:
         logger.exception('AI mark pass gagal total')

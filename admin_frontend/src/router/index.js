@@ -14,6 +14,7 @@ import InitialCapitalPage from '../views/InitialCapitalPage.vue'
 import GeneralLedger from '../views/GeneralLedger.vue'
 import BalanceCheckView from '../views/BalanceCheckView.vue'
 import TrialBalanceView from '../views/TrialBalanceView.vue'
+import AiReviewView from '../views/AiReviewView.vue'
 import HrdView from '../views/HrdView.vue'
 import LoginView from '../views/LoginView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
@@ -115,6 +116,11 @@ const router = createRouter({
       path: '/trial-balance',
       name: 'trial-balance',
       component: TrialBalanceView
+    },
+    {
+      path: '/ai-review',
+      name: 'ai-review',
+      component: AiReviewView
     },
     {
       path: '/hrd',

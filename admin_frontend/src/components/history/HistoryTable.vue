@@ -120,10 +120,20 @@
           >
 
           <div class="min-w-0 flex-1">
-            <!-- Baris baca: deskripsi + jumlah -->
+            <!-- Baris baca: deskripsi + jumlah (tampilkan versi bersih AI bila ada;
+                 tooltip menampilkan deskripsi asli untuk audit) -->
             <div class="flex items-baseline justify-between gap-4">
-              <p class="min-w-0 flex-1 truncate text-[13px] font-medium" style="color: var(--color-text)" :title="t.description">
-                {{ t.description }}
+              <p
+                class="min-w-0 flex-1 truncate text-[13px] font-medium"
+                style="color: var(--color-text)"
+                :title="t.clean_description ? `${t.clean_description}\n— asli —\n${t.description}` : t.description"
+              >
+                {{ t.clean_description || t.description }}
+                <i
+                  v-if="t.clean_description"
+                  class="bi bi-stars text-[10px] text-primary ml-1 shrink-0"
+                  title="Deskripsi bersih hasil AI — arahkan kursor untuk lihat deskripsi asli"
+                ></i>
               </p>
               <span
                 class="shrink-0 mono text-[13px] font-bold whitespace-nowrap"
