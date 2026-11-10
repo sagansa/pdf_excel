@@ -111,6 +111,7 @@ PUBLIC_API_PATHS = {
     '/api/auth/reset-password',
     # Integrasi n8n: tanpa session — diautentikasi API key di blueprint-nya.
     '/api/integrations/statement',
+    '/api/integrations/statement-check',
 }
 
 

@@ -21,12 +21,24 @@ CREATE TABLE IF NOT EXISTS transactions (
     mark_id TEXT,
     company_id TEXT,
     created_at TEXT,
-    updated_at TEXT
+    updated_at TEXT,
+    email_from TEXT,
+    email_subject TEXT,
+    email_date TEXT,
+    email_message_id TEXT
 );
 CREATE TABLE IF NOT EXISTS app_settings (
     setting_key TEXT PRIMARY KEY,
     setting_value TEXT,
     updated_at TEXT
+);
+CREATE TABLE IF NOT EXISTS bank_account_definitions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bank_code TEXT NOT NULL,
+    account_number TEXT NOT NULL,
+    display_name TEXT,
+    active_from TEXT,
+    active_until TEXT
 );
 """
 
@@ -143,3 +155,153 @@ def test_csv_only_supported_for_bri(client, integration_env):
     response = _post(client, pdf_file=_bri_file('bca-2026.csv'), bank_type='bca')
     assert response.status_code == 400
     assert response.get_json()['code'] == 'parse_failed'
+
+
+# --- Metadata email + idempotency message_id -------------------------------
+
+
+def test_email_metadata_persisted(client, integration_env):
+    response = _post(
+        client,
+        pdf_file=_bri_file(),
+        bank_type='bri',
+        email_from='digibank@example.com',
+        email_subject='e-statement November',
+        email_date='Mon, 09 Nov 2026 06:00:00 +0000',
+        message_id='<stmt-nov-2026@dbs>',
+    )
+    assert response.status_code == 200
+
+    with integration_env.connect() as conn:
+        rows = conn.execute(text(
+            'SELECT email_from, email_subject, email_date, email_message_id '
+            'FROM transactions'
+        )).fetchall()
+    assert len(rows) == 2
+    for row in rows:
+        assert row[0] == 'digibank@example.com'
+        assert row[1] == 'e-statement November'
+        assert row[2] == 'Mon, 09 Nov 2026 06:00:00 +0000'
+        assert row[3] == '<stmt-nov-2026@dbs>'
+
+
+def test_duplicate_message_id_beberapa_byte_berbeda(client, integration_env):
+    """Bank regenerate PDF (byte beda, hash beda) untuk email yang sama → duplicate."""
+    first = _post(
+        client, pdf_file=_bri_file(), bank_type='bri', message_id='<regen-001@bank>',
+    )
+    assert first.status_code == 200
+    assert first.get_json()['status'] == 'imported'
+
+    # File sama tapi satu baris berubah → file_hash berbeda.
+    regenerated = BRI_CSV.replace('9000000.00', '9000001.00')
+    file = (io.BytesIO(regenerated.encode('utf-8')), 'bri-2026-regenerated.csv')
+    second = _post(
+        client, pdf_file=file, bank_type='bri', message_id='<regen-001@bank>',
+    )
+    assert second.status_code == 200
+    assert second.get_json()['status'] == 'duplicate'
+    assert second.get_json()['duplicate'] is True
+
+    with integration_env.connect() as conn:
+        count = conn.execute(text('SELECT COUNT(1) FROM transactions')).scalar_one()
+    assert count == 2  # tidak ada double-import
+
+
+# --- Notifikasi Telegram saat import bermasalah ----------------------------
+
+
+@pytest.fixture()
+def telegram_spy(monkeypatch):
+    calls = []
+
+    def _spy(bank_type, filename, error_code, detail='', email_meta=None):
+        calls.append({
+            'bank_type': bank_type, 'filename': filename,
+            'error_code': error_code, 'detail': detail, 'email_meta': email_meta,
+        })
+        return True
+
+    monkeypatch.setattr(n8n_bp_module, 'notify_import_problem', _spy)
+    return calls
+
+
+def test_parse_failure_memanggil_notifikasi(client, integration_env, telegram_spy):
+    response = _post(
+        client,
+        pdf_file=_bri_file('bca-2026.csv'),
+        bank_type='bca',
+        email_from='bank@example.com',
+        message_id='<broken@bank>',
+    )
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'parse_failed'
+    assert len(telegram_spy) == 1
+    call = telegram_spy[0]
+    assert call['bank_type'] == 'bca'
+    assert call['error_code'] == 'parse_failed'
+    assert call['email_meta']['email_message_id'] == '<broken@bank>'
+
+
+def test_notifikasi_gagal_tidak_menelan_error(client, integration_env, monkeypatch):
+    """Notifier melempar exception → error response asli tetap dikembalikan."""
+    def _explode(*args, **kwargs):
+        raise RuntimeError('telegram down')
+
+    monkeypatch.setattr(n8n_bp_module, 'notify_import_problem', _explode)
+    response = _post(client, pdf_file=_bri_file('bca-2026.csv'), bank_type='bca')
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'parse_failed'
+
+
+# --- Endpoint statement-check ------------------------------------------------
+
+
+def _post_statement_check(client, key=API_KEY, date='2026-11-10'):
+    from urllib.parse import urlencode
+    url = '/api/integrations/statement-check'
+    if date:
+        url += f'?{urlencode({"date": date})}'
+    return client.post(url, headers={'X-API-Key': key} if key else {})
+
+
+def test_statement_check_mengembalikan_yang_hilang(client, integration_env, monkeypatch):
+    with integration_env.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO bank_account_definitions "
+            "(bank_code, account_number, display_name) VALUES ('BRI', '1234567890123', 'bri utama')"
+        ))
+        conn.execute(text(
+            "INSERT INTO transactions (id, txn_date, description, amount, db_cr, "
+            "bank_code, bank_account_number, source_file, file_hash) VALUES ("
+            "'t1', '2026-09-05', 'x', 1000, 'DB', 'BRI', '1234567890123', 'f.pdf', 'h1')"
+        ))
+
+    sent = []
+    monkeypatch.setattr(n8n_bp_module, 'notify_missing_statements', lambda missing: sent.append(missing) or True)
+
+    response = _post_statement_check(client)
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload['status'] == 'ok'
+    assert payload['notified'] is True
+    assert len(payload['missing']) == 1
+    assert payload['missing'][0]['bank_code'] == 'BRI'
+    assert len(sent) == 1  # notifier dipanggil dengan daftar yang sama
+
+
+def test_statement_check_tanpa_yang_hilang_tidak_mengirim(client, integration_env, monkeypatch):
+    monkeypatch.setattr(
+        n8n_bp_module, 'notify_missing_statements',
+        lambda missing: (_ for _ in ()).throw(AssertionError('tidak boleh kirim')),
+    )
+    response = _post_statement_check(client)
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload['missing'] == []
+    assert payload['notified'] is False
+
+
+def test_statement_check_butuh_api_key(client, integration_env):
+    response = _post_statement_check(client, key='salah')
+    assert response.status_code == 401

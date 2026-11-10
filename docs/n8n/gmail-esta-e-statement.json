@@ -7,7 +7,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Gmail → esta: auto-import e-statement\n\n**Yang perlu diatur setelah import:**\n1. Node **Gmail Trigger** → pilih kredensial Gmail (OAuth2).\n2. Node **Kirim ke esta** → ganti header `X-API-Key` dengan nilai\n   `INTEGRATION_API_KEY` dari `admin_backend/.env`.\n3. Node **Mapping Pengirim** → isi `SENDER_MAP` (pengirim → bank_type,\n   password PDF, company_id).\n\n**PENTING saat menambah bank baru:** ubah DUA tempat —\n- Filter pencarian di node **Gmail Trigger** (mis. `digibank OR livin`)\n- `SENDER_MAP` di node **Mapping Pengirim**\n\nJadwal: scan harian jam 00:00 (email sejak poll terakhir, termasuk\nyang sudah dibaca). Arsip file: `/home/gargar/docker/n8n/data/files/gmail/`.\nRiwayat lama: jalankan workflow \"BACKFILL: Gmail → esta\".",
+        "content": "## Gmail → esta: auto-import e-statement\n\n**Yang perlu diatur setelah import:**\n1. Node **Gmail Trigger** → pilih kredensial Gmail (OAuth2).\n2. Node **Kirim ke esta** → ganti header `X-API-Key` dengan nilai\n   `INTEGRATION_API_KEY` dari `admin_backend/.env`.\n3. Node **Mapping Pengirim** → isi `SENDER_MAP` (pengirim → bank_type,\n   password PDF, company_id).\n\n**PENTING saat menambah bank baru:** ubah DUA tempat —\n- Filter pencarian di node **Gmail Trigger** (mis. `digibank OR livin`)\n- `SENDER_MAP` di node **Mapping Pengirim**\n\nJadwal: scan harian jam 00:00 (email sejak poll terakhir, termasuk\nyang sudah dibaca). Arsip file: `/home/gargar/docker/n8n/data/files/gmail/`.\nRiwayat lama: jalankan workflow \"BACKFILL: Gmail → esta\".\n\n**Branch cek statement hilang** (jalan tiap hari 00:30, terpisah dari\npolling Gmail): POST ke `/api/integrations/statement-check` — esta\nmengecek statement bulan lalu per akun di bank_account_definitions dan\nmengirim alert Telegram bila ada yang belum masuk. Set\n`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` di `admin_backend/.env`.",
         "height": 340,
         "width": 420,
         "color": 4
@@ -19,7 +19,8 @@
       "position": [
         -704,
         -176
-      ]
+      ],
+      "height": 460
     },
     {
       "parameters": {
@@ -208,6 +209,50 @@
         688,
         128
       ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 30 0 * * *"
+            }
+          ]
+        }
+      },
+      "id": "b7c1e5f2-3a44-4d8e-9f10-5c6a7d8e9f01",
+      "name": "Jadwal Cek Harian",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1.1,
+      "position": [
+        -416,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.21.0.1:8090/api/integrations/statement-check",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "GANTI-DENGAN-INTEGRATION_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b7c1e5f2-3a44-4d8e-9f10-5c6a7d8e9f02",
+      "name": "Cek Statement Hilang",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -160,
+        460
+      ]
     }
   ],
   "connections": {
@@ -267,6 +312,17 @@
         [
           {
             "node": "Gagal — cek Executions & log esta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jadwal Cek Harian": {
+      "main": [
+        [
+          {
+            "node": "Cek Statement Hilang",
             "type": "main",
             "index": 0
           }
