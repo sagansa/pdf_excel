@@ -321,5 +321,7 @@ def run_test(key, value=None, extra=None):
     try:
         return handler(key, value, extra)
     except Exception as exc:  # pengaman terakhir: test tidak boleh memicu HTTP 500
-        logger.warning('Test kredensial %s gagal tak terduga', key)  # nilai tidak di-log
-        return False, f'Test gagal: {exc}'
+        # Teks exception bisa memuat secret (mis. URL lengkap berisi token di
+        # repr URLError) — balikan generik, log hanya nama key + tipe exception.
+        logger.warning('Test kredensial %s gagal tak terduga (%s)', key, type(exc).__name__)
+        return False, 'Test gagal tak terduga — periksa kembali nilai yang diisi lalu coba lagi.'

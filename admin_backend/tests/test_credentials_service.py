@@ -278,3 +278,19 @@ def test_run_test_key_tanpa_handler(cred_engine):
 def test_run_test_key_tak_dikenal():
     with pytest.raises(ValueError):
         credentials_service.run_test('bukan_kredensial')
+
+
+def test_run_test_exception_tak_bocorkan_secret(cred_engine, monkeypatch):
+    """Catch-all run_test tidak boleh menyertakan teks exception di pesan.
+
+    Teks exception (mis. repr URLError berisi URL lengkap dengan token) bisa
+    memuat secret — pesan balikan harus generik dan log hanya tipe exception.
+    """
+
+    def _handler_meledak(key, value, extra):
+        raise RuntimeError('token super-rahasia')
+
+    monkeypatch.setattr(credentials_service, '_TEST_HANDLERS', {'sagansa': _handler_meledak})
+    ok, message = credentials_service.run_test('sagansa_presence_token', value='tok-apa-saja')
+    assert ok is False
+    assert 'super-rahasia' not in message
