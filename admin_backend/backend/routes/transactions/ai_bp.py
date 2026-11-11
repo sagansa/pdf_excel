@@ -99,10 +99,12 @@ def test_ai_connection():
     base_url = llm_client.normalize_base_url(data.get('base_url'))
     model = str(data.get('model') or '').strip()
     api_key = str(data.get('api_key') or '').strip() or None
-    if not base_url:
+    # Kunci AI kini milik vault (app_settings): frontend tidak pernah mengirim
+    # api_key — fallback ke kunci tersimpan selalu dilakukan bila payload kosong.
+    if not base_url or not api_key:
         with engine.connect() as conn:
             settings = llm_client.get_ai_settings(conn)
-        base_url = settings['base_url']
+        base_url = base_url or settings['base_url']
         api_key = api_key or settings.get('api_key') or None
     if not base_url:
         raise BadRequestError('Base URL server AI belum diatur.')

@@ -984,3 +984,35 @@ def test_review_queue_tanpa_ai_columns_tidak_error(ai_client, ai_engine):
     response = ai_client.get('/api/transactions/ai-review-queue')
     assert response.status_code == 200
     assert response.get_json()['items'] == []
+
+
+# ---------------------------------------------------------------- test-connection
+
+
+def test_ai_test_connection_pakai_kunci_vault_meski_base_url_dikirim(ai_client, ai_engine, monkeypatch):
+    """Kunci vault tetap dipakai walau base_url dikirim eksplisit (frontend tak pernah mengirim api_key)."""
+    from backend.services.ai import llm_client
+
+    # seed ai_api_key + provider/base_url tersimpan (pola sama dgn test_settings_expose_bridge_flag)
+    with ai_engine.begin() as conn:
+        conn.execute(text('DELETE FROM app_settings'))
+        conn.execute(text(
+            "INSERT INTO app_settings (setting_key, setting_value) VALUES "
+            "('ai_api_key', 'k-vault'), ('ai_provider', 'zai'), "
+            "('ai_base_url', 'https://api.z.ai/api/paas/v4')"
+        ))
+
+    captured = {}
+
+    def fake_list_models(base_url, timeout=llm_client.LIST_MODELS_TIMEOUT, api_key=None):
+        captured.update(base_url=base_url, api_key=api_key)
+        return ['m1']
+
+    monkeypatch.setattr(llm_client, 'list_models', fake_list_models)
+
+    resp = ai_client.post('/api/ai/test-connection', json={
+        'base_url': 'https://api.z.ai/api/paas/v4', 'model': 'glm-4',
+    })
+    assert resp.status_code == 200
+    assert captured['api_key'] == 'k-vault'
+    assert captured['base_url'] == 'https://api.z.ai/api/paas/v4'
