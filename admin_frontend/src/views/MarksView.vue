@@ -9,9 +9,9 @@
           <i class="bi bi-tags-fill"></i>
           {{ totalMarks }} marks
         </span>
-        <span class="stat-pill" :class="{ 'stat-pill--warn': unmappedCount > 0 }">
-          <i :class="unmappedCount > 0 ? 'bi bi-exclamation-triangle-fill' : 'bi bi-check2-circle'"></i>
-          {{ unmappedCount }} belum mapping
+        <span class="stat-pill">
+          <i class="bi bi-tag"></i>
+          {{ unmappedCount }} tanpa mapping
         </span>
         <span class="stat-pill stat-pill--mono">Real {{ realMappedCount }}/{{ totalMarks }}</span>
         <span class="stat-pill stat-pill--mono">Coretax {{ coretaxMappedCount }}/{{ totalMarks }}</span>
@@ -25,60 +25,54 @@
     <TableShell>
       <template #toolbar>
         <div class="marks-toolbar">
-          <div class="marks-toolbar__row">
-            <div class="ui-input-shell marks-search">
-              <span class="ui-input-shell__icon"><i class="bi bi-search"></i></span>
-              <input
-                v-model="searchQuery"
-                type="search"
-                class="marks-search__input"
-                placeholder="Cari mark…"
-                aria-label="Cari mark"
-              />
-              <button
-                v-if="searchQuery"
-                @click="searchQuery = ''"
-                class="ui-clear-button"
-                aria-label="Hapus pencarian"
-              >
-                <i class="bi bi-x-lg"></i>
-              </button>
-            </div>
-
-            <div class="marks-filters" role="group" aria-label="Filter mark">
-              <button
-                v-for="filter in FILTERS"
-                :key="filter.key"
-                type="button"
-                class="filter-chip"
-                :class="{ 'filter-chip--active': activeFilter === filter.key }"
-                :aria-pressed="activeFilter === filter.key ? 'true' : 'false'"
-                @click="activeFilter = filter.key"
-              >
-                {{ filter.label }}
-                <span v-if="filter.key === 'unmapped' && unmappedCount > 0" class="filter-chip__count">{{ unmappedCount }}</span>
-              </button>
-            </div>
-
-            <span v-if="isFiltering" class="marks-toolbar__meta">
-              {{ visibleMarks.length }} dari {{ totalMarks }} mark
-            </span>
-          </div>
-
-          <div class="marks-toolbar__row" role="group" aria-label="Filter kategori fiskal">
-            <span class="marks-filters__label">Fiskal</span>
+          <div class="ui-input-shell marks-search">
+            <span class="ui-input-shell__icon"><i class="bi bi-search"></i></span>
+            <input
+              v-model="searchQuery"
+              type="search"
+              class="marks-search__input"
+              placeholder="Cari mark…"
+              aria-label="Cari mark"
+            />
             <button
-              v-for="fiscal in FISCAL_FILTERS"
-              :key="fiscal.key"
-              type="button"
-              class="filter-chip"
-              :class="{ 'filter-chip--active': activeFiscal === fiscal.key }"
-              :aria-pressed="activeFiscal === fiscal.key ? 'true' : 'false'"
-              @click="activeFiscal = activeFiscal === fiscal.key ? '' : fiscal.key"
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              class="ui-clear-button"
+              aria-label="Hapus pencarian"
             >
-              {{ fiscal.label }}
+              <i class="bi bi-x-lg"></i>
             </button>
           </div>
+
+          <div class="marks-filters" role="group" aria-label="Filter mark">
+            <button
+              v-for="filter in FILTERS"
+              :key="filter.key"
+              type="button"
+              class="filter-chip"
+              :class="{ 'filter-chip--active': activeFilter === filter.key }"
+              :aria-pressed="activeFilter === filter.key ? 'true' : 'false'"
+              @click="activeFilter = filter.key"
+            >
+              {{ filter.label }}
+              <span v-if="filter.key === 'unmapped' && unmappedCount > 0" class="filter-chip__count">{{ unmappedCount }}</span>
+            </button>
+          </div>
+
+          <select
+            v-model="activeFiscal"
+            class="fiscal-select"
+            aria-label="Filter kategori fiskal"
+          >
+            <option value="">Semua fiskal</option>
+            <option v-for="fiscal in FISCAL_FILTERS" :key="fiscal.key" :value="fiscal.key">
+              {{ fiscal.label }}
+            </option>
+          </select>
+
+          <span v-if="isFiltering" class="marks-toolbar__meta">
+            {{ visibleMarks.length }} dari {{ totalMarks }} mark
+          </span>
         </div>
       </template>
 
@@ -88,7 +82,7 @@
             <th class="marks-table__chevron-col" aria-hidden="true"></th>
             <th>Rule</th>
             <th>Traits</th>
-            <th>Mapping</th>
+            <th>Mapping COA</th>
             <th class="marks-table__actions-col text-right">Aksi</th>
           </tr>
         </thead>
@@ -150,21 +144,21 @@
                     <i class="bi bi-chevron-down"></i>
                   </button>
                 </td>
-                <td class="mark-row__names">
-                  <span class="mark-row__internal">
-                    <span class="mark-row__internal-name">{{ m.internal_report }}</span>
-                    <span v-if="isMarkUnmapped(m)" class="mark-row__unmapped-tag">
-                      <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
-                      Belum mapping
-                    </span>
-                  </span>
-                  <span class="mark-row__personal">{{ m.personal_use }}</span>
+                <td class="mark-row__names-cell">
+                  <div class="mark-row__names">
+                    <div class="mark-row__internal">
+                      <span class="mark-row__internal-name">{{ m.internal_report }}</span>
+                      <span v-if="isMarkUnmapped(m)" class="mark-row__unmapped-tag">Tanpa mapping</span>
+                    </div>
+                    <span v-if="m.personal_use" class="mark-row__personal">{{ m.personal_use }}</span>
+                  </div>
                 </td>
                 <td>
                   <MarkTraitChips :mark="m" show-fiscal-inherit />
                 </td>
-                <td>
-                  <MarkCoverageDots :real-count="getRealMappings(m).length" :coretax-count="getCoretaxMappings(m).length" />
+                <td class="mark-row__mapping-cell">
+                  <MarkMappingChips label="Real" :mappings="getRealMappings(m)" />
+                  <MarkMappingChips label="Coretax" :mappings="getCoretaxMappings(m)" />
                 </td>
                 <td class="marks-table__actions-col">
                   <button @click.stop="openEditModal(m)" class="action-link action-link--primary" aria-label="Edit mark">
@@ -197,9 +191,9 @@
                           <MarkMappingGroup label="Coretax" :mappings="getCoretaxMappings(m)" />
                         </div>
                         <div class="band__footer">
-                          <span class="band__impact" :class="{ 'band__impact--warn': impactAreas(m).length === 0 }">
-                            <i :class="impactAreas(m).length > 0 ? 'bi bi-diagram-3' : 'bi bi-exclamation-circle'"></i>
-                            {{ impactAreas(m).length > 0 ? 'Dipakai di: ' + impactAreas(m).join(' · ') : 'Belum dipakai di laporan manapun — lengkapi mapping COA dulu.' }}
+                          <span class="band__impact" :class="{ 'band__impact--muted': impactAreas(m).length === 0 }">
+                            <i :class="impactAreas(m).length > 0 ? 'bi bi-diagram-3' : 'bi bi-slash-circle'"></i>
+                            {{ impactAreas(m).length > 0 ? 'Dipakai di: ' + impactAreas(m).join(' · ') : 'Tanpa mapping COA — tidak tampil di laporan.' }}
                           </span>
                           <span class="band__footer-actions">
                             <button type="button" class="mark-coa-button" @click.stop="openMappingModal(m)">
@@ -245,7 +239,7 @@ import { getRealMappings, getCoretaxMappings, isMarkUnmapped, getMarkImpactAreas
 import MarkFormModal from '../components/marks/MarkFormModal.vue';
 import CoaMappingModal from '../components/marks/CoaMappingModal.vue';
 import MarkTraitChips from '../components/marks/MarkTraitChips.vue';
-import MarkCoverageDots from '../components/marks/MarkCoverageDots.vue';
+import MarkMappingChips from '../components/marks/MarkMappingChips.vue';
 import MarkMappingGroup from '../components/marks/MarkMappingGroup.vue';
 import MarkFlagSwitch from '../components/marks/MarkFlagSwitch.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
@@ -256,7 +250,7 @@ const notify = useNotifications();
 
 const FILTERS = [
   { key: 'all', label: 'Semua' },
-  { key: 'unmapped', label: 'Belum Mapping' },
+  { key: 'unmapped', label: 'Tanpa Mapping' },
   { key: 'is_salary_component', label: 'Gaji' },
   { key: 'is_rental', label: 'Sewa' },
   { key: 'is_asset', label: 'Aset' },
@@ -398,12 +392,6 @@ onMounted(() => {
 
 <style scoped>
 /* ---- header pills ---- */
-.stat-pill--warn {
-  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
-  color: var(--color-warning);
-}
-
 .stat-pill--mono {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -411,15 +399,11 @@ onMounted(() => {
 
 /* ---- toolbar ---- */
 .marks-toolbar {
-  @apply flex w-full flex-col gap-3;
-}
-
-.marks-toolbar__row {
   @apply flex w-full flex-wrap items-center gap-3;
 }
 
 .marks-search {
-  @apply lg:w-72 shrink-0;
+  @apply w-full lg:w-64 shrink-0;
 }
 
 .marks-search__input {
@@ -475,14 +459,30 @@ onMounted(() => {
 }
 
 .marks-toolbar__meta {
-  @apply lg:ml-auto shrink-0 text-xs;
+  @apply ml-auto shrink-0 text-xs;
   font-family: var(--font-mono);
   color: var(--color-text-muted);
 }
 
+.fiscal-select {
+  @apply shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.fiscal-select:hover {
+  border-color: var(--color-border-strong);
+}
+
+.fiscal-select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* ---- table ---- */
 .marks-table {
-  min-width: 880px;
+  min-width: 1020px;
 }
 
 .marks-table thead th {
@@ -520,10 +520,6 @@ onMounted(() => {
   border-bottom-color: transparent;
 }
 
-.mark-row--unmapped .mark-row__internal {
-  color: var(--color-warning);
-}
-
 .mark-expand {
   @apply inline-flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200;
   background: transparent;
@@ -550,6 +546,10 @@ onMounted(() => {
   transform: rotate(180deg);
 }
 
+.mark-row__names-cell {
+  min-width: 220px;
+}
+
 .mark-row__names {
   @apply flex flex-col gap-0.5 min-w-0;
 }
@@ -570,10 +570,15 @@ onMounted(() => {
   min-width: 0;
 }
 
+.mark-row__mapping-cell {
+  min-width: 330px;
+}
+
 .mark-row__unmapped-tag {
-  @apply inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold;
-  background: color-mix(in srgb, var(--color-warning) 13%, transparent);
-  color: var(--color-warning);
+  @apply inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold;
+  background: transparent;
+  border: 1px dashed var(--color-border-strong);
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
@@ -663,9 +668,8 @@ onMounted(() => {
   color: var(--color-text-muted);
 }
 
-.band__impact--warn {
-  color: var(--color-warning);
-  font-weight: 600;
+.band__impact--muted {
+  opacity: 0.75;
 }
 
 .band__footer-actions {

@@ -24,7 +24,7 @@ Indonesian SME bookkeeping. UI copy mixes English and Indonesian. "Coretax" refe
 
 ## Capabilities and Constraints
 
-- Marks data model (must keep): `internal_report`, `personal_use` names; boolean flags `is_coretax`, `is_asset`, `is_service`, `is_salary_component`, `is_rental` (inline-togglable); `fiscal_category`; COA mappings split by report_type (`real` / `coretax`), each with DEBIT/CR direction.
+- Marks data model (must keep): `internal_report`, `personal_use` names; boolean flags `is_coretax`, `is_asset`, `is_service`, `is_salary_component`, `is_rental` (inline-togglable); `fiscal_category`; COA mappings split by report_type (`real` / `coretax`), each with DEBIT/CR direction. Some marks are intentionally left unmapped (user-confirmed) — unmapped is a neutral informational state, not a warning.
 - Marks feed transaction classification, financial reports, and the AI review queue; the AI description-enrichment pipeline (rule + LLM) feeds rule matching.
 - Backend API and data model are fixed for the marks redesign (user-confirmed); the redesign is frontend, but interaction patterns may be rethought — user explicitly wants the frontend refactored into reusable components.
 - Multi-company: one deployment serves several companies.

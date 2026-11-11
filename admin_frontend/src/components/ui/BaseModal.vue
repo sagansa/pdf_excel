@@ -18,6 +18,7 @@
            size === 'sm' ? 'sm:max-w-sm' : '',
            size === 'md' ? 'sm:max-w-md' : '',
            size === 'lg' ? 'sm:max-w-lg' : '',
+           size === '3xl' ? 'sm:max-w-3xl' : '',
            size === 'xl' ? 'sm:max-w-7xl' : '',
            !size || size === '2xl' ? 'sm:max-w-5xl' : ''
          ]"
@@ -47,7 +48,7 @@ defineProps({
   size: {
     type: String,
     default: '2xl',
-    validator: (value) => ['sm', 'md', 'lg', 'xl', '2xl'].includes(value)
+    validator: (value) => ['sm', 'md', 'lg', '3xl', 'xl', '2xl'].includes(value)
   }
 });
 

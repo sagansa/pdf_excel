@@ -77,7 +77,44 @@ MARKS = [
 ]
 
 
+COA = [
+    {"id": 1, "code": "1-1100", "name": "Kas", "category": "ASSET"},
+    {"id": 12, "code": "1-3100", "name": "Persediaan Bahan", "category": "ASSET"},
+    {"id": 15, "code": "1-2400", "name": "Peralatan Dapur", "category": "ASSET"},
+    {"id": 21, "code": "2-1100", "name": "Utang Usaha", "category": "LIABILITY"},
+    {"id": 22, "code": "2-1200", "name": "Utang Gaji", "category": "LIABILITY"},
+    {"id": 41, "code": "4-1000", "name": "Pendapatan Usaha", "category": "REVENUE"},
+    {"id": 61, "code": "6-1100", "name": "Beban Gaji", "category": "EXPENSE"},
+    {"id": 62, "code": "6-2100", "name": "Beban Sewa", "category": "EXPENSE"},
+    {"id": 63, "code": "6-3100", "name": "Beban Pemasaran", "category": "EXPENSE"},
+    {"id": 64, "code": "6-3200", "name": "Beban Admin", "category": "EXPENSE"},
+]
+
+SAMPLE_MAPPINGS = {
+    (3, "real"): [
+        {"id": 301, "code": "6-1100", "name": "Beban Gaji", "mapping_type": "DEBIT", "report_type": "real", "category": "EXPENSE", "notes": "Gaji bulanan tim produksi"},
+        {"id": 302, "code": "2-1200", "name": "Utang Gaji", "mapping_type": "CREDIT", "report_type": "real", "category": "LIABILITY", "notes": None},
+    ],
+    (3, "coretax"): [
+        {"id": 311, "code": "6-1100", "name": "Beban Gaji", "mapping_type": "DEBIT", "report_type": "coretax", "category": "EXPENSE", "notes": None},
+    ],
+    (4, "real"): [
+        {"id": 401, "code": "6-2100", "name": "Beban Sewa", "mapping_type": "DEBIT", "report_type": "real", "category": "EXPENSE", "notes": None},
+        {"id": 402, "code": "1-1100", "name": "Kas", "mapping_type": "CREDIT", "report_type": "real", "category": "ASSET", "notes": None},
+    ],
+    (4, "coretax"): [
+        {"id": 411, "code": "6-2100", "name": "Beban Sewa", "mapping_type": "DEBIT", "report_type": "coretax", "category": "EXPENSE", "notes": None},
+    ],
+}
+
+
 class Handler(BaseHTTPRequestHandler):
+    def _match_mappings(self):
+        for (mark_id, report_type), items in SAMPLE_MAPPINGS.items():
+            if f"/api/marks/{mark_id}/coa-mappings" in self.path:
+                if f"report_type={report_type}" in self.path:
+                    return items
+        return []
     def _send(self, payload, status=200):
         body = json.dumps(payload).encode()
         self.send_response(status)
@@ -89,10 +126,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/auth/me"):
             self._send({"user": {"id": 1, "name": "Reviewer", "email": "review@local.test"}})
+        elif "/coa-mappings" in self.path:
+            self._send({"mappings": self._match_mappings()})
         elif self.path.startswith("/api/marks"):
             self._send({"marks": MARKS})
         elif self.path.startswith("/api/coa"):
-            self._send({"coa": []})
+            self._send({"coa": COA})
         else:
             self._send({"ok": True})
 

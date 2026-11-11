@@ -28,101 +28,101 @@
         <p class="text-xs text-muted mt-1">Pengaturan ini akan menimpa (override) pengaturan kategori fiskal pada Chart of Account (COA).</p>
       </div>
 
-      <div class="flex items-center gap-2 p-3 bg-cyan-50 rounded-lg border border-cyan-100">
+      <div class="flag-card flag-card--coretax">
         <input
           type="checkbox"
           id="is_coretax"
           v-model="form.is_coretax"
-          class="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 h-5 w-5"
+          class="flag-card__check"
         />
         <div class="flex-1">
-          <label for="is_coretax" class="text-sm font-semibold text-gray-900 cursor-pointer">
+          <label for="is_coretax" class="text-sm font-semibold text-theme cursor-pointer">
             Masukkan ke Coretax
           </label>
-          <p class="text-xs text-gray-500 mt-0.5">
+          <p class="text-xs text-muted mt-0.5">
             Cukup centang ini jika mark ingin dihitung saat filter report type = Coretax
           </p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+      <div class="flag-card flag-card--asset">
         <input
           type="checkbox"
           id="is_asset"
           v-model="form.is_asset"
-          class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-5 w-5"
+          class="flag-card__check"
         />
         <div class="flex-1">
-          <label for="is_asset" class="text-sm font-semibold text-gray-900 cursor-pointer">
+          <label for="is_asset" class="text-sm font-semibold text-theme cursor-pointer">
             Adalah Aset (Untuk Amortisasi)
           </label>
-          <p class="text-xs text-gray-500 mt-0.5">
+          <p class="text-xs text-muted mt-0.5">
             Centang jika mark ini merepresentasikan pembelian aset yang akan diamortisasi
           </p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+      <div class="flag-card flag-card--service">
         <input
           type="checkbox"
           id="is_service"
           v-model="form.is_service"
-          class="rounded border-gray-300 text-amber-600 focus:ring-amber-500 h-5 w-5"
+          class="flag-card__check"
         />
         <div class="flex-1">
-          <label for="is_service" class="text-sm font-semibold text-gray-900 cursor-pointer">
+          <label for="is_service" class="text-sm font-semibold text-theme cursor-pointer">
             Adalah Jasa (Objek Pengelolaan NPWP)
           </label>
-          <p class="text-xs text-gray-500 mt-0.5">
+          <p class="text-xs text-muted mt-0.5">
             Centang jika mark ini termasuk transaksi jasa (misal handling, trucking, SSM)
           </p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+      <div class="flag-card flag-card--salary">
         <input
           type="checkbox"
           id="is_salary_component"
           v-model="form.is_salary_component"
-          class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 h-5 w-5"
+          class="flag-card__check"
         />
         <div class="flex-1">
-          <label for="is_salary_component" class="text-sm font-semibold text-gray-900 cursor-pointer">
+          <label for="is_salary_component" class="text-sm font-semibold text-theme cursor-pointer">
             Salary Component
           </label>
-          <p class="text-xs text-gray-500 mt-0.5">
+          <p class="text-xs text-muted mt-0.5">
             Centang jika mark ini adalah komponen gaji (untuk rekap payroll per pegawai)
           </p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+      <div class="flag-card flag-card--rental">
         <input
           type="checkbox"
           id="is_rental"
           v-model="form.is_rental"
-          class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-5 w-5"
+          class="flag-card__check"
         />
         <div class="flex-1">
-          <label for="is_rental" class="text-sm font-semibold text-gray-900 cursor-pointer">
+          <label for="is_rental" class="text-sm font-semibold text-theme cursor-pointer">
             Sewa Tempat / Kontrak Sewa
           </label>
-          <p class="text-xs text-gray-500 mt-0.5">
+          <p class="text-xs text-muted mt-0.5">
             Centang jika mark ini termasuk biaya sewa tempat (akan muncul di daftar kontrak sewa)
           </p>
         </div>
       </div>
 
-      <div v-if="error" class="text-sm text-red-600 bg-red-50 p-2 rounded">
+      <div v-if="error" class="form-error">
           {{ error }}
       </div>
     </form>
 
     <template #footer>
       <button @click="close" class="btn-secondary">Cancel</button>
-      <button 
-        @click="handleSubmit" 
-        class="btn-primary shadow-lg shadow-indigo-100"
+      <button
+        @click="handleSubmit"
+        class="btn-primary"
         :disabled="loading"
       >
         <span v-if="loading" class="spinner-border w-4 h-4 me-2"></span>
@@ -251,3 +251,66 @@ const handleSubmit = async () => {
     }
 };
 </script>
+
+<style scoped>
+.flag-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+.flag-card--coretax {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+.flag-card--asset {
+  --flag-accent: #7c3aed;
+  background: color-mix(in srgb, var(--flag-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--flag-accent) 22%, transparent);
+}
+
+html.dark .flag-card--asset {
+  --flag-accent: #c4b5fd;
+}
+
+.flag-card--service {
+  background: color-mix(in srgb, var(--color-warning) 9%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 24%, transparent);
+}
+
+.flag-card--salary {
+  background: color-mix(in srgb, var(--color-success) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 22%, transparent);
+}
+
+.flag-card--rental {
+  --flag-accent: #2563eb;
+  background: color-mix(in srgb, var(--flag-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--flag-accent) 22%, transparent);
+}
+
+html.dark .flag-card--rental {
+  --flag-accent: #93c5fd;
+}
+
+.flag-card__check {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.form-error {
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent);
+  color: var(--color-danger);
+}
+</style>
