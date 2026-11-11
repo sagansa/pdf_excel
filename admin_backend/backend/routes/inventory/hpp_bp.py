@@ -31,6 +31,7 @@ from backend.routes.inventory.hpp_queries import (
     insert_batch_transaction as q_insert_batch_transaction,
     update_batch as q_update_batch,
 )
+from backend.services import credentials as credentials_service
 
 hpp_bp = Blueprint('hpp_bp', __name__)
 logger = logging.getLogger(__name__)
@@ -38,10 +39,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_STOCK_MONITORING_API_URL = os.environ.get(
     'SAGANSA_STOCK_MONITORING_API_URL',
     'https://superadmin.sagansa.id/api/stock-monitorings'
-)
-DEFAULT_STOCK_MONITORING_API_TOKEN = os.environ.get(
-    'SAGANSA_STOCK_MONITORING_TOKEN',
-    os.environ.get('SAGANSA_REMAINING_STORAGE_TOKEN', '')
 )
 
 
@@ -95,7 +92,7 @@ def _transform_monitoring_row(row):
 
 def _fetch_stock_monitoring_index(category=None):
     api_url = DEFAULT_STOCK_MONITORING_API_URL.strip()
-    token = str(DEFAULT_STOCK_MONITORING_API_TOKEN or '').strip()
+    token = credentials_service.get_credential_value('sagansa_stock_monitoring_token')
     if not token:
         return {}
 
@@ -137,7 +134,7 @@ def get_hpp_items():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or DEFAULT_STOCK_MONITORING_API_TOKEN
+        or credentials_service.get_credential_value('sagansa_stock_monitoring_token')
         or ''
     ).strip()
 

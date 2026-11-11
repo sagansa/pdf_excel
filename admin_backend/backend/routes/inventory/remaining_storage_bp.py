@@ -31,6 +31,7 @@ from backend.routes.route_utils import (
     _safe_int,
     _to_float,
 )
+from backend.services import credentials as credentials_service
 
 remaining_storage_bp = Blueprint('remaining_storage_bp', __name__)
 
@@ -38,17 +39,9 @@ DEFAULT_REMAINING_STORAGE_API_URL = os.environ.get(
     'SAGANSA_REMAINING_STORAGE_API_URL',
     'https://superadmin.sagansa.id/api/remaining-storages'
 )
-DEFAULT_REMAINING_STORAGE_API_TOKEN = os.environ.get(
-    'SAGANSA_REMAINING_STORAGE_TOKEN',
-    ''
-)
 DEFAULT_STOCK_MONITORING_API_URL = os.environ.get(
     'SAGANSA_STOCK_MONITORING_API_URL',
     'https://superadmin.sagansa.id/api/stock-monitorings-simplified'
-)
-DEFAULT_STOCK_MONITORING_API_TOKEN = os.environ.get(
-    'SAGANSA_STOCK_MONITORING_TOKEN',
-    ''
 )
 DEFAULT_STORES_NOT_REPORTED_API_URL = os.environ.get(
     'SAGANSA_STORES_NOT_REPORTED_API_URL',
@@ -171,7 +164,7 @@ def get_remaining_storages():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or DEFAULT_REMAINING_STORAGE_API_TOKEN
+        or credentials_service.get_credential_value('sagansa_remaining_storage_token')
         or ''
     ).strip()
     store_id = str(request.args.get('store_id') or '').strip()
@@ -288,7 +281,7 @@ def get_remaining_storage_details(stock_card_id):
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or DEFAULT_REMAINING_STORAGE_API_TOKEN
+        or credentials_service.get_credential_value('sagansa_remaining_storage_token')
         or ''
     ).strip()
 
@@ -354,7 +347,7 @@ def get_dashboard_remaining_storage():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or DEFAULT_REMAINING_STORAGE_API_TOKEN
+        or credentials_service.get_credential_value('sagansa_remaining_storage_token')
         or ''
     ).strip()
     _require_remaining_storage_token(token)
@@ -631,7 +624,7 @@ def get_dashboard_stock_monitoring_simplified():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or DEFAULT_STOCK_MONITORING_API_TOKEN
+        or credentials_service.get_credential_value('sagansa_stock_monitoring_token')
         or ''
     ).strip()
     

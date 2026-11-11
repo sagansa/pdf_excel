@@ -3,16 +3,13 @@ from datetime import date, timedelta
 from flask import Blueprint, request, jsonify
 from backend.errors import ApiError, BadRequestError, ServiceUnavailableError
 from backend.db.session import get_sagansa_engine
+from backend.services import credentials as credentials_service
 
 sales_by_date_bp = Blueprint('sales_by_date_bp', __name__)
 
 DEFAULT_SALES_BY_DATE_API_URL = os.environ.get(
     'SAGANSA_SALES_BY_DATE_API_URL',
     'https://superadmin.sagansa.id/api/detail-sales-orders/sales-by-date'
-)
-DEFAULT_SALES_BY_DATE_TOKEN = os.environ.get(
-    'SAGANSA_SALES_BY_DATE_TOKEN',
-    ''
 )
 
 
@@ -79,7 +76,7 @@ def get_dashboard_sales_by_date():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or DEFAULT_SALES_BY_DATE_TOKEN
+        or credentials_service.get_credential_value('sagansa_sales_by_date_token')
         or ''
     ).strip()
     _require_sales_by_date_token(token)

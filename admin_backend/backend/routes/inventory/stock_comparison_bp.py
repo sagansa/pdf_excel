@@ -3,16 +3,13 @@ from datetime import date, timedelta
 from flask import Blueprint, request, jsonify
 from backend.errors import ApiError, BadRequestError, ServiceUnavailableError
 from backend.db.session import get_sagansa_engine
+from backend.services import credentials as credentials_service
 
 stock_comparison_bp = Blueprint('stock_comparison_bp', __name__)
 
 DEFAULT_STOCK_COMPARISON_API_URL = os.environ.get(
     'SAGANSA_STOCK_COMPARISON_API_URL',
     'https://superadmin.sagansa.id/api/detail-stock-cards/compare-periods'
-)
-DEFAULT_STOCK_COMPARISON_TOKEN = os.environ.get(
-    'SAGANSA_STOCK_COMPARISON_TOKEN',
-    ''
 )
 
 
@@ -66,7 +63,7 @@ def get_stock_comparison():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or DEFAULT_STOCK_COMPARISON_TOKEN
+        or credentials_service.get_credential_value('sagansa_stock_comparison_token')
         or ''
     ).strip()
     _require_stock_comparison_token(token)

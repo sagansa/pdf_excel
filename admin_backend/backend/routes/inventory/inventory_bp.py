@@ -30,6 +30,7 @@ from backend.routes.inventory.remaining_storage_helpers import (
 )
 from backend.routes.inventory.remaining_storage_queries import build_monitoring_definition_query
 from backend.routes.route_utils import _fetch_remote_json, _safe_int
+from backend.services import credentials as credentials_service
 
 inventory_bp = Blueprint('inventory_bp', __name__)
 
@@ -37,17 +38,9 @@ DEFAULT_REMAINING_STORAGE_API_URL = os.environ.get(
     'SAGANSA_REMAINING_STORAGE_API_URL',
     'https://superadmin.sagansa.id/api/remaining-storages'
 )
-DEFAULT_REMAINING_STORAGE_API_TOKEN = os.environ.get(
-    'SAGANSA_REMAINING_STORAGE_TOKEN',
-    ''
-)
 DEFAULT_STOCK_MONITORING_API_URL = os.environ.get(
     'SAGANSA_STOCK_MONITORING_API_URL',
     'https://superadmin.sagansa.id/api/stock-monitorings'
-)
-DEFAULT_STOCK_MONITORING_API_TOKEN = os.environ.get(
-    'SAGANSA_STOCK_MONITORING_TOKEN',
-    DEFAULT_REMAINING_STORAGE_API_TOKEN
 )
 
 
@@ -71,7 +64,7 @@ def _normalize_product_key(value):
 
 
 def _fetch_stock_monitoring_index():
-    token = str(DEFAULT_STOCK_MONITORING_API_TOKEN or '').strip()
+    token = credentials_service.get_credential_value('sagansa_stock_monitoring_token')
     api_url = str(DEFAULT_STOCK_MONITORING_API_URL or '').strip()
     if not token or not api_url:
         return {}
@@ -848,7 +841,7 @@ def get_inventory_auto_balances():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or DEFAULT_REMAINING_STORAGE_API_TOKEN
+        or credentials_service.get_credential_value('sagansa_remaining_storage_token')
         or ''
     ).strip()
     _require_remaining_storage_token(token)

@@ -32,11 +32,11 @@ from backend.routes.route_utils import (
     _parse_bool,
     _safe_int,
 )
+from backend.services import credentials as credentials_service
 
 payroll_bp = Blueprint('payroll_bp', __name__)
 
 DEFAULT_PRESENCE_API_URL = os.environ.get('SAGANSA_PRESENCE_API_URL', 'https://superadmin.sagansa.id/api/presences')
-DEFAULT_PRESENCE_API_TOKEN = os.environ.get('SAGANSA_PRESENCE_TOKEN', '')
 
 
 @payroll_bp.route('/api/payroll/presences/sync', methods=['POST'])
@@ -49,7 +49,7 @@ def sync_payroll_presences():
         payload.get('token')
         or payload.get('access_token')
         or payload.get('api_token')
-        or DEFAULT_PRESENCE_API_TOKEN
+        or credentials_service.get_credential_value('sagansa_presence_token')
         or ''
     ).strip()
     company_id = str(payload.get('company_id') or '').strip() or None
@@ -68,7 +68,8 @@ def sync_payroll_presences():
     if (payload.get('end_date') or payload.get('date_end')) and not end_date:
         raise BadRequestError('end_date/date_end must be YYYY-MM-DD')
     if not token:
-        raise BadRequestError('Presence API token is required (payload.token or env SAGANSA_PRESENCE_TOKEN)')
+        raise BadRequestError(
+            'Presence API token is required (payload.token, Settings → API Keys, atau env SAGANSA_PRESENCE_TOKEN)')
 
     remote_params = {}
     if year is not None:
