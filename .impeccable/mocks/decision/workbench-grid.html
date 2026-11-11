@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>StatementX — Upload Summary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#0f151c;--surface:#16202a;--muted-bg:#101821;--raised:#1b2632;--line:#293847;--line2:#3a4f61;--text:#edf2f7;--dim:#9aa8ba;--teal:#2db6a3;--teal2:#63d3c3;--amber:#f59e0b;--danger:#f87171;--faint:#7c8ea3;--sans:'Manrope',system-ui,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+::selection{background:rgba(45,182,163,.3)}
+button{font-family:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+:focus{outline:none}
+:focus-visible{outline:2px solid rgba(99,211,195,.7);outline-offset:1px;border-radius:4px}
+.stage{width:1440px;height:900px;display:flex;overflow:hidden}
+.side{width:236px;flex:none;background:var(--muted-bg);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px 14px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 10px 20px}
+.glyph{width:28px;height:28px;border-radius:8px;background:var(--teal);color:#06231f;font:800 14px/28px var(--sans);text-align:center;letter-spacing:-.02em}
+.wordmark{font-size:15px;font-weight:800;letter-spacing:-.01em}
+.side nav{display:flex;flex-direction:column;gap:2px}
+.side nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:600;color:var(--dim);text-decoration:none;white-space:nowrap;transition:background .15s,color .15s}
+.side nav a:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.side nav a.on{background:rgba(45,182,163,.14);color:var(--teal2)}
+.ic{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.user{margin-top:auto;display:flex;align-items:center;gap:9px;border-top:1px solid var(--line);padding:14px 10px 2px}
+.avatar{width:24px;height:24px;border-radius:7px;background:rgba(45,182,163,.15);color:var(--teal2);font:700 9.5px/24px var(--sans);text-align:center;letter-spacing:.04em}
+.uname{font-size:12px;font-weight:600;color:var(--dim)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.banner{height:42px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:var(--muted-bg);border-bottom:1px solid var(--line)}
+.crumb{font-size:10.5px;font-weight:700;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+.server{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--teal2)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.content{flex:1;min-height:0;display:flex;flex-direction:column;padding-top:28px}
+.topline{display:flex;align-items:center;padding:0 28px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--amber);text-transform:uppercase}
+.meta{margin-left:16px;font-size:12px;color:var(--dim)}
+.btn{margin-left:auto;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--text);transition:border-color .15s,background .15s}
+.btn:hover{border-color:var(--teal);background:rgba(45,182,163,.08)}
+.btn .ic{width:13px;height:13px}
+h1{margin:8px 28px 16px;font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.grid{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 104px 148px 64px 186px 104px 104px 126px 44px;align-items:center}
+.ghead{position:sticky;top:0;z-index:1;height:44px;flex:none;background:var(--raised);border-bottom:1px solid var(--line);padding-left:16px}
+.hc{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;padding-right:10px}
+.hl{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;white-space:nowrap}
+.ctl{display:flex;align-items:center;gap:5px;height:21px;background:var(--muted-bg);border:1px solid var(--line);border-radius:6px;padding:0 7px;color:var(--faint)}
+.ctl:focus-within{border-color:var(--teal)}
+.ctl .ic{width:10px;height:10px}
+.ctl input{width:100%;min-width:0;border:0;background:none;padding:0;font:500 11px var(--sans);color:var(--text)}
+.ctl input::placeholder{color:var(--faint)}
+select{appearance:none;-webkit-appearance:none;width:100%;height:21px;background:var(--muted-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%239aa8ba' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 7px center;border:1px solid var(--line);border-radius:6px;padding:0 20px 0 8px;font:500 11px var(--sans);color:var(--text)}
+.hs{display:flex;align-items:center;min-width:0;padding:0 10px}
+.hs.r{justify-content:flex-end}
+.sort{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;padding:4px 2px;border-radius:4px;white-space:nowrap}
+.sort:hover{color:var(--text)}
+.sort .ic{width:9px;height:9px;opacity:.7}
+.gbody{flex:1;min-height:0;overflow-y:auto}
+.gbody::-webkit-scrollbar{width:10px}
+.gbody::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
+.row{position:relative;height:46px;flex:none;border-bottom:1px solid var(--line);padding-left:16px}
+.row:hover{background:#192430}
+.row::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:1px;background:var(--amber)}
+.row.ok::before{background:var(--teal)}
+.c{display:flex;align-items:center;min-width:0;height:100%;padding:0 10px}
+.c:first-child{padding-left:0}
+.c.r{justify-content:flex-end}
+.fname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.none{color:var(--dim);font-weight:400}
+.bank{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;white-space:nowrap}
+.chip{flex:none;display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:6px;font:500 11px var(--mono);white-space:nowrap}
+.chip.ok{background:rgba(45,182,163,.13);color:var(--teal2)}
+.chip.a{background:rgba(245,158,11,.12);color:var(--amber)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.txn,.amt,.per{font-size:12px;font-weight:500}
+.per,.amt,.last{white-space:nowrap}
+.mut{color:var(--faint)}
+.last{font-size:11px;font-weight:400;color:var(--dim)}
+.act{justify-content:flex-end;padding:0 14px 0 0}
+.trash{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;color:var(--faint);transition:color .15s,background .15s}
+.trash:hover{color:var(--danger);background:rgba(248,113,113,.09)}
+.trash .ic{width:14px;height:14px}
+.gfoot{height:44px;flex:none;display:flex;align-items:center;background:var(--muted-bg);border-top:1px solid var(--line);padding:0 16px 0 20px}
+.fl{font-size:12px;color:var(--dim)}
+.agg{margin-left:auto;font-size:12px;color:var(--dim);white-space:nowrap}
+.agg b{font-weight:600;color:var(--text)}
+.agg .db{color:var(--danger)}
+.agg .cr{color:var(--teal2)}
+.sep{margin:0 10px;color:#44586c}
+.pager{display:flex;align-items:center;gap:3px;margin-left:22px}
+.pg{width:24px;height:24px;border:1px solid transparent;border-radius:6px;color:var(--dim);font-size:14px;display:flex;align-items:center;justify-content:center}
+.pg:hover:not(:disabled){border-color:var(--line2);color:var(--text)}
+.pg:disabled{opacity:.35;cursor:default}
+.pgn{font:500 11px var(--mono);color:var(--dim);padding:0 4px}
+</style>
+</head>
+<body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg"><defs>
+<symbol id="i-dash" viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.5"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.5"/></symbol>
+<symbol id="i-convert" viewBox="0 0 16 16"><path d="M2 5.5h10.5M10 2.5l2.5 3-2.5 3M14 10.5H3.5M6 7.5l-2.5 3L6 13.5"/></symbol>
+<symbol id="i-db" viewBox="0 0 16 16"><ellipse cx="8" cy="4" rx="5.5" ry="2.2"/><path d="M2.5 4v8c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2V4M2.5 8c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2"/></symbol>
+<symbol id="i-spark" viewBox="0 0 16 16"><path d="M8 1.8 9.5 6.5 14.2 8 9.5 9.5 8 14.2 6.5 9.5 1.8 8 6.5 6.5Z"/></symbol>
+<symbol id="i-up" viewBox="0 0 16 16"><path d="M8 10.5v-7M5 6l3-3 3 3M3 11v1.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V11"/></symbol>
+<symbol id="i-checksq" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="3"/><path d="m5.5 8.2 1.7 1.7 3.4-3.6"/></symbol>
+<symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></symbol>
+<symbol id="i-sort" viewBox="0 0 16 16"><path d="M5.5 6.5 8 4l2.5 2.5M5.5 9.5 8 12l2.5-2.5"/></symbol>
+<symbol id="i-trash" viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V2.8c0-.4.3-.8.8-.8h1.4c.5 0 .8.4.8.8v1.7M4.5 4.5l.6 8.1c.1.8.7 1.4 1.5 1.4h2.8c.8 0 1.4-.6 1.5-1.4l.6-8.1M6.7 7.5l.15 3.5M9.3 7.5l-.15 3.5"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 16 16"><path d="M11.5 2v3h-3"/><path d="M10.24 7.5A4.5 4.5 0 1 1 9.18 2.82L11.5 5"/></symbol>
+<symbol id="i-chevl" viewBox="0 0 16 16"><path d="M9.5 3.5 5 8l4.5 4.5"/></symbol>
+<symbol id="i-chevr" viewBox="0 0 16 16"><path d="m6.5 3.5 4.5 4.5-4.5 4.5"/></symbol>
+</defs></svg>
+<div class="stage">
+<aside class="side">
+<div class="brand"><div class="glyph">S</div><div class="wordmark">StatementX</div></div>
+<nav>
+<a href="#"><svg class="ic"><use href="#i-dash"/></svg>Dashboard</a>
+<a href="#"><svg class="ic"><use href="#i-convert"/></svg>Converter</a>
+<a href="#"><svg class="ic"><use href="#i-db"/></svg>History &amp; DB</a>
+<a href="#"><svg class="ic"><use href="#i-spark"/></svg>Review Saran AI</a>
+<a class="on" href="#" aria-current="page"><svg class="ic"><use href="#i-up"/></svg>Upload Summary</a>
+<a href="#"><svg class="ic"><use href="#i-checksq"/></svg>Upload Checklist</a>
+</nav>
+<div class="user"><div class="avatar">DE</div><div class="uname">Dityo Enggar</div></div>
+</aside>
+<div class="main">
+<div class="banner"><span class="crumb">Admin Workspace — Upload Summary</span><span class="server"><span class="dot"></span>SERVER ONLINE</span></div>
+<div class="content">
+<div class="topline"><span class="eyebrow">Upload Summary</span><span class="meta">52 files · 378 transaksi · periode 2021-08 – 2026-02</span><button class="btn"><svg class="ic"><use href="#i-refresh"/></svg>Refresh</button></div>
+<h1>Uploaded file history and transaction totals</h1>
+<div class="grid">
+<div class="ghead cols">
+<div class="hc"><span class="hl">Source file</span><label class="ctl"><svg class="ic"><use href="#i-search"/></svg><input type="text" placeholder="Search filename…"></label></div>
+<div class="hc"><span class="hl">Bank</span><select><option>All banks</option><option>BCA</option><option>Mandiri</option><option>Unknown</option></select></div>
+<div class="hc"><span class="hl">Status</span><select><option>All statuses</option><option>Mapped</option><option>Unmapped</option><option>Mixed</option></select></div>
+<div class="hs r"><button class="sort">Txns<svg class="ic"><use href="#i-sort"/></svg></button></div>
+<div class="hs"><button class="sort">Period<svg class="ic"><use href="#i-sort"/></svg></button></div>
+<div class="hs r"><button class="sort">Debit<svg class="ic"><use href="#i-sort"/></svg></button></div>
+<div class="hs r"><button class="sort">Credit<svg class="ic"><use href="#i-sort"/></svg></button></div>
+<div class="hs r"><button class="sort">Last upload<svg class="ic"><use href="#i-sort"/></svg></button></div>
+<div class="hs"></div>
+</div>
+<div class="gbody">
+<div class="row cols"><div class="c"><span class="fname none">(no filename)</span></div><div class="c"><span class="bank">Unknown Bank</span></div><div class="c"><span class="chip a">Unmapped</span></div><div class="c r"><span class="mono txn">237</span></div><div class="c"><span class="mono per">2023-01-19 – 2026-02-21</span></div><div class="c r"><span class="mono amt mut">0</span></div><div class="c r"><span class="mono amt">658.222.738</span></div><div class="c r"><span class="mono last">2026-11-10 22:07</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+<div class="row cols"><div class="c"><span class="fname">MANUAL</span></div><div class="c"><span class="bank">Manual</span></div><div class="c"><span class="chip a">Unmapped</span></div><div class="c r"><span class="mono txn">24</span></div><div class="c"><span class="mono per">2025-12-31 – 2025-12-31</span></div><div class="c r"><span class="mono amt">146.888.342</span></div><div class="c r"><span class="mono amt">295.776.684</span></div><div class="c r"><span class="mono last">2026-11-10 21:38</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+<div class="row cols"><div class="c"><span class="fname">MANDIRI_2024_04.pdf</span></div><div class="c"><span class="bank">Mandiri</span></div><div class="c"><span class="chip a">Mixed</span></div><div class="c r"><span class="mono txn">35</span></div><div class="c"><span class="mono per">2024-04-01 – 2024-04-30</span></div><div class="c r"><span class="mono amt">4.897.985</span></div><div class="c r"><span class="mono amt">14.241.260</span></div><div class="c r"><span class="mono last">2026-11-09 09:27</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+<div class="row ok cols"><div class="c"><span class="fname">ESTATEMENT_05485921921_202112.pdf</span></div><div class="c"><span class="bank">BCA</span></div><div class="c"><span class="chip ok">APB (5485921921)</span></div><div class="c r"><span class="mono txn">2</span></div><div class="c"><span class="mono per">2021-12-01 – 2021-12-31</span></div><div class="c r"><span class="mono amt mut">0</span></div><div class="c r"><span class="mono amt">30.000</span></div><div class="c r"><span class="mono last">2026-11-08 12:35</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+<div class="row ok cols"><div class="c"><span class="fname">ESTATEMENT_05485921921_202111.pdf</span></div><div class="c"><span class="bank">BCA</span></div><div class="c"><span class="chip ok">APB (5485921921)</span></div><div class="c r"><span class="mono txn">2</span></div><div class="c"><span class="mono per">2021-11-01 – 2021-11-30</span></div><div class="c r"><span class="mono amt mut">0</span></div><div class="c r"><span class="mono amt">30.000</span></div><div class="c r"><span class="mono last">2026-11-08 12:35</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+<div class="row ok cols"><div class="c"><span class="fname">ESTATEMENT_05485921921_202110.pdf</span></div><div class="c"><span class="bank">BCA</span></div><div class="c"><span class="chip ok">APB (5485921921)</span></div><div class="c r"><span class="mono txn">2</span></div><div class="c"><span class="mono per">2021-10-01 – 2021-10-31</span></div><div class="c r"><span class="mono amt mut">0</span></div><div class="c r"><span class="mono amt">30.000</span></div><div class="c r"><span class="mono last">2026-11-08 12:34</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+<div class="row ok cols"><div class="c"><span class="fname">ESTATEMENT_05485921921_202109.pdf</span></div><div class="c"><span class="bank">BCA</span></div><div class="c"><span class="chip ok">APB (5485921921)</span></div><div class="c r"><span class="mono txn">2</span></div><div class="c"><span class="mono per">2021-09-01 – 2021-09-30</span></div><div class="c r"><span class="mono amt mut">0</span></div><div class="c r"><span class="mono amt">30.000</span></div><div class="c r"><span class="mono last">2026-11-08 12:34</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+<div class="row ok cols"><div class="c"><span class="fname">ESTATEMENT_05485921921_202108.pdf</span></div><div class="c"><span class="bank">BCA</span></div><div class="c"><span class="chip ok">APB (5485921921)</span></div><div class="c r"><span class="mono txn">2</span></div><div class="c"><span class="mono per">2021-08-01 – 2021-08-31</span></div><div class="c r"><span class="mono amt mut">0</span></div><div class="c r"><span class="mono amt">30.000</span></div><div class="c r"><span class="mono last">2026-11-08 12:33</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+<div class="row ok cols"><div class="c"><span class="fname">ESTATEMENT_05485921921_202107.pdf</span></div><div class="c"><span class="bank">BCA</span></div><div class="c"><span class="chip ok">APB (5485921921)</span></div><div class="c r"><span class="mono txn">2</span></div><div class="c"><span class="mono per">2021-07-01 – 2021-07-31</span></div><div class="c r"><span class="mono amt mut">0</span></div><div class="c r"><span class="mono amt">30.000</span></div><div class="c r"><span class="mono last">2026-11-08 12:33</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+<div class="row ok cols"><div class="c"><span class="fname">ESTATEMENT_05485921921_202106.pdf</span></div><div class="c"><span class="bank">BCA</span></div><div class="c"><span class="chip ok">APB (5485921921)</span></div><div class="c r"><span class="mono txn">2</span></div><div class="c"><span class="mono per">2021-06-01 – 2021-06-30</span></div><div class="c r"><span class="mono amt mut">0</span></div><div class="c r"><span class="mono amt">30.000</span></div><div class="c r"><span class="mono last">2026-11-08 12:33</span></div><div class="c act"><button class="trash" aria-label="Delete upload"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+</div>
+<div class="gfoot"><span class="fl">10 of 52 files shown</span><span class="agg mono">Total <b>378</b> txns<span class="sep">·</span><span class="db">DB 151.786.327</span><span class="sep">·</span><span class="cr">CR 969.270.682</span></span><nav class="pager" aria-label="Pagination"><button class="pg" disabled><svg class="ic" style="width:10px;height:10px"><use href="#i-chevl"/></svg></button><span class="pgn">1/6</span><button class="pg"><svg class="ic" style="width:10px;height:10px"><use href="#i-chevr"/></svg></button></nav></div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

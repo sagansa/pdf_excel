@@ -1,0 +1,45 @@
+{
+  "title": "Redesign: Uploaded file history",
+  "question": "The upload-history page keeps its paper-ledger identity but needs a new structure. Three recompositions are on the table — lock one, steer, or re-roll.",
+  "options": [
+    {
+      "id": "triage-first",
+      "kind": "assigned",
+      "label": "Triage Queue",
+      "kicker": "THE ROLL",
+      "lineage": "ops review inboxes / support triage queues",
+      "thesis": "The page leads with what needs fixing — unmapped accounts, mixed accounts, anomalies — and the clean ledger becomes the archive beneath.",
+      "palette": ["#0f151c", "#16202a", "#2db6a3", "#f59e0b", "#f87171"],
+      "materials": ["Manrope + IBM Plex Mono", "surface cards", "hairline rules", "status chips"],
+      "viewport": "Attention strip first: three issue groups (Unmapped accounts 2, Mixed accounts 1, Check totals 1), each expandable to rows with the fix inline — assign account, review, delete. The full ledger sits below as the archive.",
+      "risk": "Two stacked regions can feel heavy on a clean day; the queue must collapse to a slim strip when there is nothing to fix."
+    },
+    {
+      "id": "coverage-matrix",
+      "kind": "dealt",
+      "label": "Coverage Board",
+      "kicker": "DEALT",
+      "lineage": "coverage matrices / release calendars",
+      "thesis": "A months × bank-account grid shows every gap in ingestion at one glance; clicking a cell or row drives the ledger below.",
+      "palette": ["#0f151c", "#16202a", "#2db6a3", "#f59e0b", "#f87171"],
+      "materials": ["Manrope + IBM Plex Mono", "surface cards", "hairline rules", "tick cells"],
+      "viewport": "Year selector beside a coverage strip: one row per bank+account, twelve month cells per row, filled tick per uploaded month, amber tick where mixed, red where unmapped, hollow where missing. Ledger below answers to strip selection.",
+      "risk": "Earns its keep while accounts stay few; many accounts would crowd the strip."
+    },
+    {
+      "id": "workbench-grid",
+      "kind": "dealt",
+      "label": "Workbench Grid",
+      "kicker": "DEALT",
+      "lineage": "dense financial workbenches / register grids",
+      "thesis": "One full-bleed instrument: filters live in the sticky table header, aggregates in a pinned footer, nothing between you and the rows.",
+      "palette": ["#0f151c", "#16202a", "#2db6a3", "#f59e0b", "#f87171"],
+      "materials": ["Manrope + IBM Plex Mono", "hairline grid", "mono numerals", "pinned footer bar"],
+      "viewport": "Edge-to-edge dense grid: bank / year / status filters set into the header row, mono right-aligned DB and CR columns, per-row status rule on the left edge, aggregate footer (files, txns, DB, CR) always visible.",
+      "risk": "Density-first can overwhelm the least expert users in the mix; needs disciplined grouping to stay scannable."
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code" },
+  "steer": true
+}

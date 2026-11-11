@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11",
+  "title": "Design System: StatementX",
+  "extensions": {
+    "colorMeta": {
+      "ledger-teal": { "role": "primary", "displayName": "Ledger Teal", "canonical": "var(--color-primary, #0f766e)", "tonalRamp": ["#052e2b", "#0b4a44", "#0f766e", "#158578", "#1a9a8c", "#2db6a3", "#8ed2c8", "#d6efe9"] },
+      "ledger-teal-deep": { "role": "primary", "displayName": "Ledger Teal Deep", "canonical": "var(--color-primary-strong, #115e59)", "tonalRamp": ["#031a17", "#07332e", "#0b4a44", "#115e59", "#14756e", "#1a9a8c", "#7cc6bb", "#cdeae4"] },
+      "signal-teal": { "role": "primary", "displayName": "Signal Teal (dark primary)", "canonical": "html.dark --color-primary #2db6a3", "tonalRamp": ["#0b2e29", "#114a41", "#178574", "#2db6a3", "#4fc7b6", "#7dd5c8", "#a9e3da", "#e2f6f2"] },
+      "annotation-amber": { "role": "secondary", "displayName": "Annotation Amber", "canonical": "var(--color-accent, #b45309)", "tonalRamp": ["#2e1703", "#57300a", "#7c440c", "#b45309", "#cd6f18", "#e08c2a", "#f0b667", "#fbe4c4"] },
+      "lantern-amber": { "role": "secondary", "displayName": "Lantern Amber (dark accent)", "canonical": "html.dark --color-accent #f59e0b", "tonalRamp": ["#3a2504", "#5e3d07", "#8f5e0a", "#f59e0b", "#f7b13d", "#fac46e", "#fdd9a0", "#fef0d4"] },
+      "clerk-green": { "role": "tertiary", "displayName": "Clerk Green", "canonical": "var(--color-success, #166534)", "tonalRamp": ["#04240f", "#0a3d1c", "#14532d", "#166534", "#22884a", "#3fa063", "#79c791", "#dcf2e3"] },
+      "meadow-green": { "role": "tertiary", "displayName": "Meadow Green (dark success)", "canonical": "html.dark --color-success #4ade80", "tonalRamp": ["#0d331b", "#155029", "#1e6b39", "#2f9e52", "#4ade80", "#8bf0a9", "#b8f7ca", "#e6fcf0"] },
+      "red-ink": { "role": "tertiary", "displayName": "Red Ink", "canonical": "var(--color-danger, #b91c1c)", "tonalRamp": ["#330606", "#5a0d0d", "#821414", "#b91c1c", "#d43333", "#e86060", "#f3a0a0", "#fce3e3"] },
+      "alarm-coral": { "role": "tertiary", "displayName": "Alarm Coral (dark danger)", "canonical": "html.dark --color-danger #f87171", "tonalRamp": ["#3d0f0f", "#661a1a", "#992626", "#c93d3d", "#f87171", "#fa9898", "#fcc0c0", "#fee6e6"] },
+      "paper-ground": { "role": "neutral", "displayName": "Paper Ground", "canonical": "var(--color-bg, #f3ede3)", "tonalRamp": ["#453b2d", "#665a46", "#8a7c63", "#ab9f88", "#c9bfa9", "#e0d8c6", "#f3ede3", "#faf6ee"] },
+      "night-desk": { "role": "neutral", "displayName": "Night Desk (dark ground)", "canonical": "html.dark --color-bg #0f151c", "tonalRamp": ["#05080b", "#0a0f14", "#0f151c", "#1a2530", "#2a3a48", "#3d5265", "#54718a", "#7d97ae"] },
+      "ledger-white": { "role": "neutral", "displayName": "Ledger White", "canonical": "var(--color-surface, #fffdf8)", "tonalRamp": ["#57503f", "#7d7460", "#a29881", "#c2b89f", "#ded5c0", "#f0e9da", "#fffdf8", "#ffffff"] },
+      "dark-ledger": { "role": "neutral", "displayName": "Dark Ledger (dark surface)", "canonical": "html.dark --color-surface #16202a", "tonalRamp": ["#05080b", "#0a1118", "#0e1821", "#16202a", "#22303d", "#2f4252", "#41596b", "#5b7488"] },
+      "parchment-muted": { "role": "neutral", "displayName": "Parchment Muted", "canonical": "var(--color-surface-muted, #f4ede2)", "tonalRamp": ["#443b2d", "#655a47", "#887b64", "#a99e88", "#c7bda8", "#ded6c5", "#f4ede2", "#faf6ee"] },
+      "cream-raised": { "role": "neutral", "displayName": "Cream Raised", "canonical": "var(--color-surface-raised, #fffaf2)", "tonalRamp": ["#514b3c", "#766f5b", "#9b937c", "#bcb49c", "#d9d1bd", "#eee8da", "#fffaf2", "#fffdf9"] },
+      "rule-line": { "role": "neutral", "displayName": "Rule Line", "canonical": "var(--color-border, #d9cfbe)", "tonalRamp": ["#3f3a2e", "#5d5645", "#7c735e", "#9a907a", "#b5ac97", "#cbc2ae", "#d9cfbe", "#e9e2d4"] },
+      "rule-strong": { "role": "neutral", "displayName": "Rule Strong", "canonical": "var(--color-border-strong, #c5b79e)", "tonalRamp": ["#39341f", "#554e33", "#716748", "#8d8261", "#a89a7c", "#bfae8e", "#c5b79e", "#ddd3c1"] },
+      "ledger-ink": { "role": "neutral", "displayName": "Ledger Ink", "canonical": "var(--color-text, #1f2937)", "tonalRamp": ["#0b1220", "#111827", "#1f2937", "#374151", "#4b5563", "#6b7280", "#9ca3af", "#d1d5db"] },
+      "moon-ink": { "role": "neutral", "displayName": "Moon Ink (dark text)", "canonical": "html.dark --color-text #edf2f7", "tonalRamp": ["#3d4a5c", "#5a6b80", "#7b8ca1", "#9fb0c2", "#c2cfdb", "#dde6ee", "#edf2f7", "#f8fafc"] },
+      "pencil-gray": { "role": "neutral", "displayName": "Pencil Gray", "canonical": "var(--color-text-muted, #667085)", "tonalRamp": ["#20262e", "#333d4d", "#475467", "#667085", "#8a94a6", "#adb6c4", "#ced5df", "#eef0f4"] },
+      "cloud-gray": { "role": "neutral", "displayName": "Cloud Gray (dark muted)", "canonical": "html.dark --color-text-muted #9aa8ba", "tonalRamp": ["#2c3644", "#414f61", "#5a6b80", "#78899c", "#9aa8ba", "#b8c3cf", "#d3dbe3", "#eef2f6"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Page titles in PageHeader only — one per page." },
+      "title": { "displayName": "Title", "purpose": "Card and section titles; strip titles run smaller at 14px/800." },
+      "body": { "displayName": "Body", "purpose": "UI copy (14px) and dense table cells (12.5-13px); EN/ID mixed, sentence-case." },
+      "label": { "displayName": "Ledger Label", "purpose": "Column headers, toolbar labels, bank codes: 10.5-11px bold uppercase, letter-spaced." },
+      "mono": { "displayName": "Ledger Figures", "purpose": "Every scanned numeral: amounts, counts, dates, periods. IBM Plex Mono." }
+    },
+    "shadows": [
+      { "name": "card-rest", "value": "var(--shadow-card, 0 18px 40px rgba(55, 36, 18, 0.06))", "purpose": "Every surface card, dropdown panel, and modal, always on." },
+      { "name": "card-hover", "value": "var(--shadow-card-hover, 0 22px 48px rgba(55, 36, 18, 0.10))", "purpose": "interactive-card hover only; never on table rows." },
+      { "name": "soft", "value": "var(--shadow-soft, 0 10px 24px rgba(31, 41, 55, 0.08))", "purpose": "Inputs, theme toggle, small floating editor pods." },
+      { "name": "primary-glow", "value": "0 12px 28px rgba(15, 118, 110, 0.22)", "purpose": "btn-primary only — the one colored shadow in the system." }
+    ],
+    "motion": [
+      { "name": "micro", "value": "140ms ease", "purpose": "Chip, button color/border transitions." },
+      { "name": "row", "value": "160ms ease", "purpose": "Table row background tint on hover." },
+      { "name": "card", "value": "180ms ease", "purpose": "Card lift and shadow deepen (transform, box-shadow, border-color)." },
+      { "name": "enter", "value": "200ms ease-out", "purpose": "Attention-queue issue rows enter (6px rise + fade); leave 140ms ease-in. Disabled under prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "lg-table", "value": "1200px", "purpose": "Secondary table columns (Last Upload, Bank) drop out." },
+      { "name": "issue-2col", "value": "1100px", "purpose": "Attention-queue issue rows reflow to a 2-column grid." },
+      { "name": "stack", "value": "900px", "purpose": "Toolbars stack vertically; issue rows collapse to one column." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The page's one main action: teal gradient, teal glow, 1px hover lift.",
+      "html": "<button class=\"ds-btn-primary\">Assign</button>",
+      "css": ".ds-btn-primary { background: linear-gradient(135deg, var(--color-primary, #0f766e), var(--color-primary-strong, #115e59)); color: #fff; border: none; border-radius: 12px; padding: 8px 16px; font: 600 13px var(--font-sans, Manrope, sans-serif); box-shadow: 0 12px 28px rgba(15, 118, 110, 0.22); cursor: pointer; transition: background-color 140ms ease, transform 140ms ease, box-shadow 140ms ease; } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 16px 32px rgba(15, 118, 110, 0.26); } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-primary-ring, rgba(15,118,110,0.18)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Toolbar and header actions on cream raised fill with hairline border.",
+      "html": "<button class=\"ds-btn-secondary\">Refresh</button>",
+      "css": ".ds-btn-secondary { background: var(--color-surface-raised, #fffaf2); border: 1px solid var(--color-border, #d9cfbe); color: var(--color-text, #1f2937); border-radius: 12px; padding: 8px 16px; font: 600 13px var(--font-sans, Manrope, sans-serif); cursor: pointer; transition: border-color 140ms ease, transform 140ms ease; } .ds-btn-secondary:hover { border-color: var(--color-border-strong, #c5b79e); transform: translateY(-1px); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--color-primary-ring, rgba(15,118,110,0.18)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive confirmations only — solid red ink with red glow.",
+      "html": "<button class=\"ds-btn-danger\">Delete</button>",
+      "css": ".ds-btn-danger { background: var(--color-danger, #b91c1c); color: #fff; border: none; border-radius: 12px; padding: 8px 16px; font: 600 13px var(--font-sans, Manrope, sans-serif); box-shadow: 0 12px 28px rgba(185, 28, 28, 0.22); cursor: pointer; transition: background-color 140ms ease, transform 140ms ease; } .ds-btn-danger:hover { background: #a11818; transform: translateY(-1px); box-shadow: 0 16px 32px rgba(185, 28, 28, 0.26); } .ds-btn-danger:focus-visible { outline: 2px solid var(--color-primary-ring, rgba(15,118,110,0.18)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Raised cream field with hairline border; teal border + 4px ring on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Cari nama file…\" />",
+      "css": ".ds-input { width: 100%; background: var(--color-surface-raised, #fffaf2); border: 1px solid var(--color-border, #d9cfbe); color: var(--color-text, #1f2937); border-radius: 12px; padding: 7px 12px; font: 400 13px var(--font-sans, Manrope, sans-serif); min-height: 34px; box-shadow: var(--shadow-soft, 0 10px 24px rgba(31,41,55,0.08)); transition: border-color 140ms ease, box-shadow 140ms ease; } .ds-input::placeholder { color: var(--color-text-muted, #667085); } .ds-input:focus { outline: none; border-color: var(--color-primary, #0f766e); box-shadow: 0 0 0 4px var(--color-primary-ring, rgba(15,118,110,0.18)); }"
+    },
+    {
+      "name": "Account Chip — Mapped",
+      "kind": "chip",
+      "refersTo": "chip-account-mapped",
+      "description": "Per-row account status in teal tint; pencil glyph fades in on hover to advertise editability.",
+      "html": "<button class=\"ds-chip-ok\"><span>APB (5485921921)</span><svg class=\"ds-chip-edit\" width=\"10\" height=\"10\" viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M12.3 1.7a1.2 1.2 0 0 1 1.7 1.7l-8 8-2.3.6.6-2.3 8-8z\"/></svg></button>",
+      "css": ".ds-chip-ok { display: inline-flex; align-items: center; gap: 6px; background: rgba(15, 118, 110, 0.10); border: 1px solid rgba(15, 118, 110, 0.22); color: var(--color-primary, #0f766e); border-radius: 999px; padding: 4px 8px; font: 700 11.5px/1.2 var(--font-sans, Manrope, sans-serif); letter-spacing: 0.02em; cursor: pointer; transition: background-color 140ms ease; } .ds-chip-ok:hover { background: rgba(15, 118, 110, 0.16); } .ds-chip-ok:hover .ds-chip-edit { opacity: 0.7; } .ds-chip-edit { opacity: 0; transition: opacity 140ms ease; } .ds-chip-ok:focus-visible { outline: 2px solid var(--color-primary-ring, rgba(15,118,110,0.18)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Account Chip — Flagged",
+      "kind": "chip",
+      "refersTo": "chip-account-flagged",
+      "description": "Unmapped or mixed account: amber tint pill marking a pending human decision.",
+      "html": "<button class=\"ds-chip-warn\"><span>Unmapped</span><svg class=\"ds-chip-edit\" width=\"10\" height=\"10\" viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M12.3 1.7a1.2 1.2 0 0 1 1.7 1.7l-8 8-2.3.6.6-2.3 8-8z\"/></svg></button>",
+      "css": ".ds-chip-warn { display: inline-flex; align-items: center; gap: 6px; background: rgba(180, 83, 9, 0.10); border: 1px solid rgba(180, 83, 9, 0.24); color: var(--color-accent, #b45309); border-radius: 999px; padding: 4px 8px; font: 700 11.5px/1.2 var(--font-sans, Manrope, sans-serif); letter-spacing: 0.02em; cursor: pointer; transition: background-color 140ms ease; } .ds-chip-warn:hover { background: rgba(180, 83, 9, 0.16); } .ds-chip-warn:hover .ds-chip-edit { opacity: 0.7; } .ds-chip-edit { opacity: 0; transition: opacity 140ms ease; } .ds-chip-warn:focus-visible { outline: 2px solid var(--color-primary-ring, rgba(15,118,110,0.18)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Group Chip",
+      "kind": "chip",
+      "refersTo": "chip-group",
+      "description": "Attention-queue group tab: status dot, label, mono count, chevron.",
+      "html": "<button class=\"ds-group-chip ds-group-chip--open\"><span class=\"ds-dot\"></span><span class=\"ds-label\">Unmapped accounts</span><span class=\"ds-count\">· 201</span><svg width=\"10\" height=\"10\" viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z\"/></svg></button>",
+      "css": ".ds-group-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--color-border, #d9cfbe); background: var(--color-surface-muted, #f4ede2); color: var(--color-text, #1f2937); font: 600 12.5px var(--font-sans, Manrope, sans-serif); cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease; } .ds-group-chip:hover { border-color: var(--color-border-strong, #c5b79e); } .ds-group-chip--open { background: var(--color-surface-raised, #fffaf2); border-color: var(--color-border-strong, #c5b79e); } .ds-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-accent, #b45309); } .ds-count { color: var(--color-text-muted, #667085); font-weight: 500; } .ds-group-chip:focus-visible { outline: 2px solid var(--color-primary-ring, rgba(15,118,110,0.18)); outline-offset: 1px; }"
+    },
+    {
+      "name": "All-Clear Bar",
+      "kind": "custom",
+      "refersTo": "surface-card",
+      "description": "Signature: the attention queue collapsed to one quiet line on a clean day.",
+      "html": "<section class=\"ds-allclear\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M2.5 8a5.5 5.5 0 1 0 11 0 5.5 5.5 0 0 0-11 0\" opacity=\"0.25\"/><path d=\"M7.406 10.153 4.646 7.394l.708-.708 2.052 2.053 4.647-4.647.708.708-5.355 5.353z\"/></svg><span>Semua beres — tidak ada upload yang perlu diperbaiki.</span></section>",
+      "css": ".ds-allclear { display: flex; align-items: center; gap: 10px; padding: 10px 20px; background: var(--color-surface, #fffdf8); border: 1px solid var(--color-border, #d9cfbe); border-radius: 16px; box-shadow: var(--shadow-card, 0 18px 40px rgba(55,36,18,0.06)); font: 400 12.5px var(--font-sans, Manrope, sans-serif); color: var(--color-text-muted, #667085); } .ds-allclear svg { color: var(--color-success, #166534); flex: none; }"
+    },
+    {
+      "name": "Surface Card",
+      "kind": "card",
+      "refersTo": "surface-card",
+      "description": "The paper sheet every page is built from: cream fill, hairline border, warm ambient shadow.",
+      "html": "<section class=\"ds-card\"><h3 class=\"ds-card__title\">Uploaded file history</h3><p class=\"ds-card__body\">Pantau file yang pernah diunggah, periode datanya, dan lakukan pembersihan jika diperlukan.</p></section>",
+      "css": ".ds-card { background: var(--color-surface, #fffdf8); border: 1px solid var(--color-border, #d9cfbe); border-radius: 16px; box-shadow: var(--shadow-card, 0 18px 40px rgba(55,36,18,0.06)); padding: 20px; color: var(--color-text, #1f2937); } .ds-card__title { margin: 0 0 6px; font: 700 18px/1.35 var(--font-sans, Manrope, sans-serif); } .ds-card__body { margin: 0; font: 400 13px/1.5 var(--font-sans, Manrope, sans-serif); color: var(--color-text-muted, #667085); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Warm Paper Ledger",
+    "overview": "StatementX looks like a well-kept accounting ledger lying on a warm wooden desk. The ground is warm parchment washed with faint amber and teal radial glows; every working surface is a paper card ruled with one-pixel hairlines, the way a ledger page is ruled. Color behaves like a clerk's pens: teal ink does the confirming and the acting, amber ink flags anything that needs a human decision, red ink is reserved for destruction. Nothing shouts; density is comfortable, not cramped, because the users are mixed-skill bookkeeping staff, some not accountants by training.\n\nThe system is token-first: every color, radius, shadow, and font stack lives as a CSS custom property in admin_frontend/src/style.css with a parallel html.dark variant block, and Tailwind is configured to read those variables. Components never hardcode hex values; they compose tokens. UI copy mixes English and Indonesian naturally — numbers and dates always set in the mono voice so they read as ledger figures regardless of language.",
+    "keyCharacteristics": [
+      "Warm paper ground with radial amber/teal washes; cream card surfaces with hairline borders",
+      "Dual-theme by CSS variables (:root light, html.dark dark) — no component knows which theme is active",
+      "Teal = action/confirm/mapped; amber = needs attention; red = destructive only",
+      "Manrope for the UI voice, IBM Plex Mono for every numeral a clerk scans",
+      "One-pixel hairline ruling between table cells and card sections",
+      "Soft ambient card shadows, always on; hover responses tint rows and lift buttons, never shadow-pop tables",
+      "Pill-shaped status chips built from ~10% alpha tints, not solid fills",
+      "Bootstrap Icons throughout, 10-14px, always token-colored"
+    ],
+    "rules": [
+      { "name": "The Amber-Flags-Work Rule", "body": "Teal means the system is acting or confirming; amber means a human must decide; red means something will be destroyed. A surface never borrows red for decoration or amber for success.", "section": "colors" },
+      { "name": "The Tint-Not-Fill Rule", "body": "Status chips and selection states are ~10% alpha tints with a ~22-24% alpha border and the solid token as text color — never solid color fills.", "section": "colors" },
+      { "name": "The Numerals-in-Plex Rule", "body": "Any figure a clerk compares — debit, credit, count, date, period — sets in IBM Plex Mono. Prose never intrudes on the numeric voice.", "section": "typography" },
+      { "name": "The Ledger-Label Rule", "body": "Column headers and toolbar labels are 10.5-11px, bold-to-extrabold, uppercase, letter-spaced, Pencil Gray. They are the ledger's printed column captions.", "section": "typography" },
+      { "name": "The Rows-Tint-Cards-Lift Rule", "body": "Table rows respond to hover with a background tint, never a shadow; buttons and cards may lift. A table that moves is a table that lies about being paper.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do take every color from the CSS variables in admin_frontend/src/style.css and add the dark variant in the html.dark block when introducing a token.",
+      "Do set every numeral, date, and amount in IBM Plex Mono (var(--font-mono)), right-aligned in table columns.",
+      "Do build data surfaces on the TableShell / SectionCard / PageHeader primitives, with hairline 1px --color-border ruling and 41-46px rows.",
+      "Do express status as tint chips: ~10% alpha fill, ~22-24% alpha border, solid token text.",
+      "Do use :focus-visible with 2px solid var(--color-primary-ring) outline (1px offset) on all custom controls, and honor prefers-reduced-motion for transitions.",
+      "Do write micro-labels as 10.5-11px bold uppercase with 0.08em tracking in Pencil Gray."
+    ],
+    "donts": [
+      "Don't hardcode hex values or raw Tailwind palette classes (text-red-500) in components — the token layer is the only source.",
+      "Don't use red for anything that is not destructive, and don't use amber for success — amber is a pending decision, red is a destroyed row.",
+      "Don't put shadows or lifts on table rows; rows tint (4% teal), cards lift.",
+      "Don't invent a second accent or introduce solid-fill status colors — the tint-not-fill formula and the teal/amber/red division are the system.",
+      "Don't drop below ~10.5px for labels (the incumbent 9-10px table text is a known accessibility failure being corrected, not a precedent)."
+    ]
+  }
+}

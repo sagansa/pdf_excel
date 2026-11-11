@@ -1,8 +1,6 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <PageHeader
-      eyebrow="Upload Summary"
-      icon="bi bi-cloud-arrow-up-fill"
       title="Uploaded file history and transaction totals"
       subtitle="Pantau file yang pernah diunggah, periode datanya, dan lakukan pembersihan jika diperlukan."
     >
@@ -18,136 +16,166 @@
       </template>
     </PageHeader>
 
-    <SectionCard
-      title="Filters"
-      subtitle="Saring histori upload berdasarkan bank dan tahun periode."
-      body-class="p-4"
-    >
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <FormField label="Bank">
-          <SelectInput
-            v-model="filterBank"
-            :options="bankOptions"
-            placeholder="All Banks"
-          />
-        </FormField>
-
-        <FormField label="Year">
-          <SelectInput
-            v-model="filterYear"
-            :options="yearOptions"
-            placeholder="All Years"
-          />
-        </FormField>
-      </div>
-    </SectionCard>
+    <UploadAttentionQueue
+      :groups="attentionGroups"
+      :total-issues="totalIssues"
+      :busy-key="savingRowKey"
+      :options-for="getAccountOptions"
+      :row-key-of="getRowKey"
+      @assign="handleAssign"
+    />
 
     <TableShell>
+      <template #toolbar>
+        <div class="upload-toolbar">
+          <div class="upload-toolbar__filters">
+            <div class="upload-toolbar__field">
+              <label class="upload-toolbar__label" for="upload-filter-bank">Bank</label>
+              <SelectInput
+                id="upload-filter-bank"
+                v-model="filterBank"
+                :options="bankOptions"
+                placeholder="All Banks"
+                size="sm"
+                class="upload-toolbar__bank"
+              />
+            </div>
+            <div class="upload-toolbar__field">
+              <label class="upload-toolbar__label" for="upload-filter-year">Year</label>
+              <SelectInput
+                id="upload-filter-year"
+                v-model="filterYear"
+                :options="yearOptions"
+                placeholder="All Years"
+                size="sm"
+                class="upload-toolbar__year"
+              />
+            </div>
+            <div class="upload-toolbar__field">
+              <label class="upload-toolbar__label" for="upload-filter-status">Status</label>
+              <SelectInput
+                id="upload-filter-status"
+                v-model="filterStatus"
+                :options="statusOptions"
+                placeholder="All statuses"
+                size="sm"
+                class="upload-toolbar__status"
+              />
+            </div>
+            <div class="upload-toolbar__field">
+              <label class="upload-toolbar__label" for="upload-filter-name">File</label>
+              <div class="upload-toolbar__search">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <TextInput
+                  id="upload-filter-name"
+                  v-model="filterName"
+                  placeholder="Cari nama file…"
+                  size="sm"
+                />
+              </div>
+            </div>
+          </div>
+          <span class="upload-toolbar__total" role="status">
+            {{ filteredAndSortedSummary.length }} of {{ store.uploadSummary.length }} files
+          </span>
+        </div>
+      </template>
+
       <table class="min-w-full upload-table">
         <thead class="upload-table-head">
           <tr>
             <th
+              scope="col"
               @click="toggleSort('source_file')"
-              class="cursor-pointer px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted transition-colors hover:bg-[var(--color-surface-raised)] group"
+              class="upload-th upload-th--sortable group"
             >
-              <div class="flex items-center gap-2">
+              <span class="upload-th__inner">
                 Source File
                 <i v-if="sortBy === 'source_file'" class="bi" :class="sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up-alt'"></i>
-                <i v-else class="bi bi-hash text-muted opacity-0 group-hover:opacity-100"></i>
-              </div>
+              </span>
             </th>
-            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted">Bank</th>
-            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted">Account</th>
-            <th class="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted">Txns</th>
-            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted">Period</th>
-            <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted">Totals</th>
+            <th scope="col" class="upload-th">Bank</th>
+            <th scope="col" class="upload-th">Account</th>
+            <th scope="col" class="upload-th upload-th--r">Txns</th>
+            <th scope="col" class="upload-th">Period</th>
+            <th scope="col" class="upload-th upload-th--r">Debit</th>
+            <th scope="col" class="upload-th upload-th--r">Credit</th>
             <th
+              scope="col"
               @click="toggleSort('last_upload')"
-              class="cursor-pointer px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted transition-colors hover:bg-[var(--color-surface-raised)] group"
+              class="upload-th upload-th--sortable"
             >
-              <div class="flex items-center gap-2">
+              <span class="upload-th__inner">
                 Last Upload
                 <i v-if="sortBy === 'last_upload'" class="bi" :class="sortDir === 'asc' ? 'bi-sort-numeric-down' : 'bi-sort-numeric-up-alt'"></i>
-                <i v-else class="bi bi-clock text-muted opacity-0 group-hover:opacity-100"></i>
-              </div>
+              </span>
             </th>
-            <th class="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted">Actions</th>
+            <th scope="col" class="upload-th upload-th--c"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
-        <tbody class="divide-y" style="border-color: var(--color-border)">
+        <tbody class="upload-tbody">
           <tr v-if="store.isLoading && store.uploadSummary.length === 0">
-            <td colspan="8" class="py-12 text-center">
+            <td colspan="9" class="upload-state">
               <span class="spinner-border h-8 w-8" style="color: var(--color-primary)" role="status"></span>
             </td>
           </tr>
-          <tr v-else-if="filteredAndSortedSummary.length === 0">
-            <td colspan="8" class="py-12 text-center text-muted italic">
-              {{ store.uploadSummary.length === 0 ? 'No upload history found' : 'No matches found for active filters' }}
+          <tr v-else-if="store.uploadSummary.length === 0">
+            <td colspan="9" class="upload-state">
+              <i class="bi bi-cloud-arrow-up upload-state__icon" aria-hidden="true"></i>
+              <p class="upload-state__title">No upload history found</p>
+              <p class="upload-state__hint">Transaksi hasil impor statement akan muncul di sini.</p>
             </td>
           </tr>
-          <tr v-for="item in filteredAndSortedSummary" :key="item.source_file + item.bank_code" class="upload-row">
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-2">
-                <i class="bi bi-file-earmark-pdf text-red-500 text-lg"></i>
-                <span class="max-w-xs truncate text-sm font-semibold text-theme" :title="item.source_file">
-                  {{ item.source_file }}
+          <tr v-else-if="filteredAndSortedSummary.length === 0">
+            <td colspan="9" class="upload-state">
+              <i class="bi bi-funnel upload-state__icon" aria-hidden="true"></i>
+              <p class="upload-state__title">No matches found for active filters</p>
+              <button type="button" class="upload-state__action" @click="clearFilters">
+                Bersihkan filter
+              </button>
+            </td>
+          </tr>
+          <tr
+            v-for="item in filteredAndSortedSummary"
+            :key="getRowKey(item)"
+            class="upload-row"
+          >
+            <td class="upload-td upload-td--file">
+              <div class="upload-file">
+                <i class="bi bi-file-earmark-pdf upload-file__icon" aria-hidden="true"></i>
+                <span class="upload-file__name" :title="item.source_file">
+                  {{ item.source_file || '(no filename)' }}
                 </span>
               </div>
             </td>
-            <td class="px-6 py-4 text-xs font-medium uppercase">
-              <span class="border-b pb-0.5 text-theme upload-border">{{ formatBankCode(item.bank_code) }}</span>
+            <td class="upload-td upload-td--bank">{{ formatBankCode(item.bank_code) }}</td>
+            <td class="upload-td upload-td--account">
+              <UploadAccountChip
+                :item="item"
+                :label="accountLabel(item)"
+                :options="getAccountOptions(item)"
+                :busy="savingRowKey === getRowKey(item)"
+                :disabled="store.isLoading"
+                @assign="handleAssign"
+              />
             </td>
-            <td class="px-6 py-4 text-xs">
-              <div class="flex min-w-[240px] flex-col gap-2">
-                <SelectInput
-                  :model-value="getPendingAccountNumber(item)"
-                  :options="getAccountOptions(item)"
-                  placeholder="Unmapped"
-                  size="sm"
-                  :disabled="store.isLoading || savingRowKey === getRowKey(item)"
-                  @update:model-value="updateAccountSelection(item, $event)"
-                />
-                <div class="flex flex-col gap-1">
-                  <span v-if="item.bank_account_number" class="text-muted mono">{{ item.bank_account_number }}</span>
-                  <span v-if="item.is_account_mixed" class="text-[10px] text-amber-600">Multiple accounts detected</span>
-                  <span
-                    v-if="savingRowKey === getRowKey(item)"
-                    class="text-[10px] text-[var(--color-primary)]"
-                  >
-                    Saving...
-                  </span>
-                </div>
-              </div>
+            <td class="upload-td upload-td--r upload-td--mono">{{ item.transaction_count }}</td>
+            <td class="upload-td upload-td--mono upload-td--period">{{ periodLine(item) }}</td>
+            <td class="upload-td upload-td--r upload-td--mono" :class="{ 'upload-td--zero': !item.total_debit }">
+              {{ formatAmount(item.total_debit) }}
             </td>
-            <td class="px-6 py-4 text-center">
-              <span class="upload-badge">
-                {{ item.transaction_count }}
-              </span>
-            </td>
-            <td class="px-6 py-4 text-xs text-muted mono">
-              <div class="flex flex-col">
-                <span>{{ formatDate(item.start_date) }}</span>
-                <span class="text-[10px] text-center text-muted">to</span>
-                <span>{{ formatDate(item.end_date) }}</span>
-              </div>
-            </td>
-            <td class="px-6 py-4 text-right mono whitespace-nowrap">
-              <div class="flex flex-col gap-0.5">
-                <div class="text-[10px] text-red-500">DB: {{ formatAmount(item.total_debit) }}</div>
-                <div class="text-[10px] text-green-600">CR: {{ formatAmount(item.total_credit) }}</div>
-              </div>
-            </td>
-            <td class="px-6 py-4 text-[10px] text-muted mono">
-              {{ formatDateTime(item.last_upload) }}
-            </td>
-            <td class="px-6 py-4 text-center">
+            <td class="upload-td upload-td--r upload-td--mono">{{ formatAmount(item.total_credit) }}</td>
+            <td class="upload-td upload-td--mono upload-td--time">{{ formatDateTime(item.last_upload) }}</td>
+            <td class="upload-td upload-td--c">
               <button
+                type="button"
                 @click="openDeleteModal(item)"
                 class="upload-delete"
-                :title="'Delete transactions from ' + item.source_file"
+                :title="'Delete transactions from ' + (item.source_file || 'this upload')"
+                :aria-label="'Delete transactions from ' + (item.source_file || 'this upload')"
                 :disabled="store.isLoading"
               >
-                <i class="bi bi-trash"></i>
+                <i class="bi bi-trash3"></i>
               </button>
             </td>
           </tr>
@@ -155,8 +183,8 @@
       </table>
 
       <template #footer>
-        <div class="px-6 py-3 text-xs text-muted">
-          Showing {{ filteredAndSortedSummary.length }} row{{ filteredAndSortedSummary.length !== 1 ? 's' : '' }}
+        <div class="upload-footer">
+          <span>Showing {{ filteredAndSortedSummary.length }} row{{ filteredAndSortedSummary.length !== 1 ? 's' : '' }}</span>
         </div>
       </template>
     </TableShell>
@@ -177,17 +205,25 @@ import { computed, onMounted, ref } from 'vue';
 import { historyApi } from '../api';
 import { useNotifications } from '../composables/useNotifications';
 import DeleteSummaryModal from '../components/history/DeleteSummaryModal.vue';
-import FormField from '../components/ui/FormField.vue';
+import UploadAccountChip from '../components/history/UploadAccountChip.vue';
+import UploadAttentionQueue from '../components/history/UploadAttentionQueue.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
-import SectionCard from '../components/ui/SectionCard.vue';
 import SelectInput from '../components/ui/SelectInput.vue';
 import TableShell from '../components/ui/TableShell.vue';
+import TextInput from '../components/ui/TextInput.vue';
 import { useHistoryStore } from '../stores/history';
 
 const store = useHistoryStore();
 const notifications = useNotifications();
 const filterBank = ref('');
 const filterYear = ref('');
+const filterName = ref('');
+const filterStatus = ref('');
+const statusOptions = [
+  { value: 'mapped', label: 'Mapped' },
+  { value: 'unmapped', label: 'Unmapped' },
+  { value: 'mixed', label: 'Mixed' }
+];
 const sortBy = ref('last_upload');
 const sortDir = ref('desc');
 const showDeleteModal = ref(false);
@@ -206,6 +242,32 @@ const refresh = async () => {
 onMounted(() => {
   refresh();
 });
+
+// ---------------------------------------------------------------- attention queue
+
+const attentionGroups = computed(() => {
+  const items = store.uploadSummary;
+  return [
+    {
+      id: 'unmapped',
+      label: 'Unmapped accounts',
+      tone: 'amber',
+      items: items.filter((item) => !item.is_account_mixed && !item.bank_account_number)
+    },
+    {
+      id: 'mixed',
+      label: 'Mixed accounts',
+      tone: 'amber',
+      items: items.filter((item) => item.is_account_mixed)
+    }
+  ];
+});
+
+const totalIssues = computed(() =>
+  attentionGroups.value.reduce((sum, group) => sum + group.items.length, 0)
+);
+
+// ---------------------------------------------------------------- filters & sort
 
 const availableBanks = computed(() => {
   const banks = new Set(
@@ -236,16 +298,35 @@ const yearOptions = computed(() => (
   availableYears.value.map(year => ({ value: year, label: year }))
 ));
 
-const filteredAndSortedSummary = computed(() => {
-  const result = [...store.uploadSummary];
+const clearFilters = () => {
+  filterBank.value = '';
+  filterYear.value = '';
+  filterName.value = '';
+  filterStatus.value = '';
+};
 
-  const filtered = result.filter(item => {
+const matchesStatus = (item) => {
+  if (!filterStatus.value) return true;
+  if (filterStatus.value === 'mapped') {
+    return !item.is_account_mixed && !!item.bank_account_number;
+  }
+  if (filterStatus.value === 'unmapped') return !item.is_account_mixed && !item.bank_account_number;
+  if (filterStatus.value === 'mixed') return item.is_account_mixed;
+  return true;
+};
+
+const filteredAndSortedSummary = computed(() => {
+  const needle = filterName.value.trim().toLowerCase();
+
+  const filtered = store.uploadSummary.filter(item => {
     if (filterBank.value && item.bank_code !== filterBank.value) return false;
     if (filterYear.value) {
       const startYear = item.start_date ? item.start_date.split('-')[0] : '';
       const endYear = item.end_date ? item.end_date.split('-')[0] : '';
       if (startYear !== filterYear.value && endYear !== filterYear.value) return false;
     }
+    if (needle && !(item.source_file || '').toLowerCase().includes(needle)) return false;
+    if (!matchesStatus(item)) return false;
     return true;
   });
 
@@ -276,6 +357,8 @@ const toggleSort = (key) => {
   }
 };
 
+// ---------------------------------------------------------------- account mapping
+
 const getRowKey = (item) => `${item.source_file}::${item.bank_code}`;
 
 const loadBankAccountDefinitions = async () => {
@@ -297,26 +380,19 @@ const getAccountOptions = (item) => {
     }));
 };
 
-const getPendingAccountNumber = (item) => {
-  const key = getRowKey(item);
-  if (Object.prototype.hasOwnProperty.call(pendingAssignments.value, key)) {
-    return pendingAssignments.value[key];
-  }
-  if (item.is_account_mixed) return '';
-  return item.bank_account_number || '';
+const accountLabel = (item) => {
+  if (item.is_account_mixed) return 'Mixed';
+  const number = item.bank_account_number;
+  if (!number) return 'Unmapped';
+  const match = getAccountOptions(item).find((option) => option.value === number);
+  return match ? match.label : number;
 };
 
-const updateAccountSelection = async (item, nextValue) => {
+const handleAssign = async (item, nextValue) => {
   const key = getRowKey(item);
   const previousValue = item.is_account_mixed ? '' : (item.bank_account_number || '');
-  pendingAssignments.value = {
-    ...pendingAssignments.value,
-    [key]: nextValue || ''
-  };
 
-  if ((nextValue || '') === previousValue) {
-    return;
-  }
+  if ((nextValue || '') === previousValue) return;
 
   savingRowKey.value = key;
   try {
@@ -325,18 +401,16 @@ const updateAccountSelection = async (item, nextValue) => {
       bank_code: item.bank_code,
       account_number: nextValue || null,
     });
-    await store.fetchUploadSummary();
-    notifications.success(`Account updated for ${item.source_file}`);
+    await Promise.all([store.fetchUploadSummary(), loadBankAccountDefinitions()]);
+    notifications.success(`Account updated for ${item.source_file || 'upload'}`);
   } catch (error) {
-    pendingAssignments.value = {
-      ...pendingAssignments.value,
-      [key]: previousValue
-    };
     notifications.error(error?.response?.data?.error || 'Failed to update uploaded file account');
   } finally {
     savingRowKey.value = '';
   }
 };
+
+// ---------------------------------------------------------------- delete
 
 const openDeleteModal = (item) => {
   itemToDelete.value = item;
@@ -355,22 +429,27 @@ const confirmDelete = async () => {
     await store.deleteBySourceFile(item.source_file, item.bank_code);
     closeDeleteModal();
   } catch (err) {
-    alert(`Failed to delete transactions: ${err.response?.data?.error || err.message}`);
+    notifications.error(`Failed to delete transactions: ${err.response?.data?.error || err.message}`);
   }
 };
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-';
-  return dateStr.split(' ')[0];
+// ---------------------------------------------------------------- formatting
+
+const periodLine = (item) => {
+  const start = (item.start_date || '').split(' ')[0];
+  const end = (item.end_date || '').split(' ')[0];
+  if (!start && !end) return '-';
+  return `${start || '-'} – ${end || '-'}`;
 };
 
 const formatDateTime = (dateTimeStr) => {
   if (!dateTimeStr) return '-';
   const parts = dateTimeStr.split(' ');
-  return `${parts[0]} ${parts[1]}`;
+  const time = (parts[1] || '').slice(0, 5);
+  return `${parts[0]} ${time}`.trim();
 };
 
-const formatAmount = (amount) => new Intl.NumberFormat('id-ID').format(amount);
+const formatAmount = (amount) => new Intl.NumberFormat('id-ID').format(amount || 0);
 
 const formatBankCode = (bankCode) => {
   const value = (bankCode || '').toString();
@@ -380,37 +459,308 @@ const formatBankCode = (bankCode) => {
 </script>
 
 <style scoped>
+.upload-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+}
+
+.upload-toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-toolbar__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-toolbar__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.upload-toolbar__bank {
+  width: 150px;
+}
+
+.upload-toolbar__status {
+  width: 140px;
+}
+
+.upload-toolbar__year {
+  width: 110px;
+}
+
+.upload-toolbar__search {
+  position: relative;
+  width: 220px;
+}
+
+.upload-toolbar__search > i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.upload-toolbar__search :deep(input) {
+  padding-left: 28px;
+}
+
+.upload-toolbar__total {
+  font: 500 12px var(--font-mono);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
 .upload-table-head {
   background: var(--color-surface-muted);
 }
 
-.upload-row {
+.upload-th {
+  padding: 10px;
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border-strong);
+  white-space: nowrap;
+}
+
+.upload-th--sortable {
+  cursor: pointer;
+}
+
+.upload-th--sortable:hover {
+  color: var(--color-text);
+}
+
+.upload-th--r {
+  text-align: right;
+}
+
+.upload-th--c {
+  text-align: center;
+}
+
+.upload-th__inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.upload-tbody :deep(tr),
+.upload-tbody tr {
   transition: background-color 160ms ease;
 }
 
-.upload-row:hover {
-  background: rgba(15, 118, 110, 0.05);
+.upload-td {
+  height: 46px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+  color: var(--color-text);
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
-.upload-border {
-  border-color: var(--color-border);
+.upload-tbody tr:last-child .upload-td {
+  border-bottom: none;
 }
 
-.upload-badge {
-  @apply rounded-lg px-2.5 py-1 text-xs font-bold;
-  background: rgba(15, 118, 110, 0.10);
-  border: 1px solid rgba(15, 118, 110, 0.18);
-  color: var(--color-primary);
+.upload-tbody tr:hover .upload-td {
+  background: rgba(15, 118, 110, 0.04);
 }
 
-.upload-delete {
-  @apply rounded-lg border border-transparent p-2 transition-colors;
+.upload-td--file {
+  max-width: 185px;
+}
+
+.upload-file {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.upload-file__icon {
+  color: var(--color-danger);
+  font-size: 14px;
+  flex: none;
+}
+
+.upload-file__name {
+  font-weight: 600;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-td--bank {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
-.upload-delete:hover {
+.upload-td--account {
+  position: relative;
+}
+
+.upload-td--account :deep(.acct-chip__editor) {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: var(--shadow-soft);
+}
+
+.upload-td--r {
+  text-align: right;
+}
+
+.upload-td--c {
+  text-align: center;
+}
+
+.upload-td--mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.upload-td--period {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.upload-td--zero {
+  color: var(--color-text-muted);
+}
+
+.upload-td--time {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.upload-delete {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  padding: 5px 7px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.upload-delete:hover:not(:disabled) {
   color: var(--color-danger);
   background: rgba(185, 28, 28, 0.08);
   border-color: rgba(185, 28, 28, 0.18);
+}
+
+.upload-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.upload-delete:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 1px;
+}
+
+.upload-state {
+  padding: 44px 16px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.upload-state__icon {
+  display: block;
+  font-size: 26px;
+  margin: 0 auto 10px;
+  color: var(--color-border-strong);
+}
+
+.upload-state__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.upload-state__hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.upload-state__action {
+  margin-top: 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 9px;
+  background: var(--color-surface-raised);
+  padding: 6px 12px;
+  font: 600 12px var(--font-sans);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease;
+}
+
+.upload-state__action:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.upload-state__action:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 1px;
+}
+
+.upload-footer {
+  padding: 10px 16px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 1200px) {
+  .upload-td--time,
+  .upload-td--bank {
+    display: none;
+  }
+
+  .upload-th:nth-child(2),
+  .upload-th:nth-child(8) {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .upload-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .upload-toolbar__total {
+    align-self: flex-end;
+  }
 }
 </style>

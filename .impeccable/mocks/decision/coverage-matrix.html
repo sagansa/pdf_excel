@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>StatementX — Upload Summary</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#0f151c;color:#edf2f7;font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+::selection{background:rgba(45,182,163,.35)}
+button{font-family:inherit}
+.stage{display:flex;width:1440px;height:900px;overflow:hidden}
+/* sidebar */
+.side{display:flex;flex-direction:column;flex:none;width:236px;padding:20px 14px 16px;background:#101821;border-right:1px solid #293847}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 24px}
+.glyph{display:flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;border-radius:9px;background:#2db6a3}
+.brand b{font-size:15px;font-weight:800;letter-spacing:-.01em}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav a{padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;color:#9aa8ba;text-decoration:none}
+.nav a:hover{color:#edf2f7;background:#16202a}
+.nav a.on,.nav a.on:hover{background:rgba(45,182,163,.14);color:#63d3c3}
+.user{display:flex;align-items:center;gap:10px;margin-top:auto;padding:9px 10px;background:#1b2632;border:1px solid #293847;border-radius:10px}
+.av{display:flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;border-radius:8px;background:rgba(45,182,163,.16);color:#63d3c3;font-size:11px;font-weight:800}
+.user b{display:block;font-size:12px;font-weight:700}
+.user i{display:block;font-size:10px;font-style:normal;color:#9aa8ba}
+/* main column */
+.main{display:flex;flex-direction:column;flex:1;min-width:0}
+.strip{display:flex;align-items:center;justify-content:space-between;flex:none;height:44px;padding:0 28px;background:#101821;border-bottom:1px solid #293847}
+.crumb{font-size:11px;font-weight:700;letter-spacing:.14em;color:#9aa8ba}
+.chip{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;background:#1b2632;border:1px solid #293847;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.08em;color:#9aa8ba}
+.dot{width:7px;height:7px;border-radius:50%;background:#2db6a3;box-shadow:0 0 6px rgba(45,182,163,.9)}
+/* content */
+.content{flex:1;min-width:0;padding:28px;overflow:hidden}
+.pagehead{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px}
+.eyebrow{margin-bottom:9px;font-size:11px;font-weight:800;letter-spacing:.18em;color:#f59e0b}
+.pagehead h1{margin:0 0 7px;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{margin:0;font-size:13px;color:#9aa8ba}
+.btn2{display:flex;align-items:center;gap:8px;margin-top:6px;padding:9px 16px;border-radius:9px;background:#16202a;border:1px solid #293847;color:#edf2f7;font-size:13px;font-weight:600;cursor:pointer}
+.btn2:hover{border-color:#3a4f61}
+.card{margin-bottom:18px;padding:20px;background:#16202a;border:1px solid #293847;border-radius:16px;box-shadow:0 12px 32px rgba(7,12,18,.35)}
+/* coverage board */
+.boardhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.years{display:flex;gap:6px}
+.year{padding:6px 13px;border-radius:999px;background:#101821;border:1px solid #293847;color:#9aa8ba;font-size:12.5px;font-weight:600;cursor:pointer}
+.year:hover{color:#edf2f7;border-color:#3a4f61}
+.year.on,.year.on:hover{background:rgba(45,182,163,.16);border-color:rgba(45,182,163,.4);color:#63d3c3;font-weight:700}
+.legend{display:flex;gap:18px;font-size:12px;color:#9aa8ba}
+.legend span{display:flex;align-items:center;gap:7px}
+.sw{flex:none;width:10px;height:10px;border-radius:3px}
+.sw-up{background:#2db6a3}
+.sw-no{border:1.5px solid #3a4f61}
+.sw-mix{background:#f59e0b}
+.sw-bad{background:#f87171}
+.matrix{display:grid;grid-template-columns:232px repeat(12,36px) 1fr;column-gap:4px;row-gap:7px;align-items:center}
+.mh{font-family:'IBM Plex Mono',monospace;font-size:10px;text-align:center;color:#9aa8ba}
+.mlabel{display:flex;align-items:baseline;gap:7px;padding-right:14px;white-space:nowrap}
+.mlabel b{font-size:12.5px;font-weight:700}
+.acct{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#9aa8ba}
+.acct-bad{color:rgba(248,113,113,.85)}
+.mcell{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid #293847;border-radius:8px}
+.mcell::before{content:"";width:11px;height:6px;border-left:2px solid transparent;border-bottom:2px solid transparent;transform:rotate(-45deg)}
+.c-up{background:rgba(45,182,163,.22);border-color:rgba(45,182,163,.35)}
+.c-up::before{border-color:#63d3c3}
+.c-mix{background:rgba(245,158,11,.2);border-color:rgba(245,158,11,.5)}
+.c-mix::before{border-color:#f59e0b}
+.ring{box-shadow:0 0 0 2px rgba(245,158,11,.5),0 3px 10px rgba(8,13,20,.45)}
+.c-warn{background:rgba(248,113,113,.14);border-color:rgba(248,113,113,.3)}
+.c-warn::before{display:none}
+.c-warn::after{content:"";width:16px;height:2px;border-radius:1px;background:#f87171}
+.c-bad{background:rgba(248,113,113,.22);border-color:rgba(248,113,113,.5)}
+.c-bad::before{border-color:#f87171}
+.mcap{font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:right;color:#9aa8ba}
+.ctx{display:flex;align-items:center;gap:14px;margin:18px 2px 0;font-size:13px;font-weight:600}
+.ctx .dim{font-weight:500;color:#9aa8ba}
+.clr{padding:0;border:none;background:none;font-size:12px;font-weight:600;color:#9aa8ba;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.clr:hover{color:#63d3c3}
+/* ledger */
+.card.ledger{margin-bottom:0;padding:8px 12px 4px}
+.ledger th{padding:11px 10px;border-bottom:1px solid #293847;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-align:left;color:#9aa8ba;white-space:nowrap}
+.ledger td{height:46px;padding:0 10px;border-bottom:1px solid rgba(41,56,71,.55);font-size:12px;white-space:nowrap}
+.ledger tr:last-child td{border-bottom:none}
+.mono{font-family:'IBM Plex Mono',monospace}
+.t-file{font-weight:500}
+.t-dim{color:#9aa8ba}
+.t-credit{color:#63d3c3}
+.r{text-align:right}
+.del{display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid transparent;border-radius:8px;background:none;color:#9aa8ba;cursor:pointer}
+.del:hover{color:#f87171;background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.3)}
+</style>
+</head>
+<body>
+<div class="stage">
+<aside class="side">
+  <div class="brand"><span class="glyph"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10M3 8h7M3 11.5h4" stroke="#0f151c" stroke-width="1.9" stroke-linecap="round"/></svg></span><b>StatementX</b></div>
+  <nav class="nav"><a href="#">Dashboard</a><a href="#">Converter</a><a href="#">History &amp; DB</a><a href="#">Review Saran AI</a><a href="#" class="on">Upload Summary</a><a href="#">Upload Checklist</a></nav>
+  <div class="user"><span class="av">DE</span><span><b>Dityo Enggar</b><i>Admin</i></span></div>
+</aside>
+<div class="main">
+  <div class="strip"><span class="crumb">ADMIN WORKSPACE — UPLOAD SUMMARY</span><span class="chip"><span class="dot"></span>SERVER ONLINE</span></div>
+  <div class="content">
+    <div class="pagehead">
+      <div>
+        <div class="eyebrow">UPLOAD SUMMARY</div>
+        <h1>Uploaded file history and transaction totals</h1>
+        <p class="sub">Pantau file yang pernah diunggah, periode datanya, dan lakukan pembersihan jika diperlukan.</p>
+      </div>
+      <button class="btn2"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.6 1.7v2.8h-2.8"/></svg>Refresh</button>
+    </div>
+    <section class="card">
+      <div class="boardhead">
+        <div class="years"><button class="year on">2021</button><button class="year">2022</button><button class="year">2023</button><button class="year">2024</button><button class="year">2025</button><button class="year">2026</button></div>
+        <div class="legend"><span><i class="sw sw-up"></i>Uploaded</span><span><i class="sw sw-no"></i>No data</span><span><i class="sw sw-mix"></i>Mixed account</span><span><i class="sw sw-bad"></i>Unmapped</span></div>
+      </div>
+      <div class="matrix">
+        <div></div><div class="mh">J</div><div class="mh">F</div><div class="mh">M</div><div class="mh">A</div><div class="mh">M</div><div class="mh">J</div><div class="mh">J</div><div class="mh">A</div><div class="mh">S</div><div class="mh">O</div><div class="mh">N</div><div class="mh">D</div><div></div>
+        <div class="mlabel"><b>BCA</b><span class="acct">· APB (5485921921)</span></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell c-up"></div><div class="mcell c-up"></div><div class="mcell c-up"></div><div class="mcell c-up"></div><div class="mcap">4 files · 8 txns</div>
+        <div class="mlabel"><b>MANDIRI</b><span class="acct">· 1170006124481</span></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell c-mix ring"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcap">1 file · 2 txns</div>
+        <div class="mlabel"><b>UNKNOWN BANK</b><span class="acct acct-bad">· unmapped</span></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcell c-warn"></div><div class="mcap">12 files · 37 txns</div>
+        <div class="mlabel"><b>MANUAL</b><span class="acct acct-bad">· unmapped</span></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell"></div><div class="mcell c-bad"></div><div class="mcap">1 file · 1 txn</div>
+      </div>
+      <div class="ctx"><span>2021 · BCA · APB (5485921921)<span class="dim"> — 4 uploads</span></span><button class="clr">clear filter</button></div>
+    </section>
+    <section class="card ledger">
+      <table>
+        <thead><tr><th>File</th><th>Period</th><th class="r">Txns</th><th class="r">Debit</th><th class="r">Credit</th><th>Account</th><th>Uploaded</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="mono t-file">ESTATEMENT_05485921921_202112.pdf</td><td class="mono t-dim">2021-12-01 – 2021-12-31</td><td class="mono r">2</td><td class="mono r t-dim">0</td><td class="mono r t-credit">30.000</td><td class="mono t-dim">APB (5485921921)</td><td class="mono t-dim">2026-11-08 12:35</td><td><button class="del" title="Delete upload"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M5.5 4V2.9c0-.5.4-.9.9-.9h3.2c.5 0 .9.4.9.9V4M4.2 4l.6 9.1c0 .5.5.9 1 .9h4.4c.5 0 1-.4 1-.9L11.8 4M6.6 7v4.5M9.4 7v4.5"/></svg></button></td></tr>
+          <tr><td class="mono t-file">ESTATEMENT_05485921921_202111.pdf</td><td class="mono t-dim">2021-11-01 – 2021-11-30</td><td class="mono r">2</td><td class="mono r t-dim">0</td><td class="mono r t-credit">30.000</td><td class="mono t-dim">APB (5485921921)</td><td class="mono t-dim">2026-11-08 12:35</td><td><button class="del" title="Delete upload"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M5.5 4V2.9c0-.5.4-.9.9-.9h3.2c.5 0 .9.4.9.9V4M4.2 4l.6 9.1c0 .5.5.9 1 .9h4.4c.5 0 1-.4 1-.9L11.8 4M6.6 7v4.5M9.4 7v4.5"/></svg></button></td></tr>
+          <tr><td class="mono t-file">ESTATEMENT_05485921921_202110.pdf</td><td class="mono t-dim">2021-10-01 – 2021-10-31</td><td class="mono r">2</td><td class="mono r t-dim">0</td><td class="mono r t-credit">30.000</td><td class="mono t-dim">APB (5485921921)</td><td class="mono t-dim">2026-11-08 12:34</td><td><button class="del" title="Delete upload"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M5.5 4V2.9c0-.5.4-.9.9-.9h3.2c.5 0 .9.4.9.9V4M4.2 4l.6 9.1c0 .5.5.9 1 .9h4.4c.5 0 1-.4 1-.9L11.8 4M6.6 7v4.5M9.4 7v4.5"/></svg></button></td></tr>
+          <tr><td class="mono t-file">ESTATEMENT_05485921921_202109.pdf</td><td class="mono t-dim">2021-09-01 – 2021-09-30</td><td class="mono r">2</td><td class="mono r t-dim">0</td><td class="mono r t-credit">30.000</td><td class="mono t-dim">APB (5485921921)</td><td class="mono t-dim">2026-11-08 12:34</td><td><button class="del" title="Delete upload"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M5.5 4V2.9c0-.5.4-.9.9-.9h3.2c.5 0 .9.4.9.9V4M4.2 4l.6 9.1c0 .5.5.9 1 .9h4.4c.5 0 1-.4 1-.9L11.8 4M6.6 7v4.5M9.4 7v4.5"/></svg></button></td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</div>
+</div>
+</body>
+</html>
