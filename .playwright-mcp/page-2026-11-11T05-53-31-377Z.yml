@@ -1,0 +1,16 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: S
+    - heading "StatementX" [level=1] [ref=e7]
+    - paragraph [ref=e8]: Sign in to the operations console
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]: Email
+      - textbox "Email" [ref=e12]:
+        - /placeholder: you@company.com
+    - generic [ref=e13]:
+      - generic [ref=e14]: Password
+      - textbox "Password" [ref=e15]
+    - button "Sign In" [disabled] [ref=e16]
+    - link "Forgot password?" [ref=e18] [cursor=pointer]:
+      - /url: /forgot-password

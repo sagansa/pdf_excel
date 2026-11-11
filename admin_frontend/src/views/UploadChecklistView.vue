@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5">
     <PageHeader
       eyebrow="Upload Checklist"
       icon="bi bi-check2-square"
@@ -13,6 +13,7 @@
             v-model="selectedYear"
             @change="onYearChange"
             class="checklist-year-select"
+            aria-label="Tahun checklist"
           >
             <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
           </select>
@@ -29,191 +30,189 @@
       </template>
     </PageHeader>
 
-    <BankAccountDefinitionsCard @changed="refresh" />
-
     <!-- Loading skeleton -->
-    <div v-if="store.isLoading && !checklist" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div v-for="i in 4" :key="i" class="skeleton-card"></div>
-    </div>
+    <template v-if="store.isLoading && !checklist">
+      <div class="skl skl-progress"></div>
+      <div class="cl-main">
+        <div class="flex flex-col gap-2.5">
+          <div v-for="i in 3" :key="i" class="skl skl-bank"></div>
+        </div>
+        <div class="skl skl-grid"></div>
+      </div>
+    </template>
 
     <!-- Error -->
-    <div v-else-if="store.error && !checklist" class="section-card p-6 text-center text-red-500">
-      <i class="bi bi-exclamation-triangle-fill text-2xl mb-2"></i>
-      <p>Gagal memuat data. Coba refresh.</p>
+    <div v-else-if="store.error && !checklist" class="section-card cl-notice">
+      <i class="bi bi-exclamation-triangle-fill text-2xl" style="color: var(--color-danger)"></i>
+      <p class="cl-notice__text">Gagal memuat checklist. Periksa koneksi lalu coba muat ulang.</p>
+      <button type="button" class="btn-primary" @click="refresh">
+        <i class="bi bi-arrow-clockwise"></i> Muat ulang
+      </button>
     </div>
 
     <template v-else-if="checklist">
-      <!-- Summary Stat Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          label="Sudah Upload"
-          :value="String(summaryStats.uploaded)"
-          icon="bi bi-check-circle-fill"
-          wrapperClass="stat-uploaded"
-          labelClass="text-emerald-600"
-          valueClass="text-emerald-500"
-          iconWrapperClass="bg-emerald-500/10"
-          iconClass="text-emerald-500"
-          :subtext="`dari ${summaryStats.total} slot`"
-          subtextClass="text-muted"
-        />
-        <StatCard
-          label="Belum Upload"
-          :value="String(summaryStats.missing)"
-          icon="bi bi-x-circle-fill"
-          wrapperClass="stat-missing"
-          labelClass="text-red-500"
-          valueClass="text-red-500"
-          iconWrapperClass="bg-red-500/10"
-          iconClass="text-red-500"
-          :subtext="`${summaryStats.pct}% lengkap`"
-          subtextClass="text-muted"
-        />
-        <StatCard
-          label="Total Debit"
-          :value="formatAmount(summaryStats.totalDebit)"
-          icon="bi bi-arrow-down-circle-fill"
-          wrapperClass="stat-debit"
-          labelClass="text-red-400"
-          valueClass="text-red-400"
-          iconWrapperClass="bg-red-500/10"
-          iconClass="text-red-400 text-sm"
-        />
-        <StatCard
-          label="Total Credit"
-          :value="formatAmount(summaryStats.totalCredit)"
-          icon="bi bi-arrow-up-circle-fill"
-          wrapperClass="stat-credit"
-          labelClass="text-emerald-600"
-          valueClass="text-emerald-500"
-          iconWrapperClass="bg-emerald-500/10"
-          iconClass="text-emerald-500 text-sm"
-        />
+      <!-- Empty: no bank columns at all -->
+      <div v-if="checklistColumns.length === 0" class="section-card cl-notice">
+        <i class="bi bi-inbox text-2xl" style="color: var(--color-text-muted)"></i>
+        <p class="cl-notice__text">
+          Belum ada data statement untuk {{ selectedYear }}. Upload statement lewat menu
+          <strong>Converter</strong>, atau pisahkan rekening di Kelola Akun Bank di bawah.
+        </p>
       </div>
 
-      <!-- Grid Table -->
-      <SectionCard
-        :title="`Checklist ${selectedYear}`"
-        subtitle="✓ = file terupload · — = belum ada · ⚠ = selisih DB/CR besar"
-        body-class="p-0 overflow-x-auto"
-      >
-        <table class="checklist-table min-w-full">
-          <thead>
-            <tr>
-              <th class="cl-th cl-th-month">Bulan</th>
-              <th
-                v-for="column in checklistColumns"
-                :key="column.key"
-                class="cl-th cl-th-bank"
-                :class="{ 'bank-hidden': activeBanks.size > 0 && !activeBanks.has(column.key) }"
-              >
-                <span class="bank-name-label">{{ formatChecklistColumnLabel(column) }}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="monthRow in checklist.months"
-              :key="monthRow.month"
-              class="cl-row"
-              :class="{ 'cl-row-current': isCurrentMonth(monthRow.month) }"
-            >
-              <!-- Month label -->
-              <td class="cl-td-month">
-                <div class="flex items-center gap-1.5">
-                  <span class="month-num">{{ String(monthRow.month).padStart(2, '0') }}</span>
-                  <span class="month-name">{{ monthRow.label }}</span>
-                  <span v-if="isCurrentMonth(monthRow.month)" class="current-badge">Now</span>
-                </div>
-              </td>
+      <template v-else>
+        <!-- Year progress card -->
+        <div class="cl-progress-card">
+          <div class="cl-pct">
+            <span class="cl-pct__value">{{ summary.pct }}%</span>
+            <small class="cl-pct__caption">{{ summary.uploaded }}/{{ summary.total }} slot</small>
+          </div>
 
-              <!-- Bank cells -->
-              <td
-                v-for="column in checklistColumns"
-                :key="column.key"
-                class="cl-td-cell"
-                :class="{
-                  'bank-hidden': activeBanks.size > 0 && !activeBanks.has(column.key),
-                  'cell-uploaded': monthRow.banks[column.key]?.uploaded,
-                  'cell-missing': !monthRow.banks[column.key]?.uploaded,
-                }"
-              >
-                <!-- Uploaded -->
-                <template v-if="monthRow.banks[column.key]?.uploaded">
-                  <div class="cell-content-uploaded">
-                    <div class="cell-check-row">
-                      <i class="bi bi-check-circle-fill text-emerald-500 text-xs"></i>
-                      <span class="cell-txn-count">{{ monthRow.banks[column.key].transaction_count }} txn</span>
-                      <i
-                        v-if="hasLargeImbalance(monthRow.banks[column.key])"
-                        class="bi bi-exclamation-triangle-fill text-amber-400 text-xs"
-                        :title="`Selisih DB/CR besar: ${formatAmount(Math.abs(monthRow.banks[column.key].total_debit - monthRow.banks[column.key].total_credit))}`"
-                      ></i>
-                    </div>
-                    <div class="cell-amounts">
-                      <div class="amount-db">DB {{ formatCompact(monthRow.banks[column.key].total_debit) }}</div>
-                      <div class="amount-cr">CR {{ formatCompact(monthRow.banks[column.key].total_credit) }}</div>
-                    </div>
-                    <div v-if="monthRow.banks[column.key].source_files?.length" class="cell-filename" :title="monthRow.banks[column.key].source_files.join('\n')">
-                      {{ monthRow.banks[column.key].source_files[0] }}
-                      <span v-if="monthRow.banks[column.key].source_files.length > 1" class="more-files">
-                        +{{ monthRow.banks[column.key].source_files.length - 1 }}
-                      </span>
-                    </div>
-                  </div>
-                </template>
-
-                <!-- Not uploaded -->
-                <template v-else>
-                  <div class="cell-content-missing">
-                    <i class="bi bi-dash text-muted text-sm"></i>
-                  </div>
-                </template>
-              </td>
-            </tr>
-
-            <!-- Totals footer row -->
-            <tr class="cl-totals-row">
-              <td class="cl-td-month">
-                <span class="font-semibold text-xs uppercase tracking-wide text-muted">Total {{ selectedYear }}</span>
-              </td>
-              <td
-                v-for="column in checklistColumns"
-                :key="column.key"
-                class="cl-td-cell cl-td-totals"
-                :class="{ 'bank-hidden': activeBanks.size > 0 && !activeBanks.has(column.key) }"
-              >
-                <div v-if="bankTotals[column.key]?.uploaded > 0" class="totals-cell">
-                  <div class="totals-uploaded">{{ bankTotals[column.key].uploaded }}/12</div>
-                  <div class="amount-db">DB {{ formatCompact(bankTotals[column.key].totalDebit) }}</div>
-                  <div class="amount-cr">CR {{ formatCompact(bankTotals[column.key].totalCredit) }}</div>
-                </div>
-                <span v-else class="text-muted text-xs">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <template #footer>
-          <div class="flex items-center justify-between px-6 py-3 text-xs text-muted">
-            <span>Tahun {{ selectedYear }} · {{ checklistColumns.length }} akun bank</span>
-            <!-- Bank filter chips -->
-            <div v-if="checklistColumns.length > 1" class="flex items-center gap-1.5 flex-wrap justify-end">
-              <span class="text-muted mr-1">Filter akun:</span>
-              <button
-                v-for="column in checklistColumns"
-                :key="column.key"
-                @click="toggleBank(column.key)"
-                class="bank-chip"
-                :class="{ 'bank-chip-active': activeBanks.size === 0 || activeBanks.has(column.key) }"
-              >
-                {{ formatChecklistColumnLabel(column) }}
-              </button>
+          <div class="cl-slotzone">
+            <div class="cl-slotbar" :key="selectedYear" aria-hidden="true">
+              <div v-for="(group, gi) in slotGroups" :key="gi" class="cl-slotgrp">
+                <span
+                  v-for="seg in group"
+                  :key="seg.key"
+                  class="cl-seg"
+                  :class="`seg-${seg.state}`"
+                  :style="{ animationDelay: seg.delay + 'ms' }"
+                ></span>
+              </div>
+            </div>
+            <div class="cl-legend">
+              <span><i class="lg-dot seg-up"></i>Terupload <b>{{ summary.uploaded }}</b></span>
+              <span><i class="lg-dot seg-miss"></i>Bolong <b>{{ summary.missing }}</b></span>
+              <span><i class="lg-dot seg-imb"></i>di antaranya selisih DB/CR <b>{{ summary.imbalanced }}</b></span>
+              <span><i class="lg-dot seg-fut"></i>Belum jatuh tempo <b>{{ summary.future }}</b></span>
             </div>
           </div>
-        </template>
-      </SectionCard>
+
+          <div class="cl-yeartotals">
+            <span>Total Debit {{ selectedYear }} <b>{{ formatAmount(summary.totalDebit) }}</b></span>
+            <span>Total Kredit {{ selectedYear }} <b>{{ formatAmount(summary.totalCredit) }}</b></span>
+          </div>
+        </div>
+
+        <!-- Main: bank rail + month grid -->
+        <div class="cl-main">
+          <!-- Bank rail -->
+          <aside class="cl-rail">
+            <button
+              v-for="bank in railBanks"
+              :key="bank.key"
+              type="button"
+              class="cl-bankcard"
+              :class="{
+                'cl-bankcard-focus': activeBanks.has(bank.key),
+                'cl-bankcard-dim': activeBanks.size > 0 && !activeBanks.has(bank.key),
+              }"
+              :aria-pressed="activeBanks.has(bank.key)"
+              :title="`Klik untuk ${activeBanks.has(bank.key) ? 'menampilkan semua bank' : 'fokus pada ' + bank.name}`"
+              @click="toggleBank(bank.key)"
+            >
+              <div class="bc-head">
+                <span class="bc-name">{{ bank.name }}</span>
+                <span class="bc-state" :class="bank.stateClass">{{ bank.stateLabel }}</span>
+              </div>
+              <div v-if="bank.accountNumber" class="bc-acct">····{{ bank.accountNumber }}</div>
+              <div class="bc-strip" aria-hidden="true">
+                <i
+                  v-for="cell in bank.strip"
+                  :key="cell.month"
+                  :class="`seg-${cell.state}`"
+                ></i>
+              </div>
+              <div class="bc-meta">
+                <span class="bc-frac">{{ bank.uploadedCount }}/12</span>
+                <span class="bc-nums" :title="`${bank.txnCount} txn · DB ${formatAmount(bank.totalDebit)} · CR ${formatAmount(bank.totalCredit)}`">{{ bank.txnCount }} txn · DB {{ formatCompact(bank.totalDebit) }} · CR {{ formatCompact(bank.totalCredit) }}</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              class="cl-defs-link"
+              :aria-expanded="defsOpen"
+              :title="defsOpen ? 'Tutup kelola akun bank' : 'Buka kelola akun bank'"
+              @click="toggleBankDefs"
+            >
+              <span class="cl-defs-link__label">
+                <i class="bi bi-gear"></i> Kelola Akun Bank
+              </span>
+              <span class="cl-defs-link__meta">
+                <i class="bi bi-chevron-down" :class="{ 'cl-defs-link__chev--open': defsOpen }"></i>
+              </span>
+            </button>
+          </aside>
+
+          <!-- Month grid -->
+          <SectionCard
+            :title="`Checklist ${selectedYear}`"
+            subtitle="Arahkan kursor ke sel untuk detail file dan periode upload · klik kartu bank untuk memfokuskan satu rekening."
+            body-class="p-4 overflow-x-auto"
+          >
+            <div class="cl-monthgrid">
+              <div
+                v-for="monthRow in checklist.months"
+                :key="monthRow.month"
+                class="cl-mcol"
+                :class="{
+                  'cl-mcol-now': isCurrentMonth(monthRow.month),
+                  'cl-mcol-future': isFutureMonth(monthRow.month) && !isCurrentMonth(monthRow.month),
+                }"
+              >
+                <div class="cl-mhead">
+                  <span class="mh-name">
+                    {{ shortMonthName(monthRow.month) }}
+                    <span v-if="isCurrentMonth(monthRow.month)" class="mh-now">now</span>
+                  </span>
+                  <span class="mh-num">{{ String(monthRow.month).padStart(2, '0') }}</span>
+                </div>
+
+                <div
+                  v-for="column in checklistColumns"
+                  :key="column.key"
+                  class="cl-cell"
+                  :class="[
+                    cellState(monthRow, column),
+                    { 'cl-cell-dim': activeBanks.size > 0 && !activeBanks.has(column.key) },
+                  ]"
+                  :title="cellTitle(monthRow, column)"
+                >
+                  <!-- Uploaded -->
+                  <template v-if="monthRow.banks[column.key]?.uploaded">
+                    <div class="cu-top">
+                      <span class="cu-tag">{{ shortTag(column) }}</span>
+                      <i
+                        v-if="hasLargeImbalance(monthRow.banks[column.key])"
+                        class="bi bi-exclamation-triangle-fill cu-flag"
+                      ></i>
+                    </div>
+                    <div class="cu-txn">{{ monthRow.banks[column.key].transaction_count }} txn</div>
+                    <div class="cu-amt">
+                      <span class="amt-db">D {{ formatCompact(monthRow.banks[column.key].total_debit) }}</span>
+                      <span class="amt-cr">C {{ formatCompact(monthRow.banks[column.key].total_credit) }}</span>
+                    </div>
+                  </template>
+
+                  <!-- Missing -->
+                  <template v-else-if="!isFutureMonth(monthRow.month)">
+                    <div class="cm-mark"><i class="bi bi-exclamation-lg"></i></div>
+                  </template>
+
+                  <!-- Not yet due -->
+                  <template v-else>
+                    <div class="cf-mark"><i class="bi bi-dash"></i></div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+      </template>
     </template>
+
+    <BankAccountDefinitionsCard ref="defsCard" @changed="refresh" />
   </div>
 </template>
 
@@ -222,13 +221,12 @@ import { computed, onMounted, ref, watch } from 'vue';
 import BankAccountDefinitionsCard from '../components/uploads/BankAccountDefinitionsCard.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
-import StatCard from '../components/ui/StatCard.vue';
 import { useHistoryStore } from '../stores/history';
 
 const store = useHistoryStore();
 const currentYear = new Date().getFullYear();
 
-// Year options: from 2022 up to current year + 1
+// Year options: from 2020 up to current year + 1
 const availableYears = computed(() => {
   const years = [];
   for (let y = currentYear + 1; y >= 2020; y--) years.push(y);
@@ -237,6 +235,8 @@ const availableYears = computed(() => {
 
 const selectedYear = ref(store.checklistYear || currentYear);
 const activeBanks = ref(new Set()); // empty = show all
+
+const defsCard = ref(null);
 
 const checklist = computed(() => store.uploadChecklist);
 const checklistColumns = computed(() => {
@@ -255,9 +255,24 @@ const checklistColumns = computed(() => {
   }));
 });
 
+const MONTH_SHORT = {
+  1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'Mei', 6: 'Jun',
+  7: 'Jul', 8: 'Ags', 9: 'Sep', 10: 'Okt', 11: 'Nov', 12: 'Des',
+};
+
+const shortMonthName = (month) => MONTH_SHORT[month] || String(month);
+
 const isCurrentMonth = (month) => {
   const now = new Date();
   return now.getFullYear() === selectedYear.value && now.getMonth() + 1 === month;
+};
+
+// A slot is "belum jatuh tempo" when its month has not ended yet
+const isFutureMonth = (month) => {
+  const now = new Date();
+  if (selectedYear.value > now.getFullYear()) return true;
+  if (selectedYear.value < now.getFullYear()) return false;
+  return month > now.getMonth() + 1;
 };
 
 const hasLargeImbalance = (cell) => {
@@ -268,10 +283,37 @@ const hasLargeImbalance = (cell) => {
   return delta / max > 0.3; // flag if >30% difference
 };
 
+const cellState = (monthRow, column) => {
+  const cell = monthRow.banks[column.key];
+  if (cell?.uploaded) return 'cs-up';
+  return isFutureMonth(monthRow.month) ? 'cs-fut' : 'cs-miss';
+};
+
+const slotState = (monthRow, column) => {
+  const cell = monthRow.banks[column.key];
+  if (cell?.uploaded) return hasLargeImbalance(cell) ? 'imb' : 'up';
+  return isFutureMonth(monthRow.month) ? 'fut' : 'miss';
+};
+
+// Segments of the year slot bar, grouped by month
+const slotGroups = computed(() => {
+  if (!checklist.value) return [];
+  const months = checklist.value.months || [];
+  const banks = checklistColumns.value;
+  let idx = 0;
+  return months.map((m) =>
+    banks.map((column) => ({
+      key: `${m.month}-${column.key}`,
+      state: slotState(m, column),
+      delay: Math.min(idx++ * 8, 800),
+    }))
+  );
+});
+
 // ---- Computed summaries ----
-const summaryStats = computed(() => {
-  if (!checklist.value) return { uploaded: 0, missing: 0, total: 0, pct: 0, totalDebit: 0, totalCredit: 0 };
-  let uploaded = 0, missing = 0, totalDebit = 0, totalCredit = 0;
+const summary = computed(() => {
+  if (!checklist.value) return { uploaded: 0, missing: 0, future: 0, imbalanced: 0, total: 0, pct: 0, totalDebit: 0, totalCredit: 0 };
+  let uploaded = 0, missing = 0, future = 0, imbalanced = 0, totalDebit = 0, totalCredit = 0;
   const banks = checklistColumns.value;
   const months = checklist.value.months || [];
   const totalSlots = months.length * banks.length;
@@ -280,35 +322,66 @@ const summaryStats = computed(() => {
       const cell = m.banks[bank.key];
       if (cell?.uploaded) {
         uploaded++;
+        if (hasLargeImbalance(cell)) imbalanced++;
         totalDebit += cell.total_debit || 0;
         totalCredit += cell.total_credit || 0;
+      } else if (isFutureMonth(m.month)) {
+        future++;
       } else {
         missing++;
       }
     }
   }
   const pct = totalSlots > 0 ? Math.round((uploaded / totalSlots) * 100) : 0;
-  return { uploaded, missing, total: totalSlots, pct, totalDebit, totalCredit };
+  return { uploaded, missing, future, imbalanced, total: totalSlots, pct, totalDebit, totalCredit };
 });
 
-const bankTotals = computed(() => {
-  if (!checklist.value) return {};
-  const result = {};
-  const banks = checklistColumns.value;
+const railBanks = computed(() => {
+  if (!checklist.value) return [];
   const months = checklist.value.months || [];
-  for (const bank of banks) {
-    let up = 0, db = 0, cr = 0;
-    for (const m of months) {
-      const cell = m.banks[bank.key];
-      if (cell?.uploaded) {
-        up++;
-        db += cell.total_debit || 0;
-        cr += cell.total_credit || 0;
+  return checklistColumns.value.map((column) => {
+    let uploadedCount = 0, missingCount = 0, futureCount = 0, txnCount = 0;
+    let totalDebit = 0, totalCredit = 0;
+    const strip = months.map((m) => {
+      const state = slotState(m, column);
+      const cell = m.banks[column.key];
+      if (state === 'up' || state === 'imb') {
+        uploadedCount++;
+        txnCount += cell.transaction_count || 0;
+        totalDebit += cell.total_debit || 0;
+        totalCredit += cell.total_credit || 0;
+      } else if (state === 'miss') {
+        missingCount++;
+      } else {
+        futureCount++;
       }
+      return { month: m.month, state };
+    });
+
+    let stateLabel = 'Lengkap';
+    let stateClass = 'st-ok';
+    if (missingCount > 0) {
+      stateLabel = `Bolong ${missingCount}`;
+      stateClass = 'st-miss';
+    } else if (uploadedCount === 0 && futureCount > 0) {
+      stateLabel = 'Belum mulai';
+      stateClass = 'st-fut';
     }
-    result[bank.key] = { uploaded: up, totalDebit: db, totalCredit: cr };
-  }
-  return result;
+
+    return {
+      key: column.key,
+      name: formatChecklistColumnLabel(column),
+      accountNumber: column.account_number ? String(column.account_number).slice(-4) : null,
+      strip,
+      uploadedCount,
+      missingCount,
+      txnCount,
+      totalDebit,
+      totalCredit,
+      stateLabel,
+      stateClass,
+    };
+  });
 });
 
 // ---- Formatters ----
@@ -317,8 +390,9 @@ const formatAmount = (v) => new Intl.NumberFormat('id-ID').format(Math.round(v |
 const formatCompact = (v) => {
   const n = Math.round(v || 0);
   if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + 'M';
+  if (n >= 10_000_000) return Math.round(n / 1_000_000) + 'jt';
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'jt';
-  if (n >= 1_000) return (n / 1_000).toFixed(0) + 'rb';
+  if (n >= 1_000) return Math.round(n / 1_000) + 'rb';
   return String(n);
 };
 
@@ -335,6 +409,40 @@ const formatChecklistColumnLabel = (column) => {
   if (column.display_name) return `${bankLabel} · ${column.display_name}`;
   if (column.account_number) return `${bankLabel} · ${String(column.account_number).slice(-4)}`;
   return bankLabel;
+};
+
+// Short tag inside a grid cell; disambiguates when one bank has several accounts
+const shortTag = (column) => {
+  let tag = formatBankCode(column.bank_code || column.key);
+  const sameBank = checklistColumns.value.filter((c) => (c.bank_code || c.key) === (column.bank_code || column.key));
+  if (sameBank.length > 1) {
+    tag += column.account_number ? `·${String(column.account_number).slice(-2)}` : '·U';
+  }
+  return tag;
+};
+
+const cellTitle = (monthRow, column) => {
+  const cell = monthRow.banks[column.key];
+  const period = `${monthRow.label} ${selectedYear.value}`;
+  if (!cell?.uploaded) {
+    if (isFutureMonth(monthRow.month)) {
+      return `Belum jatuh tempo — ${period}`;
+    }
+    return `Belum ada upload — ${formatChecklistColumnLabel(column)} · ${period}`;
+  }
+  const lines = [
+    `${formatChecklistColumnLabel(column)} · ${period}`,
+    `${cell.transaction_count} txn · DB ${formatAmount(cell.total_debit)} · CR ${formatAmount(cell.total_credit)}`,
+  ];
+  if (cell.source_files?.length) {
+    const more = cell.source_files.length > 1 ? ` (+${cell.source_files.length - 1} file lain)` : '';
+    lines.push(`File: ${cell.source_files[0]}${more}`);
+  }
+  if (cell.last_upload) lines.push(`Terakhir upload: ${cell.last_upload}`);
+  if (hasLargeImbalance(cell)) {
+    lines.push(`⚠ Selisih DB/CR besar: Rp ${formatAmount(Math.abs(cell.total_debit - cell.total_credit))}`);
+  }
+  return lines.join('\n');
 };
 
 // ---- Actions ----
@@ -354,16 +462,16 @@ const toggleBank = (bank) => {
     next.delete(bank);
   } else if (next.size === 0) {
     // currently showing all, click isolates this bank
-    const allBanks = checklistColumns.value.map((column) => column.key);
-    allBanks.filter(b => b !== bank).forEach(b => next.add(b));
-    // Actually filter to ONLY show clicked bank:
-    next.clear();
     next.add(bank);
   } else {
     next.add(bank);
   }
   activeBanks.value = next;
 };
+
+const defsOpen = computed(() => !!defsCard.value?.expanded);
+
+const toggleBankDefs = () => defsCard.value?.toggleFromParent();
 
 onMounted(() => {
   store.fetchUploadChecklist(selectedYear.value);
@@ -389,116 +497,240 @@ watch(() => store.checklistYear, (y) => {
   border-color: var(--color-primary);
 }
 
-/* ── Stat cards ────────────────────────────────── */
-.stat-uploaded, .stat-missing, .stat-debit, .stat-credit {
-  border-color: var(--color-border);
-  background: var(--color-surface);
-}
-
 /* ── Skeleton loader ───────────────────────────── */
-.skeleton-card {
-  @apply rounded-2xl h-24 animate-pulse;
+.skl {
+  @apply animate-pulse rounded-2xl;
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
 }
+.skl-progress { @apply h-24; }
+.skl-bank    { @apply h-24; }
+.skl-grid    { @apply min-h-[26rem] flex-1; }
 
-/* ── Table shell ───────────────────────────────── */
-.checklist-table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
+/* ── Notice (error / empty) ────────────────────── */
+.cl-notice {
+  @apply flex flex-col items-center justify-center gap-3 p-10 text-center;
 }
-
-/* ── Header ────────────────────────────────────── */
-.cl-th {
-  @apply px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest;
-  background: var(--color-surface-muted);
-  color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border);
-  white-space: nowrap;
-}
-.cl-th-month { @apply pl-5; min-width: 10rem; }
-.cl-th-bank  { @apply text-center; min-width: 9rem; }
-
-/* ── Rows ──────────────────────────────────────── */
-.cl-row {
-  transition: background 140ms;
-  border-bottom: 1px solid var(--color-border);
-}
-.cl-row:hover { background: var(--color-surface-muted); }
-.cl-row-current { background: rgba(15, 118, 110, 0.04); }
-
-/* ── Month cell ────────────────────────────────── */
-.cl-td-month {
-  @apply pl-5 pr-4 py-3;
-  border-right: 1px solid var(--color-border);
-  white-space: nowrap;
-}
-.month-num {
-  @apply text-xs font-bold font-mono;
+.cl-notice__text {
+  @apply max-w-md text-sm leading-relaxed;
   color: var(--color-text-muted);
 }
-.month-name {
-  @apply text-sm font-medium;
+
+/* ── Year progress card ────────────────────────── */
+.cl-progress-card {
+  @apply flex items-center gap-6 px-6 py-4;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+.cl-pct { @apply flex flex-col; }
+.cl-pct__value {
+  @apply font-mono font-semibold leading-none;
+  font-size: 2.1rem;
+  color: var(--color-primary);
+}
+.cl-pct__caption {
+  @apply mt-1.5 text-[11px] font-bold uppercase tracking-widest;
+  color: var(--color-text-muted);
+}
+.cl-slotzone { @apply flex min-w-0 flex-1 flex-col gap-2; }
+.cl-slotbar { @apply flex gap-1.5; }
+.cl-slotgrp { @apply flex min-w-0 flex-1 gap-px; }
+.cl-seg {
+  @apply min-w-0 flex-1;
+  height: 14px;
+  border-radius: 3px;
+  transform-origin: left center;
+  animation: seg-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.seg-up   { background: var(--color-primary); }
+.seg-miss { background: color-mix(in srgb, var(--color-danger) 68%, var(--color-surface)); }
+.seg-imb  { background: var(--color-accent); }
+.seg-fut  { background: var(--color-border); opacity: 0.55; }
+@keyframes seg-in {
+  from { transform: scaleX(0); opacity: 0.3; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cl-seg { animation: none; }
+}
+.cl-legend {
+  @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px];
+  color: var(--color-text-muted);
+}
+.cl-legend b {
+  @apply font-mono font-semibold;
   color: var(--color-text);
 }
-.current-badge {
-  @apply text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full;
-  background: rgba(15, 118, 110, 0.15);
-  color: var(--color-primary);
+.lg-dot {
+  @apply mr-1.5 inline-block h-2 w-2 rounded-sm align-middle;
 }
-
-/* ── Bank data cell ────────────────────────────── */
-.cl-td-cell {
-  @apply px-3 py-2.5 text-center align-middle;
-  border-right: 1px solid var(--color-border);
-  transition: background 140ms;
-}
-.cell-uploaded { background: rgba(16, 185, 129, 0.03); }
-.cell-missing  {}
-.bank-hidden   { display: none; }
-
-/* ── Cell — uploaded content ───────────────────── */
-.cell-content-uploaded { @apply flex flex-col gap-0.5 items-start text-left; }
-.cell-check-row        { @apply flex items-center gap-1.5; }
-.cell-txn-count        { @apply text-[10px] font-semibold; color: var(--color-text-muted); }
-.cell-amounts          { @apply flex flex-col gap-px mt-0.5; }
-.amount-db  { @apply text-[10px] font-mono; color: #f87171; }
-.amount-cr  { @apply text-[10px] font-mono; color: #34d399; }
-.cell-filename {
-  @apply text-[9px] truncate max-w-[8rem] mt-0.5;
+.cl-yeartotals {
+  @apply flex shrink-0 flex-col gap-0.5 text-[11px] text-right;
   color: var(--color-text-muted);
 }
-.more-files {
-  @apply ml-0.5 font-semibold;
-  color: var(--color-primary);
+.cl-yeartotals b {
+  @apply ml-1 font-mono font-semibold;
+  color: var(--color-text);
 }
 
-/* ── Cell — missing ────────────────────────────── */
-.cell-content-missing  { @apply flex items-center justify-center h-full py-1; }
-
-/* ── Totals row ────────────────────────────────── */
-.cl-totals-row {
-  background: var(--color-surface-muted);
-  border-top: 2px solid var(--color-border);
-}
-.cl-td-totals { @apply text-left; }
-.totals-cell  { @apply flex flex-col gap-px; }
-.totals-uploaded {
-  @apply text-[10px] font-bold;
-  color: var(--color-primary);
+/* ── Main layout ───────────────────────────────── */
+.cl-main {
+  @apply grid items-start gap-4;
+  grid-template-columns: 256px minmax(0, 1fr);
 }
 
-/* ── Bank filter chips ─────────────────────────── */
-.bank-chip {
-  @apply px-2 py-0.5 text-[10px] font-semibold rounded-full border transition-all;
+/* ── Bank rail ─────────────────────────────────── */
+.cl-rail {
+  @apply flex flex-col gap-2.5;
+}
+.cl-bankcard {
+  @apply w-full cursor-pointer rounded-2xl border p-3.5 text-left transition-all;
   background: var(--color-surface);
   border-color: var(--color-border);
+}
+.cl-bankcard:hover { border-color: var(--color-primary); }
+.cl-bankcard:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+  border-color: var(--color-primary);
+}
+.cl-bankcard-focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+.cl-bankcard-dim { opacity: 0.45; }
+.bc-head { @apply flex items-start justify-between gap-2; }
+.bc-name {
+  @apply text-[13px] font-extrabold leading-snug;
+  color: var(--color-text);
+}
+.bc-state { @apply shrink-0 text-[11px] font-extrabold; }
+.st-ok   { color: var(--color-primary); }
+.st-miss { color: var(--color-danger); }
+.st-fut  { color: var(--color-text-muted); }
+.bc-acct {
+  @apply mt-0.5 font-mono text-[11px];
   color: var(--color-text-muted);
 }
-.bank-chip:hover        { border-color: var(--color-primary); color: var(--color-primary); }
-.bank-chip-active       { background: rgba(15,118,110,0.10); border-color: rgba(15,118,110,0.25); color: var(--color-primary); }
+.bc-strip {
+  @apply my-2 grid grid-cols-12 gap-px;
+}
+.bc-strip i { height: 8px; border-radius: 2px; }
+.bc-meta { @apply flex items-baseline justify-between gap-2 text-[11px]; color: var(--color-text-muted); }
+.bc-frac {
+  @apply shrink-0 font-mono text-[11px] font-bold;
+  color: var(--color-primary);
+}
+.bc-nums { @apply min-w-0 truncate font-mono text-[11px]; }
 
-/* ── Bank header name ──────────────────────────── */
-.bank-name-label { @apply block text-center; }
+/* ── Rail link to definitions ──────────────────── */
+.cl-defs-link {
+  @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-2xl border border-dashed px-3.5 py-2.5 text-left transition-all;
+  border-color: var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-muted);
+}
+.cl-defs-link:hover,
+.cl-defs-link[aria-expanded='true'] { border-color: var(--color-primary); color: var(--color-primary); }
+.cl-defs-link__label { @apply flex items-center gap-2 text-[12px] font-bold; }
+.cl-defs-link__meta { @apply flex items-center gap-1.5 text-[11px]; }
+.cl-defs-link__chev--open { transform: rotate(180deg); }
+
+/* ── Month grid ────────────────────────────────── */
+.cl-monthgrid {
+  @apply grid gap-1.5;
+  grid-template-columns: repeat(12, minmax(60px, 1fr));
+  min-width: 790px;
+}
+.cl-mcol { @apply flex flex-col gap-1; }
+.cl-mhead {
+  @apply flex min-h-[52px] flex-col items-center justify-start border-b-2 pb-1.5 pt-1;
+  border-color: var(--color-border);
+}
+.mh-name { @apply flex items-center gap-1 text-[11.5px] font-extrabold; color: var(--color-text-muted); }
+.mh-num  { @apply font-mono text-[11px] opacity-70; color: var(--color-text-muted); }
+.cl-mcol-now .cl-mhead { border-color: var(--color-primary); }
+.cl-mcol-now .mh-name,
+.cl-mcol-now .mh-num { color: var(--color-primary); opacity: 1; }
+.cl-mcol-future { opacity: 0.55; }
+.mh-now {
+  @apply rounded-full px-1.5 py-px text-[11px] font-extrabold uppercase leading-none tracking-wider;
+  background: var(--color-primary-ring);
+  color: var(--color-primary);
+}
+
+/* ── Cells ─────────────────────────────────────── */
+.cl-cell {
+  @apply relative h-[76px] overflow-hidden rounded-[10px] p-1.5 text-left transition-opacity;
+  font-size: 11px;
+}
+.cs-up {
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+.cs-miss {
+  background: color-mix(in srgb, var(--color-danger) 5%, transparent);
+  border: 1.5px dashed color-mix(in srgb, var(--color-danger) 45%, transparent);
+}
+.cs-fut {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+}
+.cl-cell-dim { opacity: 0.25; }
+
+.cu-top { @apply flex items-center; }
+.cu-tag {
+  @apply min-w-0 truncate text-[11px] font-extrabold uppercase tracking-tight;
+  color: var(--color-text-muted);
+}
+.cu-flag {
+  @apply absolute bottom-1.5 right-1.5 text-[11px];
+  color: var(--color-accent);
+}
+.cu-txn {
+  @apply mt-1 font-mono text-[11px] font-semibold;
+  color: var(--color-text);
+}
+.cu-amt { @apply mt-0.5 flex flex-col font-mono text-[11px] leading-tight; }
+.amt-db { color: var(--color-danger); }
+.amt-cr { color: var(--color-success); }
+
+.cm-mark {
+  @apply flex h-full items-center justify-center;
+  color: color-mix(in srgb, var(--color-danger) 60%, transparent);
+  font-size: 14px;
+}
+.cf-mark {
+  @apply flex h-full items-center justify-center;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  font-size: 13px;
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 1180px) {
+  .cl-main { grid-template-columns: minmax(0, 1fr); }
+  .cl-rail {
+    @apply static grid grid-cols-2 gap-2.5;
+  }
+  .cl-defs-link { @apply col-span-2; }
+}
+@media (max-width: 640px) {
+  .cl-rail { grid-template-columns: 1fr; }
+  .cl-defs-link { @apply col-span-1; }
+  .cl-progress-card { @apply flex-col items-start gap-3; }
+  .cl-yeartotals { @apply text-left; }
+}
+
+/* ── Dark theme lifts ──────────────────────────── */
+.dark .cs-miss {
+  background: color-mix(in srgb, var(--color-danger) 9%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 62%, transparent);
+}
+.dark .cm-mark {
+  color: color-mix(in srgb, var(--color-danger) 78%, transparent);
+}
+.dark .cl-cell-dim { opacity: 0.3; }
 </style>

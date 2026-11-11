@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;box-sizing:border-box}
+body{width:1440px;height:900px;overflow:hidden;font-family:'Manrope',sans-serif;background:#f3ede3;color:#1f2937;padding:24px 32px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#0f766e;display:flex;gap:8px;align-items:center}
+h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.sub{font-size:12px;color:#667085;margin-top:2px}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start}
+.actions{display:flex;gap:8px;align-items:center}
+.select{font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;background:#fffdf8;border:1px solid #d9cfbe}
+.btn{font-size:12px;font-weight:700;padding:8px 14px;border-radius:12px;background:#fffdf8;border:1px solid #d9cfbe;display:flex;gap:6px;align-items:center}
+.progresscard{background:#fffdf8;border:1px solid #d9cfbe;border-radius:16px;padding:14px 20px;display:flex;align-items:center;gap:24px;box-shadow:0 18px 40px rgba(55,36,18,.06)}
+.pct{font-family:'IBM Plex Mono',monospace;font-size:34px;font-weight:600;color:#0f766e}
+.pct small{font-size:12px;color:#667085;font-family:'Manrope';font-weight:700;display:block;letter-spacing:.08em}
+.slotbar{flex:1;display:grid;grid-template-columns:repeat(36,1fr);gap:3px;height:14px}
+.slot{border-radius:3px}
+.up{background:#0f766e}.miss{background:#b91c1c}.fut{background:#d9cfbe;opacity:.45}.imb{background:#b45309}
+.legend{font-size:11px;color:#667085;display:flex;gap:14px;align-items:center}
+.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.total{font-size:11px;color:#667085;text-align:right;line-height:1.7}
+.total b{font-family:'IBM Plex Mono',monospace;font-weight:600;color:#1f2937}
+.main{flex:1;display:flex;gap:16px;min-height:0}
+.rail{width:248px;display:flex;flex-direction:column;gap:10px}
+.bankcard{background:#fffdf8;border:1px solid #d9cfbe;border-radius:14px;padding:12px 14px}
+.bankcard h3{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
+.acct{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#667085}
+.minibar{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;height:8px;margin:9px 0 7px}
+.minibar i{border-radius:2px}
+.bmeta{display:flex;justify-content:space-between;font-size:10px;color:#667085}
+.bmeta b{font-family:'IBM Plex Mono',monospace;color:#1f2937;font-weight:600}
+.done{color:#0f766e;font-weight:800;font-size:11px}
+.gap{display:flex;justify-content:space-between;align-items:center;background:#fffdf8;border:1px dashed #d9cfbe;border-radius:14px;padding:10px 14px;font-size:11px;font-weight:700;color:#667085}
+.grid{flex:1;background:#fffdf8;border:1px solid #d9cfbe;border-radius:16px;padding:14px;display:grid;grid-template-columns:repeat(12,1fr);gap:6px;align-content:start}
+.mcol{display:flex;flex-direction:column;gap:4px}
+.mhead{text-align:center;font-size:11px;font-weight:800;padding:5px 0 3px;color:#667085;border-bottom:2px solid #d9cfbe;margin-bottom:3px}
+.mhead span{display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:400;opacity:.7}
+.mcol.now .mhead{color:#0f766e;border-bottom-color:#0f766e}
+.cell{border-radius:9px;height:66px;padding:6px 7px;font-size:10px;position:relative}
+.cell.up{background:rgba(15,118,110,.07);border:1px solid rgba(15,118,110,.18)}
+.cell.miss{background:rgba(185,28,28,.05);border:1.5px dashed rgba(185,28,28,.45)}
+.cell.fut{background:#f4ede2;border:1px solid #e6dccb}
+.btag{font-size:8px;font-weight:800;letter-spacing:.05em;color:#667085;text-transform:uppercase;margin-bottom:4px}
+.txn{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#1f2937}
+.amt{font-family:'IBM Plex Mono',monospace;font-size:9px;line-height:1.5}
+.amt .db{color:#b91c1c}.amt .cr{color:#0f766e}
+.flag{position:absolute;top:5px;right:6px;color:#b45309;font-size:11px}
+.mark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(185,28,28,.55);font-size:14px;font-weight:800}
+.defbar{background:#fffdf8;border:1px solid #d9cfbe;border-radius:14px;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+.defbar b{font-size:12px;font-weight:800;display:flex;gap:8px;align-items:center}
+.defbar span{font-size:11px;color:#667085}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <div class="eyebrow"><i>✓</i> Upload Checklist</div>
+      <h1>Status upload tahunan per akun bank</h1>
+      <div class="sub">Kelengkapan file statement per bulan, per rekening — tahun 2026</div>
+    </div>
+    <div class="actions"><div class="select">2026 ▾</div><div class="btn">⟳ Refresh</div></div>
+  </div>
+
+  <div class="progresscard">
+    <div class="pct">67%<small>24 / 36 SLOT</small></div>
+    <div style="flex:1">
+      <div class="slotbar">
+        <div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div>
+        <div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot up"></div><div class="slot miss"></div><div class="slot miss"></div><div class="slot miss"></div>
+        <div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div><div class="slot fut"></div>
+      </div>
+      <div class="legend" style="margin-top:8px">
+        <span><i class="dot" style="background:#0f766e"></i>Terupload</span>
+        <span><i class="dot" style="background:#b91c1c"></i>Bolong</span>
+        <span><i class="dot" style="background:#b45309"></i>Selisih DB/CR</span>
+        <span><i class="dot" style="background:#d9cfbe"></i>Belum jatuh tempo</span>
+      </div>
+    </div>
+    <div class="total">Total Debit 2026 <b>1.823.400.000</b><br>Total Kredit 2026 <b>1.927.100.000</b></div>
+  </div>
+
+  <div class="main">
+    <div class="rail">
+      <div class="bankcard">
+        <h3>BCA Operasional</h3><div class="acct">· 4821</div>
+        <div class="minibar"><i class="up" style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i class="imb" style="background:#b45309"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#d9cfbe"></i></div>
+        <div class="bmeta"><span class="done">11/12</span><span><b>412</b> txn · DB <b>1,24M</b> CR <b>1,31M</b></span></div>
+      </div>
+      <div class="bankcard">
+        <h3>BCA CC</h3><div class="acct">· 7702</div>
+        <div class="minibar"><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#b91c1c"></i><i style="background:#d9cfbe"></i></div>
+        <div class="bmeta"><span class="done">10/12</span><span><b>188</b> txn · DB <b>486jt</b> CR <b>512jt</b></span></div>
+      </div>
+      <div class="bankcard" style="border-color:rgba(185,28,28,.35)">
+        <h3>Mandiri Simpedes</h3><div class="acct">· 9315</div>
+        <div class="minibar"><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#0f766e"></i><i style="background:#b91c1c"></i><i style="background:#b91c1c"></i><i style="background:#b91c1c"></i><i style="background:#b91c1c"></i><i style="background:#b91c1c"></i><i style="background:#b91c1c"></i><i style="background:#b91c1c"></i><i style="background:#b91c1c"></i><i style="background:#d9cfbe"></i></div>
+        <div class="bmeta"><span style="color:#b91c1c;font-weight:800;font-size:11px">3/12 · bolong 8 bln</span><span><b>61</b> txn · DB <b>97jt</b> CR <b>104jt</b></span></div>
+      </div>
+      <div class="gap"><span>⚙ Kelola akun bank</span><span style="color:#0f766e">3 definisi ▾</span></div>
+    </div>
+
+    <div class="grid">
+      <div class="mcol"><div class="mhead">Jan<span>01</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">38 txn</div><div class="amt"><div class="db">D 96,2jt</div><div class="cr">C 104,1jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">16 txn</div><div class="amt"><div class="db">D 41,0jt</div><div class="cr">C 44,6jt</div></div></div>
+        <div class="cell up"><div class="btag">MDR</div><div class="txn">6 txn</div><div class="amt"><div class="db">D 8,1jt</div><div class="cr">C 8,9jt</div></div></div>
+      </div>
+      <div class="mcol"><div class="mhead">Feb<span>02</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">41 txn</div><div class="amt"><div class="db">D 101,4jt</div><div class="cr">C 98,7jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">14 txn</div><div class="amt"><div class="db">D 38,2jt</div><div class="cr">C 40,1jt</div></div></div>
+        <div class="cell up"><div class="btag">MDR</div><div class="txn">5 txn</div><div class="amt"><div class="db">D 7,4jt</div><div class="cr">C 8,0jt</div></div></div>
+      </div>
+      <div class="mcol"><div class="mhead">Mar<span>03</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">36 txn</div><div class="amt"><div class="db">D 89,8jt</div><div class="cr">C 93,5jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">18 txn</div><div class="amt"><div class="db">D 44,9jt</div><div class="cr">C 47,3jt</div></div></div>
+        <div class="cell up"><div class="btag">MDR</div><div class="txn">7 txn</div><div class="amt"><div class="db">D 9,6jt</div><div class="cr">C 10,2jt</div></div></div>
+      </div>
+      <div class="mcol"><div class="mhead">Apr<span>04</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">33 txn</div><div class="amt"><div class="db">D 84,1jt</div><div class="cr">C 88,9jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">15 txn</div><div class="amt"><div class="db">D 39,7jt</div><div class="cr">C 42,8jt</div></div></div>
+        <div class="cell miss"><div class="mark">!</div></div>
+      </div>
+      <div class="mcol"><div class="mhead">Mei<span>05</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">40 txn</div><div class="amt"><div class="db">D 118,6jt</div><div class="cr">C 121,0jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">17 txn</div><div class="amt"><div class="db">D 50,4jt</div><div class="cr">C 52,9jt</div></div></div>
+        <div class="cell miss"><div class="mark">!</div></div>
+      </div>
+      <div class="mcol"><div class="mhead">Jun<span>06</span></div>
+        <div class="cell up"><i class="flag">⚠</i><div class="btag">BCA Op</div><div class="txn">44 txn</div><div class="amt"><div class="db">D 210,3jt</div><div class="cr">C 126,2jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">19 txn</div><div class="amt"><div class="db">D 52,1jt</div><div class="cr">C 55,4jt</div></div></div>
+        <div class="cell miss"><div class="mark">!</div></div>
+      </div>
+      <div class="mcol"><div class="mhead">Jul<span>07</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">37 txn</div><div class="amt"><div class="db">D 98,5jt</div><div class="cr">C 102,8jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">16 txn</div><div class="amt"><div class="db">D 46,8jt</div><div class="cr">C 49,2jt</div></div></div>
+        <div class="cell miss"><div class="mark">!</div></div>
+      </div>
+      <div class="mcol"><div class="mhead">Ags<span>08</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">39 txn</div><div class="amt"><div class="db">D 105,2jt</div><div class="cr">C 110,6jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">13 txn</div><div class="amt"><div class="db">D 37,5jt</div><div class="cr">C 39,8jt</div></div></div>
+        <div class="cell miss"><div class="mark">!</div></div>
+      </div>
+      <div class="mcol"><div class="mhead">Sep<span>09</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">42 txn</div><div class="amt"><div class="db">D 112,9jt</div><div class="cr">C 117,4jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">18 txn</div><div class="amt"><div class="db">D 47,2jt</div><div class="cr">C 50,6jt</div></div></div>
+        <div class="cell miss"><div class="mark">!</div></div>
+      </div>
+      <div class="mcol"><div class="mhead">Okt<span>10</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">35 txn</div><div class="amt"><div class="db">D 92,7jt</div><div class="cr">C 97,3jt</div></div></div>
+        <div class="cell up"><div class="btag">BCA CC</div><div class="txn">15 txn</div><div class="amt"><div class="db">D 43,9jt</div><div class="cr">C 46,1jt</div></div></div>
+        <div class="cell miss"><div class="mark">!</div></div>
+      </div>
+      <div class="mcol now"><div class="mhead">Nov<span>11 · now</span></div>
+        <div class="cell up"><div class="btag">BCA Op</div><div class="txn">31 txn</div><div class="amt"><div class="db">D 87,3jt</div><div class="cr">C 91,9jt</div></div></div>
+        <div class="cell miss"><div class="mark">!</div></div>
+        <div class="cell miss"><div class="mark">!</div></div>
+      </div>
+      <div class="mcol" style="opacity:.55"><div class="mhead">Des<span>12</span></div>
+        <div class="cell fut"></div><div class="cell fut"></div><div class="cell fut"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="defbar">
+    <b>⚙ Kelola Akun Bank <span style="color:#667085;font-weight:400">— pisahkan BCA, Mandiri, dll. menjadi beberapa rekening</span></b>
+    <span>3 definisi aktif · 1 kandidat unmapped · ▾</span>
+  </div>
+</body>
+</html>

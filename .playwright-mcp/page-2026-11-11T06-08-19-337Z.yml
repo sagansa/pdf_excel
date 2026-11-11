@@ -1,0 +1,442 @@
+- generic [ref=f8e3]:
+  - complementary [ref=f8e4]:
+    - generic [ref=f8e5]:
+      - generic [ref=f8e6]: 
+      - generic [ref=f8e8]: StatementX
+    - navigation [ref=f8e9]:
+      - link " Dashboard" [ref=f8e10] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f8e11]: 
+        - generic [ref=f8e12]: Dashboard
+      - link " Converter" [ref=f8e13] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=f8e14]: 
+        - generic [ref=f8e15]: Converter
+      - link " History & DB" [ref=f8e16] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=f8e17]: 
+        - generic [ref=f8e18]: History & DB
+      - link " Review Saran AI" [ref=f8e19] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=f8e20]: 
+        - generic [ref=f8e21]: Review Saran AI
+      - link " Upload Summary" [ref=f8e22] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=f8e23]: 
+        - generic [ref=f8e24]: Upload Summary
+      - link " Upload Checklist" [ref=f8e25] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=f8e26]: 
+        - generic [ref=f8e27]: Upload Checklist
+      - paragraph [ref=f8e29]: HRD
+      - link " Presences" [ref=f8e30] [cursor=pointer]:
+        - /url: /hrd
+        - generic [ref=f8e31]: 
+        - generic [ref=f8e32]: Presences
+      - paragraph [ref=f8e34]: Management
+      - link " Companies" [ref=f8e35] [cursor=pointer]:
+        - /url: /companies
+        - generic [ref=f8e36]: 
+        - generic [ref=f8e37]: Companies
+      - link " Marks" [ref=f8e38] [cursor=pointer]:
+        - /url: /marks
+        - generic [ref=f8e39]: 
+        - generic [ref=f8e40]: Marks
+      - link " Chart of Accounts" [ref=f8e41] [cursor=pointer]:
+        - /url: /chart-of-accounts
+        - generic [ref=f8e42]: 
+        - generic [ref=f8e43]: Chart of Accounts
+      - link " Locations & Stores" [ref=f8e44] [cursor=pointer]:
+        - /url: /management
+        - generic [ref=f8e45]: 
+        - generic [ref=f8e46]: Locations & Stores
+      - paragraph [ref=f8e48]: Reports
+      - link " Financial Reports" [ref=f8e49] [cursor=pointer]:
+        - /url: /reports
+        - generic [ref=f8e50]: 
+        - generic [ref=f8e51]: Financial Reports
+      - link " Trial Balance" [ref=f8e52] [cursor=pointer]:
+        - /url: /trial-balance
+        - generic [ref=f8e53]: 
+        - generic [ref=f8e54]: Trial Balance
+      - link " Cek Kontinuitas Saldo" [ref=f8e55] [cursor=pointer]:
+        - /url: /balance-check
+        - generic [ref=f8e56]: 
+        - generic [ref=f8e57]: Cek Kontinuitas Saldo
+      - paragraph [ref=f8e59]: Configuration
+      - link " Settings" [ref=f8e60] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=f8e61]: 
+        - generic [ref=f8e62]: Settings
+    - generic [ref=f8e64]:
+      - generic [ref=f8e65]: DE
+      - generic [ref=f8e66]:
+        - paragraph [ref=f8e67]: Dityo Enggar
+        - paragraph [ref=f8e68]: dityo.enggar@gmail.com
+      - button "" [ref=f8e69] [cursor=pointer]
+  - generic [ref=f8e71]:
+    - banner [ref=f8e72]:
+      - generic [ref=f8e73]:
+        - button "" [ref=f8e1005] [cursor=pointer]
+        - generic [ref=f8e77]:
+          - paragraph [ref=f8e78]: Admin Workspace
+          - heading "Upload Checklist" [level=2] [ref=f8e79]
+      - generic [ref=f8e80]: SERVER ONLINE
+    - main [ref=f8e85]:
+      - generic [ref=f8e86]:
+        - generic [ref=f8e87]:
+          - generic [ref=f8e88]:
+            - generic [ref=f8e89]:
+              - generic [ref=f8e90]: 
+              - text: Upload Checklist
+            - heading "Yearly upload status per bank account" [level=1] [ref=f8e91]
+            - paragraph [ref=f8e92]: Pantau kelengkapan upload file statement per bulan, per akun bank. BCA atau bank lain bisa dipisah menjadi beberapa rekening.
+          - generic [ref=f8e94]:
+            - combobox "Tahun checklist" [ref=f8e95] [cursor=pointer]:
+              - option "2027"
+              - option "2026" [selected]
+              - option "2025"
+              - option "2024"
+              - option "2023"
+              - option "2022"
+              - option "2021"
+              - option "2020"
+            - button " Refresh" [ref=f8e96] [cursor=pointer]:
+              - generic [ref=f8e97]: 
+              - generic [ref=f8e98]: Refresh
+        - generic [ref=f8e114]:
+          - generic [ref=f8e115]:
+            - generic [ref=f8e116]: 16%
+            - generic [ref=f8e117]: 15/96 slot
+          - generic [ref=f8e228]:
+            - generic [ref=f8e229]: Terupload 15
+            - generic [ref=f8e231]: Bolong 73
+            - generic [ref=f8e233]: Selisih DB/CR 12
+            - generic [ref=f8e235]: Belum jatuh tempo 8
+          - generic [ref=f8e237]:
+            - generic [ref=f8e238]: Total Debit 2026 764.002.633
+            - generic [ref=f8e239]: Total Kredit 2026 561.084.571
+        - generic [ref=f8e240]:
+          - complementary [ref=f8e241]:
+            - button "BCA · APB Bolong 10 ····1921 1/12 4 txn · DB 0 · CR 1" [ref=f8e1115] [cursor=pointer]:
+              - generic [ref=f8e243]:
+                - generic [ref=f8e244]: BCA · APB
+                - generic [ref=f8e245]: Bolong 10
+              - generic [ref=f8e246]: ····1921
+              - generic [ref=f8e260]:
+                - generic [ref=f8e261]: 1/12
+                - generic "4 txn · DB 0 · CR 1" [ref=f8e1116]
+            - button "BCA · DEK Bolong 9 ····7722 2/12 283 txn · DB 234jt · CR 128jt" [ref=f8e1117] [cursor=pointer]:
+              - generic [ref=f8e264]:
+                - generic [ref=f8e265]: BCA · DEK
+                - generic [ref=f8e266]: Bolong 9
+              - generic [ref=f8e267]: ····7722
+              - generic [ref=f8e281]:
+                - generic [ref=f8e282]: 2/12
+                - generic "283 txn · DB 233.721.187 · CR 127.633.524" [ref=f8e1118]: 283 txn · DB 234jt · CR 128jt
+            - button "BCA · MS Bolong 9 ····3856 2/12 182 txn · DB 415jt · CR 311jt" [ref=f8e1119] [cursor=pointer]:
+              - generic [ref=f8e285]:
+                - generic [ref=f8e286]: BCA · MS
+                - generic [ref=f8e287]: Bolong 9
+              - generic [ref=f8e288]: ····3856
+              - generic [ref=f8e302]:
+                - generic [ref=f8e303]: 2/12
+                - generic "182 txn · DB 414.944.881 · CR 311.123.731" [ref=f8e1120]: 182 txn · DB 415jt · CR 311jt
+            - button "BCA CC Bolong 9 2/12 21 txn · DB 1.6jt · CR 713rb" [ref=f8e1121] [cursor=pointer]:
+              - generic [ref=f8e1122]:
+                - generic [ref=f8e1123]: BCA CC
+                - generic [ref=f8e1124]: Bolong 9
+              - generic [ref=f8e1138]:
+                - generic [ref=f8e1139]: 2/12
+                - generic "21 txn · DB 1.572.524 · CR 712.876" [ref=f8e1140]: 21 txn · DB 1.6jt · CR 713rb
+            - button "BRI Bolong 9 2/12 23 txn · DB 7.8jt · CR 13jt" [ref=f8e1141] [cursor=pointer]:
+              - generic [ref=f8e1142]:
+                - generic [ref=f8e1143]: BRI
+                - generic [ref=f8e1144]: Bolong 9
+              - generic [ref=f8e1158]:
+                - generic [ref=f8e1159]: 2/12
+                - generic "23 txn · DB 7.820.000 · CR 12.660.000" [ref=f8e1160]: 23 txn · DB 7.8jt · CR 13jt
+            - button "DBS Bolong 9 2/12 129 txn · DB 43jt · CR 62jt" [ref=f8e1161] [cursor=pointer]:
+              - generic [ref=f8e1162]:
+                - generic [ref=f8e1163]: DBS
+                - generic [ref=f8e1164]: Bolong 9
+              - generic [ref=f8e1178]:
+                - generic [ref=f8e1179]: 2/12
+                - generic "129 txn · DB 43.193.592 · CR 62.155.941" [ref=f8e1180]: 129 txn · DB 43jt · CR 62jt
+            - button "MANDIRI Bolong 9 2/12 32 txn · DB 25jt · CR 43jt" [ref=f8e1181] [cursor=pointer]:
+              - generic [ref=f8e1182]:
+                - generic [ref=f8e1183]: MANDIRI
+                - generic [ref=f8e1184]: Bolong 9
+              - generic [ref=f8e1198]:
+                - generic [ref=f8e1199]: 2/12
+                - generic "32 txn · DB 24.595.000 · CR 43.367.947" [ref=f8e1200]: 32 txn · DB 25jt · CR 43jt
+            - button "MANDIRI CC Bolong 9 2/12 54 txn · DB 38jt · CR 3.4jt" [ref=f8e1201] [cursor=pointer]:
+              - generic [ref=f8e1202]:
+                - generic [ref=f8e1203]: MANDIRI CC
+                - generic [ref=f8e1204]: Bolong 9
+              - generic [ref=f8e1218]:
+                - generic [ref=f8e1219]: 2/12
+                - generic "54 txn · DB 38.155.448 · CR 3.430.551" [ref=f8e1220]: 54 txn · DB 38jt · CR 3.4jt
+            - button " Kelola Akun Bank " [ref=f8e405] [cursor=pointer]:
+              - generic [ref=f8e406]:
+                - generic [ref=f8e407]: 
+                - text: Kelola Akun Bank
+              - generic [ref=f8e408]: 
+          - generic [ref=f8e410]:
+            - generic [ref=f8e412]:
+              - heading "Checklist 2026" [level=3] [ref=f8e1221]
+              - paragraph [ref=f8e414]: Arahkan kursor ke sel untuk detail file dan periode upload · klik kartu bank untuk memfokuskan satu rekening.
+            - generic [ref=f8e416]:
+              - generic [ref=f8e417]:
+                - generic [ref=f8e418]:
+                  - generic [ref=f8e419]: Jan
+                  - generic [ref=f8e420]: "01"
+                - 'generic "BCA · APB · Januari 2026 4 txn · DB 0 · CR 1 File: 4670110341_JAN_2026.pdf Terakhir upload: 2026-02-22 ⚠ Selisih DB/CR besar: Rp 1" [ref=f8e1222]':
+                  - generic [ref=f8e1223]:
+                    - generic [ref=f8e1224]: BCA·21
+                    - generic [ref=f8e1225]: 
+                  - generic [ref=f8e1226]: 4 txn
+                  - generic [ref=f8e1227]:
+                    - generic [ref=f8e1228]: D 0
+                    - generic [ref=f8e1229]: C 1
+                - 'generic "BCA · DEK · Januari 2026 149 txn · DB 104.123.006 · CR 31.093.343 File: 4671357722_JAN_2026.pdf Terakhir upload: 2026-02-22 ⚠ Selisih DB/CR besar: Rp 73.029.663" [ref=f8e1230]':
+                  - generic [ref=f8e1231]:
+                    - generic [ref=f8e1232]: BCA·22
+                    - generic [ref=f8e1233]: 
+                  - generic [ref=f8e1234]: 149 txn
+                  - generic [ref=f8e1235]:
+                    - generic [ref=f8e1236]: D 104jt
+                    - generic [ref=f8e1237]: C 31jt
+                - 'generic "BCA · MS · Januari 2026 91 txn · DB 57.160.149 · CR 114.614.815 File: 0842463856_JAN_2026.pdf Terakhir upload: 2026-02-22 ⚠ Selisih DB/CR besar: Rp 57.454.665" [ref=f8e1238]':
+                  - generic [ref=f8e1239]:
+                    - generic [ref=f8e1240]: BCA·56
+                    - generic [ref=f8e1241]: 
+                  - generic [ref=f8e1242]: 91 txn
+                  - generic [ref=f8e1243]:
+                    - generic [ref=f8e1244]: D 57jt
+                    - generic [ref=f8e1245]: C 115jt
+                - 'generic "BCA CC · Januari 2026 17 txn · DB 1.572.522 · CR 652.926 File: CC_BCA_2026_01.pdf (+1 file lain) Terakhir upload: 2026-03-04 ⚠ Selisih DB/CR besar: Rp 919.596" [ref=f8e1246]':
+                  - generic [ref=f8e1247]:
+                    - generic [ref=f8e1248]: BCA CC
+                    - generic [ref=f8e1249]: 
+                  - generic [ref=f8e1250]: 17 txn
+                  - generic [ref=f8e1251]:
+                    - generic [ref=f8e1252]: D 1.6jt
+                    - generic [ref=f8e1253]: C 653rb
+                - 'generic "BRI · Januari 2026 13 txn · DB 3.910.000 · CR 9.423.000 File: 050501000524539_2026_01.csv Terakhir upload: 2026-03-04 ⚠ Selisih DB/CR besar: Rp 5.513.000" [ref=f8e1254]':
+                  - generic [ref=f8e1255]:
+                    - generic [ref=f8e1256]: BRI
+                    - generic [ref=f8e1257]: 
+                  - generic [ref=f8e1258]: 13 txn
+                  - generic [ref=f8e1259]:
+                    - generic [ref=f8e1260]: D 3.9jt
+                    - generic [ref=f8e1261]: C 9.4jt
+                - 'generic "DBS · Januari 2026 98 txn · DB 107.917 · CR 48.431.230 File: CC_DBS_2026_01.pdf (+1 file lain) Terakhir upload: 2026-03-04 ⚠ Selisih DB/CR besar: Rp 48.323.313" [ref=f8e1262]':
+                  - generic [ref=f8e1263]:
+                    - generic [ref=f8e1264]: DBS
+                    - generic [ref=f8e1265]: 
+                  - generic [ref=f8e1266]: 98 txn
+                  - generic [ref=f8e1267]:
+                    - generic [ref=f8e1268]: D 108rb
+                    - generic [ref=f8e1269]: C 48jt
+                - 'generic "MANDIRI · Januari 2026 16 txn · DB 8.760.000 · CR 7.580.585 File: XXXXXXXXX4481_2026_01.pdf (+1 file lain) Terakhir upload: 2026-03-04" [ref=f8e1270]':
+                  - generic [ref=f8e1271]: MANDIRI
+                  - generic [ref=f8e1273]: 16 txn
+                  - generic [ref=f8e1274]:
+                    - generic [ref=f8e1275]: D 8.8jt
+                    - generic [ref=f8e1276]: C 7.6jt
+                - 'generic "MANDIRI CC · Januari 2026 39 txn · DB 3.960.585 · CR 2.709.051 File: CC_MANDIRI_2026_01.pdf (+1 file lain) Terakhir upload: 2026-03-04 ⚠ Selisih DB/CR besar: Rp 1.251.534" [ref=f8e1277]':
+                  - generic [ref=f8e1278]:
+                    - generic [ref=f8e1279]: MANDIRI CC
+                    - generic [ref=f8e1280]: 
+                  - generic [ref=f8e1281]: 39 txn
+                  - generic [ref=f8e1282]:
+                    - generic [ref=f8e1283]: D 4.0jt
+                    - generic [ref=f8e1284]: C 2.7jt
+              - generic [ref=f8e484]:
+                - generic [ref=f8e485]:
+                  - generic [ref=f8e486]: Feb
+                  - generic [ref=f8e487]: "02"
+                - generic "Belum ada upload — BCA · APB · Februari 2026" [ref=f8e1285]: 
+                - 'generic "BCA · DEK · Februari 2026 134 txn · DB 129.598.181 · CR 96.540.182 File: 4671357722_2026_02.pdf Terakhir upload: 2026-03-04" [ref=f8e1286]':
+                  - generic [ref=f8e1287]: BCA·22
+                  - generic [ref=f8e1289]: 134 txn
+                  - generic [ref=f8e1290]:
+                    - generic [ref=f8e1291]: D 130jt
+                    - generic [ref=f8e1292]: C 97jt
+                - 'generic "BCA · MS · Februari 2026 91 txn · DB 357.784.732 · CR 196.508.916 File: 0842463856_2026_02.pdf Terakhir upload: 2026-03-04 ⚠ Selisih DB/CR besar: Rp 161.275.816" [ref=f8e1293]':
+                  - generic [ref=f8e1294]:
+                    - generic [ref=f8e1295]: BCA·56
+                    - generic [ref=f8e1296]: 
+                  - generic [ref=f8e1297]: 91 txn
+                  - generic [ref=f8e1298]:
+                    - generic [ref=f8e1299]: D 358jt
+                    - generic [ref=f8e1300]: C 197jt
+                - 'generic "BCA CC · Februari 2026 4 txn · DB 2 · CR 59.950 File: CC_BCA_2026_02.pdf Terakhir upload: 2026-03-04 ⚠ Selisih DB/CR besar: Rp 59.948" [ref=f8e1301]':
+                  - generic [ref=f8e1302]:
+                    - generic [ref=f8e1303]: BCA CC
+                    - generic [ref=f8e1304]: 
+                  - generic [ref=f8e1305]: 4 txn
+                  - generic [ref=f8e1306]:
+                    - generic [ref=f8e1307]: D 2
+                    - generic [ref=f8e1308]: C 60rb
+                - 'generic "BRI · Februari 2026 10 txn · DB 3.910.000 · CR 3.237.000 File: 050501000524539_2026_02.csv Terakhir upload: 2026-03-04" [ref=f8e1309]':
+                  - generic [ref=f8e1310]: BRI
+                  - generic [ref=f8e1312]: 10 txn
+                  - generic [ref=f8e1313]:
+                    - generic [ref=f8e1314]: D 3.9jt
+                    - generic [ref=f8e1315]: C 3.2jt
+                - 'generic "DBS · Februari 2026 31 txn · DB 43.085.675 · CR 13.724.711 File: CC_DBS_2026_02.pdf Terakhir upload: 2026-03-04 ⚠ Selisih DB/CR besar: Rp 29.360.964" [ref=f8e1316]':
+                  - generic [ref=f8e1317]:
+                    - generic [ref=f8e1318]: DBS
+                    - generic [ref=f8e1319]: 
+                  - generic [ref=f8e1320]: 31 txn
+                  - generic [ref=f8e1321]:
+                    - generic [ref=f8e1322]: D 43jt
+                    - generic [ref=f8e1323]: C 14jt
+                - 'generic "MANDIRI · Februari 2026 16 txn · DB 15.835.000 · CR 35.787.362 File: XXXXXXXXX4481_2026_02.pdf (+1 file lain) Terakhir upload: 2026-03-04 ⚠ Selisih DB/CR besar: Rp 19.952.362" [ref=f8e1324]':
+                  - generic [ref=f8e1325]:
+                    - generic [ref=f8e1326]: MANDIRI
+                    - generic [ref=f8e1327]: 
+                  - generic [ref=f8e1328]: 16 txn
+                  - generic [ref=f8e1329]:
+                    - generic [ref=f8e1330]: D 16jt
+                    - generic [ref=f8e1331]: C 36jt
+                - 'generic "MANDIRI CC · Februari 2026 15 txn · DB 34.194.863 · CR 721.500 File: CC_MANDIRI_2026_02.pdf Terakhir upload: 2026-03-04 ⚠ Selisih DB/CR besar: Rp 33.473.363" [ref=f8e1332]':
+                  - generic [ref=f8e1333]:
+                    - generic [ref=f8e1334]: MANDIRI CC
+                    - generic [ref=f8e1335]: 
+                  - generic [ref=f8e1336]: 15 txn
+                  - generic [ref=f8e1337]:
+                    - generic [ref=f8e1338]: D 34jt
+                    - generic [ref=f8e1339]: C 722rb
+              - generic [ref=f8e545]:
+                - generic [ref=f8e546]:
+                  - generic [ref=f8e547]: Mar
+                  - generic [ref=f8e548]: "03"
+                - generic "Belum ada upload — BCA · APB · Maret 2026" [ref=f8e1340]: 
+                - generic "Belum ada upload — BCA · DEK · Maret 2026" [ref=f8e1341]: 
+                - generic "Belum ada upload — BCA · MS · Maret 2026" [ref=f8e1342]: 
+                - generic "Belum ada upload — BCA CC · Maret 2026" [ref=f8e1343]: 
+                - generic "Belum ada upload — BRI · Maret 2026" [ref=f8e1346]: 
+                - generic "Belum ada upload — DBS · Maret 2026" [ref=f8e1349]: 
+                - generic "Belum ada upload — MANDIRI · Maret 2026" [ref=f8e1352]: 
+                - generic "Belum ada upload — MANDIRI CC · Maret 2026" [ref=f8e1355]: 
+              - generic [ref=f8e573]:
+                - generic [ref=f8e574]:
+                  - generic [ref=f8e575]: Apr
+                  - generic [ref=f8e576]: "04"
+                - generic "Belum ada upload — BCA · APB · April 2026" [ref=f8e1358]: 
+                - generic "Belum ada upload — BCA · DEK · April 2026" [ref=f8e1359]: 
+                - generic "Belum ada upload — BCA · MS · April 2026" [ref=f8e1360]: 
+                - generic "Belum ada upload — BCA CC · April 2026" [ref=f8e1361]: 
+                - generic "Belum ada upload — BRI · April 2026" [ref=f8e1364]: 
+                - generic "Belum ada upload — DBS · April 2026" [ref=f8e1367]: 
+                - generic "Belum ada upload — MANDIRI · April 2026" [ref=f8e1370]: 
+                - generic "Belum ada upload — MANDIRI CC · April 2026" [ref=f8e1373]: 
+              - generic [ref=f8e601]:
+                - generic [ref=f8e602]:
+                  - generic [ref=f8e603]: Mei
+                  - generic [ref=f8e604]: "05"
+                - generic "Belum ada upload — BCA · APB · Mei 2026" [ref=f8e1376]: 
+                - generic "Belum ada upload — BCA · DEK · Mei 2026" [ref=f8e1377]: 
+                - generic "Belum ada upload — BCA · MS · Mei 2026" [ref=f8e1378]: 
+                - generic "Belum ada upload — BCA CC · Mei 2026" [ref=f8e1379]: 
+                - generic "Belum ada upload — BRI · Mei 2026" [ref=f8e1382]: 
+                - generic "Belum ada upload — DBS · Mei 2026" [ref=f8e1385]: 
+                - generic "Belum ada upload — MANDIRI · Mei 2026" [ref=f8e1388]: 
+                - generic "Belum ada upload — MANDIRI CC · Mei 2026" [ref=f8e1391]: 
+              - generic [ref=f8e629]:
+                - generic [ref=f8e630]:
+                  - generic [ref=f8e631]: Jun
+                  - generic [ref=f8e632]: "06"
+                - generic "Belum ada upload — BCA · APB · Juni 2026" [ref=f8e1394]: 
+                - generic "Belum ada upload — BCA · DEK · Juni 2026" [ref=f8e1395]: 
+                - generic "Belum ada upload — BCA · MS · Juni 2026" [ref=f8e1396]: 
+                - generic "Belum ada upload — BCA CC · Juni 2026" [ref=f8e1397]: 
+                - generic "Belum ada upload — BRI · Juni 2026" [ref=f8e1400]: 
+                - generic "Belum ada upload — DBS · Juni 2026" [ref=f8e1403]: 
+                - generic "Belum ada upload — MANDIRI · Juni 2026" [ref=f8e1406]: 
+                - generic "Belum ada upload — MANDIRI CC · Juni 2026" [ref=f8e1409]: 
+              - generic [ref=f8e657]:
+                - generic [ref=f8e658]:
+                  - generic [ref=f8e659]: Jul
+                  - generic [ref=f8e660]: "07"
+                - generic "Belum ada upload — BCA · APB · Juli 2026" [ref=f8e1412]: 
+                - generic "Belum ada upload — BCA · DEK · Juli 2026" [ref=f8e1413]: 
+                - generic "Belum ada upload — BCA · MS · Juli 2026" [ref=f8e1414]: 
+                - generic "Belum ada upload — BCA CC · Juli 2026" [ref=f8e1415]: 
+                - generic "Belum ada upload — BRI · Juli 2026" [ref=f8e1418]: 
+                - generic "Belum ada upload — DBS · Juli 2026" [ref=f8e1421]: 
+                - generic "Belum ada upload — MANDIRI · Juli 2026" [ref=f8e1424]: 
+                - generic "Belum ada upload — MANDIRI CC · Juli 2026" [ref=f8e1427]: 
+              - generic [ref=f8e685]:
+                - generic [ref=f8e686]:
+                  - generic [ref=f8e687]: Ags
+                  - generic [ref=f8e688]: "08"
+                - generic "Belum ada upload — BCA · APB · Agustus 2026" [ref=f8e1430]: 
+                - generic "Belum ada upload — BCA · DEK · Agustus 2026" [ref=f8e1431]: 
+                - generic "Belum ada upload — BCA · MS · Agustus 2026" [ref=f8e1432]: 
+                - generic "Belum ada upload — BCA CC · Agustus 2026" [ref=f8e1433]: 
+                - generic "Belum ada upload — BRI · Agustus 2026" [ref=f8e1436]: 
+                - generic "Belum ada upload — DBS · Agustus 2026" [ref=f8e1439]: 
+                - generic "Belum ada upload — MANDIRI · Agustus 2026" [ref=f8e1442]: 
+                - generic "Belum ada upload — MANDIRI CC · Agustus 2026" [ref=f8e1445]: 
+              - generic [ref=f8e713]:
+                - generic [ref=f8e714]:
+                  - generic [ref=f8e715]: Sep
+                  - generic [ref=f8e716]: "09"
+                - generic "Belum ada upload — BCA · APB · September 2026" [ref=f8e1448]: 
+                - generic "Belum ada upload — BCA · DEK · September 2026" [ref=f8e1449]: 
+                - generic "Belum ada upload — BCA · MS · September 2026" [ref=f8e1450]: 
+                - generic "Belum ada upload — BCA CC · September 2026" [ref=f8e1451]: 
+                - generic "Belum ada upload — BRI · September 2026" [ref=f8e1454]: 
+                - generic "Belum ada upload — DBS · September 2026" [ref=f8e1457]: 
+                - generic "Belum ada upload — MANDIRI · September 2026" [ref=f8e1460]: 
+                - generic "Belum ada upload — MANDIRI CC · September 2026" [ref=f8e1463]: 
+              - generic [ref=f8e741]:
+                - generic [ref=f8e742]:
+                  - generic [ref=f8e743]: Okt
+                  - generic [ref=f8e744]: "10"
+                - generic "Belum ada upload — BCA · APB · Oktober 2026" [ref=f8e1466]: 
+                - generic "Belum ada upload — BCA · DEK · Oktober 2026" [ref=f8e1467]: 
+                - generic "Belum ada upload — BCA · MS · Oktober 2026" [ref=f8e1468]: 
+                - generic "Belum ada upload — BCA CC · Oktober 2026" [ref=f8e1469]: 
+                - generic "Belum ada upload — BRI · Oktober 2026" [ref=f8e1472]: 
+                - generic "Belum ada upload — DBS · Oktober 2026" [ref=f8e1475]: 
+                - generic "Belum ada upload — MANDIRI · Oktober 2026" [ref=f8e1478]: 
+                - generic "Belum ada upload — MANDIRI CC · Oktober 2026" [ref=f8e1481]: 
+              - generic [ref=f8e769]:
+                - generic [ref=f8e770]:
+                  - generic [ref=f8e771]:
+                    - text: Nov
+                    - generic [ref=f8e1484]: now
+                  - generic [ref=f8e773]: "11"
+                - generic "Belum ada upload — BCA · APB · November 2026" [ref=f8e1485]: 
+                - generic "Belum ada upload — BCA · DEK · November 2026" [ref=f8e1486]: 
+                - generic "Belum ada upload — BCA · MS · November 2026" [ref=f8e1487]: 
+                - generic "Belum ada upload — BCA CC · November 2026" [ref=f8e1488]: 
+                - generic "Belum ada upload — BRI · November 2026" [ref=f8e1491]: 
+                - generic "Belum ada upload — DBS · November 2026" [ref=f8e1494]: 
+                - generic "Belum ada upload — MANDIRI · November 2026" [ref=f8e1497]: 
+                - generic "Belum ada upload — MANDIRI CC · November 2026" [ref=f8e1500]: 
+              - generic [ref=f8e798]:
+                - generic [ref=f8e799]:
+                  - generic [ref=f8e800]: Des
+                  - generic [ref=f8e801]: "12"
+                - generic "Belum jatuh tempo — Desember 2026" [ref=f8e1503]: 
+                - generic "Belum jatuh tempo — Desember 2026" [ref=f8e1506]: 
+                - generic "Belum jatuh tempo — Desember 2026" [ref=f8e1509]: 
+                - generic "Belum jatuh tempo — Desember 2026" [ref=f8e1512]: 
+                - generic "Belum jatuh tempo — Desember 2026" [ref=f8e1515]: 
+                - generic "Belum jatuh tempo — Desember 2026" [ref=f8e1518]: 
+                - generic "Belum jatuh tempo — Desember 2026" [ref=f8e1521]: 
+                - generic "Belum jatuh tempo — Desember 2026" [ref=f8e1524]: 
+        - generic [ref=f8e106]:
+          - button " Kelola Akun Bank 4 definisi aktif · 2 kandidat belum terlabel " [ref=f8e826] [cursor=pointer]:
+            - generic [ref=f8e108]:
+              - generic [ref=f8e109]: 
+              - generic [ref=f8e111]: Kelola Akun Bank
+              - generic [ref=f8e827]: 4 definisi aktif · 2 kandidat belum terlabel
+            - generic [ref=f8e113]: 
+          - text:          

@@ -1,0 +1,114 @@
+- generic [ref=f10e3]:
+  - complementary [ref=f10e4]:
+    - generic [ref=f10e5]:
+      - generic [ref=f10e6]: 
+      - generic [ref=f10e8]: StatementX
+    - navigation [ref=f10e9]:
+      - link " Dashboard" [ref=f10e10] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f10e11]: 
+        - generic [ref=f10e12]: Dashboard
+      - link " Converter" [ref=f10e13] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=f10e14]: 
+        - generic [ref=f10e15]: Converter
+      - link " History & DB" [ref=f10e16] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=f10e17]: 
+        - generic [ref=f10e18]: History & DB
+      - link " Review Saran AI" [ref=f10e19] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=f10e20]: 
+        - generic [ref=f10e21]: Review Saran AI
+      - link " Upload Summary" [ref=f10e22] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=f10e23]: 
+        - generic [ref=f10e24]: Upload Summary
+      - link " Upload Checklist" [ref=f10e25] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=f10e26]: 
+        - generic [ref=f10e27]: Upload Checklist
+      - paragraph [ref=f10e29]: HRD
+      - link " Presences" [ref=f10e30] [cursor=pointer]:
+        - /url: /hrd
+        - generic [ref=f10e31]: 
+        - generic [ref=f10e32]: Presences
+      - paragraph [ref=f10e34]: Management
+      - link " Companies" [ref=f10e35] [cursor=pointer]:
+        - /url: /companies
+        - generic [ref=f10e36]: 
+        - generic [ref=f10e37]: Companies
+      - link " Marks" [ref=f10e38] [cursor=pointer]:
+        - /url: /marks
+        - generic [ref=f10e39]: 
+        - generic [ref=f10e40]: Marks
+      - link " Chart of Accounts" [ref=f10e41] [cursor=pointer]:
+        - /url: /chart-of-accounts
+        - generic [ref=f10e42]: 
+        - generic [ref=f10e43]: Chart of Accounts
+      - link " Locations & Stores" [ref=f10e44] [cursor=pointer]:
+        - /url: /management
+        - generic [ref=f10e45]: 
+        - generic [ref=f10e46]: Locations & Stores
+      - paragraph [ref=f10e48]: Reports
+      - link " Financial Reports" [ref=f10e49] [cursor=pointer]:
+        - /url: /reports
+        - generic [ref=f10e50]: 
+        - generic [ref=f10e51]: Financial Reports
+      - link " Trial Balance" [ref=f10e52] [cursor=pointer]:
+        - /url: /trial-balance
+        - generic [ref=f10e53]: 
+        - generic [ref=f10e54]: Trial Balance
+      - link " Cek Kontinuitas Saldo" [ref=f10e55] [cursor=pointer]:
+        - /url: /balance-check
+        - generic [ref=f10e56]: 
+        - generic [ref=f10e57]: Cek Kontinuitas Saldo
+      - paragraph [ref=f10e59]: Configuration
+      - link " Settings" [ref=f10e60] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=f10e61]: 
+        - generic [ref=f10e62]: Settings
+    - generic [ref=f10e64]:
+      - generic [ref=f10e65]: DE
+      - generic [ref=f10e66]:
+        - paragraph [ref=f10e67]: Dityo Enggar
+        - paragraph [ref=f10e68]: dityo.enggar@gmail.com
+      - button "" [ref=f10e69] [cursor=pointer]
+  - generic [ref=f10e71]:
+    - banner [ref=f10e72]:
+      - generic [ref=f10e73]:
+        - button "" [ref=f10e74] [cursor=pointer]
+        - generic [ref=f10e77]:
+          - paragraph [ref=f10e78]: Admin Workspace
+          - heading "Upload Checklist" [level=2] [ref=f10e79]
+      - generic [ref=f10e80]: SERVER ONLINE
+    - main [ref=f10e85]:
+      - generic [ref=f10e86]:
+        - generic [ref=f10e87]:
+          - generic [ref=f10e88]:
+            - generic [ref=f10e89]:
+              - generic [ref=f10e90]: 
+              - text: Upload Checklist
+            - heading "Yearly upload status per bank account" [level=1] [ref=f10e91]
+            - paragraph [ref=f10e92]: Pantau kelengkapan upload file statement per bulan, per akun bank. BCA atau bank lain bisa dipisah menjadi beberapa rekening.
+          - generic [ref=f10e94]:
+            - combobox "Tahun checklist" [ref=f10e95] [cursor=pointer]:
+              - option "2027"
+              - option "2026" [selected]
+              - option "2025"
+              - option "2024"
+              - option "2023"
+              - option "2022"
+              - option "2021"
+              - option "2020"
+            - button " Refresh" [disabled] [ref=f10e96]:
+              - generic [ref=f10e97]: 
+              - generic [ref=f10e98]: Refresh
+        - generic [ref=f10e106]:
+          - button " Kelola Akun Bank memuat… " [ref=f10e107] [cursor=pointer]:
+            - generic [ref=f10e108]:
+              - generic [ref=f10e109]: 
+              - generic [ref=f10e111]: Kelola Akun Bank
+              - generic [ref=f10e112]: memuat…
+            - generic [ref=f10e113]: 
+          - text:  

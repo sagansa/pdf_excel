@@ -1,0 +1,266 @@
+- generic [ref=f8e3]:
+  - complementary [ref=f8e4]:
+    - generic [ref=f8e5]:
+      - generic [ref=f8e6]: 
+      - generic [ref=f8e8]: StatementX
+    - navigation [ref=f8e9]:
+      - link " Dashboard" [ref=f8e10] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f8e11]: 
+        - generic [ref=f8e12]: Dashboard
+      - link " Converter" [ref=f8e13] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=f8e14]: 
+        - generic [ref=f8e15]: Converter
+      - link " History & DB" [ref=f8e16] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=f8e17]: 
+        - generic [ref=f8e18]: History & DB
+      - link " Review Saran AI" [ref=f8e19] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=f8e20]: 
+        - generic [ref=f8e21]: Review Saran AI
+      - link " Upload Summary" [ref=f8e22] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=f8e23]: 
+        - generic [ref=f8e24]: Upload Summary
+      - link " Upload Checklist" [ref=f8e25] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=f8e26]: 
+        - generic [ref=f8e27]: Upload Checklist
+      - paragraph [ref=f8e29]: HRD
+      - link " Presences" [ref=f8e30] [cursor=pointer]:
+        - /url: /hrd
+        - generic [ref=f8e31]: 
+        - generic [ref=f8e32]: Presences
+      - paragraph [ref=f8e34]: Management
+      - link " Companies" [ref=f8e35] [cursor=pointer]:
+        - /url: /companies
+        - generic [ref=f8e36]: 
+        - generic [ref=f8e37]: Companies
+      - link " Marks" [ref=f8e38] [cursor=pointer]:
+        - /url: /marks
+        - generic [ref=f8e39]: 
+        - generic [ref=f8e40]: Marks
+      - link " Chart of Accounts" [ref=f8e41] [cursor=pointer]:
+        - /url: /chart-of-accounts
+        - generic [ref=f8e42]: 
+        - generic [ref=f8e43]: Chart of Accounts
+      - link " Locations & Stores" [ref=f8e44] [cursor=pointer]:
+        - /url: /management
+        - generic [ref=f8e45]: 
+        - generic [ref=f8e46]: Locations & Stores
+      - paragraph [ref=f8e48]: Reports
+      - link " Financial Reports" [ref=f8e49] [cursor=pointer]:
+        - /url: /reports
+        - generic [ref=f8e50]: 
+        - generic [ref=f8e51]: Financial Reports
+      - link " Trial Balance" [ref=f8e52] [cursor=pointer]:
+        - /url: /trial-balance
+        - generic [ref=f8e53]: 
+        - generic [ref=f8e54]: Trial Balance
+      - link " Cek Kontinuitas Saldo" [ref=f8e55] [cursor=pointer]:
+        - /url: /balance-check
+        - generic [ref=f8e56]: 
+        - generic [ref=f8e57]: Cek Kontinuitas Saldo
+      - paragraph [ref=f8e59]: Configuration
+      - link " Settings" [ref=f8e60] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=f8e61]: 
+        - generic [ref=f8e62]: Settings
+    - generic [ref=f8e64]:
+      - generic [ref=f8e65]: DE
+      - generic [ref=f8e66]:
+        - paragraph [ref=f8e67]: Dityo Enggar
+        - paragraph [ref=f8e68]: dityo.enggar@gmail.com
+      - button "" [ref=f8e69] [cursor=pointer]
+  - generic [ref=f8e71]:
+    - banner [ref=f8e72]:
+      - generic [ref=f8e73]:
+        - button "" [ref=f8e74] [cursor=pointer]
+        - generic [ref=f8e77]:
+          - paragraph [ref=f8e78]: Admin Workspace
+          - heading "Upload Checklist" [level=2] [ref=f8e79]
+      - generic [ref=f8e80]: SERVER ONLINE
+    - main [ref=f8e85]:
+      - generic [ref=f8e86]:
+        - generic [ref=f8e87]:
+          - generic [ref=f8e88]:
+            - generic [ref=f8e89]:
+              - generic [ref=f8e90]: 
+              - text: Upload Checklist
+            - heading "Yearly upload status per bank account" [level=1] [ref=f8e91]
+            - paragraph [ref=f8e92]: Pantau kelengkapan upload file statement per bulan, per akun bank. BCA atau bank lain bisa dipisah menjadi beberapa rekening.
+          - generic [ref=f8e94]:
+            - combobox "Tahun checklist" [ref=f8e95] [cursor=pointer]:
+              - option "2027"
+              - option "2026"
+              - option "2025"
+              - option "2024"
+              - option "2023"
+              - option "2022"
+              - option "2021"
+              - option "2020" [selected]
+            - button " Refresh" [ref=f8e96] [cursor=pointer]:
+              - generic [ref=f8e97]: 
+              - generic [ref=f8e98]: Refresh
+        - generic [ref=f8e114]:
+          - generic [ref=f8e115]:
+            - generic [ref=f8e116]: 0%
+            - generic [ref=f8e117]: 0/48 slot
+          - generic [ref=f8e228]:
+            - generic [ref=f8e229]: Terupload 0
+            - generic [ref=f8e231]: Bolong 48
+            - generic [ref=f8e233]: Selisih DB/CR 0
+            - generic [ref=f8e235]: Belum jatuh tempo 0
+          - generic [ref=f8e237]:
+            - generic [ref=f8e238]: Total Debit 2020 0
+            - generic [ref=f8e239]: Total Kredit 2020 0
+        - generic [ref=f8e240]:
+          - complementary [ref=f8e241]:
+            - button "BCA · APB Bolong 12 ····1921 0/12 0 txn · DB 0 · CR 0" [ref=f8e889] [cursor=pointer]:
+              - generic [ref=f8e243]:
+                - generic [ref=f8e244]: BCA · APB
+                - generic [ref=f8e245]: Bolong 12
+              - generic [ref=f8e246]: ····1921
+              - generic [ref=f8e260]:
+                - generic [ref=f8e261]: 0/12
+                - generic "0 txn · DB 0 · CR 0" [ref=f8e890]
+            - button "BCA · DEK Bolong 12 ····7722 0/12 0 txn · DB 0 · CR 0" [ref=f8e891] [cursor=pointer]:
+              - generic [ref=f8e264]:
+                - generic [ref=f8e265]: BCA · DEK
+                - generic [ref=f8e266]: Bolong 12
+              - generic [ref=f8e267]: ····7722
+              - generic [ref=f8e281]:
+                - generic [ref=f8e282]: 0/12
+                - generic "0 txn · DB 0 · CR 0" [ref=f8e892]
+            - button "BCA · MS Bolong 12 ····3856 0/12 0 txn · DB 0 · CR 0" [ref=f8e893] [cursor=pointer]:
+              - generic [ref=f8e285]:
+                - generic [ref=f8e286]: BCA · MS
+                - generic [ref=f8e287]: Bolong 12
+              - generic [ref=f8e288]: ····3856
+              - generic [ref=f8e302]:
+                - generic [ref=f8e303]: 0/12
+                - generic "0 txn · DB 0 · CR 0" [ref=f8e894]
+            - button "BCA · SYC Bolong 12 ····6259 0/12 0 txn · DB 0 · CR 0" [ref=f8e895] [cursor=pointer]:
+              - generic [ref=f8e896]:
+                - generic [ref=f8e897]: BCA · SYC
+                - generic [ref=f8e898]: Bolong 12
+              - generic [ref=f8e899]: ····6259
+              - generic [ref=f8e913]:
+                - generic [ref=f8e914]: 0/12
+                - generic "0 txn · DB 0 · CR 0" [ref=f8e915]
+            - button " Kelola Akun Bank " [ref=f8e405] [cursor=pointer]:
+              - generic [ref=f8e406]:
+                - generic [ref=f8e407]: 
+                - text: Kelola Akun Bank
+              - generic [ref=f8e408]: 
+          - generic [ref=f8e410]:
+            - generic [ref=f8e412]:
+              - heading "Checklist 2020" [level=3] [ref=f8e916]
+              - paragraph [ref=f8e414]: Arahkan kursor ke sel untuk detail file dan periode upload · klik kartu bank untuk memfokuskan satu rekening.
+            - generic [ref=f8e416]:
+              - generic [ref=f8e417]:
+                - generic [ref=f8e418]:
+                  - generic [ref=f8e419]: Jan
+                  - generic [ref=f8e420]: "01"
+                - generic "Belum ada upload — BCA · APB · Januari 2020" [ref=f8e917]: 
+                - generic "Belum ada upload — BCA · DEK · Januari 2020" [ref=f8e920]: 
+                - generic "Belum ada upload — BCA · MS · Januari 2020" [ref=f8e923]: 
+                - generic "Belum ada upload — BCA · SYC · Januari 2020" [ref=f8e926]: 
+              - generic [ref=f8e484]:
+                - generic [ref=f8e485]:
+                  - generic [ref=f8e486]: Feb
+                  - generic [ref=f8e487]: "02"
+                - generic "Belum ada upload — BCA · APB · Februari 2020" [ref=f8e929]: 
+                - generic "Belum ada upload — BCA · DEK · Februari 2020" [ref=f8e930]: 
+                - generic "Belum ada upload — BCA · MS · Februari 2020" [ref=f8e933]: 
+                - generic "Belum ada upload — BCA · SYC · Februari 2020" [ref=f8e936]: 
+              - generic [ref=f8e545]:
+                - generic [ref=f8e546]:
+                  - generic [ref=f8e547]: Mar
+                  - generic [ref=f8e548]: "03"
+                - generic "Belum ada upload — BCA · APB · Maret 2020" [ref=f8e939]: 
+                - generic "Belum ada upload — BCA · DEK · Maret 2020" [ref=f8e940]: 
+                - generic "Belum ada upload — BCA · MS · Maret 2020" [ref=f8e941]: 
+                - generic "Belum ada upload — BCA · SYC · Maret 2020" [ref=f8e942]: 
+              - generic [ref=f8e573]:
+                - generic [ref=f8e574]:
+                  - generic [ref=f8e575]: Apr
+                  - generic [ref=f8e576]: "04"
+                - generic "Belum ada upload — BCA · APB · April 2020" [ref=f8e945]: 
+                - generic "Belum ada upload — BCA · DEK · April 2020" [ref=f8e946]: 
+                - generic "Belum ada upload — BCA · MS · April 2020" [ref=f8e947]: 
+                - generic "Belum ada upload — BCA · SYC · April 2020" [ref=f8e948]: 
+              - generic [ref=f8e601]:
+                - generic [ref=f8e602]:
+                  - generic [ref=f8e603]: Mei
+                  - generic [ref=f8e604]: "05"
+                - generic "Belum ada upload — BCA · APB · Mei 2020" [ref=f8e951]: 
+                - generic "Belum ada upload — BCA · DEK · Mei 2020" [ref=f8e952]: 
+                - generic "Belum ada upload — BCA · MS · Mei 2020" [ref=f8e953]: 
+                - generic "Belum ada upload — BCA · SYC · Mei 2020" [ref=f8e954]: 
+              - generic [ref=f8e629]:
+                - generic [ref=f8e630]:
+                  - generic [ref=f8e631]: Jun
+                  - generic [ref=f8e632]: "06"
+                - generic "Belum ada upload — BCA · APB · Juni 2020" [ref=f8e957]: 
+                - generic "Belum ada upload — BCA · DEK · Juni 2020" [ref=f8e958]: 
+                - generic "Belum ada upload — BCA · MS · Juni 2020" [ref=f8e959]: 
+                - generic "Belum ada upload — BCA · SYC · Juni 2020" [ref=f8e960]: 
+              - generic [ref=f8e657]:
+                - generic [ref=f8e658]:
+                  - generic [ref=f8e659]: Jul
+                  - generic [ref=f8e660]: "07"
+                - generic "Belum ada upload — BCA · APB · Juli 2020" [ref=f8e963]: 
+                - generic "Belum ada upload — BCA · DEK · Juli 2020" [ref=f8e964]: 
+                - generic "Belum ada upload — BCA · MS · Juli 2020" [ref=f8e965]: 
+                - generic "Belum ada upload — BCA · SYC · Juli 2020" [ref=f8e966]: 
+              - generic [ref=f8e685]:
+                - generic [ref=f8e686]:
+                  - generic [ref=f8e687]: Ags
+                  - generic [ref=f8e688]: "08"
+                - generic "Belum ada upload — BCA · APB · Agustus 2020" [ref=f8e969]: 
+                - generic "Belum ada upload — BCA · DEK · Agustus 2020" [ref=f8e970]: 
+                - generic "Belum ada upload — BCA · MS · Agustus 2020" [ref=f8e971]: 
+                - generic "Belum ada upload — BCA · SYC · Agustus 2020" [ref=f8e972]: 
+              - generic [ref=f8e713]:
+                - generic [ref=f8e714]:
+                  - generic [ref=f8e715]: Sep
+                  - generic [ref=f8e716]: "09"
+                - generic "Belum ada upload — BCA · APB · September 2020" [ref=f8e975]: 
+                - generic "Belum ada upload — BCA · DEK · September 2020" [ref=f8e976]: 
+                - generic "Belum ada upload — BCA · MS · September 2020" [ref=f8e977]: 
+                - generic "Belum ada upload — BCA · SYC · September 2020" [ref=f8e978]: 
+              - generic [ref=f8e741]:
+                - generic [ref=f8e742]:
+                  - generic [ref=f8e743]: Okt
+                  - generic [ref=f8e744]: "10"
+                - generic "Belum ada upload — BCA · APB · Oktober 2020" [ref=f8e981]: 
+                - generic "Belum ada upload — BCA · DEK · Oktober 2020" [ref=f8e982]: 
+                - generic "Belum ada upload — BCA · MS · Oktober 2020" [ref=f8e983]: 
+                - generic "Belum ada upload — BCA · SYC · Oktober 2020" [ref=f8e984]: 
+              - generic [ref=f8e769]:
+                - generic [ref=f8e770]:
+                  - generic [ref=f8e771]: Nov
+                  - generic [ref=f8e773]: "11"
+                - generic "Belum ada upload — BCA · APB · November 2020" [ref=f8e987]: 
+                - generic "Belum ada upload — BCA · DEK · November 2020" [ref=f8e988]: 
+                - generic "Belum ada upload — BCA · MS · November 2020" [ref=f8e989]: 
+                - generic "Belum ada upload — BCA · SYC · November 2020" [ref=f8e990]: 
+              - generic [ref=f8e798]:
+                - generic [ref=f8e799]:
+                  - generic [ref=f8e800]: Des
+                  - generic [ref=f8e801]: "12"
+                - generic "Belum ada upload — BCA · APB · Desember 2020" [ref=f8e993]: 
+                - generic "Belum ada upload — BCA · DEK · Desember 2020" [ref=f8e996]: 
+                - generic "Belum ada upload — BCA · MS · Desember 2020" [ref=f8e999]: 
+                - generic "Belum ada upload — BCA · SYC · Desember 2020" [ref=f8e1002]: 
+        - generic [ref=f8e106]:
+          - button " Kelola Akun Bank 4 definisi aktif · 2 kandidat belum terlabel " [ref=f8e826] [cursor=pointer]:
+            - generic [ref=f8e108]:
+              - generic [ref=f8e109]: 
+              - generic [ref=f8e111]: Kelola Akun Bank
+              - generic [ref=f8e827]: 4 definisi aktif · 2 kandidat belum terlabel
+            - generic [ref=f8e113]: 
+          - text:          

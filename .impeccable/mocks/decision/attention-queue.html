@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;box-sizing:border-box}
+body{width:1440px;height:900px;overflow:hidden;font-family:'Manrope',sans-serif;background:#f3ede3;color:#1f2937;padding:24px 32px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#0f766e;display:flex;gap:8px;align-items:center}
+h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.sub{font-size:12px;color:#667085;margin-top:2px}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start}
+.actions{display:flex;gap:8px}
+.select{font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;background:#fffdf8;border:1px solid #d9cfbe}
+.btn{font-size:12px;font-weight:700;padding:8px 14px;border-radius:12px;background:#fffdf8;border:1px solid #d9cfbe}
+.statstrip{background:#fffdf8;border:1px solid #d9cfbe;border-radius:16px;padding:14px 20px;display:flex;align-items:center;gap:28px;box-shadow:0 18px 40px rgba(55,36,18,.06)}
+.stat{padding-right:24px;border-right:1px solid #d9cfbe}
+.stat:last-child{border:none}
+.stat .l{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#667085}
+.stat .v{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;margin-top:2px}
+.stat .s{font-size:10px;color:#667085;margin-top:1px}
+.progwrap{flex:1}
+.plabel{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#667085;margin-bottom:6px}
+.plabel b{color:#0f766e}
+.track{height:10px;border-radius:6px;background:#f4ede2;border:1px solid #d9cfbe;overflow:hidden}
+.fill{height:100%;width:67%;border-radius:6px;background:linear-gradient(90deg,#0f766e,#0f9488)}
+.main{flex:1;display:flex;gap:16px;min-height:0}
+.board{width:46%;background:#fffdf8;border:1px solid #d9cfbe;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column}
+.ptitle{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#667085;display:flex;justify-content:space-between;margin-bottom:12px}
+.ptitle span{font-weight:400;text-transform:none;letter-spacing:0}
+.bhead{display:grid;grid-template-columns:88px repeat(3,1fr);gap:6px;margin-bottom:6px}
+.bhead div{font-size:10px;font-weight:800;color:#667085;text-align:center;text-transform:uppercase;letter-spacing:.04em}
+.bhead div:first-child{text-align:left}
+.mrow{display:grid;grid-template-columns:88px repeat(3,1fr);gap:6px;margin-bottom:5px;align-items:center}
+.mlabel{font-size:12px;font-weight:700}
+.mlabel small{display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:400;color:#667085}
+.tile{height:30px;border-radius:8px;position:relative}
+.tile.up{background:rgba(15,118,110,.12);border:1px solid rgba(15,118,110,.25)}
+.tile.up i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#0f766e;font-size:12px}
+.tile.miss{background:rgba(185,28,28,.06);border:1.5px dashed rgba(185,28,28,.5)}
+.tile.miss i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(185,28,28,.6);font-size:12px;font-weight:800}
+.tile.imb{background:rgba(15,118,110,.12);border:1px solid rgba(15,118,110,.25)}
+.tile.imb i{position:absolute;right:4px;top:3px;color:#b45309;font-size:10px}
+.tile.fut{background:#f4ede2;border:1px solid #e6dccb;opacity:.6}
+.row.now .mlabel{color:#0f766e}
+.boardfoot{margin-top:auto;font-size:10px;color:#667085;display:flex;gap:14px;padding-top:10px;border-top:1px solid #d9cfbe}
+.queue{flex:1;background:#fffdf8;border:1px solid #d9cfbe;border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+.qhead{padding:13px 18px;border-bottom:1px solid #d9cfbe;display:flex;justify-content:space-between;align-items:center;background:#fffdf8}
+.qhead b{font-size:13px;font-weight:800;display:flex;gap:8px;align-items:center}
+.pill{font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;background:rgba(185,28,28,.1);color:#b91c1c}
+.qrows{flex:1;overflow:hidden;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.qrow{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:11px;background:#fdfaf3;border:1px solid #d9cfbe}
+.qrow.urgent{background:rgba(185,28,28,.05);border-color:rgba(185,28,28,.3)}
+.qrow.imb{background:rgba(180,83,9,.05);border-color:rgba(180,83,9,.3)}
+.sev{width:9px;height:9px;border-radius:99px;flex-shrink:0}
+.who{width:250px}
+.who b{font-size:12.5px;font-weight:800;display:block}
+.who span{font-size:10px;color:#667085}
+.what{flex:1;font-size:11.5px;color:#1f2937}
+.what small{display:block;color:#667085;font-size:10px}
+.go{font-size:11px;font-weight:800;color:#0f766e;white-space:nowrap}
+.qfoot{padding:10px 18px;border-top:1px solid #d9cfbe;font-size:10px;color:#667085;display:flex;justify-content:space-between}
+.defbar{background:#fffdf8;border:1px solid #d9cfbe;border-radius:14px;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+.defbar b{font-size:12px;font-weight:800}
+.defbar span{font-size:11px;color:#667085}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <div class="eyebrow"><i>✓</i> Upload Checklist</div>
+      <h1>Status upload tahunan per akun bank</h1>
+      <div class="sub">Kelengkapan file statement per bulan, per rekening — tahun 2026</div>
+    </div>
+    <div class="actions"><div class="select">2026 ▾</div><div class="btn">⟳ Refresh</div></div>
+  </div>
+
+  <div class="statstrip">
+    <div class="stat"><div class="l">Sudah Upload</div><div class="v" style="color:#0f766e">24</div><div class="s">dari 36 slot</div></div>
+    <div class="stat"><div class="l">Belum Upload</div><div class="v" style="color:#b91c1c">12</div><div class="s">3 belum jatuh tempo</div></div>
+    <div class="stat"><div class="l">Selisih Besar</div><div class="v" style="color:#b45309">1</div><div class="s">BCA Op · Jun</div></div>
+    <div class="stat"><div class="l">Total Debit</div><div class="v" style="font-size:18px;margin-top:5px">1.823.400.000</div><div class="s">Kredit 1.927.100.000</div></div>
+    <div class="progwrap">
+      <div class="plabel"><span>Progres tahun 2026</span><b>67% lengkap</b></div>
+      <div class="track"><div class="fill"></div></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="board">
+      <div class="ptitle">Papan Status 2026 <span>✓ terupload · ! bolong</span></div>
+      <div class="bhead"><div></div><div>BCA Op</div><div>BCA CC</div><div>Mandiri</div></div>
+      <div class="mrow"><div class="mlabel">Januari<small>01</small></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div></div>
+      <div class="mrow"><div class="mlabel">Februari<small>02</small></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div></div>
+      <div class="mrow"><div class="mlabel">Maret<small>03</small></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div></div>
+      <div class="mrow"><div class="mlabel">April<small>04</small></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div><div class="tile miss"><i>!</i></div></div>
+      <div class="mrow"><div class="mlabel">Mei<small>05</small></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div><div class="tile miss"><i>!</i></div></div>
+      <div class="mrow"><div class="mlabel">Juni<small>06</small></div><div class="tile imb"><i>✓</i><i style="right:4px">⚠</i></div><div class="tile up"><i>✓</i></div><div class="tile miss"><i>!</i></div></div>
+      <div class="mrow"><div class="mlabel">Juli<small>07</small></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div><div class="tile miss"><i>!</i></div></div>
+      <div class="mrow"><div class="mlabel">Agustus<small>08</small></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div><div class="tile miss"><i>!</i></div></div>
+      <div class="mrow"><div class="mlabel">September<small>09</small></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div><div class="tile miss"><i>!</i></div></div>
+      <div class="mrow"><div class="mlabel">Oktober<small>10</small></div><div class="tile up"><i>✓</i></div><div class="tile up"><i>✓</i></div><div class="tile miss"><i>!</i></div></div>
+      <div class="mrow now"><div class="mlabel">November<small>11 · now</small></div><div class="tile up"><i>✓</i></div><div class="tile miss"><i>!</i></div><div class="tile miss"><i>!</i></div></div>
+      <div class="mrow" style="opacity:.5"><div class="mlabel">Desember<small>12</small></div><div class="tile fut"></div><div class="tile fut"></div><div class="tile fut"></div></div>
+      <div class="boardfoot"><span> ■ 24 terupload</span><span style="color:#b91c1c">▣ 9 bolong</span><span style="color:#b45309">⚠ 1 selisih</span><span style="opacity:.6">□ 3 belum jatuh tempo</span></div>
+    </div>
+
+    <div class="queue">
+      <div class="qhead"><b>Perlu Perhatian <span class="pill">10 item</span></b><span style="font-size:10px;color:#667085">urut prioritas</span></div>
+      <div class="qrows">
+        <div class="qrow urgent"><div class="sev" style="background:#b91c1c"></div><div class="who"><b>BCA CC · November</b><span>· 7702 · bulan berjalan</span></div><div class="what">Statement belum terupload<small>bulan berjalan — file November belum masuk</small></div><div class="go">Upload →</div></div>
+        <div class="qrow urgent"><div class="sev" style="background:#b91c1c"></div><div class="who"><b>Mandiri Simpedes · Apr–Nov</b><span>· 9315 · 8 bulan berurutan</span></div><div class="what">8 statement bolong berurutan<small>Apr, Mei, Jun, Jul, Ags, Sep, Okt, Nov — data 8 bulan hilang dari laporan</small></div><div class="go">Upload →</div></div>
+        <div class="qrow imb"><div class="sev" style="background:#b45309"></div><div class="who"><b>BCA Operasional · Juni</b><span>· 4821 · 44 txn</span></div><div class="what">Selisih DB/CR besar<small>Debit 210.300.000 vs Kredit 126.200.000 — selisih 84,1jt (40%)</small></div><div class="go">Periksa →</div></div>
+        <div class="qrow"><div class="sev" style="background:#d9cfbe"></div><div class="who"><b>Desember · semua bank</b><span>3 rekening</span></div><div class="what">Belum jatuh tempo<small>periode Des 2026 belum berakhir</small></div><div class="go" style="color:#667085">—</div></div>
+      </div>
+      <div class="qfoot"><span>Klik item untuk membuka bulan terkait di Converter</span><span>Diperbarui 11 Nov 2026 09:14</span></div>
+    </div>
+  </div>
+
+  <div class="defbar">
+    <b>⚙ Kelola Akun Bank <span style="color:#667085;font-weight:400">— definisikan rekening per bank</span></b>
+    <span>3 definisi aktif · 1 kandidat unmapped · ▾</span>
+  </div>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;box-sizing:border-box}
+body{width:1440px;height:900px;overflow:hidden;font-family:'Manrope',sans-serif;background:#f3ede3;color:#1f2937;padding:24px 32px;display:flex;flex-direction:column;gap:14px}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#0f766e;display:flex;gap:8px;align-items:center}
+h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.sub{font-size:12px;color:#667085;margin-top:2px}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start}
+.actions{display:flex;gap:8px}
+.select{font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;background:#fffdf8;border:1px solid #d9cfbe}
+.btn{font-size:12px;font-weight:700;padding:8px 14px;border-radius:12px;background:#fffdf8;border:1px solid #d9cfbe}
+.yearstrip{background:#fffdf8;border:1px solid #d9cfbe;border-radius:16px;padding:12px 20px;display:flex;align-items:center;gap:26px;box-shadow:0 18px 40px rgba(55,36,18,.06)}
+.yearstrip .pct{font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:#0f766e}
+.yearstrip .pct small{font-size:11px;color:#667085;font-family:'Manrope';font-weight:700;margin-left:8px}
+.track{flex:1;height:10px;border-radius:6px;background:#f4ede2;border:1px solid #d9cfbe;overflow:hidden}
+.fill{height:100%;width:67%;background:linear-gradient(90deg,#0f766e,#0f9488)}
+.tot{font-size:11px;color:#667085;line-height:1.7;text-align:right}
+.tot b{font-family:'IBM Plex Mono',monospace;color:#1f2937;font-weight:600}
+.stack{flex:1;display:flex;flex-direction:column;gap:10px;min-height:0}
+.band{background:#fffdf8;border:1px solid #d9cfbe;border-radius:16px;overflow:hidden}
+.band.open{border-color:rgba(15,118,110,.4)}
+.bandhead{display:grid;grid-template-columns:250px 1fr 210px 110px 28px;gap:18px;align-items:center;padding:13px 18px}
+.band.open .bandhead{border-bottom:1px solid #d9cfbe;background:rgba(15,118,110,.03)}
+.bname{display:flex;flex-direction:column;gap:1px}
+.bname b{font-size:14px;font-weight:800}
+.bname span{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#667085}
+.monthstrip{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
+.ms i{border-radius:5px;height:30px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600}
+.ms .u{background:rgba(15,118,110,.12);border:1px solid rgba(15,118,110,.22);color:#0f766e}
+.ms .g{background:rgba(185,28,28,.06);border:1.5px dashed rgba(185,28,28,.45);color:rgba(185,28,28,.6)}
+.ms .f{background:#f4ede2;border:1px solid #e6dccb;color:#a89d8c;opacity:.6}
+.ms .w{background:rgba(180,83,9,.14);border:1px solid rgba(180,83,9,.4);color:#b45309}
+.bstat{text-align:right;font-size:11px;color:#667085;line-height:1.6}
+.bstat .n{font-size:13px;font-weight:800;color:#0f766e}
+.bstat .bad{color:#b91c1c}
+.bstat b{font-family:'IBM Plex Mono',monospace;color:#1f2937;font-weight:600}
+.chev{font-size:13px;color:#667085;text-align:center}
+.ledger{padding:0 18px 14px}
+table{width:100%;border-collapse:collapse}
+th{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#667085;text-align:left;padding:9px 10px;border-bottom:1px solid #d9cfbe;background:#f4ede2}
+th:first-child{border-radius:8px 0 0 0;padding-left:12px}
+th:last-child{border-radius:0 8px 0 0}
+td{font-size:12px;padding:7px 10px;border-bottom:1px solid rgba(217,207,190,.5)}
+td.mono{font-family:'IBM Plex Mono',monospace;font-size:11.5px}
+td .st{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700}
+td .st.ok{color:#0f766e}
+tr.warn td{background:rgba(180,83,9,.05)}
+tr.warn td .st{color:#b45309}
+tr.cur td{background:rgba(15,118,110,.04)}
+.warnflag{color:#b45309;font-size:11px}
+.file{font-size:10px;color:#667085}
+.defbar{background:#fffdf8;border:1px solid #d9cfbe;border-radius:14px;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+.defbar b{font-size:12px;font-weight:800}
+.defbar span{font-size:11px;color:#667085}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <div class="eyebrow"><i>✓</i> Upload Checklist</div>
+      <h1>Status upload tahunan per akun bank</h1>
+      <div class="sub">Kelengkapan file statement per bulan, per rekening — tahun 2026</div>
+    </div>
+    <div class="actions"><div class="select">2026 ▾</div><div class="btn">⟳ Refresh</div></div>
+  </div>
+
+  <div class="yearstrip">
+    <div class="pct">67%<small>24/36 slot · 12 bolong</small></div>
+    <div class="track"><div class="fill"></div></div>
+    <div class="tot">Total Debit 2026 <b>1.823.400.000</b><br>Total Kredit 2026 <b>1.927.100.000</b></div>
+  </div>
+
+  <div class="stack">
+    <div class="band open">
+      <div class="bandhead">
+        <div class="bname"><b>BCA Operasional</b><span>BCA · ····4821 · Jan 2023–sekarang</span></div>
+        <div class="monthstrip ms">
+          <i class="u">JAN</i><i class="u">FEB</i><i class="u">MAR</i><i class="u">APR</i><i class="u">MEI</i><i class="w">JUN⚠</i><i class="u">JUL</i><i class="u">AGS</i><i class="u">SEP</i><i class="u">OKT</i><i class="u">NOV</i><i class="f">DES</i>
+        </div>
+        <div class="bstat"><span class="n">11/12 bulan</span>DB <b>1,24M</b> · CR <b>1,31M</b> · <b>412</b> txn</div>
+        <div style="font-size:11px;color:#0f766e;font-weight:800">Lengkap</div>
+        <div class="chev">▾</div>
+      </div>
+      <div class="ledger">
+        <table>
+          <tr><th>Bulan</th><th>Status</th><th>Txn</th><th>Debit</th><th>Kredit</th><th>Selisih</th><th>File Sumber</th></tr>
+          <tr><td><b>November</b> <span style="font-size:10px;color:#0f766e;font-weight:800">NOW</span></td><td><span class="st ok">✓ Terupload</span></td><td class="mono">31</td><td class="mono">87.300.000</td><td class="mono">91.900.000</td><td class="mono">4,6jt</td><td class="file">BCA_4821_202611.pdf</td></tr>
+          <tr><td><b>Oktober</b></td><td><span class="st ok">✓ Terupload</span></td><td class="mono">35</td><td class="mono">92.700.000</td><td class="mono">97.300.000</td><td class="mono">4,6jt</td><td class="file">BCA_4821_202610.pdf</td></tr>
+          <tr class="warn"><td><b>Juni</b></td><td><span class="st">⚠ Terupload · selisih besar</span> <span class="warnflag">selisih 40%</span></td><td class="mono">44</td><td class="mono">210.300.000</td><td class="mono">126.200.000</td><td class="mono" style="color:#b45309;font-weight:600">84.100.000</td><td class="file">BCA_4821_202606.pdf +1</td></tr>
+          <tr><td colspan="7" style="color:#667085;font-size:11px;padding:6px 12px">… 8 bulan lagi Jan–Sep, semua lengkap ▾</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="band">
+      <div class="bandhead">
+        <div class="bname"><b>BCA CC</b><span>BCA CC · ····7702 · Feb 2024–sekarang</span></div>
+        <div class="monthstrip ms">
+          <i class="u">JAN</i><i class="u">FEB</i><i class="u">MAR</i><i class="u">APR</i><i class="u">MEI</i><i class="u">JUN</i><i class="u">JUL</i><i class="u">AGS</i><i class="u">SEP</i><i class="u">OKT</i><i class="g">NOV!</i><i class="f">DES</i>
+        </div>
+        <div class="bstat"><span class="n">10/12 bulan</span>DB <b>486jt</b> · CR <b>512jt</b> · <b>188</b> txn</div>
+        <div style="font-size:11px;color:#b91c1c;font-weight:800">Bolong 1</div>
+        <div class="chev">▸</div>
+      </div>
+    </div>
+
+    <div class="band" style="border-color:rgba(185,28,28,.35)">
+      <div class="bandhead">
+        <div class="bname"><b>Mandiri Simpedes</b><span>MANDIRI · ····9315 · Mei 2025–sekarang</span></div>
+        <div class="monthstrip ms">
+          <i class="u">JAN</i><i class="u">FEB</i><i class="u">MAR</i><i class="g">APR!</i><i class="g">MEI!</i><i class="g">JUN!</i><i class="g">JUL!</i><i class="g">AGS!</i><i class="g">SEP!</i><i class="g">OKT!</i><i class="g">NOV!</i><i class="f">DES</i>
+        </div>
+        <div class="bstat"><span class="n bad">3/12 · bolong 8 bln</span>DB <b>97jt</b> · CR <b>104jt</b> · <b>61</b> txn</div>
+        <div style="font-size:11px;color:#b91c1c;font-weight:800">Butuh tindakan</div>
+        <div class="chev">▸</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="defbar">
+    <b>⚙ Kelola Akun Bank <span style="color:#667085;font-weight:400">— definisikan rekening per bank</span></b>
+    <span>3 definisi aktif · 1 kandidat unmapped · ▾</span>
+  </div>
+</body>
+</html>
