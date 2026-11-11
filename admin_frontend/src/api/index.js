@@ -592,3 +592,15 @@ export const aiApi = {
     });
   }
 };
+
+export const credentialsApi = {
+  list() {
+    return api.get('/credentials');
+  },
+  save(updates) {
+    return api.put('/credentials', { updates });
+  },
+  test(key, data = {}) {
+    return api.post(`/credentials/${key}/test`, data);
+  },
+};

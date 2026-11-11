@@ -54,6 +54,14 @@
               Report Details
             </button>
             <button
+              @click="activeTab = 'apiKeys'"
+              class="settings-tab"
+              :class="{ 'settings-tab--active': activeTab === 'apiKeys' }"
+            >
+              <i class="bi bi-key-fill mr-2"></i>
+              API Keys
+            </button>
+            <button
               @click="activeTab = 'general'"
               class="settings-tab"
               :class="{ 'settings-tab--active': activeTab === 'general' }"
@@ -88,11 +96,14 @@
       <div v-else-if="activeTab === 'reports'">
         <report-details-settings :company-id="companyId" />
       </div>
+      <div v-else-if="activeTab === 'apiKeys'">
+        <credentials-settings />
+      </div>
       <div v-else-if="activeTab === 'general'">
         <general-settings />
       </div>
       <div v-else-if="activeTab === 'ai'">
-        <ai-settings />
+        <ai-settings @go-to-api-keys="activeTab = 'apiKeys'" />
       </div>
     </div>
   </div>
@@ -106,6 +117,7 @@ import InitialCapitalSettings from '../components/settings/InitialCapitalSetting
 import RentalContractSettings from '../components/settings/RentalContractSettings.vue';
 import ReportDetailsSettings from '../components/settings/ReportDetailsSettings.vue';
 import AiSettings from '../components/settings/AiSettings.vue';
+import CredentialsSettings from '../components/settings/CredentialsSettings.vue';
 import GeneralSettings from '../components/settings/GeneralSettings.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
