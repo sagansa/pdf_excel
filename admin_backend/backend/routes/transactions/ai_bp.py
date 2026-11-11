@@ -68,12 +68,8 @@ def _validate_settings_payload(data):
         'auto_apply_threshold': threshold,
     }
 
-    api_key = data.get('api_key')
-    if api_key is not None:
-        api_key = str(api_key)
-        if api_key not in (llm_client.API_KEY_CLEAR_SENTINEL,):
-            api_key = api_key.strip()
-        payload['api_key'] = api_key  # '' / sentinel / nilai baru; None berarti tidak diubah
+    # api_key tidak diterima di sini — AI key dikelola vault (PUT /api/credentials,
+    # setting ai_api_key). Nilai asing diabaikan agar tidak menimpa kunci vault.
     return payload
 
 

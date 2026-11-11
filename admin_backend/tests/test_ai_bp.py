@@ -186,36 +186,24 @@ def test_settings_put_normalizes_and_saves(ai_client):
     assert follow_up.get_json()['settings']['enabled'] is True
 
 
-def test_settings_zai_provider_with_api_key(ai_client):
-    """Provider cloud z.ai diterima; API key disimpan tapi tidak pernah diekspos."""
-    response = ai_client.put('/api/ai/settings', json={
-        'enabled': True, 'provider': 'zai',
-        'base_url': 'https://api.z.ai/api/paas/v4', 'model': 'glm-4.7',
+def test_settings_tidak_lagi_menerima_api_key(ai_client):
+    """AI key kini milik vault (PUT /api/credentials) — /api/ai/settings mengabaikannya."""
+    resp = ai_client.put('/api/ai/settings', json={
+        'enabled': True,
+        'provider': 'zai',
+        'base_url': 'https://api.z.ai/api/paas/v4',
+        'model': 'glm-4',
+        'auto_apply': False,
+        'auto_apply_threshold': 0.9,
         'api_key': 'secret-key-12345',
     })
-    assert response.status_code == 200
-    settings = response.get_json()['settings']
-    assert settings['provider'] == 'zai'
-    assert settings['api_key_set'] is True
+    assert resp.status_code == 200
+    settings = resp.get_json()['settings']
+    assert settings['api_key_set'] is False  # kunci tidak ditulis lewat endpoint ini
     assert 'api_key' not in settings
-    assert 'secret-key' not in response.get_data(as_text=True)
 
     follow_up = ai_client.get('/api/ai/settings').get_json()['settings']
-    assert follow_up['api_key_set'] is True
-    assert 'api_key' not in follow_up
-
-    # Tanpa mengirim api_key → kunci lama tetap; dengan sentinel → terhapus.
-    keep = ai_client.put('/api/ai/settings', json={
-        'enabled': True, 'provider': 'zai',
-        'base_url': 'https://api.z.ai/api/paas/v4', 'model': 'glm-4.7',
-    }).get_json()['settings']
-    assert keep['api_key_set'] is True
-    cleared = ai_client.put('/api/ai/settings', json={
-        'enabled': True, 'provider': 'zai',
-        'base_url': 'https://api.z.ai/api/paas/v4', 'model': 'glm-4.7',
-        'api_key': '__CLEAR__',
-    }).get_json()['settings']
-    assert cleared['api_key_set'] is False
+    assert follow_up['api_key_set'] is False
 
 
 def test_auto_apply_settings_roundtrip(ai_client):

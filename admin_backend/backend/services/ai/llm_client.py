@@ -26,15 +26,15 @@ PROVIDER_DEFAULT_BASE_URL = {
 PROVIDERS_NEEDING_API_KEY = {'zai'}
 
 # Kunci yang disimpan/dibaca di tabel app_settings.
+# ai_api_key ditangani vault kredensial (services/credentials.py) — bukan di sini.
 SETTING_KEYS = (
-    'ai_enabled', 'ai_provider', 'ai_base_url', 'ai_model', 'ai_api_key',
+    'ai_enabled', 'ai_provider', 'ai_base_url', 'ai_model',
     'ai_auto_apply', 'ai_auto_apply_threshold',
 )
 ALLOWED_PROVIDERS = ('lmstudio', 'ollama', 'zai', 'custom')
 # Provider lokal yang nanti dipanggil langsung dari browser user (bukan dari server).
 BRIDGE_PROVIDERS = {'lmstudio', 'ollama'}
 DEFAULT_AUTO_APPLY_THRESHOLD = 0.9
-API_KEY_CLEAR_SENTINEL = '__CLEAR__'
 
 
 class LLMConnectionError(Exception):
@@ -192,7 +192,8 @@ def get_ai_settings(conn):
 def save_ai_settings(conn, payload):
     """Simpan konfigurasi AI ke app_settings (upsert, aman untuk MySQL & SQLite).
 
-    api_key: None → tidak diubah; API_KEY_CLEAR_SENTINEL → hapus; string lain → nilai baru.
+    ai_api_key tidak ditulis di sini — kunci dikelola vault kredensial
+    (services/credentials.py, PUT /api/credentials).
     """
     values = {
         'ai_enabled': 'true' if payload.get('enabled') else 'false',
@@ -203,8 +204,6 @@ def save_ai_settings(conn, payload):
         'ai_auto_apply_threshold': str(payload.get('auto_apply_threshold')),
     }
     for key in SETTING_KEYS:
-        if key == 'ai_api_key':
-            continue  # ditangani terpisah di bawah
         value = values.get(key)
         if conn.dialect.name == 'sqlite':
             conn.execute(text(
@@ -218,22 +217,6 @@ def save_ai_settings(conn, payload):
                 'VALUES (:key, :value) '
                 'ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
             ), {'key': key, 'value': value})
-
-    api_key = payload.get('api_key')
-    if api_key is not None:
-        new_value = '' if api_key == API_KEY_CLEAR_SENTINEL else str(api_key)
-        if conn.dialect.name == 'sqlite':
-            conn.execute(text(
-                'INSERT INTO app_settings (setting_key, setting_value) '
-                'VALUES (:key, :value) '
-                'ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value'
-            ), {'key': 'ai_api_key', 'value': new_value})
-        else:
-            conn.execute(text(
-                'INSERT INTO app_settings (setting_key, setting_value) '
-                'VALUES (:key, :value) '
-                'ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
-            ), {'key': 'ai_api_key', 'value': new_value})
 
     settings = get_ai_settings(conn)
     settings.pop('api_key', None)  # jangan pernah balikkan kunci ke pemanggil
