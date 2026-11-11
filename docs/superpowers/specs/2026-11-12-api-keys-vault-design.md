@@ -79,8 +79,9 @@ tanpa perubahan auth.
   `source: 'db' | 'env'` — UI menampilkan "dari env — klik Simpan untuk
   memindahkan ke database" (jalur migrasi deployment lama).
 - `PUT /api/credentials` — **bulk save**: `{'updates': {key: nilai | '__CLEAR__'}}`.
-  Sentinel `__CLEAR__` menghapus nilai. Konstanta sentinel dipindah ke
-  `credentials.py`; `llm_client` re-export agar `ai_bp` tidak rusak. Response =
+  Sentinel `__CLEAR__` menghapus nilai. Konstanta canonical dipindah ke
+  `credentials.py`; referensi sentinel di `ai_bp`/`llm_client` dihapus bersih —
+  `/api/ai/settings` tidak lagi menerima `api_key` sama sekali. Response =
   daftar status terbaru, tanpa pernah memuat nilai secret. Key yang tidak dikenal
   → 400. Semua key di registry bersifat editable.
 - `POST /api/credentials/<key>/test`
@@ -103,7 +104,7 @@ tanpa perubahan auth.
 | `services/mailer.py` | `get_smtp_config(conn=None)`: DB→env; caller `auth_bp` mengirim conn |
 | `services/notifications/telegram.py` | `_is_configured`/`_send_message` baca via service |
 | `routes/integrations/n8n_bp.py` | expected key via service (tetap **fail-closed 503** jika kosong) |
-| `services/ai/llm_client.py` | `save_ai_settings` tidak lagi menangani `ai_api_key` (milik vault); `get_ai_settings` tetap membaca `app_settings` tempat vault menyimpannya; sentinel re-export dari credentials.py |
+| `services/ai/llm_client.py` | `save_ai_settings` tidak lagi menangani `ai_api_key` (milik vault); `get_ai_settings` tetap membaca `app_settings` tempat vault menyimpannya; konstanta sentinel + penanganan api_key dihapus dari `llm_client` dan `ai_bp` (endpoint AI tidak lagi menerima `api_key`) |
 
 Konstanta URL (non-secret) tetap di env/constants. Duplikasi konstanta token di
 5 blueprint inventory hilang — semuanya lewat satu registry.
