@@ -110,35 +110,31 @@
           </div>
         </div>
 
-        <div v-if="needsApiKey" class="field-stack">
-          <label class="label-base" for="ai-api-key">API Key</label>
-          <TextInput
-            id="ai-api-key"
-            v-model="form.apiKey"
-            type="password"
-            autocomplete="off"
-            :placeholder="apiKeySet ? 'Tersimpan — isi untuk mengganti' : 'Tempel API key z.ai di sini'"
-            :disabled="isLoading || isSaving || isTesting"
-          >
-            <template #leading>
-              <i class="bi bi-key-fill text-gray-400 dark:text-gray-500"></i>
-            </template>
-          </TextInput>
-          <div class="flex items-center justify-between gap-3">
-            <p class="field-hint">
-              {{ apiKeySet
-                ? 'Kunci tersimpan di server dan tidak pernah ditampilkan kembali.'
-                : 'Wajib untuk provider cloud.' }}
-            </p>
+        <div
+          v-if="needsApiKey"
+          class="rounded-xl border p-4 transition-colors"
+          :class="apiKeySet
+            ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-900/20'
+            : 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-900/20'"
+        >
+          <div class="flex flex-wrap items-center gap-3">
+            <i class="bi text-base" :class="apiKeySet ? 'bi-shield-check text-emerald-600 dark:text-emerald-400' : 'bi-exclamation-triangle text-amber-600 dark:text-amber-400'"></i>
+            <div class="flex-1 text-xs leading-relaxed" :class="apiKeySet ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200'">
+              <template v-if="apiKeySet">
+                API key <strong>tersimpan</strong> dan tidak pernah ditampilkan kembali.
+                Kelola (ganti/hapus) di tab <strong>API Keys</strong>.
+              </template>
+              <template v-else>
+                API key <strong>belum diisi</strong> — provider cloud butuh kunci.
+                Tempel kunci Anda di tab <strong>API Keys</strong>.
+              </template>
+            </div>
             <button
-              v-if="apiKeySet"
               type="button"
-              class="text-xs font-bold text-danger hover:underline disabled:opacity-50"
-              :disabled="isLoading || isSaving"
-              title="Hapus API key yang tersimpan"
-              @click="clearApiKey"
+              class="text-xs font-bold text-primary hover:underline"
+              @click="$emit('go-to-api-keys')"
             >
-              Hapus kunci
+              Buka API Keys <i class="bi bi-arrow-right"></i>
             </button>
           </div>
         </div>
@@ -284,6 +280,9 @@ import { useNotifications } from '../../composables/useNotifications';
 
 const notify = useNotifications();
 
+// Tab AI tidak lagi menangani API key — kelola lewat tab API Keys.
+defineEmits(['go-to-api-keys']);
+
 const PROVIDER_DEFAULTS = {
   lmstudio: 'http://localhost:1234/v1',
   ollama: 'http://localhost:11434/v1',
@@ -308,20 +307,16 @@ const autoApplyOptions = [
   { label: 'Review manual', value: false, icon: 'bi-eye' }
 ];
 
-const API_KEY_CLEAR = '__CLEAR__';
-
 const form = reactive({
   enabled: false,
   provider: 'lmstudio',
   baseUrl: '',
   model: '',
   autoApply: false,
-  autoApplyThreshold: '0.9',
-  apiKey: ''
+  autoApplyThreshold: '0.9'
 });
 
 const apiKeySet = ref(false);
-const apiKeyDirty = ref(false);
 const modelOptions = ref([]);
 const isSaving = ref(false);
 const isTesting = ref(false);
@@ -336,18 +331,12 @@ const needsApiKey = computed(() => ['zai', 'custom'].includes(form.provider));
 const isBridgeProvider = computed(() => ['lmstudio', 'ollama'].includes(form.provider));
 const currentOrigin = window.location.origin;
 
-// Ganti provider mengosongkan field key DAN daftar/nilai model — model milik
+// Ganti provider mengosongkan daftar/nilai model — model milik
 // masing-masing server (Ollama ≠ LM Studio ≠ z.ai), tidak boleh terbawa global.
 watch(() => form.provider, () => {
-  form.apiKey = '';
-  apiKeyDirty.value = false;
   modelOptions.value = [];
   form.model = '';
   testStatus.value = { ok: null, message: '' };
-});
-
-watch(() => form.apiKey, (value) => {
-  apiKeyDirty.value = Boolean(value && value.trim());
 });
 
 const selectProvider = (value) => {
@@ -369,7 +358,6 @@ const applySettings = (settings) => {
   form.autoApply = Boolean(settings.auto_apply);
   form.autoApplyThreshold = String(settings.auto_apply_threshold ?? '0.9');
   apiKeySet.value = Boolean(settings.api_key_set);
-  apiKeyDirty.value = false;
 };
 
 onMounted(async () => {
@@ -390,7 +378,6 @@ onMounted(async () => {
         modelOptions.value = models.map((id) => ({ id, label: id }));
       } else {
         const payload = { base_url: form.baseUrl, model: form.model };
-        if (needsApiKey.value && apiKeySet.value && form.apiKey.trim()) payload.api_key = form.apiKey.trim();
         const { data } = await aiApi.testConnection(payload);
         modelOptions.value = (data.models || []).map((id) => ({ id, label: id }));
       }
@@ -419,9 +406,6 @@ const handleTestConnection = async () => {
       return;
     }
     const payload = { base_url: form.baseUrl, model: form.model };
-    if (needsApiKey.value && apiKeyDirty.value && form.apiKey.trim()) {
-      payload.api_key = form.apiKey.trim();
-    }
     const { data } = await aiApi.testConnection(payload);
     modelOptions.value = (data.models || []).map((id) => ({ id, label: id }));
     let message = data.message || 'Koneksi berhasil.';
@@ -444,10 +428,6 @@ const handleSave = async () => {
     formError.value = 'Base URL server AI wajib diisi.';
     return;
   }
-  if (needsApiKey.value && !apiKeySet.value && !form.apiKey.trim()) {
-    formError.value = 'API key wajib diisi untuk provider cloud.';
-    return;
-  }
   isSaving.value = true;
   try {
     const payload = {
@@ -458,40 +438,12 @@ const handleSave = async () => {
       auto_apply: form.autoApply,
       auto_apply_threshold: Number(form.autoApplyThreshold) || 0.9,
     };
-    if (apiKeyDirty.value && form.apiKey.trim()) {
-      payload.api_key = form.apiKey.trim();
-    }
     const { data } = await aiApi.saveSettings(payload);
     applySettings(data.settings);
     useHistoryStore().invalidateAiSettings();
-    form.apiKey = '';
     notify.success('Pengaturan AI tersimpan.');
   } catch (err) {
     formError.value = err.response?.data?.error || 'Gagal menyimpan pengaturan AI. Coba lagi.';
-  } finally {
-    isSaving.value = false;
-  }
-};
-
-const clearApiKey = async () => {
-  isSaving.value = true;
-  formError.value = '';
-  try {
-    const { data } = await aiApi.saveSettings({
-      enabled: form.enabled,
-      provider: form.provider,
-      base_url: form.baseUrl.trim(),
-      model: form.model.trim(),
-      auto_apply: form.autoApply,
-      auto_apply_threshold: Number(form.autoApplyThreshold) || 0.9,
-      api_key: API_KEY_CLEAR,
-    });
-    applySettings(data.settings);
-    useHistoryStore().invalidateAiSettings();
-    form.apiKey = '';
-    notify.success('API key dihapus.');
-  } catch (err) {
-    formError.value = err.response?.data?.error || 'Gagal menghapus API key.';
   } finally {
     isSaving.value = false;
   }
