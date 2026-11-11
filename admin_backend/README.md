@@ -24,6 +24,9 @@ password/from/TLS), kunci integrasi n8n, dan API key provider AI.
   Keys — tekan Simpan untuk memindahkannya ke database.
 - Tombol **Test** menguji koneksi ke service tujuan (termasuk mengirim pesan tes
   Telegram / login SMTP) tanpa menyimpan nilai.
+- Catatan upgrade: fallback implisit antar env (`SAGANSA_STOCK_MONITORING_TOKEN`
+  yang dulu jatuh ke `SAGANSA_REMAINING_STORAGE_TOKEN`) sudah dihapus — setiap
+  kunci sekarang berdiri sendiri, jadi set nilainya masing-masing.
 
 ## Runtime folders
 

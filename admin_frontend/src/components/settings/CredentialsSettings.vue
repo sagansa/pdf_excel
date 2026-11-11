@@ -216,8 +216,12 @@ const handleSaveGroup = async (groupId) => {
   try {
     const { data } = await credentialsApi.save(updates);
     applyStatus(data.credentials || []);
-    // field secret kosongkan setelah simpan; nilai non-secret resinkron
+    // field secret kosongkan setelah simpan; nilai non-secret resinkron.
+    // Resinkron hanya kunci milik grup yang disimpan — PUT mengembalikan semua
+    // kredensial, dan form grup lain bisa berisi edit yang belum disimpan.
+    const savedKeys = new Set((byGroup.value[groupId] || []).map((c) => c.key));
     for (const cred of data.credentials || []) {
+      if (!savedKeys.has(cred.key)) continue;
       form[cred.key] = cred.secret ? '' : String(cred.value ?? '');
     }
     for (const key of Object.keys(updates)) delete testStatus[key];

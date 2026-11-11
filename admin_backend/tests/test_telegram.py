@@ -127,7 +127,6 @@ def test_db_token_menang_atas_env(cred_engine, monkeypatch, sent_requests):
     """Token dari app_settings dipakai lebih dulu daripada env."""
     from sqlalchemy import text as _text
     from backend.db import session as db_session
-    from backend.services import credentials as credentials_service
 
     with cred_engine.begin() as conn:
         conn.execute(_text(

@@ -1,7 +1,9 @@
 """SMTP sender for transactional emails (currently: password reset).
 
-Dev fallback: when SMTP_HOST is not configured the message is not sent;
-the reset link is written to the log instead so the flow stays testable.
+Konfigurasi dibaca dari vault kredensial (Settings → API Keys / tabel
+app_settings) dengan fallback environment variable (SMTP_*). Dev fallback:
+bila SMTP host tidak dikonfigurasi di mana pun, pesan tidak dikirim dan
+link reset ditulis ke log supaya alurnya tetap bisa dites.
 """
 import logging
 import smtplib
