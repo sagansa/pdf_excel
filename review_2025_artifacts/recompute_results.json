@@ -1,0 +1,1172 @@
+{
+  "all": {
+    "r1_kas_mentah": {
+      "semua_baris": {
+        "opening": -726826389.47,
+        "fy2025": -630037351.72,
+        "closing": -1356863741.19
+      },
+      "tanpa_manual": {
+        "opening": -676391719.47,
+        "fy2025": -533583679.72,
+        "closing": -1209975399.19
+      },
+      "basis_engine": {
+        "opening": -301947142.47,
+        "fy2025": -343436239.72,
+        "closing": -645383382.19
+      }
+    },
+    "r2_unmapped": {
+      "marks_tanpa_coa": [
+        {
+          "mark_name": "",
+          "n": 393,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 2,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 55,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 12,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 24,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 28,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 18,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 26,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 25,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 26,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 2,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 1,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 2,
+          "net_signed": 0.0
+        }
+      ],
+      "txn_tanpa_mark": {
+        "n": 12,
+        "net": -72217459.0
+      }
+    },
+    "r3_laba_rugi_ledger": {
+      "revenue_ledger": 2002498792.3,
+      "cogs_ledger": 1607361734.0,
+      "expenses_non_cogs_ledger": 511301032.23,
+      "ni_ledger": -116163973.93000007,
+      "kategori_signed": {
+        "REVENUE": -2002498792.3,
+        "EXPENSE": 2118662766.23,
+        "ASSET": -118525773.93,
+        "LIABILITY": 2361800.0,
+        "EQUITY": 0
+      }
+    },
+    "r4_initial_capital_settings": [
+      {
+        "company_id": "8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "amount": "298324320.00",
+        "previous_retained_earnings_amount": "-20780243.00",
+        "start_year": 2023,
+        "report_type": "coretax"
+      },
+      {
+        "company_id": "8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "amount": "298324320.00",
+        "previous_retained_earnings_amount": "-20780243.00",
+        "start_year": 2023,
+        "report_type": "real"
+      },
+      {
+        "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "amount": "500000.00",
+        "previous_retained_earnings_amount": "0.00",
+        "start_year": 2025,
+        "report_type": "coretax"
+      },
+      {
+        "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "amount": "0.00",
+        "previous_retained_earnings_amount": "0.00",
+        "start_year": 2025,
+        "report_type": "real"
+      }
+    ],
+    "r4_ni_ledger_tahunan": {
+      "2023": 31868482.4,
+      "2024": 229302960.7,
+      "2025": -116163973.93
+    },
+    "r5_jurnal_manual": {
+      "n": 24,
+      "net": -146888342.0,
+      "n_parent": 7,
+      "n_child": 17
+    },
+    "r7_mark_mapping_ganda": [
+      {
+        "mark_id": "73e27be9-59cf-4fe1-8c43-11d5511c1d7a",
+        "n_map": 3
+      },
+      {
+        "mark_id": "01cd45a2-6978-4597-a694-cac038bbc671",
+        "n_map": 2
+      },
+      {
+        "mark_id": "025f4b9d-7a19-482f-983d-97cb1ce84207",
+        "n_map": 2
+      },
+      {
+        "mark_id": "028aa451-ffb1-42f5-9654-08622e83c3e4",
+        "n_map": 2
+      },
+      {
+        "mark_id": "094576be-4c16-4895-85b3-228eadc05786",
+        "n_map": 2
+      },
+      {
+        "mark_id": "0a96fc97-1dd0-4f98-8080-4d77af85f088",
+        "n_map": 2
+      },
+      {
+        "mark_id": "10b2d8da-30a9-4ef9-bab8-3964cb03ac38",
+        "n_map": 2
+      },
+      {
+        "mark_id": "16b0f72f-6987-4334-b707-8b7471f2c52f",
+        "n_map": 2
+      },
+      {
+        "mark_id": "218bac77-7a41-4b8c-90c1-00c786928a13",
+        "n_map": 2
+      },
+      {
+        "mark_id": "22a86c74-7e78-4137-9941-dfcd1b45eafa",
+        "n_map": 2
+      },
+      {
+        "mark_id": "22fe56aa-3c65-435c-a5cf-919826bcf6fb",
+        "n_map": 2
+      },
+      {
+        "mark_id": "2a32fee1-6237-4ad9-9812-4dce84db9f27",
+        "n_map": 2
+      },
+      {
+        "mark_id": "301611a0-b804-407e-a1c8-d0013b35fa25",
+        "n_map": 2
+      },
+      {
+        "mark_id": "30c0f1e8-3b85-40e1-8b10-966b9f528178",
+        "n_map": 2
+      },
+      {
+        "mark_id": "32cf9680-a3ae-4731-8595-b5fa841c9133",
+        "n_map": 2
+      },
+      {
+        "mark_id": "36c4a7a1-f1f9-4975-97df-0d782993de08",
+        "n_map": 2
+      },
+      {
+        "mark_id": "3912fbec-1027-4daf-8e6c-81361ae11b53",
+        "n_map": 2
+      },
+      {
+        "mark_id": "400977f9-dbf0-41a3-95b6-03a8aae4a5d1",
+        "n_map": 2
+      },
+      {
+        "mark_id": "42c0fee8-4c5a-414d-8616-674fa1f972eb",
+        "n_map": 2
+      },
+      {
+        "mark_id": "4314efc1-2872-48c4-b035-5986eb52bb61",
+        "n_map": 2
+      },
+      {
+        "mark_id": "43c5b5d8-b52d-4218-a573-799fbd44afba",
+        "n_map": 2
+      },
+      {
+        "mark_id": "43d1617c-d9eb-4e92-b152-85ab34f3cc6e",
+        "n_map": 2
+      },
+      {
+        "mark_id": "509ecd96-a084-4567-9673-0cb2cc9484bf",
+        "n_map": 2
+      },
+      {
+        "mark_id": "559a9952-73ff-4ee0-aa06-9ea5b22e9a59",
+        "n_map": 2
+      },
+      {
+        "mark_id": "589bc5cd-eaff-468d-9308-217a7718b49b",
+        "n_map": 2
+      },
+      {
+        "mark_id": "5de52218-7bb7-4baa-84d7-076b14106031",
+        "n_map": 2
+      },
+      {
+        "mark_id": "69d26ea8-819f-4fde-8163-bbf958f14c54",
+        "n_map": 2
+      },
+      {
+        "mark_id": "71c434c3-b692-4462-aa4f-10b7f32cbab8",
+        "n_map": 2
+      },
+      {
+        "mark_id": "73226dbc-dad2-4755-bf25-6f0987d01b1e",
+        "n_map": 2
+      },
+      {
+        "mark_id": "0036af4d-b9b7-44bf-a155-f4cddeb0ee57",
+        "n_map": 2
+      },
+      {
+        "mark_id": "7f3fa445-df3b-49ee-a4dd-0162468171f0",
+        "n_map": 2
+      },
+      {
+        "mark_id": "802a3720-ed9f-4699-b732-dfe2f6fad91d",
+        "n_map": 2
+      },
+      {
+        "mark_id": "814e455f-d831-40fb-a1d9-80cc506643e5",
+        "n_map": 2
+      },
+      {
+        "mark_id": "81a021e4-2233-48f7-ad9b-626dfde9777e",
+        "n_map": 2
+      },
+      {
+        "mark_id": "81cc00a2-df18-4355-8c34-50c4eb743bad",
+        "n_map": 2
+      },
+      {
+        "mark_id": "853afd59-d7ee-42a6-8366-0e711c50e12f",
+        "n_map": 2
+      },
+      {
+        "mark_id": "896ee69c-69bd-49f5-870a-8021f6519f9c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8a21932f-ae45-474b-a363-2b5294a73c50",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8a3b73af-ad8e-4dc1-960a-1adfbe26ce8c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8a978e14-3925-496a-897a-de757d23d459",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8f35c215-e2cf-4690-8732-8b5db900f5d1",
+        "n_map": 2
+      },
+      {
+        "mark_id": "90198a93-9c85-4115-9d62-0a164c9ebfb4",
+        "n_map": 2
+      },
+      {
+        "mark_id": "93748fcf-da14-4c86-a266-eabb3d0f4bb5",
+        "n_map": 2
+      },
+      {
+        "mark_id": "946d1e10-6021-474b-bdd4-c414fe27bb31",
+        "n_map": 2
+      },
+      {
+        "mark_id": "95996ea0-bf26-4e12-8b66-f4e6170f1e9c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "9707c9ab-8035-4f80-b5fe-06b7d204238c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "9758742d-8568-4821-9812-98684a466013",
+        "n_map": 2
+      },
+      {
+        "mark_id": "97ec6234-bfaf-4121-949e-2b724e2d95c6",
+        "n_map": 2
+      },
+      {
+        "mark_id": "a362fa91-d0d5-4b63-872c-cfe84070485b",
+        "n_map": 2
+      },
+      {
+        "mark_id": "a5051d61-e49e-455d-9177-314895670206",
+        "n_map": 2
+      },
+      {
+        "mark_id": "b0d32119-ba14-4a8a-b8a7-a6089dc175ab",
+        "n_map": 2
+      },
+      {
+        "mark_id": "b6261b40-ebd0-43d7-9353-ac80d58869cf",
+        "n_map": 2
+      },
+      {
+        "mark_id": "b7d2a277-1fd0-4cf2-b061-b276cb6aa652",
+        "n_map": 2
+      },
+      {
+        "mark_id": "bd3d4253-75f0-452f-8876-5c8fbbb32ba9",
+        "n_map": 2
+      },
+      {
+        "mark_id": "c2171c37-12f2-4ad6-bd94-75ce34c9ad44",
+        "n_map": 2
+      },
+      {
+        "mark_id": "c5cea59e-7cc9-466c-9698-475b127525dc",
+        "n_map": 2
+      },
+      {
+        "mark_id": "cee450a3-9763-4cee-82a1-36643f6f2ff5",
+        "n_map": 2
+      },
+      {
+        "mark_id": "cf145903-695f-4dd0-9004-01c18f7e91e7",
+        "n_map": 2
+      },
+      {
+        "mark_id": "d2f708bf-729a-454a-bdd9-31e1343f1928",
+        "n_map": 2
+      },
+      {
+        "mark_id": "d66c3c6e-cfde-4586-af1f-287e2bbcd644",
+        "n_map": 2
+      },
+      {
+        "mark_id": "d815407b-362f-4a55-9ea3-3f7e500d8a10",
+        "n_map": 2
+      },
+      {
+        "mark_id": "dc5d8560-f5eb-4edc-9121-4ea3906ab6c2",
+        "n_map": 2
+      },
+      {
+        "mark_id": "ddd89f4a-cd46-4246-98b7-c40623067ddf",
+        "n_map": 2
+      },
+      {
+        "mark_id": "e34656b9-1dec-4a7e-9e8b-70b9b78aa235",
+        "n_map": 2
+      },
+      {
+        "mark_id": "f458f337-6a8a-4340-8b51-8685b42e5557",
+        "n_map": 2
+      },
+      {
+        "mark_id": "fb272cbb-eb16-43a5-a01d-bb2fb84d9709",
+        "n_map": 2
+      }
+    ]
+  },
+  "sagansa_eng": {
+    "r1_kas_mentah": {
+      "semua_baris": {
+        "opening": -78210967.0,
+        "fy2025": -6644992.0,
+        "closing": -84855959.0
+      },
+      "tanpa_manual": {
+        "opening": -78210967.0,
+        "fy2025": 56981600.0,
+        "closing": -21229367.0
+      },
+      "basis_engine": {
+        "opening": -78210967.0,
+        "fy2025": -6644992.0,
+        "closing": -84855959.0
+      }
+    },
+    "r2_unmapped": {
+      "marks_tanpa_coa": [],
+      "txn_tanpa_mark": {
+        "n": 11,
+        "net": -71771584.0
+      }
+    },
+    "r3_laba_rugi_ledger": {
+      "revenue_ledger": 242248592.0,
+      "cogs_ledger": 125467000.0,
+      "expenses_non_cogs_ledger": 51655000.0,
+      "ni_ledger": 65126592.0,
+      "kategori_signed": {
+        "REVENUE": -242248592.0,
+        "EXPENSE": 177122000.0,
+        "ASSET": 65126592.0,
+        "LIABILITY": 0,
+        "EQUITY": 0
+      }
+    },
+    "r4_initial_capital_settings": [
+      {
+        "company_id": "8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "amount": "298324320.00",
+        "previous_retained_earnings_amount": "-20780243.00",
+        "start_year": 2023,
+        "report_type": "coretax"
+      },
+      {
+        "company_id": "8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "amount": "298324320.00",
+        "previous_retained_earnings_amount": "-20780243.00",
+        "start_year": 2023,
+        "report_type": "real"
+      },
+      {
+        "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "amount": "500000.00",
+        "previous_retained_earnings_amount": "0.00",
+        "start_year": 2025,
+        "report_type": "coretax"
+      },
+      {
+        "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "amount": "0.00",
+        "previous_retained_earnings_amount": "0.00",
+        "start_year": 2025,
+        "report_type": "real"
+      }
+    ],
+    "r4_ni_ledger_tahunan": {
+      "2023": 0.0,
+      "2024": -1279253.0,
+      "2025": 65126592.0
+    },
+    "r5_jurnal_manual": {
+      "n": 7,
+      "net": -63626592.0,
+      "n_parent": 2,
+      "n_child": 5
+    },
+    "r7_mark_mapping_ganda": [
+      {
+        "mark_id": "73e27be9-59cf-4fe1-8c43-11d5511c1d7a",
+        "n_map": 3
+      },
+      {
+        "mark_id": "01cd45a2-6978-4597-a694-cac038bbc671",
+        "n_map": 2
+      },
+      {
+        "mark_id": "025f4b9d-7a19-482f-983d-97cb1ce84207",
+        "n_map": 2
+      },
+      {
+        "mark_id": "028aa451-ffb1-42f5-9654-08622e83c3e4",
+        "n_map": 2
+      },
+      {
+        "mark_id": "094576be-4c16-4895-85b3-228eadc05786",
+        "n_map": 2
+      },
+      {
+        "mark_id": "0a96fc97-1dd0-4f98-8080-4d77af85f088",
+        "n_map": 2
+      },
+      {
+        "mark_id": "10b2d8da-30a9-4ef9-bab8-3964cb03ac38",
+        "n_map": 2
+      },
+      {
+        "mark_id": "16b0f72f-6987-4334-b707-8b7471f2c52f",
+        "n_map": 2
+      },
+      {
+        "mark_id": "218bac77-7a41-4b8c-90c1-00c786928a13",
+        "n_map": 2
+      },
+      {
+        "mark_id": "22a86c74-7e78-4137-9941-dfcd1b45eafa",
+        "n_map": 2
+      },
+      {
+        "mark_id": "22fe56aa-3c65-435c-a5cf-919826bcf6fb",
+        "n_map": 2
+      },
+      {
+        "mark_id": "2a32fee1-6237-4ad9-9812-4dce84db9f27",
+        "n_map": 2
+      },
+      {
+        "mark_id": "301611a0-b804-407e-a1c8-d0013b35fa25",
+        "n_map": 2
+      },
+      {
+        "mark_id": "30c0f1e8-3b85-40e1-8b10-966b9f528178",
+        "n_map": 2
+      },
+      {
+        "mark_id": "32cf9680-a3ae-4731-8595-b5fa841c9133",
+        "n_map": 2
+      },
+      {
+        "mark_id": "36c4a7a1-f1f9-4975-97df-0d782993de08",
+        "n_map": 2
+      },
+      {
+        "mark_id": "3912fbec-1027-4daf-8e6c-81361ae11b53",
+        "n_map": 2
+      },
+      {
+        "mark_id": "400977f9-dbf0-41a3-95b6-03a8aae4a5d1",
+        "n_map": 2
+      },
+      {
+        "mark_id": "42c0fee8-4c5a-414d-8616-674fa1f972eb",
+        "n_map": 2
+      },
+      {
+        "mark_id": "4314efc1-2872-48c4-b035-5986eb52bb61",
+        "n_map": 2
+      },
+      {
+        "mark_id": "43c5b5d8-b52d-4218-a573-799fbd44afba",
+        "n_map": 2
+      },
+      {
+        "mark_id": "43d1617c-d9eb-4e92-b152-85ab34f3cc6e",
+        "n_map": 2
+      },
+      {
+        "mark_id": "509ecd96-a084-4567-9673-0cb2cc9484bf",
+        "n_map": 2
+      },
+      {
+        "mark_id": "559a9952-73ff-4ee0-aa06-9ea5b22e9a59",
+        "n_map": 2
+      },
+      {
+        "mark_id": "589bc5cd-eaff-468d-9308-217a7718b49b",
+        "n_map": 2
+      },
+      {
+        "mark_id": "5de52218-7bb7-4baa-84d7-076b14106031",
+        "n_map": 2
+      },
+      {
+        "mark_id": "69d26ea8-819f-4fde-8163-bbf958f14c54",
+        "n_map": 2
+      },
+      {
+        "mark_id": "71c434c3-b692-4462-aa4f-10b7f32cbab8",
+        "n_map": 2
+      },
+      {
+        "mark_id": "73226dbc-dad2-4755-bf25-6f0987d01b1e",
+        "n_map": 2
+      },
+      {
+        "mark_id": "0036af4d-b9b7-44bf-a155-f4cddeb0ee57",
+        "n_map": 2
+      },
+      {
+        "mark_id": "7f3fa445-df3b-49ee-a4dd-0162468171f0",
+        "n_map": 2
+      },
+      {
+        "mark_id": "802a3720-ed9f-4699-b732-dfe2f6fad91d",
+        "n_map": 2
+      },
+      {
+        "mark_id": "814e455f-d831-40fb-a1d9-80cc506643e5",
+        "n_map": 2
+      },
+      {
+        "mark_id": "81a021e4-2233-48f7-ad9b-626dfde9777e",
+        "n_map": 2
+      },
+      {
+        "mark_id": "81cc00a2-df18-4355-8c34-50c4eb743bad",
+        "n_map": 2
+      },
+      {
+        "mark_id": "853afd59-d7ee-42a6-8366-0e711c50e12f",
+        "n_map": 2
+      },
+      {
+        "mark_id": "896ee69c-69bd-49f5-870a-8021f6519f9c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8a21932f-ae45-474b-a363-2b5294a73c50",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8a3b73af-ad8e-4dc1-960a-1adfbe26ce8c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8a978e14-3925-496a-897a-de757d23d459",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8f35c215-e2cf-4690-8732-8b5db900f5d1",
+        "n_map": 2
+      },
+      {
+        "mark_id": "90198a93-9c85-4115-9d62-0a164c9ebfb4",
+        "n_map": 2
+      },
+      {
+        "mark_id": "93748fcf-da14-4c86-a266-eabb3d0f4bb5",
+        "n_map": 2
+      },
+      {
+        "mark_id": "946d1e10-6021-474b-bdd4-c414fe27bb31",
+        "n_map": 2
+      },
+      {
+        "mark_id": "95996ea0-bf26-4e12-8b66-f4e6170f1e9c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "9707c9ab-8035-4f80-b5fe-06b7d204238c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "9758742d-8568-4821-9812-98684a466013",
+        "n_map": 2
+      },
+      {
+        "mark_id": "97ec6234-bfaf-4121-949e-2b724e2d95c6",
+        "n_map": 2
+      },
+      {
+        "mark_id": "a362fa91-d0d5-4b63-872c-cfe84070485b",
+        "n_map": 2
+      },
+      {
+        "mark_id": "a5051d61-e49e-455d-9177-314895670206",
+        "n_map": 2
+      },
+      {
+        "mark_id": "b0d32119-ba14-4a8a-b8a7-a6089dc175ab",
+        "n_map": 2
+      },
+      {
+        "mark_id": "b6261b40-ebd0-43d7-9353-ac80d58869cf",
+        "n_map": 2
+      },
+      {
+        "mark_id": "b7d2a277-1fd0-4cf2-b061-b276cb6aa652",
+        "n_map": 2
+      },
+      {
+        "mark_id": "bd3d4253-75f0-452f-8876-5c8fbbb32ba9",
+        "n_map": 2
+      },
+      {
+        "mark_id": "c2171c37-12f2-4ad6-bd94-75ce34c9ad44",
+        "n_map": 2
+      },
+      {
+        "mark_id": "c5cea59e-7cc9-466c-9698-475b127525dc",
+        "n_map": 2
+      },
+      {
+        "mark_id": "cee450a3-9763-4cee-82a1-36643f6f2ff5",
+        "n_map": 2
+      },
+      {
+        "mark_id": "cf145903-695f-4dd0-9004-01c18f7e91e7",
+        "n_map": 2
+      },
+      {
+        "mark_id": "d2f708bf-729a-454a-bdd9-31e1343f1928",
+        "n_map": 2
+      },
+      {
+        "mark_id": "d66c3c6e-cfde-4586-af1f-287e2bbcd644",
+        "n_map": 2
+      },
+      {
+        "mark_id": "d815407b-362f-4a55-9ea3-3f7e500d8a10",
+        "n_map": 2
+      },
+      {
+        "mark_id": "dc5d8560-f5eb-4edc-9121-4ea3906ab6c2",
+        "n_map": 2
+      },
+      {
+        "mark_id": "ddd89f4a-cd46-4246-98b7-c40623067ddf",
+        "n_map": 2
+      },
+      {
+        "mark_id": "e34656b9-1dec-4a7e-9e8b-70b9b78aa235",
+        "n_map": 2
+      },
+      {
+        "mark_id": "f458f337-6a8a-4340-8b51-8685b42e5557",
+        "n_map": 2
+      },
+      {
+        "mark_id": "fb272cbb-eb16-43a5-a01d-bb2fb84d9709",
+        "n_map": 2
+      }
+    ]
+  },
+  "asa_pangan": {
+    "r1_kas_mentah": {
+      "semua_baris": {
+        "opening": -293615422.47,
+        "fy2025": -623392359.72,
+        "closing": -917007782.19
+      },
+      "tanpa_manual": {
+        "opening": -243180752.47,
+        "fy2025": -590565279.72,
+        "closing": -833746032.19
+      },
+      "basis_engine": {
+        "opening": 131263824.53,
+        "fy2025": -336791247.72,
+        "closing": -205527423.19
+      }
+    },
+    "r2_unmapped": {
+      "marks_tanpa_coa": [
+        {
+          "mark_name": "",
+          "n": 393,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 2,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 55,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 12,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 24,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 28,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 18,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 26,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 25,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 26,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 2,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 1,
+          "net_signed": 0.0
+        },
+        {
+          "mark_name": "",
+          "n": 2,
+          "net_signed": 0.0
+        }
+      ],
+      "txn_tanpa_mark": {
+        "n": 1,
+        "net": -445875.0
+      }
+    },
+    "r3_laba_rugi_ledger": {
+      "revenue_ledger": 1760250200.3,
+      "cogs_ledger": 1481894734.0,
+      "expenses_non_cogs_ledger": 459646032.23,
+      "ni_ledger": -181290565.93000007,
+      "kategori_signed": {
+        "REVENUE": -1760250200.3,
+        "EXPENSE": 1941540766.23,
+        "ASSET": -183652365.93,
+        "LIABILITY": 2361800.0,
+        "EQUITY": 0
+      }
+    },
+    "r4_initial_capital_settings": [
+      {
+        "company_id": "8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "amount": "298324320.00",
+        "previous_retained_earnings_amount": "-20780243.00",
+        "start_year": 2023,
+        "report_type": "coretax"
+      },
+      {
+        "company_id": "8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "amount": "298324320.00",
+        "previous_retained_earnings_amount": "-20780243.00",
+        "start_year": 2023,
+        "report_type": "real"
+      },
+      {
+        "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "amount": "500000.00",
+        "previous_retained_earnings_amount": "0.00",
+        "start_year": 2025,
+        "report_type": "coretax"
+      },
+      {
+        "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "amount": "0.00",
+        "previous_retained_earnings_amount": "0.00",
+        "start_year": 2025,
+        "report_type": "real"
+      }
+    ],
+    "r4_ni_ledger_tahunan": {
+      "2023": 31868482.4,
+      "2024": 230582213.7,
+      "2025": -181290565.93
+    },
+    "r5_jurnal_manual": {
+      "n": 17,
+      "net": -83261750.0,
+      "n_parent": 5,
+      "n_child": 12
+    },
+    "r7_mark_mapping_ganda": [
+      {
+        "mark_id": "73e27be9-59cf-4fe1-8c43-11d5511c1d7a",
+        "n_map": 3
+      },
+      {
+        "mark_id": "01cd45a2-6978-4597-a694-cac038bbc671",
+        "n_map": 2
+      },
+      {
+        "mark_id": "025f4b9d-7a19-482f-983d-97cb1ce84207",
+        "n_map": 2
+      },
+      {
+        "mark_id": "028aa451-ffb1-42f5-9654-08622e83c3e4",
+        "n_map": 2
+      },
+      {
+        "mark_id": "094576be-4c16-4895-85b3-228eadc05786",
+        "n_map": 2
+      },
+      {
+        "mark_id": "0a96fc97-1dd0-4f98-8080-4d77af85f088",
+        "n_map": 2
+      },
+      {
+        "mark_id": "10b2d8da-30a9-4ef9-bab8-3964cb03ac38",
+        "n_map": 2
+      },
+      {
+        "mark_id": "16b0f72f-6987-4334-b707-8b7471f2c52f",
+        "n_map": 2
+      },
+      {
+        "mark_id": "218bac77-7a41-4b8c-90c1-00c786928a13",
+        "n_map": 2
+      },
+      {
+        "mark_id": "22a86c74-7e78-4137-9941-dfcd1b45eafa",
+        "n_map": 2
+      },
+      {
+        "mark_id": "22fe56aa-3c65-435c-a5cf-919826bcf6fb",
+        "n_map": 2
+      },
+      {
+        "mark_id": "2a32fee1-6237-4ad9-9812-4dce84db9f27",
+        "n_map": 2
+      },
+      {
+        "mark_id": "301611a0-b804-407e-a1c8-d0013b35fa25",
+        "n_map": 2
+      },
+      {
+        "mark_id": "30c0f1e8-3b85-40e1-8b10-966b9f528178",
+        "n_map": 2
+      },
+      {
+        "mark_id": "32cf9680-a3ae-4731-8595-b5fa841c9133",
+        "n_map": 2
+      },
+      {
+        "mark_id": "36c4a7a1-f1f9-4975-97df-0d782993de08",
+        "n_map": 2
+      },
+      {
+        "mark_id": "3912fbec-1027-4daf-8e6c-81361ae11b53",
+        "n_map": 2
+      },
+      {
+        "mark_id": "400977f9-dbf0-41a3-95b6-03a8aae4a5d1",
+        "n_map": 2
+      },
+      {
+        "mark_id": "42c0fee8-4c5a-414d-8616-674fa1f972eb",
+        "n_map": 2
+      },
+      {
+        "mark_id": "4314efc1-2872-48c4-b035-5986eb52bb61",
+        "n_map": 2
+      },
+      {
+        "mark_id": "43c5b5d8-b52d-4218-a573-799fbd44afba",
+        "n_map": 2
+      },
+      {
+        "mark_id": "43d1617c-d9eb-4e92-b152-85ab34f3cc6e",
+        "n_map": 2
+      },
+      {
+        "mark_id": "509ecd96-a084-4567-9673-0cb2cc9484bf",
+        "n_map": 2
+      },
+      {
+        "mark_id": "559a9952-73ff-4ee0-aa06-9ea5b22e9a59",
+        "n_map": 2
+      },
+      {
+        "mark_id": "589bc5cd-eaff-468d-9308-217a7718b49b",
+        "n_map": 2
+      },
+      {
+        "mark_id": "5de52218-7bb7-4baa-84d7-076b14106031",
+        "n_map": 2
+      },
+      {
+        "mark_id": "69d26ea8-819f-4fde-8163-bbf958f14c54",
+        "n_map": 2
+      },
+      {
+        "mark_id": "71c434c3-b692-4462-aa4f-10b7f32cbab8",
+        "n_map": 2
+      },
+      {
+        "mark_id": "73226dbc-dad2-4755-bf25-6f0987d01b1e",
+        "n_map": 2
+      },
+      {
+        "mark_id": "0036af4d-b9b7-44bf-a155-f4cddeb0ee57",
+        "n_map": 2
+      },
+      {
+        "mark_id": "7f3fa445-df3b-49ee-a4dd-0162468171f0",
+        "n_map": 2
+      },
+      {
+        "mark_id": "802a3720-ed9f-4699-b732-dfe2f6fad91d",
+        "n_map": 2
+      },
+      {
+        "mark_id": "814e455f-d831-40fb-a1d9-80cc506643e5",
+        "n_map": 2
+      },
+      {
+        "mark_id": "81a021e4-2233-48f7-ad9b-626dfde9777e",
+        "n_map": 2
+      },
+      {
+        "mark_id": "81cc00a2-df18-4355-8c34-50c4eb743bad",
+        "n_map": 2
+      },
+      {
+        "mark_id": "853afd59-d7ee-42a6-8366-0e711c50e12f",
+        "n_map": 2
+      },
+      {
+        "mark_id": "896ee69c-69bd-49f5-870a-8021f6519f9c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8a21932f-ae45-474b-a363-2b5294a73c50",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8a3b73af-ad8e-4dc1-960a-1adfbe26ce8c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8a978e14-3925-496a-897a-de757d23d459",
+        "n_map": 2
+      },
+      {
+        "mark_id": "8f35c215-e2cf-4690-8732-8b5db900f5d1",
+        "n_map": 2
+      },
+      {
+        "mark_id": "90198a93-9c85-4115-9d62-0a164c9ebfb4",
+        "n_map": 2
+      },
+      {
+        "mark_id": "93748fcf-da14-4c86-a266-eabb3d0f4bb5",
+        "n_map": 2
+      },
+      {
+        "mark_id": "946d1e10-6021-474b-bdd4-c414fe27bb31",
+        "n_map": 2
+      },
+      {
+        "mark_id": "95996ea0-bf26-4e12-8b66-f4e6170f1e9c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "9707c9ab-8035-4f80-b5fe-06b7d204238c",
+        "n_map": 2
+      },
+      {
+        "mark_id": "9758742d-8568-4821-9812-98684a466013",
+        "n_map": 2
+      },
+      {
+        "mark_id": "97ec6234-bfaf-4121-949e-2b724e2d95c6",
+        "n_map": 2
+      },
+      {
+        "mark_id": "a362fa91-d0d5-4b63-872c-cfe84070485b",
+        "n_map": 2
+      },
+      {
+        "mark_id": "a5051d61-e49e-455d-9177-314895670206",
+        "n_map": 2
+      },
+      {
+        "mark_id": "b0d32119-ba14-4a8a-b8a7-a6089dc175ab",
+        "n_map": 2
+      },
+      {
+        "mark_id": "b6261b40-ebd0-43d7-9353-ac80d58869cf",
+        "n_map": 2
+      },
+      {
+        "mark_id": "b7d2a277-1fd0-4cf2-b061-b276cb6aa652",
+        "n_map": 2
+      },
+      {
+        "mark_id": "bd3d4253-75f0-452f-8876-5c8fbbb32ba9",
+        "n_map": 2
+      },
+      {
+        "mark_id": "c2171c37-12f2-4ad6-bd94-75ce34c9ad44",
+        "n_map": 2
+      },
+      {
+        "mark_id": "c5cea59e-7cc9-466c-9698-475b127525dc",
+        "n_map": 2
+      },
+      {
+        "mark_id": "cee450a3-9763-4cee-82a1-36643f6f2ff5",
+        "n_map": 2
+      },
+      {
+        "mark_id": "cf145903-695f-4dd0-9004-01c18f7e91e7",
+        "n_map": 2
+      },
+      {
+        "mark_id": "d2f708bf-729a-454a-bdd9-31e1343f1928",
+        "n_map": 2
+      },
+      {
+        "mark_id": "d66c3c6e-cfde-4586-af1f-287e2bbcd644",
+        "n_map": 2
+      },
+      {
+        "mark_id": "d815407b-362f-4a55-9ea3-3f7e500d8a10",
+        "n_map": 2
+      },
+      {
+        "mark_id": "dc5d8560-f5eb-4edc-9121-4ea3906ab6c2",
+        "n_map": 2
+      },
+      {
+        "mark_id": "ddd89f4a-cd46-4246-98b7-c40623067ddf",
+        "n_map": 2
+      },
+      {
+        "mark_id": "e34656b9-1dec-4a7e-9e8b-70b9b78aa235",
+        "n_map": 2
+      },
+      {
+        "mark_id": "f458f337-6a8a-4340-8b51-8685b42e5557",
+        "n_map": 2
+      },
+      {
+        "mark_id": "fb272cbb-eb16-43a5-a01d-bb2fb84d9709",
+        "n_map": 2
+      }
+    ]
+  }
+}

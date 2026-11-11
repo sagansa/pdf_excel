@@ -1,0 +1,46 @@
+{
+  "title": "Marks page: pick the composition",
+  "question": "The deal put three structures on the table for Transaction classification rules. Lock one, steer it, or re-roll.",
+  "options": [
+    {
+      "id": "lens-workspace",
+      "kind": "assigned",
+      "label": "Dual-Lens Workspace",
+      "kicker": "THE ROLL",
+      "lineage": "bookkeeping working papers kept once per reporting lens",
+      "thesis": "One Real/Coretax switch re-scopes the coverage strip, the mapping column, and each rule's tax badge — the page reads as one ledger per lens.",
+      "palette": ["#f3ede3", "#fffdf8", "#0f766e", "#b45309", "#d9cfbe"],
+      "materials": ["paper surface cards", "hairline rules", "Manrope + IBM Plex Mono"],
+      "viewport": "Lens switch and mapped/unmapped coverage on top; rule rows beneath with inline flag toggles and the active lens' mapping state; drawer-less, everything on one screen.",
+      "risk": "A switch that moves too much becomes two pages to relearn.",
+      "html": ".impeccable/mocks/decision/lens-workspace.html"
+    },
+    {
+      "id": "inspector-drawer",
+      "kind": "dealt",
+      "label": "Slim List + Inspector Drawer",
+      "lineage": "email client reading pane",
+      "thesis": "A calm full-width list of one-line rule rows; selecting a rule slides in a right-side drawer holding its toggles, fiscal category, and both mapping groups.",
+      "palette": ["#f3ede3", "#fffdf8", "#0f766e", "#b45309", "#d9cfbe"],
+      "materials": ["paper surface cards", "hairline rules", "Manrope + IBM Plex Mono"],
+      "viewport": "Summary rows with trait chips, coverage dots and quick actions; the drawer holds full detail for the selected rule without leaving the list.",
+      "risk": "Anything not in the row summary costs a second step, which can slow bulk review.",
+      "html": ".impeccable/mocks/decision/inspector-drawer.html"
+    },
+    {
+      "id": "expandable-rows",
+      "kind": "dealt",
+      "label": "Expandable Rule Rows",
+      "lineage": "accordion working papers",
+      "thesis": "Every rule is one quiet summary row that expands in place into its full sheet — flags, fiscal category, Real and Coretax mappings side by side.",
+      "palette": ["#f3ede3", "#fffdf8", "#0f766e", "#b45309", "#d9cfbe"],
+      "materials": ["paper surface cards", "hairline rules", "Manrope + IBM Plex Mono"],
+      "viewport": "Compact table with a traits chip cluster per row and search above; expanding a row opens a detail band with both mapping groups side by side.",
+      "risk": "Open rows shift the table, which jars when comparing several rules at once.",
+      "html": ".impeccable/mocks/decision/expandable-rows.html"
+    }
+  ],
+  "reroll": true,
+  "steer": true,
+  "buildPath": { "value": "code" }
+}

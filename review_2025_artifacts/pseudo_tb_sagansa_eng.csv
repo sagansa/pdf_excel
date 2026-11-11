@@ -1,0 +1,6 @@
+code,name,category,subcategory,normal_balance,opening_signed,fy2025_mutasi_signed,closing_signed,n_rows
+1101,Kas dan Setara Kas,ASSET,Current Assets,DEBIT,-1279253.0,65126592.0,63847339.0,22
+4002,Penjualan Domestik,REVENUE,Operating Revenue,CREDIT,-2020747.0,-242248592.0,-244269339.0,11
+5001,Pembelian,EXPENSE,Cost of Goods Sold,DEBIT,3300000.0,125467000.0,128767000.0,5
+5322,Beban Umum dan Administrasi,EXPENSE,Operating Expenses,DEBIT,0.0,5000.0,5000.0,2
+5499,Beban Non Usaha Lainnya,EXPENSE,,DEBIT,0.0,51650000.0,51650000.0,4

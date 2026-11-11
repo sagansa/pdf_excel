@@ -1,0 +1,56 @@
+{
+  "period": {
+    "start_date": "2025-01-01",
+    "end_date": "2025-12-31"
+  },
+  "sections": {
+    "operating": {
+      "name": "Operating Activities",
+      "inflow_total": 0.0,
+      "outflow_total": 0.0,
+      "net_cash": 0.0,
+      "count": 0,
+      "items": []
+    },
+    "investing": {
+      "name": "Investing Activities",
+      "inflow_total": 0.0,
+      "outflow_total": 0.0,
+      "net_cash": 0.0,
+      "count": 0,
+      "items": []
+    },
+    "financing": {
+      "name": "Financing Activities",
+      "inflow_total": 0.0,
+      "outflow_total": 0.0,
+      "net_cash": 0.0,
+      "count": 0,
+      "items": []
+    },
+    "unclassified": {
+      "name": "Unclassified",
+      "inflow_total": 0.0,
+      "outflow_total": 0.0,
+      "net_cash": 0.0,
+      "count": 0,
+      "items": []
+    }
+  },
+  "section_order": [
+    "operating",
+    "investing",
+    "financing",
+    "unclassified"
+  ],
+  "summary": {
+    "opening_cash": -355000000.0,
+    "operating_net": 0.0,
+    "investing_net": 0.0,
+    "financing_net": 0.0,
+    "unclassified_net": 0.0,
+    "net_change": 0.0,
+    "closing_cash": -355000000.0,
+    "reconciliation_difference": 0.0
+  }
+}

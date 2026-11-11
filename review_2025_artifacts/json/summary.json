@@ -1,0 +1,58 @@
+{
+  "all": {
+    "revenue": 2002498792.3,
+    "expenses": 551153086.105,
+    "net_income": 1451345706.195,
+    "bs_total_assets": 0.0,
+    "bs_total_liabilities": 0.0,
+    "bs_total_equity": 0.0,
+    "cf_opening": -301947142.47,
+    "cf_closing": -645383382.19,
+    "cf_recon_diff": 0.0
+  },
+  "sagansa_eng": {
+    "revenue": 242248592.0,
+    "expenses": 51655000.0,
+    "net_income": 190593592.0,
+    "bs_total_assets": 0.0,
+    "bs_total_liabilities": 0.0,
+    "bs_total_equity": 0.0,
+    "cf_opening": -78210967.0,
+    "cf_closing": -84855959.0,
+    "cf_recon_diff": 0.0
+  },
+  "asa_pangan": {
+    "revenue": 1760250200.3,
+    "expenses": 499498086.105,
+    "net_income": 1260752114.195,
+    "bs_total_assets": 0.0,
+    "bs_total_liabilities": 0.0,
+    "bs_total_equity": 0.0,
+    "cf_opening": 131263824.53,
+    "cf_closing": -205527423.19,
+    "cf_recon_diff": 0.0
+  },
+  "not_included": {
+    "revenue": 0.0,
+    "expenses": 0.0,
+    "net_income": 0.0,
+    "bs_total_assets": 0.0,
+    "bs_total_liabilities": 0.0,
+    "bs_total_equity": 0.0,
+    "cf_opening": -355000000.0,
+    "cf_closing": -355000000.0,
+    "cf_recon_diff": 0.0
+  },
+  "bs_open_2024_all": {
+    "total_assets": 0.0,
+    "total_liabilities": 0.0,
+    "total_equity": 0.0
+  },
+  "is_2024_all": {
+    "net_income": 1443501485.575
+  },
+  "cf_2024_all": {
+    "closing": -301947142.47,
+    "recon_diff": -0.0
+  }
+}

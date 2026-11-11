@@ -1,0 +1,48 @@
+{
+  "as_of_date": "2024-12-31",
+  "assets": {
+    "current": [
+      {
+        "id": "computed_prepaid_tax_2024-12-31_d8fc0225-feee-4afc-b6c2-3dd01b0ce067",
+        "code": "1421",
+        "name": "Biaya Dibayar di Muka",
+        "subcategory": "Prepaid Expenses",
+        "amount": 6000000.0,
+        "category": "ASSET"
+      }
+    ],
+    "non_current": [],
+    "total": 6000000.0
+  },
+  "liabilities": {
+    "current": [],
+    "non_current": [],
+    "total": 0
+  },
+  "equity": {
+    "items": [
+      {
+        "id": "computed_balance_adjustment_2024-12-31_d8fc0225-feee-4afc-b6c2-3dd01b0ce067",
+        "code": "3999",
+        "name": "Penyesuaian Saldo Pembuka",
+        "subcategory": "Balance Adjustment",
+        "amount": 6000000.0,
+        "category": "EQUITY",
+        "is_computed": true
+      }
+    ],
+    "total": 6000000.0
+  },
+  "current_year_net_income": 0.0,
+  "previous_year_retained_earnings": 0.0,
+  "retained_earnings_total": 0.0,
+  "total_assets": 6000000.0,
+  "total_liabilities": 0,
+  "total_equity": 6000000.0,
+  "computed_liabilities": {
+    "service_tax_payable": 0.0
+  },
+  "coretax_cash_reclassification": null,
+  "total_liabilities_and_equity": 6000000.0,
+  "is_balanced": true
+}

@@ -1,0 +1,58 @@
+{
+  "revenue": [],
+  "expenses": [
+    {
+      "code": "5314",
+      "name": "Beban Penyusutan dan Amortisasi",
+      "subcategory": "Operating Expenses",
+      "amount": 0.0,
+      "category": "EXPENSE",
+      "fiscal_category": "DEDUCTIBLE"
+    }
+  ],
+  "total_revenue": 0.0,
+  "total_expenses": 0.0,
+  "cogs_breakdown": {
+    "beginning_inventory": 0.0,
+    "purchases": 0.0,
+    "purchases_items": [],
+    "other_cogs_items": [],
+    "total_other_cogs": 0,
+    "product_cogs": 0.0,
+    "ending_inventory": 0.0,
+    "total_cogs": 0.0,
+    "year": 2025,
+    "previous_year_purchases": 0.0
+  },
+  "net_income_components": {
+    "formula": "total_revenue - total_expenses - total_cogs",
+    "total_revenue": 0.0,
+    "total_expenses": 0.0,
+    "total_cogs": 0.0
+  },
+  "amortization_breakdown": {
+    "manual_total": 0.0,
+    "calculated_total": 0.0,
+    "total_5314": 0.0,
+    "report_year": 2025
+  },
+  "net_income": 0.0,
+  "earnings_metrics": {
+    "tax_expense": 0,
+    "earnings_before_tax": 0.0,
+    "earnings_after_tax": 0.0,
+    "earnings_before_tax_depreciation_and_amortization": 0.0
+  },
+  "fiscal_reconciliation": {
+    "commercial_net_income": 0.0,
+    "positive_corrections": [],
+    "tax_expense_corrections": [],
+    "negative_corrections": [],
+    "total_positive_correction": 0,
+    "total_tax_expense_correction": 0,
+    "total_negative_correction": 0,
+    "fiscal_net_income": 0.0
+  },
+  "cogs_detail": [],
+  "total_cogs": 0.0
+}

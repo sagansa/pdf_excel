@@ -1,0 +1,77 @@
+{
+  "as_of_date": "2024-12-31",
+  "assets": {
+    "current": [],
+    "non_current": [],
+    "total": 0
+  },
+  "liabilities": {
+    "current": [],
+    "non_current": [],
+    "total": 0
+  },
+  "equity": {
+    "items": [
+      {
+        "id": "computed_retained_earnings_parent_2024-12-31_40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "code": "3200",
+        "name": "Laba Ditahan",
+        "subcategory": "Retained Earnings",
+        "amount": -1279253.0,
+        "category": "EQUITY",
+        "is_computed": true,
+        "is_parent_row": true,
+        "previous_year_retained_earnings": 0.0,
+        "current_year_net_income": -1279253.0
+      },
+      {
+        "id": "computed_net_income_child_2024-12-31_40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "code": "4800",
+        "name": "Laba/Rugi Tahun Berjalan",
+        "subcategory": "Current Year Earnings",
+        "amount": -1279253.0,
+        "category": "EQUITY",
+        "is_computed": true,
+        "is_child_row": true,
+        "parent_code": "3200",
+        "exclude_from_total": true,
+        "hide_in_pdf": true
+      },
+      {
+        "id": "computed_prev_retained_earnings_child_2024-12-31_40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "code": "3200",
+        "name": "Laba Ditahan Tahun Sebelumnya",
+        "subcategory": "Retained Earnings",
+        "amount": 0.0,
+        "category": "EQUITY",
+        "is_computed": true,
+        "is_child_row": true,
+        "parent_code": "3200",
+        "exclude_from_total": true,
+        "hide_in_pdf": true
+      },
+      {
+        "id": "computed_balance_adjustment_2024-12-31_40e70c5f-43ef-49aa-b73e-7f83d326b301",
+        "code": "3999",
+        "name": "Penyesuaian Saldo Pembuka",
+        "subcategory": "Balance Adjustment",
+        "amount": 1279253.0,
+        "category": "EQUITY",
+        "is_computed": true
+      }
+    ],
+    "total": 0.0
+  },
+  "current_year_net_income": -1279253.0,
+  "previous_year_retained_earnings": 0.0,
+  "retained_earnings_total": -1279253.0,
+  "total_assets": 0,
+  "total_liabilities": 0,
+  "total_equity": 0.0,
+  "computed_liabilities": {
+    "service_tax_payable": 0.0
+  },
+  "coretax_cash_reclassification": null,
+  "total_liabilities_and_equity": 0.0,
+  "is_balanced": true
+}

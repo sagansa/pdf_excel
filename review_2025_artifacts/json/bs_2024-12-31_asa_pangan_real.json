@@ -1,0 +1,144 @@
+{
+  "as_of_date": "2024-12-31",
+  "assets": {
+    "current": [
+      {
+        "id": "a7d3302c-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1101",
+        "name": "Kas dan Setara Kas",
+        "subcategory": "Current Assets",
+        "amount": 170791806.1,
+        "category": "ASSET"
+      },
+      {
+        "id": "inv_2024",
+        "code": "1401",
+        "name": "Persediaan (Ending)",
+        "subcategory": "Current Assets",
+        "amount": 73224775.3,
+        "category": "ASSET"
+      },
+      {
+        "id": "a7d34710-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1423",
+        "name": "Pajak Dibayar di Muka",
+        "subcategory": "Current Assets",
+        "amount": 12117775.0,
+        "category": "ASSET"
+      }
+    ],
+    "non_current": [
+      {
+        "id": "a7d36a74-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1529",
+        "name": "Aset Tetap Lainnya",
+        "subcategory": "Non-Current Assets",
+        "amount": 59968010.0,
+        "category": "ASSET"
+      },
+      {
+        "id": "a7d36aba-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1530",
+        "name": "Akumulasi Penyusutan - Aset Tetap Lainnya",
+        "subcategory": "Non-Current Assets",
+        "amount": -16571885.625,
+        "category": "ASSET"
+      },
+      {
+        "id": "a7d36c90-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1600",
+        "name": "Aset Tak Berwujud",
+        "subcategory": "Non-Current Assets",
+        "amount": 637595.0,
+        "category": "ASSET"
+      },
+      {
+        "id": "a7d36cd6-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1601",
+        "name": "Akumulasi Amortisasi - Aset Tak Berwujud",
+        "subcategory": "Non-Current Assets",
+        "amount": -51365.0,
+        "category": "ASSET"
+      }
+    ],
+    "total": 300116710.775
+  },
+  "liabilities": {
+    "current": [
+      {
+        "id": "a7d38176-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "2191",
+        "name": "Utang Pajak",
+        "subcategory": "Current Liabilities",
+        "amount": 12563650.0,
+        "category": "LIABILITY"
+      }
+    ],
+    "non_current": [],
+    "total": 12563650.0
+  },
+  "equity": {
+    "items": [
+      {
+        "id": "initial_capital_8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "code": "3100",
+        "name": "Modal Setor di Awal",
+        "subcategory": "Paid-in Capital",
+        "amount": 298324320.0,
+        "category": "EQUITY",
+        "is_computed": false
+      },
+      {
+        "id": "computed_retained_earnings_parent_2024-12-31_8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "code": "3200",
+        "name": "Laba Ditahan",
+        "subcategory": "Retained Earnings",
+        "amount": -10771259.224999905,
+        "category": "EQUITY",
+        "is_computed": true,
+        "is_parent_row": true,
+        "previous_year_retained_earnings": -9371963.099999905,
+        "current_year_net_income": -1399296.125
+      },
+      {
+        "id": "computed_net_income_child_2024-12-31_8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "code": "4800",
+        "name": "Laba/Rugi Tahun Berjalan",
+        "subcategory": "Current Year Earnings",
+        "amount": -1399296.125,
+        "category": "EQUITY",
+        "is_computed": true,
+        "is_child_row": true,
+        "parent_code": "3200",
+        "exclude_from_total": true,
+        "hide_in_pdf": true
+      },
+      {
+        "id": "computed_prev_retained_earnings_child_2024-12-31_8ab69d4a-e591-4f05-909e-25ff12352efb",
+        "code": "3200",
+        "name": "Laba Ditahan Tahun Sebelumnya",
+        "subcategory": "Retained Earnings",
+        "amount": -9371963.099999905,
+        "category": "EQUITY",
+        "is_computed": true,
+        "is_child_row": true,
+        "parent_code": "3200",
+        "exclude_from_total": true,
+        "hide_in_pdf": true
+      }
+    ],
+    "total": 287553060.7750001
+  },
+  "current_year_net_income": -1399296.125,
+  "previous_year_retained_earnings": -9371963.099999905,
+  "retained_earnings_total": -10771259.224999905,
+  "total_assets": 300116710.775,
+  "total_liabilities": 12563650.0,
+  "total_equity": 287553060.7750001,
+  "computed_liabilities": {
+    "service_tax_payable": 0.0
+  },
+  "coretax_cash_reclassification": null,
+  "total_liabilities_and_equity": 300116710.7750001,
+  "is_balanced": true
+}

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>StatementX — Transaction classification rules</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1440px;height:900px;overflow:hidden;font-family:'Manrope',sans-serif;color:#1f2937;background:#f3ede3;background-image:radial-gradient(circle at 0% 0%,rgba(180,83,9,.10),transparent 44%),radial-gradient(circle at 100% 0%,rgba(15,118,110,.08),transparent 44%)}
+button{cursor:default;font-family:'Manrope',sans-serif}
+.app{display:flex;height:900px}
+.side{width:232px;flex:none;background:#fffdf8;border-right:1px solid #d9cfbe;padding:22px 14px 0}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px 20px}
+.logo{width:36px;height:36px;border-radius:10px;background:#0f766e;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(15,118,110,.28)}
+.brand b{font-size:15.5px;font-weight:800;letter-spacing:-.01em}
+.slabel{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.16em;color:#667085;text-transform:uppercase;padding:16px 8px 7px}
+.nav{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:#4b5563;padding:7px 9px;border-radius:8px}
+.nav i{width:5px;height:5px;border-radius:50%;background:#c5b79e;flex:none}
+.nav.on{background:rgba(15,118,110,.08);color:#0f766e;box-shadow:inset 3px 0 0 #0f766e}
+.nav.on i{background:#0f766e}
+.main{flex:1;padding:28px 32px 0;display:flex;flex-direction:column;gap:18px;overflow:hidden}
+.head{display:flex;justify-content:space-between;align-items:flex-start}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.14em;color:#667085;text-transform:uppercase}
+h1{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:5px 0 4px}
+.sub{font-size:13px;color:#667085}
+.hchips{display:flex;align-items:center;gap:8px;padding-top:16px}
+.chip{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 11px;border-radius:999px;background:#fffdf8;border:1px solid #d9cfbe;color:#4b5563}
+.chip.warn{background:rgba(180,83,9,.12);border-color:transparent;color:#b45309;font-weight:600}
+.btn{font-size:13px;font-weight:700;color:#fff;background:#0f766e;border:none;border-radius:9px;padding:9px 15px;margin-left:6px;box-shadow:0 8px 18px rgba(15,118,110,.22)}
+.tools{display:flex;align-items:center;gap:10px}
+.swrap{display:flex;align-items:center;gap:8px;width:290px;background:#fffdf8;border:1px solid #d9cfbe;border-radius:9px;padding:8px 12px;color:#667085;font-size:14px}
+.swrap input{border:none;outline:none;background:none;flex:1;font-family:'Manrope',sans-serif;font-size:13px;color:#1f2937}
+.swrap input::placeholder{color:#667085}
+.fchip{font-size:12px;font-weight:600;color:#4b5563;background:#fffdf8;border:1px solid #d9cfbe;border-radius:999px;padding:6px 14px}
+.fchip.on{background:rgba(15,118,110,.08);border-color:rgba(15,118,110,.35);color:#0f766e}
+.card{background:#fffdf8;border:1px solid #d9cfbe;border-radius:16px;box-shadow:0 18px 40px rgba(55,36,18,.06);overflow:hidden}
+.thead,.row{display:grid;grid-template-columns:34px 270px 1fr 190px 56px;align-items:center;padding:0 18px 0 12px;column-gap:14px}
+.thead{height:38px;background:#f4ede2;border-bottom:1px solid #d9cfbe;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.12em;color:#667085;text-transform:uppercase}
+.ta-r{text-align:right}
+.row{min-height:63px;border-bottom:1px solid #d9cfbe}
+.row.open{background:rgba(15,118,110,.05);border-bottom:none}
+.chev{width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:#667085;font-size:12px}
+.open .chev{color:#0f766e;transform:rotate(180deg)}
+.rname{font-size:14px;font-weight:700;line-height:1.25}
+.rper{font-size:12px;font-weight:500;color:#667085;line-height:1.3}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px}
+.t-core{background:rgba(15,118,110,.08);color:#0f766e}
+.t-gaji{background:rgba(22,101,52,.10);color:#166534}
+.t-sewa{background:rgba(37,99,235,.10);color:#2563eb}
+.t-aset{background:rgba(15,118,110,.18);color:#0f766e}
+.t-jasa{background:rgba(180,83,9,.12);color:#b45309}
+.t-fis{background:rgba(22,101,52,.10);color:#166534;border:1px solid rgba(22,101,52,.25)}
+.t-miss{background:rgba(180,83,9,.12);color:#b45309;font-weight:700}
+.cov{display:flex;gap:16px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#667085;white-space:nowrap}
+.d{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle}
+.d.f{background:#0f766e}
+.d.o{border:1.5px solid #c5b79e}
+.aksi{display:flex;gap:8px;justify-content:flex-end;color:#667085}
+.aksi .del{color:#b91c1c;opacity:.7}
+.band{background:#f4ede2;border-top:1px solid #d9cfbe;border-bottom:1px solid #d9cfbe;padding:16px 18px 12px 46px;display:grid;grid-template-columns:470px 1fr;column-gap:26px;row-gap:12px}
+.blab{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.14em;color:#667085;text-transform:uppercase;margin-bottom:8px}
+.blab.mt{margin-top:14px}
+.sws{display:flex;gap:10px;flex-wrap:wrap}
+.sw{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#4b5563}
+.trk{width:36px;height:20px;border-radius:999px;background:#d9cfbe;position:relative}
+.trk i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(55,36,18,.25)}
+.trk.on{background:#0f766e}
+.trk.on i{left:auto;right:2px}
+.sel{display:flex;align-items:center;justify-content:space-between;width:210px;background:#fffdf8;border:1px solid #c5b79e;border-radius:8px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600}
+.sel span{color:#667085}
+.maps{display:grid;grid-template-columns:1fr 1fr;column-gap:26px;align-content:start}
+.mlab{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.14em;color:#667085;text-transform:uppercase;margin-bottom:6px}
+.mrow{display:flex;align-items:center;gap:10px;background:#fffdf8;border:1px solid #d9cfbe;border-radius:9px;padding:7px 12px;margin-bottom:6px}
+.mcode{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600}
+.mname{font-size:12px;font-weight:500;color:#4b5563}
+.bd{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;padding:2px 7px;border-radius:5px}
+.bd-db{background:rgba(37,99,235,.10);color:#2563eb}
+.bd-cr{background:rgba(22,101,52,.10);color:#166534}
+.bfoot{grid-column:1/-1;display:flex;justify-content:flex-end;align-items:center;gap:16px;border-top:1px solid rgba(197,183,158,.45);padding-top:10px}
+.ghost{font-size:12px;font-weight:700;color:#0f766e;background:none;border:1px solid rgba(15,118,110,.35);border-radius:8px;padding:6px 13px}
+.txtb{font-size:12px;font-weight:700;color:#0f766e;background:none;border:none}
+.txtb.danger{color:#b91c1c}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="brand">
+    <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" fill="#fff"/></svg></div>
+    <b>StatementX</b>
+  </div>
+  <div class="nav"><i></i>Dashboard</div>
+  <div class="nav"><i></i>Converter</div>
+  <div class="nav"><i></i>History &amp; DB</div>
+  <div class="nav"><i></i>Review Saran AI</div>
+  <div class="nav"><i></i>Upload Summary</div>
+  <div class="nav"><i></i>Upload Checklist</div>
+  <div class="slabel">Management</div>
+  <div class="nav"><i></i>Companies</div>
+  <div class="nav on"><i></i>Marks</div>
+  <div class="nav"><i></i>Chart of Accounts</div>
+  <div class="nav"><i></i>Locations &amp; Stores</div>
+  <div class="slabel">Reports</div>
+  <div class="nav"><i></i>Financial Reports</div>
+  <div class="nav"><i></i>Trial Balance</div>
+  <div class="nav"><i></i>Cek Kontinuitas Saldo</div>
+</aside>
+<main class="main">
+  <div class="head">
+    <div>
+      <div class="eyebrow">Reporting Marks</div>
+      <h1>Transaction classification rules</h1>
+      <div class="sub">Definisikan mark untuk kategorisasi transaksi dan mapping COA.</div>
+    </div>
+    <div class="hchips">
+      <span class="chip">8 marks</span>
+      <span class="chip warn">1 unmapped</span>
+      <span class="chip">Real 7/8</span>
+      <span class="chip">Coretax 6/8</span>
+      <button class="btn">＋ Add New Mark</button>
+    </div>
+  </div>
+  <div class="tools">
+    <div class="swrap"><span>⌕</span><input type="text" placeholder="Cari mark…"></div>
+    <span class="fchip on">Semua</span>
+    <span class="fchip">Unmapped</span>
+    <span class="fchip">Gaji</span>
+    <span class="fchip">Sewa</span>
+    <span class="fchip">Aset</span>
+  </div>
+  <div class="card">
+    <div class="thead"><span></span><span>Rule</span><span>Traits</span><span>Coverage</span><span class="ta-r">Aksi</span></div>
+
+    <div class="row"><span class="chev">⌄</span><div><div class="rname">Penjualan Produk</div><div class="rper">Omzet Harian</div></div><div class="tags"><span class="tag t-core">Coretax</span></div><div class="cov"><span>Real<i class="d f"></i><i class="d f"></i></span><span>Coretax<i class="d f"></i><i class="d f"></i></span></div><div class="aksi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><svg class="del" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></div></div>
+
+    <div class="row"><span class="chev">⌄</span><div><div class="rname">Pembelian Bahan Baku</div><div class="rper">Belanja Bahan</div></div><div class="tags"><span class="tag t-core">Coretax</span><span class="tag t-fis">DEDUCTIBLE</span></div><div class="cov"><span>Real<i class="d f"></i><i class="d f"></i></span><span>Coretax<i class="d f"></i><i class="d f"></i></span></div><div class="aksi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><svg class="del" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></div></div>
+
+    <div class="row"><span class="chev">⌄</span><div><div class="rname">Gaji &amp; Tunjangan Karyawan</div><div class="rper">Gaji Tim</div></div><div class="tags"><span class="tag t-core">Coretax</span><span class="tag t-gaji">Gaji</span><span class="tag t-fis">DEDUCTIBLE</span></div><div class="cov"><span>Real<i class="d f"></i><i class="d f"></i></span><span>Coretax<i class="d f"></i><i class="d f"></i></span></div><div class="aksi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><svg class="del" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></div></div>
+
+    <div class="row open"><span class="chev">⌄</span><div><div class="rname">Sewa Tempat Usaha</div><div class="rper">Sewa Kantor</div></div><div class="tags"><span class="tag t-core">Coretax</span><span class="tag t-sewa">Sewa</span><span class="tag t-fis">DEDUCTIBLE</span></div><div class="cov"><span>Real<i class="d f"></i><i class="d f"></i></span><span>Coretax<i class="d f"></i><i class="d o"></i></span></div><div class="aksi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><svg class="del" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></div></div>
+    <div class="band">
+      <div>
+        <div class="blab">Flags</div>
+        <div class="sws">
+          <span class="sw">Coretax<span class="trk on"><i></i></span></span>
+          <span class="sw">Aset<span class="trk"><i></i></span></span>
+          <span class="sw">Jasa<span class="trk"><i></i></span></span>
+          <span class="sw">Salary<span class="trk"><i></i></span></span>
+          <span class="sw">Sewa<span class="trk on"><i></i></span></span>
+        </div>
+        <div class="blab mt">Fiscal Category</div>
+        <div class="sel">DEDUCTIBLE<span>⌄</span></div>
+      </div>
+      <div class="maps">
+        <div>
+          <div class="mlab">Real · 2</div>
+          <div class="mrow"><span class="mcode">6-2100</span><span class="mname">Beban Sewa</span><span class="bd bd-db">DB</span></div>
+          <div class="mrow"><span class="mcode">1-1100</span><span class="mname">Kas</span><span class="bd bd-cr">CR</span></div>
+        </div>
+        <div>
+          <div class="mlab">Coretax · 1</div>
+          <div class="mrow"><span class="mcode">6-2100</span><span class="mname">Beban Sewa</span><span class="bd bd-db">DB</span></div>
+        </div>
+      </div>
+      <div class="bfoot">
+        <button class="ghost">Manage COA</button>
+        <button class="txtb">Edit</button>
+        <button class="txtb danger">Delete</button>
+      </div>
+    </div>
+
+    <div class="row"><span class="chev">⌄</span><div><div class="rname">Iklan Digital (Meta &amp; Google)</div><div class="rper">Biaya Iklan</div></div><div class="tags"><span class="tag t-core">Coretax</span><span class="tag t-fis">DEDUCTIBLE</span></div><div class="cov"><span>Real<i class="d f"></i><i class="d f"></i></span><span>Coretax<i class="d f"></i><i class="d f"></i></span></div><div class="aksi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><svg class="del" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></div></div>
+
+    <div class="row"><span class="chev">⌄</span><div><div class="rname">Fee Marketplace &amp; Payment Gateway</div><div class="rper">Biaya Admin Marketplace</div></div><div class="tags"><span class="tag t-core">Coretax</span><span class="tag t-fis">DEDUCTIBLE</span></div><div class="cov"><span>Real<i class="d f"></i><i class="d f"></i></span><span>Coretax<i class="d f"></i><i class="d f"></i></span></div><div class="aksi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><svg class="del" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></div></div>
+
+    <div class="row"><span class="chev">⌄</span><div><div class="rname">Pembelian Peralatan</div><div class="rper">Mesin Espresso</div></div><div class="tags"><span class="tag t-aset">Aset</span></div><div class="cov"><span>Real<i class="d f"></i><i class="d f"></i></span><span>Coretax<i class="d f"></i><i class="d o"></i></span></div><div class="aksi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><svg class="del" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></div></div>
+
+    <div class="row"><span class="chev">⌄</span><div><div class="rname">Konsumsi Kantor</div><div class="rper">Snack Tim</div></div><div class="tags"><span class="tag t-miss">⚠ Not Mapped</span></div><div class="cov"><span>Real<i class="d f"></i><i class="d o"></i></span><span>Coretax<i class="d f"></i><i class="d o"></i></span></div><div class="aksi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><svg class="del" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></div></div>
+
+  </div>
+</main>
+</div>
+</body>
+</html>

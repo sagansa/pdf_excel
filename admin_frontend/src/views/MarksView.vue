@@ -1,222 +1,228 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
     <PageHeader
-      eyebrow="Reporting Marks"
-      icon="bi bi-tags-fill"
       title="Transaction classification rules"
       subtitle="Definisikan mark untuk kategorisasi transaksi dan mapping COA."
-      :badges="headerBadges"
-    />
+    >
+      <template #actions>
+        <span class="stat-pill">
+          <i class="bi bi-tags-fill"></i>
+          {{ totalMarks }} marks
+        </span>
+        <span class="stat-pill" :class="{ 'stat-pill--warn': unmappedCount > 0 }">
+          <i :class="unmappedCount > 0 ? 'bi bi-exclamation-triangle-fill' : 'bi bi-check2-circle'"></i>
+          {{ unmappedCount }} belum mapping
+        </span>
+        <span class="stat-pill stat-pill--mono">Real {{ realMappedCount }}/{{ totalMarks }}</span>
+        <span class="stat-pill stat-pill--mono">Coretax {{ coretaxMappedCount }}/{{ totalMarks }}</span>
+        <button @click="openAddModal" class="btn-primary gap-2 min-h-[44px] px-5">
+          <i class="bi bi-plus-lg"></i>
+          <span>Add New Mark</span>
+        </button>
+      </template>
+    </PageHeader>
 
     <TableShell>
       <template #toolbar>
-       <div class="marks-toolbar">
-        <div class="marks-toolbar__meta">
-          <div class="marks-toolbar__icon">
-            <i class="bi bi-tags-fill"></i>
-          </div>
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h3 class="text-xl font-bold text-theme">Manage Reporting Marks</h3>
-              <span class="stat-pill !px-2.5 !py-1 text-[10px]">
-                {{ totalMarks }} marks
-              </span>
-              <span class="stat-pill !px-2.5 !py-1 text-[10px]">
-                {{ unmappedCount }} unmapped
-              </span>
+        <div class="marks-toolbar">
+          <div class="marks-toolbar__row">
+            <div class="ui-input-shell marks-search">
+              <span class="ui-input-shell__icon"><i class="bi bi-search"></i></span>
+              <input
+                v-model="searchQuery"
+                type="search"
+                class="marks-search__input"
+                placeholder="Cari mark…"
+                aria-label="Cari mark"
+              />
+              <button
+                v-if="searchQuery"
+                @click="searchQuery = ''"
+                class="ui-clear-button"
+                aria-label="Hapus pencarian"
+              >
+                <i class="bi bi-x-lg"></i>
+              </button>
             </div>
-            <p class="mt-2 max-w-2xl text-sm text-muted">
-              Define marks for transaction categorization, keep mapping coverage visible, and jump straight into COA maintenance without leaving the table.
-            </p>
+
+            <div class="marks-filters" role="group" aria-label="Filter mark">
+              <button
+                v-for="filter in FILTERS"
+                :key="filter.key"
+                type="button"
+                class="filter-chip"
+                :class="{ 'filter-chip--active': activeFilter === filter.key }"
+                :aria-pressed="activeFilter === filter.key ? 'true' : 'false'"
+                @click="activeFilter = filter.key"
+              >
+                {{ filter.label }}
+                <span v-if="filter.key === 'unmapped' && unmappedCount > 0" class="filter-chip__count">{{ unmappedCount }}</span>
+              </button>
+            </div>
+
+            <span v-if="isFiltering" class="marks-toolbar__meta">
+              {{ visibleMarks.length }} dari {{ totalMarks }} mark
+            </span>
+          </div>
+
+          <div class="marks-toolbar__row" role="group" aria-label="Filter kategori fiskal">
+            <span class="marks-filters__label">Fiskal</span>
+            <button
+              v-for="fiscal in FISCAL_FILTERS"
+              :key="fiscal.key"
+              type="button"
+              class="filter-chip"
+              :class="{ 'filter-chip--active': activeFiscal === fiscal.key }"
+              :aria-pressed="activeFiscal === fiscal.key ? 'true' : 'false'"
+              @click="activeFiscal = activeFiscal === fiscal.key ? '' : fiscal.key"
+            >
+              {{ fiscal.label }}
+            </button>
           </div>
         </div>
-        <div class="marks-toolbar__actions">
-          <button @click="openAddModal" class="btn-primary gap-2">
-            <i class="bi bi-plus-lg"></i>
-            <span>Add New Mark</span>
-          </button>
-        </div>
-      </div>
       </template>
 
-         <table class="min-w-full table-compact">
-           <thead>
-             <tr>
-               <th class="px-6 py-3 text-left">Internal Report</th>
-               <th class="px-6 py-3 text-left">
-                 <div class="flex items-center gap-1">
-                   <span>Personal Use</span>
-                   <i class="bi bi-sort-alpha-down" style="color: var(--color-primary)"></i>
-                 </div>
-               </th>
-               <th class="px-6 py-3 text-center">Coretax?</th>
-               <th class="px-6 py-3 text-center">Fiscal Category</th>
-               <th class="px-6 py-3 text-center">Aset?</th>
-               <th class="px-6 py-3 text-center">Jasa?</th>
-               <th class="px-6 py-3 text-center">Salary?</th>
-               <th class="px-6 py-3 text-center">Sewa Tempat?</th>
-               <th class="px-6 py-3 text-left">COA Mappings</th>
-               <th class="px-6 py-3 text-right">Actions</th>
-             </tr>
-           </thead>
-           <tbody class="divide-y" style="border-color: var(--color-border)">
-              <tr v-if="store.isLoading">
-                  <td colspan="9" class="text-center py-8">
-                      <span class="spinner-border w-6 h-6" style="color: var(--color-primary)" role="status"></span>
+      <table class="min-w-full w-full marks-table">
+        <thead>
+          <tr>
+            <th class="marks-table__chevron-col" aria-hidden="true"></th>
+            <th>Rule</th>
+            <th>Traits</th>
+            <th>Mapping</th>
+            <th class="marks-table__actions-col text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="store.isLoading">
+            <td colspan="5" class="marks-table__state">
+              <span class="spinner-border w-6 h-6" style="color: var(--color-primary)" role="status"></span>
+            </td>
+          </tr>
+
+          <tr v-else-if="store.error">
+            <td colspan="5" class="marks-table__state">
+              <span class="text-danger text-sm font-medium">Gagal memuat marks: {{ store.error }}</span>
+              <button type="button" class="btn-secondary !py-1.5 !px-3 text-xs" @click="store.fetchMarks()">
+                <i class="bi bi-arrow-clockwise mr-1"></i> Coba lagi
+              </button>
+            </td>
+          </tr>
+
+          <tr v-else-if="store.marks.length === 0">
+            <td colspan="5" class="marks-table__state">
+              <i class="bi bi-tags marks-table__state-icon" aria-hidden="true"></i>
+              <p class="text-sm font-semibold text-theme">Belum ada mark</p>
+              <p class="text-xs text-muted mt-1">Buat mark pertama untuk mulai mengklasifikasi transaksi.</p>
+              <button type="button" class="btn-primary !py-1.5 !px-3 text-xs mt-3" @click="openAddModal">
+                <i class="bi bi-plus-lg mr-1"></i> Buat Mark
+              </button>
+            </td>
+          </tr>
+
+          <tr v-else-if="visibleMarks.length === 0">
+            <td colspan="5" class="marks-table__state">
+              <i class="bi bi-search marks-table__state-icon" aria-hidden="true"></i>
+              <p class="text-sm font-semibold text-theme">Tidak ada mark yang cocok</p>
+              <p class="text-xs text-muted mt-1">Ubah kata kunci atau filter, lalu coba lagi.</p>
+              <button type="button" class="btn-secondary !py-1.5 !px-3 text-xs mt-3" @click="clearFilters">
+                <i class="bi bi-x-lg mr-1"></i> Hapus pencarian &amp; filter
+              </button>
+            </td>
+          </tr>
+
+          <template v-else>
+            <template v-for="m in visibleMarks" :key="m.id">
+              <tr
+                class="mark-row"
+                :class="{ 'mark-row--open': expandedId === m.id, 'mark-row--unmapped': isMarkUnmapped(m) }"
+                @click="toggleExpand(m)"
+              >
+                <td class="marks-table__chevron-col">
+                  <button
+                    type="button"
+                    class="mark-expand"
+                    :class="{ 'mark-expand--open': expandedId === m.id }"
+                    :aria-expanded="expandedId === m.id ? 'true' : 'false'"
+                    :aria-controls="`mark-detail-${m.id}`"
+                    :aria-label="expandedId === m.id ? `Tutup detail ${m.internal_report}` : `Buka detail ${m.internal_report}`"
+                    @click.stop="toggleExpand(m)"
+                  >
+                    <i class="bi bi-chevron-down"></i>
+                  </button>
+                </td>
+                <td class="mark-row__names">
+                  <span class="mark-row__internal">
+                    <span class="mark-row__internal-name">{{ m.internal_report }}</span>
+                    <span v-if="isMarkUnmapped(m)" class="mark-row__unmapped-tag">
+                      <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                      Belum mapping
+                    </span>
+                  </span>
+                  <span class="mark-row__personal">{{ m.personal_use }}</span>
+                </td>
+                <td>
+                  <MarkTraitChips :mark="m" show-fiscal-inherit />
+                </td>
+                <td>
+                  <MarkCoverageDots :real-count="getRealMappings(m).length" :coretax-count="getCoretaxMappings(m).length" />
+                </td>
+                <td class="marks-table__actions-col">
+                  <button @click.stop="openEditModal(m)" class="action-link action-link--primary" aria-label="Edit mark">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                  <button @click.stop="deleteMark(m.id)" class="action-link action-link--danger" aria-label="Hapus mark">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </td>
+              </tr>
+
+              <Transition name="band">
+                <tr v-if="expandedId === m.id" class="mark-band-row">
+                  <td colspan="5" class="mark-band-cell">
+                    <div :id="`mark-detail-${m.id}`" class="band-wrap" role="region" :aria-label="`Detail mark ${m.internal_report}`">
+                      <div class="band-clip">
+                        <div class="band">
+                          <div class="band__flags">
+                            <span class="band__label">Flags</span>
+                            <MarkFlagSwitch
+                              v-for="flag in FLAGS"
+                              :key="flag.key"
+                              :model-value="Boolean(m[flag.key])"
+                              :label="flag.label"
+                              :loading="isToggleLoading(m.id, flag.key)"
+                              @update:model-value="toggleMarkFlag(m, flag.key)"
+                            />
+                          </div>
+                          <MarkMappingGroup label="Real" :mappings="getRealMappings(m)" />
+                          <MarkMappingGroup label="Coretax" :mappings="getCoretaxMappings(m)" />
+                        </div>
+                        <div class="band__footer">
+                          <span class="band__impact" :class="{ 'band__impact--warn': impactAreas(m).length === 0 }">
+                            <i :class="impactAreas(m).length > 0 ? 'bi bi-diagram-3' : 'bi bi-exclamation-circle'"></i>
+                            {{ impactAreas(m).length > 0 ? 'Dipakai di: ' + impactAreas(m).join(' · ') : 'Belum dipakai di laporan manapun — lengkapi mapping COA dulu.' }}
+                          </span>
+                          <span class="band__footer-actions">
+                            <button type="button" class="mark-coa-button" @click.stop="openMappingModal(m)">
+                              <i class="bi bi-link-45deg"></i> Kelola COA
+                            </button>
+                            <button type="button" class="mark-edit-button" @click.stop="openEditModal(m)">
+                              <i class="bi bi-pencil-square"></i> Edit
+                            </button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </td>
-              </tr>
-              <tr v-else-if="store.marks.length === 0">
-                  <td colspan="9" class="text-center py-8 text-muted">No marks found</td>
-              </tr>
-              <tr v-else-if="store.error">
-                  <td colspan="9" class="text-center py-8 text-danger">
-                    Failed to load marks: {{ store.error }}
-                  </td>
-              </tr>
-              <tr v-for="m in store.sortedMarks" :key="m.id" :class="{'mark-row--highlight': m.is_asset || m.is_service || m.is_salary_component || m.is_rental}" class="mark-row">
-                 <td class="px-6 py-4 text-sm text-theme">{{ m.internal_report }}</td>
-                 <td class="px-6 py-4 text-sm text-muted">
-                   <span :class="{'font-semibold': m.is_asset || m.is_salary_component}" :style="m.is_asset || m.is_salary_component ? 'color: var(--color-primary)' : ''">{{ m.personal_use }}</span>
-                 </td>
-                 <td class="px-6 py-4 text-center">
-                   <button
-                     @click="toggleMarkFlag(m, 'is_coretax')"
-                     :disabled="isToggleLoading(m.id, 'is_coretax')"
-                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_coretax ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200' : 'mark-flag-off'"
-                   >
-                     <i v-if="isToggleLoading(m.id, 'is_coretax')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
-                     <i v-else :class="m.is_coretax ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
-                     {{ m.is_coretax ? 'Ya' : 'Tidak' }}
-                   </button>
-                 </td>
-                 <td class="px-6 py-4 text-center">
-                   <span v-if="m.fiscal_category" class="inline-flex items-center px-2 py-1 rounded text-[10px] font-bold tracking-wide"
-                     :class="{
-                       'bg-rose-100 text-rose-800': m.fiscal_category.includes('NON_DEDUCTIBLE'),
-                       'bg-emerald-100 text-emerald-800': m.fiscal_category === 'DEDUCTIBLE',
-                       'bg-blue-100 text-blue-800': m.fiscal_category === 'NON_TAXABLE_INCOME'
-                     }"
-                   >
-                     {{ m.fiscal_category === 'NON_DEDUCTIBLE_PERMANENT' ? 'Non-Deductible' : 
-                        m.fiscal_category === 'DEDUCTIBLE' ? 'Deductible' : m.fiscal_category }}
-                   </span>
-                   <span v-else class="text-[10px] text-muted italic">Inherit COA</span>
-                 </td>
-                 <td class="px-6 py-4 text-center">
-                   <button
-                     @click="toggleMarkFlag(m, 'is_asset')"
-                     :disabled="isToggleLoading(m.id, 'is_asset')"
-                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_asset ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'mark-flag-off'"
-                   >
-                     <i v-if="isToggleLoading(m.id, 'is_asset')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
-                     <i v-else :class="m.is_asset ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
-                     {{ m.is_asset ? 'Aset' : 'Bukan' }}
-                   </button>
-                 </td>
-                 <td class="px-6 py-4 text-center">
-                   <button
-                     @click="toggleMarkFlag(m, 'is_service')"
-                     :disabled="isToggleLoading(m.id, 'is_service')"
-                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_service ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'mark-flag-off'"
-                   >
-                     <i v-if="isToggleLoading(m.id, 'is_service')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
-                     <i v-else :class="m.is_service ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
-                     {{ m.is_service ? 'Jasa' : 'Bukan' }}
-                   </button>
-                 </td>
-                 <td class="px-6 py-4 text-center">
-                   <button
-                     @click="toggleMarkFlag(m, 'is_salary_component')"
-                     :disabled="isToggleLoading(m.id, 'is_salary_component')"
-                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_salary_component ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'mark-flag-off'"
-                   >
-                     <i v-if="isToggleLoading(m.id, 'is_salary_component')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
-                     <i v-else :class="m.is_salary_component ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
-                     {{ m.is_salary_component ? 'Salary' : 'Bukan' }}
-                   </button>
-                 </td>
-                 <td class="px-6 py-4 text-center">
-                   <button
-                     @click="toggleMarkFlag(m, 'is_rental')"
-                     :disabled="isToggleLoading(m.id, 'is_rental')"
-                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60"
-                     :class="m.is_rental ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' : 'mark-flag-off'"
-                   >
-                     <i v-if="isToggleLoading(m.id, 'is_rental')" class="bi bi-arrow-repeat animate-spin mr-1"></i>
-                     <i v-else :class="m.is_rental ? 'bi bi-check-circle-fill mr-1' : 'bi bi-dash-circle mr-1'"></i>
-                     {{ m.is_rental ? 'Sewa' : 'Bukan' }}
-                   </button>
-                 </td>
-                 <td class="px-6 py-4">
-                   <div class="flex flex-col gap-2 mb-2">
-                     <div>
-                       <div class="text-[9px] font-semibold uppercase text-muted">Real</div>
-                       <div v-if="getRealMappings(m).length > 0" class="flex flex-col gap-1 mt-1">
-                         <div
-                           v-for="mapping in getRealMappings(m)"
-                           :key="`real-${mapping.coa_id || mapping.code}-${mapping.type}`"
-                           class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium"
-                           :class="mapping.type === 'DEBIT' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'"
-                         >
-                           <span class="font-mono mr-1">{{ mapping.code }}</span>
-                           <span class="mr-1 text-[9px] truncate max-w-[120px]" :title="mapping.name">{{ mapping.name }}</span>
-                           <span>({{ mapping.type === 'DEBIT' ? 'DB' : 'CR' }})</span>
-                         </div>
-                       </div>
-                       <div v-else class="mt-1">
-                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                           <i class="bi bi-exclamation-circle me-1"></i> Not Mapped
-                         </span>
-                       </div>
-                     </div>
-                     <div>
-                       <div class="text-[9px] font-semibold uppercase text-muted">Coretax</div>
-                       <div v-if="getCoretaxMappings(m).length > 0" class="flex flex-col gap-1 mt-1">
-                         <div
-                           v-for="mapping in getCoretaxMappings(m)"
-                           :key="`coretax-${mapping.coa_id || mapping.code}-${mapping.type}`"
-                           class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium"
-                           :class="mapping.type === 'DEBIT' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'"
-                         >
-                           <span class="font-mono mr-1">{{ mapping.code }}</span>
-                           <span class="mr-1 text-[9px] truncate max-w-[120px]" :title="mapping.name">{{ mapping.name }}</span>
-                           <span>({{ mapping.type === 'DEBIT' ? 'DB' : 'CR' }})</span>
-                         </div>
-                       </div>
-                       <div v-else class="mt-1">
-                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-cyan-50 text-cyan-700 border border-cyan-100">
-                           <i class="bi bi-exclamation-circle me-1"></i> Not Mapped
-                         </span>
-                       </div>
-                     </div>
-                   </div>
-                   <button
-                     @click="openMappingModal(m)"
-                     class="mark-mapping-button"
-                   >
-                     <i class="bi bi-link-45deg"></i>
-                     <span>Manage COA</span>
-                   </button>
-                 </td>
-                 <td class="px-6 py-4 text-right text-sm font-medium">
-                   <button @click="openEditModal(m)" class="action-link action-link--primary me-3">
-                     <i class="bi bi-pencil-square"></i>
-                   </button>
-                   <button @click="deleteMark(m.id)" class="action-link action-link--danger">
-                     <i class="bi bi-trash3"></i>
-                   </button>
-                 </td>
-              </tr>
-           </tbody>
-         </table>
+                </tr>
+              </Transition>
+            </template>
+          </template>
+        </tbody>
+      </table>
     </TableShell>
 
-    <MarkFormModal 
-        :isOpen="showModal" 
+    <MarkFormModal
+        :isOpen="showModal"
         :markToEdit="selectedMark"
         @close="showModal = false"
         @saved="handleMarkSaved"
@@ -232,74 +238,115 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useMarksStore } from '../stores/marks';
+import { useNotifications } from '../composables/useNotifications';
+import { getRealMappings, getCoretaxMappings, isMarkUnmapped, getMarkImpactAreas } from '../utils/marks';
 import MarkFormModal from '../components/marks/MarkFormModal.vue';
 import CoaMappingModal from '../components/marks/CoaMappingModal.vue';
+import MarkTraitChips from '../components/marks/MarkTraitChips.vue';
+import MarkCoverageDots from '../components/marks/MarkCoverageDots.vue';
+import MarkMappingGroup from '../components/marks/MarkMappingGroup.vue';
+import MarkFlagSwitch from '../components/marks/MarkFlagSwitch.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import TableShell from '../components/ui/TableShell.vue';
 
 const store = useMarksStore();
+const notify = useNotifications();
+
+const FILTERS = [
+  { key: 'all', label: 'Semua' },
+  { key: 'unmapped', label: 'Belum Mapping' },
+  { key: 'is_salary_component', label: 'Gaji' },
+  { key: 'is_rental', label: 'Sewa' },
+  { key: 'is_asset', label: 'Aset' },
+  { key: 'is_service', label: 'Jasa' }
+];
+
+const FISCAL_FILTERS = [
+  { key: 'DEDUCTIBLE', label: 'Deductible' },
+  { key: 'NON_DEDUCTIBLE', label: 'Non-Deductible' },
+  { key: 'NON_TAXABLE_INCOME', label: 'Non-Taxable' }
+];
+
+const FLAGS = [
+  { key: 'is_coretax', label: 'Coretax' },
+  { key: 'is_asset', label: 'Aset' },
+  { key: 'is_service', label: 'Jasa' },
+  { key: 'is_salary_component', label: 'Salary' },
+  { key: 'is_rental', label: 'Sewa Tempat' }
+];
+
 const showModal = ref(false);
 const selectedMark = ref(null);
 const showMappingModal = ref(false);
 const selectedMarkForMapping = ref(null);
-const togglingFlags = ref({});
-const totalMarks = computed(() => store.sortedMarks.length);
-const getRealMappings = (mark) => {
-  if (Array.isArray(mark?.mappings_real)) return mark.mappings_real;
-  if (Array.isArray(mark?.mappings)) {
-    return mark.mappings.filter((mapping) => (
-      String(mapping?.report_type || 'real').trim().toLowerCase() === 'real'
-    ));
-  }
-  return [];
-};
+const togglingFlags = reactive({});
+const expandedId = ref(null);
+const searchQuery = ref('');
+const activeFilter = ref('all');
+const activeFiscal = ref('');
 
-const getCoretaxMappings = (mark) => (
-  Array.isArray(mark?.mappings_coretax)
-    ? mark.mappings_coretax
-    : (Array.isArray(mark?.mappings)
-        ? mark.mappings.filter((mapping) => (
-          String(mapping?.report_type || '').trim().toLowerCase() === 'coretax'
-        ))
-        : [])
-);
+const marks = computed(() => store.sortedMarks || []);
+const totalMarks = computed(() => marks.value.length);
+const unmappedCount = computed(() => marks.value.filter(isMarkUnmapped).length);
+const realMappedCount = computed(() => marks.value.filter((m) => getRealMappings(m).length > 0).length);
+const coretaxMappedCount = computed(() => marks.value.filter((m) => getCoretaxMappings(m).length > 0).length);
 
-const unmappedCount = computed(() => (
-    (store.sortedMarks || []).filter(mark => (
-      getRealMappings(mark).length === 0 && getCoretaxMappings(mark).length === 0
-    )).length
+const isFiltering = computed(() => (
+  searchQuery.value.trim() !== '' || activeFilter.value !== 'all' || activeFiscal.value !== ''
 ));
-const headerBadges = [
-    { icon: 'bi bi-link-45deg', label: 'COA mapping' },
-    { icon: 'bi bi-funnel', label: 'Reporting flags' }
-];
 
-onMounted(() => {
-    store.fetchMarks();
-});
+const visibleMarks = computed(() => marks.value.filter((mark) => {
+  const query = searchQuery.value.trim().toLowerCase();
+  if (query) {
+    const haystack = `${mark.internal_report || ''} ${mark.personal_use || ''}`.toLowerCase();
+    if (!haystack.includes(query)) return false;
+  }
+  if (activeFilter.value === 'unmapped') {
+    if (!isMarkUnmapped(mark)) return false;
+  } else if (activeFilter.value !== 'all' && !Boolean(mark[activeFilter.value])) {
+    return false;
+  }
+  if (activeFiscal.value) {
+    const fiscal = String(mark.fiscal_category || '');
+    if (activeFiscal.value === 'NON_DEDUCTIBLE') {
+      if (!fiscal.startsWith('NON_DEDUCTIBLE')) return false;
+    } else if (fiscal !== activeFiscal.value) {
+      return false;
+    }
+  }
+  return true;
+}));
+
+const impactAreas = (mark) => getMarkImpactAreas(mark);
+
+const toggleExpand = (mark) => {
+  expandedId.value = expandedId.value === mark.id ? null : mark.id;
+};
 
 const getToggleKey = (markId, flagKey) => `${markId}:${flagKey}`;
 
-const isToggleLoading = (markId, flagKey) => {
-    return Boolean(togglingFlags.value[getToggleKey(markId, flagKey)]);
-};
+const isToggleLoading = (markId, flagKey) => Boolean(togglingFlags[getToggleKey(markId, flagKey)]);
 
 const toggleMarkFlag = async (mark, flagKey) => {
-    const toggleKey = getToggleKey(mark.id, flagKey);
-    if (togglingFlags.value[toggleKey]) return;
+  const toggleKey = getToggleKey(mark.id, flagKey);
+  if (togglingFlags[toggleKey]) return;
 
-    togglingFlags.value = { ...togglingFlags.value, [toggleKey]: true };
-    try {
-        await store.updateMarkFlag(mark.id, flagKey, !Boolean(mark[flagKey]));
-    } catch (error) {
-        alert('Gagal update status mark: ' + (error.response?.data?.error || error.message));
-    } finally {
-        const nextState = { ...togglingFlags.value };
-        delete nextState[toggleKey];
-        togglingFlags.value = nextState;
-    }
+  togglingFlags[toggleKey] = true;
+  try {
+    await store.updateMarkFlag(mark.id, flagKey, !Boolean(mark[flagKey]));
+  } catch (error) {
+    notify.error('Gagal update status mark: ' + (error.response?.data?.error || error.message));
+  } finally {
+    delete togglingFlags[toggleKey];
+  }
+};
+
+const clearFilters = () => {
+  searchQuery.value = '';
+  activeFilter.value = 'all';
+  activeFiscal.value = '';
 };
 
 const openAddModal = () => {
@@ -324,91 +371,372 @@ const openMappingModal = (mark) => {
 const handleMappingUpdated = async () => {
     // Refresh marks to show new mappings
     await store.fetchMarks();
-    console.log('Mapping updated successfully');
 };
 
 const handleMarkSaved = async () => {
     // Refresh marks to show updated data
     await store.fetchMarks();
     showModal.value = false;
-    console.log('Mark saved successfully');
 };
 
 const deleteMark = async (id) => {
-    if(confirm("Are you sure you want to delete this mark?")) {
-        await store.deleteMark(id);
+    if (confirm('Are you sure you want to delete this mark?')) {
+        try {
+            await store.deleteMark(id);
+            if (expandedId.value === id) expandedId.value = null;
+            notify.success('Mark dihapus.');
+        } catch (error) {
+            notify.error('Gagal menghapus mark: ' + (error.response?.data?.error || error.message));
+        }
     }
 };
+
+onMounted(() => {
+    store.fetchMarks();
+});
 </script>
 
 <style scoped>
-.surface-header {
-  border-color: var(--color-border);
-  background: var(--color-surface-muted);
+/* ---- header pills ---- */
+.stat-pill--warn {
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
+  color: var(--color-warning);
 }
 
+.stat-pill--mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ---- toolbar ---- */
 .marks-toolbar {
-  @apply flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between;
+  @apply flex w-full flex-col gap-3;
 }
 
-.marks-toolbar__meta {
-  @apply flex items-start gap-4;
+.marks-toolbar__row {
+  @apply flex w-full flex-wrap items-center gap-3;
 }
 
-.marks-toolbar__icon {
-  @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-lg;
-  background:
-    linear-gradient(135deg, rgba(45, 182, 163, 0.18), rgba(15, 118, 110, 0.08)),
-    var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-soft);
+.marks-search {
+  @apply lg:w-72 shrink-0;
 }
 
-.marks-toolbar__actions {
-  @apply flex shrink-0 items-center lg:ml-auto;
+.marks-search__input {
+  @apply w-full bg-transparent py-1.5 pl-10 pr-8 text-sm outline-none;
+  color: var(--color-text);
 }
 
-.marks-toolbar__actions .btn-primary {
-  @apply min-h-[44px] px-5;
-}
-
-.mark-row {
-  transition: background-color 160ms ease;
-}
-
-.mark-row:hover {
-  background: rgba(15, 118, 110, 0.05);
-}
-
-.mark-row--highlight {
-  background: rgba(15, 118, 110, 0.06);
-}
-
-.mark-flag-off {
-  background: var(--color-surface-muted);
+.marks-search__input::placeholder {
   color: var(--color-text-muted);
 }
 
-.mark-mapping-button {
-  @apply flex w-full items-center justify-center gap-1 rounded px-2 py-1 text-[10px] transition-colors;
-  background: rgba(15, 118, 110, 0.10);
+.marks-filters {
+  @apply flex flex-wrap items-center gap-1.5;
+}
+
+.marks-filters__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  margin-right: 2px;
+}
+
+.filter-chip {
+  @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.filter-chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.filter-chip--active {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
   color: var(--color-primary);
 }
 
-.mark-mapping-button:hover {
-  background: rgba(15, 118, 110, 0.16);
+.filter-chip:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
+.filter-chip__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.marks-toolbar__meta {
+  @apply lg:ml-auto shrink-0 text-xs;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+/* ---- table ---- */
+.marks-table {
+  min-width: 880px;
+}
+
+.marks-table thead th {
+  @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider;
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.marks-table tbody td {
+  @apply px-4 py-3 text-sm align-middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.marks-table__chevron-col {
+  @apply w-10 pr-0;
+}
+
+.marks-table__actions-col {
+  @apply w-24 text-right;
+}
+
+.mark-row {
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.mark-row:hover td {
+  background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+}
+
+.mark-row--open td,
+.mark-row--open:hover td {
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  border-bottom-color: transparent;
+}
+
+.mark-row--unmapped .mark-row__internal {
+  color: var(--color-warning);
+}
+
+.mark-expand {
+  @apply inline-flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+}
+
+.mark-expand:hover {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.mark-expand:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.mark-expand i {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mark-expand--open i {
+  transform: rotate(180deg);
+}
+
+.mark-row__names {
+  @apply flex flex-col gap-0.5 min-w-0;
+}
+
+.mark-row__internal {
+  @apply text-sm font-bold;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mark-row__internal-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.mark-row__unmapped-tag {
+  @apply inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold;
+  background: color-mix(in srgb, var(--color-warning) 13%, transparent);
+  color: var(--color-warning);
+  white-space: nowrap;
+}
+
+.mark-row__personal {
+  @apply text-xs truncate;
+  color: var(--color-text-muted);
+}
+
+.marks-table__state {
+  @apply py-10 text-center;
+}
+
+.marks-table__state .btn-primary,
+.marks-table__state .btn-secondary {
+  @apply inline-flex;
+}
+
+.marks-table__state-icon {
+  @apply mb-2 block text-2xl;
+  color: var(--color-text-muted);
+}
+
+/* ---- expansion band: the one authored motion moment ---- */
+.band-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.band-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.band-enter-active .band-wrap {
+  transition: grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.band-leave-active .band-wrap {
+  transition: grid-template-rows 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.band-enter-from .band-wrap,
+.band-leave-to .band-wrap {
+  grid-template-rows: 0fr;
+}
+
+.band-enter-active .band-clip,
+.band-leave-active .band-clip {
+  transition: opacity 180ms ease;
+}
+
+.band-enter-from .band-clip,
+.band-leave-to .band-clip {
+  opacity: 0;
+}
+
+.mark-band-row td {
+  padding: 0 !important;
+  background: var(--color-surface-muted);
+}
+
+.band {
+  @apply grid gap-6 px-5 pt-4 pb-3;
+  grid-template-columns: 240px 1fr 1fr;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.band__flags {
+  @apply flex flex-col gap-2.5;
+}
+
+.band__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+}
+
+.band__footer {
+  @apply flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between;
+}
+
+.band__impact {
+  @apply inline-flex items-center gap-2 text-xs;
+  color: var(--color-text-muted);
+}
+
+.band__impact--warn {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.band__footer-actions {
+  @apply flex items-center gap-2 shrink-0;
+}
+
+.mark-coa-button {
+  @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.mark-coa-button:hover {
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.mark-coa-button:focus-visible,
+.mark-edit-button:focus-visible,
+.action-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.mark-edit-button {
+  @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.mark-edit-button:hover {
+  border-color: var(--color-border-strong);
+}
+
+/* ---- action links (kept from incumbent) ---- */
 .action-link {
-  transition: color 160ms ease;
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors;
 }
 
 .action-link--primary {
   color: var(--color-primary);
 }
 
+.action-link--primary:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
 .action-link--danger {
   color: var(--color-danger);
+}
+
+.action-link--danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+@media (max-width: 900px) {
+  .band {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band-enter-active .band-wrap,
+  .band-leave-active .band-wrap,
+  .band-enter-active .band-clip,
+  .band-leave-active .band-clip,
+  .mark-expand i,
+  .mark-row {
+    transition: none;
+  }
 }
 </style>

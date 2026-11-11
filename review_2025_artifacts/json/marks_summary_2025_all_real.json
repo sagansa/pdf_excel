@@ -1,0 +1,487 @@
+{
+  "rows": [
+    {
+      "mark_id": "81cc00a2-df18-4355-8c34-50c4eb743bad",
+      "mark_name": "bahandle koja",
+      "total_debit": 5162610.0,
+      "total_credit": 0.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "b2a73f4f-7510-40eb-9784-1ececf1af09a",
+      "mark_name": "bayar CC BCA",
+      "total_debit": 23873112.0,
+      "total_credit": 23873112.0,
+      "transaction_count": 25
+    },
+    {
+      "mark_id": "c453294f-4057-4b82-a56e-4a0aab397015",
+      "mark_name": "bayar cc dbs",
+      "total_debit": 308995574.0,
+      "total_credit": 308995574.0,
+      "transaction_count": 28
+    },
+    {
+      "mark_id": "75fbae35-97a8-42ab-b1d3-3017c7db4040",
+      "mark_name": "bayar CC Mandiri",
+      "total_debit": 25562043.0,
+      "total_credit": 25562046.0,
+      "transaction_count": 26
+    },
+    {
+      "mark_id": "896ee69c-69bd-49f5-870a-8021f6519f9c",
+      "mark_name": "bensin",
+      "total_debit": 1576059.0,
+      "total_credit": 0.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "81a021e4-2233-48f7-ad9b-626dfde9777e",
+      "mark_name": "biaya angkut",
+      "total_debit": 8650000.0,
+      "total_credit": 0.0,
+      "transaction_count": 5
+    },
+    {
+      "mark_id": "f458f337-6a8a-4340-8b51-8685b42e5557",
+      "mark_name": "biaya angkut - refund",
+      "total_debit": 12337845.0,
+      "total_credit": 12336845.0,
+      "transaction_count": 6
+    },
+    {
+      "mark_id": "c2171c37-12f2-4ad6-bd94-75ce34c9ad44",
+      "mark_name": "biaya angkut pegawai",
+      "total_debit": 600000.0,
+      "total_credit": 0.0,
+      "transaction_count": 2
+    },
+    {
+      "mark_id": "094576be-4c16-4895-85b3-228eadc05786",
+      "mark_name": "biaya bank",
+      "total_debit": 6663635.0,
+      "total_credit": 2.0,
+      "transaction_count": 236
+    },
+    {
+      "mark_id": "43c5b5d8-b52d-4218-a573-799fbd44afba",
+      "mark_name": "biaya sekolah",
+      "total_debit": 89767600.0,
+      "total_credit": 0.0,
+      "transaction_count": 43
+    },
+    {
+      "mark_id": "4314efc1-2872-48c4-b035-5986eb52bb61",
+      "mark_name": "broker",
+      "total_debit": 51650000.0,
+      "total_credit": 0.0,
+      "transaction_count": 4
+    },
+    {
+      "mark_id": "22fe56aa-3c65-435c-a5cf-919826bcf6fb",
+      "mark_name": "bunga pinjaman",
+      "total_debit": 491692.0,
+      "total_credit": 0.0,
+      "transaction_count": 15
+    },
+    {
+      "mark_id": "958dafc3-1db4-4225-a112-3915c61c5b79",
+      "mark_name": "bunga tabungan",
+      "total_debit": 0.0,
+      "total_credit": 19726.21,
+      "transaction_count": 26
+    },
+    {
+      "mark_id": "0fe7b358-dde5-41bc-895c-8078376afcaf",
+      "mark_name": "cashback",
+      "total_debit": 0.0,
+      "total_credit": 15004.0,
+      "transaction_count": 1
+    },
+    {
+      "mark_id": "bd3d4253-75f0-452f-8876-5c8fbbb32ba9",
+      "mark_name": "charging, bensin, toll",
+      "total_debit": 9235025.0,
+      "total_credit": 0.0,
+      "transaction_count": 23
+    },
+    {
+      "mark_id": "d815407b-362f-4a55-9ea3-3f7e500d8a10",
+      "mark_name": "D/O",
+      "total_debit": 6898085.0,
+      "total_credit": 0.0,
+      "transaction_count": 4
+    },
+    {
+      "mark_id": "853afd59-d7ee-42a6-8366-0e711c50e12f",
+      "mark_name": "denda pajak",
+      "total_debit": 9076169.0,
+      "total_credit": 0.0,
+      "transaction_count": 4
+    },
+    {
+      "mark_id": "30c0f1e8-3b85-40e1-8b10-966b9f528178",
+      "mark_name": "gaji owner",
+      "total_debit": 6202539.0,
+      "total_credit": 0.0,
+      "transaction_count": 15
+    },
+    {
+      "mark_id": "218bac77-7a41-4b8c-90c1-00c786928a13",
+      "mark_name": "gaji owner - sewa tempat",
+      "total_debit": 45000000.0,
+      "total_credit": 0.0,
+      "transaction_count": 2
+    },
+    {
+      "mark_id": "e34656b9-1dec-4a7e-9e8b-70b9b78aa235",
+      "mark_name": "gaji pegawai - bulanan",
+      "total_debit": 146397860.0,
+      "total_credit": 0.0,
+      "transaction_count": 73
+    },
+    {
+      "mark_id": "cf145903-695f-4dd0-9004-01c18f7e91e7",
+      "mark_name": "gaji pegawai - harian",
+      "total_debit": 29305000.0,
+      "total_credit": 0.0,
+      "transaction_count": 38
+    },
+    {
+      "mark_id": "95996ea0-bf26-4e12-8b66-f4e6170f1e9c",
+      "mark_name": "gaji pegawai - kasbon",
+      "total_debit": 4700000.0,
+      "total_credit": 0.0,
+      "transaction_count": 5
+    },
+    {
+      "mark_id": "025f4b9d-7a19-482f-983d-97cb1ce84207",
+      "mark_name": "Handling, Trucking, SSM",
+      "total_debit": 29800000.0,
+      "total_credit": 0.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "42c0fee8-4c5a-414d-8616-674fa1f972eb",
+      "mark_name": "hibah - orang tua",
+      "total_debit": 2503000.0,
+      "total_credit": 0.0,
+      "transaction_count": 4
+    },
+    {
+      "mark_id": "ddd89f4a-cd46-4246-98b7-c40623067ddf",
+      "mark_name": "hiburan",
+      "total_debit": 5794087.0,
+      "total_credit": 0.0,
+      "transaction_count": 56
+    },
+    {
+      "mark_id": "8a978e14-3925-496a-897a-de757d23d459",
+      "mark_name": "keamanan & kebersihan",
+      "total_debit": 4200000.0,
+      "total_credit": 0.0,
+      "transaction_count": 24
+    },
+    {
+      "mark_id": "43d1617c-d9eb-4e92-b152-85ab34f3cc6e",
+      "mark_name": "kesehatan pegawai",
+      "total_debit": 15880700.0,
+      "total_credit": 0.0,
+      "transaction_count": 22
+    },
+    {
+      "mark_id": "dc5d8560-f5eb-4edc-9121-4ea3906ab6c2",
+      "mark_name": "langganan IT",
+      "total_debit": 1905709.0,
+      "total_credit": 147.0,
+      "transaction_count": 7
+    },
+    {
+      "mark_id": "01cd45a2-6978-4597-a694-cac038bbc671",
+      "mark_name": "Lift-Off Depo SPM",
+      "total_debit": 2230100.0,
+      "total_credit": 0.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "301611a0-b804-407e-a1c8-d0013b35fa25",
+      "mark_name": "listrik, air, internet",
+      "total_debit": 31504659.0,
+      "total_credit": 312400.0,
+      "transaction_count": 53
+    },
+    {
+      "mark_id": "802a3720-ed9f-4699-b732-dfe2f6fad91d",
+      "mark_name": "listrik, air, internet - pribadi",
+      "total_debit": 34294497.0,
+      "total_credit": 0.0,
+      "transaction_count": 12
+    },
+    {
+      "mark_id": "94142415-0a62-4315-8f45-897711c1369f",
+      "mark_name": "luar negeri",
+      "total_debit": 130841760.0,
+      "total_credit": 53433345.0,
+      "transaction_count": 393
+    },
+    {
+      "mark_id": "028aa451-ffb1-42f5-9654-08622e83c3e4",
+      "mark_name": "makanan & minuman",
+      "total_debit": 65642171.0,
+      "total_credit": 400000.0,
+      "transaction_count": 745
+    },
+    {
+      "mark_id": "8a3b73af-ad8e-4dc1-960a-1adfbe26ce8c",
+      "mark_name": "materai",
+      "total_debit": 203800.0,
+      "total_credit": 0.0,
+      "transaction_count": 15
+    },
+    {
+      "mark_id": "138390a6-eba4-4b78-8460-a6fdba7f5ad1",
+      "mark_name": "not used",
+      "total_debit": 118400.0,
+      "total_credit": 118400.0,
+      "transaction_count": 18
+    },
+    {
+      "mark_id": "b6261b40-ebd0-43d7-9353-ac80d58869cf",
+      "mark_name": "ongkos kirim",
+      "total_debit": 21652300.0,
+      "total_credit": 0.0,
+      "transaction_count": 90
+    },
+    {
+      "mark_id": "3912fbec-1027-4daf-8e6c-81361ae11b53",
+      "mark_name": "pajak bunga",
+      "total_debit": 3945.23,
+      "total_credit": 0.0,
+      "transaction_count": 24
+    },
+    {
+      "mark_id": "22a86c74-7e78-4137-9941-dfcd1b45eafa",
+      "mark_name": "pajak kendaraan",
+      "total_debit": 8119200.0,
+      "total_credit": 175500.0,
+      "transaction_count": 15
+    },
+    {
+      "mark_id": "71c434c3-b692-4462-aa4f-10b7f32cbab8",
+      "mark_name": "parkir kendaraan",
+      "total_debit": 4857000.0,
+      "total_credit": 0.0,
+      "transaction_count": 13
+    },
+    {
+      "mark_id": "7f3fa445-df3b-49ee-a4dd-0162468171f0",
+      "mark_name": "PBB",
+      "total_debit": 4555252.0,
+      "total_credit": 0.0,
+      "transaction_count": 4
+    },
+    {
+      "mark_id": "0036af4d-b9b7-44bf-a155-f4cddeb0ee57",
+      "mark_name": "pembelian - convensional",
+      "total_debit": 125467000.0,
+      "total_credit": 0.0,
+      "transaction_count": 4
+    },
+    {
+      "mark_id": "a5051d61-e49e-455d-9177-314895670206",
+      "mark_name": "pembelian - direct",
+      "total_debit": 393098281.0,
+      "total_credit": 0.0,
+      "transaction_count": 453
+    },
+    {
+      "mark_id": "fb272cbb-eb16-43a5-a01d-bb2fb84d9709",
+      "mark_name": "pembelian - impor",
+      "total_debit": 780803090.0,
+      "total_credit": 0.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "814e455f-d831-40fb-a1d9-80cc506643e5",
+      "mark_name": "pembelian - online",
+      "total_debit": 1206845.0,
+      "total_credit": 0.0,
+      "transaction_count": 2
+    },
+    {
+      "mark_id": "73226dbc-dad2-4755-bf25-6f0987d01b1e",
+      "mark_name": "pembelian - pribadi",
+      "total_debit": 32385315.0,
+      "total_credit": 0.0,
+      "transaction_count": 204
+    },
+    {
+      "mark_id": "b7d2a277-1fd0-4cf2-b061-b276cb6aa652",
+      "mark_name": "pembelian aset berwujud - perusahaan",
+      "total_debit": 51753209.0,
+      "total_credit": 15367280.0,
+      "transaction_count": 31
+    },
+    {
+      "mark_id": "a9d8b912-0ebf-4914-b47b-2bde25464f73",
+      "mark_name": "pendapatan pribadi",
+      "total_debit": 0.0,
+      "total_credit": 800000.0,
+      "transaction_count": 2
+    },
+    {
+      "mark_id": "9758742d-8568-4821-9812-98684a466013",
+      "mark_name": "penjualan - convensional",
+      "total_debit": 0.0,
+      "total_credit": 242248592.0,
+      "transaction_count": 8
+    },
+    {
+      "mark_id": "d2f708bf-729a-454a-bdd9-31e1343f1928",
+      "mark_name": "penjualan - online shop",
+      "total_debit": 0.0,
+      "total_credit": 774248239.0,
+      "transaction_count": 521
+    },
+    {
+      "mark_id": "32cf9680-a3ae-4731-8595-b5fa841c9133",
+      "mark_name": "penjualan - refund",
+      "total_debit": 100000.0,
+      "total_credit": 0.0,
+      "transaction_count": 2
+    },
+    {
+      "mark_id": "9707c9ab-8035-4f80-b5fe-06b7d204238c",
+      "mark_name": "penjualan - store",
+      "total_debit": 0.0,
+      "total_credit": 152995900.0,
+      "transaction_count": 1077
+    },
+    {
+      "mark_id": "946d1e10-6021-474b-bdd4-c414fe27bb31",
+      "mark_name": "penjualan - web",
+      "total_debit": 0.0,
+      "total_credit": 833106061.3,
+      "transaction_count": 422
+    },
+    {
+      "mark_id": "1934a04f-f2ac-4a9c-89e3-bc54592af85c",
+      "mark_name": "penjualan aset pribadi",
+      "total_debit": 0.0,
+      "total_credit": 6750000.0,
+      "transaction_count": 2
+    },
+    {
+      "mark_id": "97ec6234-bfaf-4121-949e-2b724e2d95c6",
+      "mark_name": "perbaikan non-aset",
+      "total_debit": 5420460.0,
+      "total_credit": 0.0,
+      "transaction_count": 21
+    },
+    {
+      "mark_id": "10b2d8da-30a9-4ef9-bab8-3964cb03ac38",
+      "mark_name": "perjalanan dinas",
+      "total_debit": 3210011.0,
+      "total_credit": 0.0,
+      "transaction_count": 2
+    },
+    {
+      "mark_id": "a362fa91-d0d5-4b63-872c-cfe84070485b",
+      "mark_name": "PNBP",
+      "total_debit": 142000.0,
+      "total_credit": 0.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "8f35c215-e2cf-4690-8732-8b5db900f5d1",
+      "mark_name": "pph badan - pajak dibayar dimuka",
+      "total_debit": 19516650.0,
+      "total_credit": 0.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "73e27be9-59cf-4fe1-8c43-11d5511c1d7a",
+      "mark_name": "pph badan - pelunasan",
+      "total_debit": 12563650.0,
+      "total_credit": 12563650.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "69d26ea8-819f-4fde-8163-bbf958f14c54",
+      "mark_name": "pph badan - tahun berjalan",
+      "total_debit": 20263430.0,
+      "total_credit": 20263430.0,
+      "transaction_count": 2
+    },
+    {
+      "mark_id": "93748fcf-da14-4c86-a266-eabb3d0f4bb5",
+      "mark_name": "PPh perorangan",
+      "total_debit": 2361800.0,
+      "total_credit": 0.0,
+      "transaction_count": 1
+    },
+    {
+      "mark_id": "2a32fee1-6237-4ad9-9812-4dce84db9f27",
+      "mark_name": "PPN impor",
+      "total_debit": 85873676.0,
+      "total_credit": 0.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "cee450a3-9763-4cee-82a1-36643f6f2ff5",
+      "mark_name": "service kendaraan",
+      "total_debit": 9450960.0,
+      "total_credit": 0.0,
+      "transaction_count": 25
+    },
+    {
+      "mark_id": "8a21932f-ae45-474b-a363-2b5294a73c50",
+      "mark_name": "Storage",
+      "total_debit": 5429360.0,
+      "total_credit": 0.0,
+      "transaction_count": 3
+    },
+    {
+      "mark_id": "5588d0c8-b353-487d-8e0f-7071d14b4862",
+      "mark_name": "sumbangan",
+      "total_debit": 100000.0,
+      "total_credit": 500000.0,
+      "transaction_count": 2
+    },
+    {
+      "mark_id": "d66c3c6e-cfde-4586-af1f-287e2bbcd644",
+      "mark_name": "THR",
+      "total_debit": 11141119.0,
+      "total_credit": 0.0,
+      "transaction_count": 7
+    },
+    {
+      "mark_id": "06adf1d7-b93f-4e96-a36f-066aff3d23fa",
+      "mark_name": "titip pembelian",
+      "total_debit": 13308910.0,
+      "total_credit": 3197000.0,
+      "transaction_count": 12
+    },
+    {
+      "mark_id": "abce4cdf-550f-405f-8af8-0633414beda3",
+      "mark_name": "titip pembelian - SPPD",
+      "total_debit": 67181240.0,
+      "total_credit": 49928400.0,
+      "transaction_count": 55
+    },
+    {
+      "mark_id": "90198a93-9c85-4115-9d62-0a164c9ebfb4",
+      "mark_name": "toll dan parkir",
+      "total_debit": 11401000.0,
+      "total_credit": 0.0,
+      "transaction_count": 26
+    },
+    {
+      "mark_id": "a235e29a-29a2-411a-a348-d6f23524830d",
+      "mark_name": "Transfer Antar Rekening",
+      "total_debit": 1366000000.0,
+      "total_credit": 1366000000.0,
+      "transaction_count": 24
+    }
+  ]
+}

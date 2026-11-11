@@ -1,0 +1,197 @@
+{
+  "as_of_date": "2025-12-31",
+  "assets": {
+    "current": [
+      {
+        "id": "a7d3302c-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1101",
+        "name": "Kas dan Setara Kas",
+        "subcategory": "Current Assets",
+        "amount": 216576781.17,
+        "category": "ASSET",
+        "coretax_adjusted_amount": 216576781.17,
+        "historical_amount": -9681739.83,
+        "coretax_reclassification_source_code": "1125"
+      },
+      {
+        "id": "coretax_historical_cash_2025-12-31_all",
+        "code": "1101",
+        "name": "Kas dan Setara Kas (Historis Coretax)",
+        "subcategory": "Current Assets",
+        "amount": -9681739.83,
+        "category": "ASSET",
+        "is_computed": true,
+        "is_display_only": true,
+        "is_child_row": true,
+        "parent_code": "1101",
+        "exclude_from_total": true,
+        "hide_in_pdf": true
+      },
+      {
+        "id": "coretax_historical_related_receivable_2025-12-31_all",
+        "code": "1125",
+        "name": "Piutang Lainnya - Hubungan Istimewa (Historis Coretax)",
+        "subcategory": "Current Assets",
+        "amount": 226258521.0,
+        "category": "ASSET",
+        "is_computed": true,
+        "is_display_only": true,
+        "is_child_row": true,
+        "parent_code": "1101",
+        "exclude_from_total": true,
+        "hide_in_pdf": true
+      },
+      {
+        "id": "inv_2025",
+        "code": "1401",
+        "name": "Persediaan (Ending)",
+        "subcategory": "Current Assets",
+        "amount": 306176190.88,
+        "category": "ASSET"
+      },
+      {
+        "id": "computed_prepaid_tax_2025-12-31_all",
+        "code": "1421",
+        "name": "Biaya Dibayar di Muka",
+        "subcategory": "Prepaid Expenses",
+        "amount": 6000000.0,
+        "category": "ASSET"
+      },
+      {
+        "id": "a7d34710-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1423",
+        "name": "Pajak Dibayar di Muka",
+        "subcategory": "Current Assets",
+        "amount": 19516650.0,
+        "category": "ASSET"
+      }
+    ],
+    "non_current": [
+      {
+        "id": "a7d36a74-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1529",
+        "name": "Aset Tetap Lainnya",
+        "subcategory": "Non-Current Assets",
+        "amount": 97180466.0,
+        "category": "ASSET"
+      },
+      {
+        "id": "a7d36aba-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1530",
+        "name": "Akumulasi Penyusutan - Aset Tetap Lainnya",
+        "subcategory": "Non-Current Assets",
+        "amount": -36001110.75,
+        "category": "ASSET"
+      },
+      {
+        "id": "a7d36c90-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1600",
+        "name": "Aset Tak Berwujud",
+        "subcategory": "Non-Current Assets",
+        "amount": 637595.0,
+        "category": "ASSET"
+      },
+      {
+        "id": "a7d36cd6-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "1601",
+        "name": "Akumulasi Amortisasi - Aset Tak Berwujud",
+        "subcategory": "Non-Current Assets",
+        "amount": -210763.75,
+        "category": "ASSET"
+      }
+    ],
+    "total": 609875808.55
+  },
+  "liabilities": {
+    "current": [
+      {
+        "id": "a7d38176-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "2191",
+        "name": "Utang Pajak",
+        "subcategory": "Current Liabilities",
+        "amount": 17901630.0,
+        "category": "LIABILITY"
+      },
+      {
+        "id": "a7d38216-0afd-11f1-8b8c-f5e9afae5cc2",
+        "code": "2195",
+        "name": "Beban yang Masih Harus Dibayar",
+        "subcategory": "Current Liabilities",
+        "amount": 826527.0,
+        "category": "LIABILITY"
+      }
+    ],
+    "non_current": [],
+    "total": 18728157.0
+  },
+  "equity": {
+    "items": [
+      {
+        "id": "computed_retained_earnings_parent_2025-12-31_all",
+        "code": "3200",
+        "name": "Laba Ditahan",
+        "subcategory": "Retained Earnings",
+        "amount": 222186498.64999986,
+        "category": "EQUITY",
+        "is_computed": true,
+        "is_parent_row": true,
+        "previous_year_retained_earnings": 2186423.875,
+        "current_year_net_income": 220000074.77499986
+      },
+      {
+        "id": "computed_net_income_child_2025-12-31_all",
+        "code": "4800",
+        "name": "Laba/Rugi Tahun Berjalan",
+        "subcategory": "Current Year Earnings",
+        "amount": 220000074.77499986,
+        "category": "EQUITY",
+        "is_computed": true,
+        "is_child_row": true,
+        "parent_code": "3200",
+        "exclude_from_total": true,
+        "hide_in_pdf": true
+      },
+      {
+        "id": "computed_prev_retained_earnings_child_2025-12-31_all",
+        "code": "3200",
+        "name": "Laba Ditahan Tahun Sebelumnya",
+        "subcategory": "Retained Earnings",
+        "amount": 2186423.875,
+        "category": "EQUITY",
+        "is_computed": true,
+        "is_child_row": true,
+        "parent_code": "3200",
+        "exclude_from_total": true,
+        "hide_in_pdf": true
+      },
+      {
+        "id": "computed_balance_adjustment_2025-12-31_all",
+        "code": "3999",
+        "name": "Penyesuaian Saldo Pembuka",
+        "subcategory": "Balance Adjustment",
+        "amount": 368961152.9000001,
+        "category": "EQUITY",
+        "is_computed": true
+      }
+    ],
+    "total": 591147651.55
+  },
+  "current_year_net_income": 220000074.77499986,
+  "previous_year_retained_earnings": 2186423.875,
+  "retained_earnings_total": 222186498.64999986,
+  "total_assets": 609875808.55,
+  "total_liabilities": 18728157.0,
+  "total_equity": 591147651.55,
+  "computed_liabilities": {
+    "service_tax_payable": 0.0
+  },
+  "coretax_cash_reclassification": {
+    "cash_code": "1101",
+    "related_receivable_code": "1125",
+    "original_cash_amount": -9681739.83,
+    "original_related_receivable_amount": 226258521.0,
+    "final_cash_amount": 216576781.17
+  },
+  "total_liabilities_and_equity": 609875808.55,
+  "is_balanced": true
+}

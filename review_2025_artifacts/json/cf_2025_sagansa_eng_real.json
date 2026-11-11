@@ -1,0 +1,377 @@
+{
+  "period": {
+    "start_date": "2025-01-01",
+    "end_date": "2025-12-31"
+  },
+  "sections": {
+    "operating": {
+      "name": "Operating Activities",
+      "inflow_total": 242248592.0,
+      "outflow_total": 177122000.0,
+      "net_cash": 65126592.0,
+      "count": 18,
+      "items": [
+        {
+          "id": "af98faa6-347b-4c4a-b651-ff7027c3484c",
+          "txn_date": "2025-01-09T00:00:00",
+          "description": "BI-FAST CR BIF TRANSFER DR  087 PT MURI AGUNG ABAD",
+          "amount": 33250000.0,
+          "db_cr": "DB",
+          "signed_amount": 33250000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "penjualan - convensional"
+        },
+        {
+          "id": "da473dd6-c3f2-45d5-8ec8-9a9859df8c8f",
+          "txn_date": "2025-01-16T00:00:00",
+          "description": "BI-FAST CR BIF TRANSFER DR  087 PT MURI AGUNG ABAD",
+          "amount": 33250000.0,
+          "db_cr": "DB",
+          "signed_amount": 33250000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "penjualan - convensional"
+        },
+        {
+          "id": "e84caf61-2c63-4674-9e7c-e91ef0e1aae2",
+          "txn_date": "2025-01-20T00:00:00",
+          "description": "BI-FAST DB BIF TRANSFER KE  008 DELTA KARYA INDONE MyBCA",
+          "amount": 2500000.0,
+          "db_cr": "CR",
+          "signed_amount": -2500000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "pembelian - convensional"
+        },
+        {
+          "id": "8ec074ca-ca61-43ae-bd63-441e37f066fd",
+          "txn_date": "2025-01-24T00:00:00",
+          "description": "TRSF E-BANKING DB 2401/FTSCY/WS95271  22500000.00 Flowmeter ANTONIUS BENY CHRI",
+          "amount": 22500000.0,
+          "db_cr": "CR",
+          "signed_amount": -22500000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "broker"
+        },
+        {
+          "id": "484e7a87-df08-4905-9e2e-5e24c8841075",
+          "txn_date": "2025-02-07T00:00:00",
+          "description": "BI-FAST CR BIF TRANSFER DR  087 PT MURI AGUNG ABAD",
+          "amount": 32000000.0,
+          "db_cr": "DB",
+          "signed_amount": 32000000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "penjualan - convensional"
+        },
+        {
+          "id": "4da97b71-d383-4c2a-8c62-423be3a3e3a2",
+          "txn_date": "2025-02-08T00:00:00",
+          "description": "BI-FAST DB BIF BIAYA TXN KE  008 LENI YUNANDA MyBCA",
+          "amount": 2500.0,
+          "db_cr": "CR",
+          "signed_amount": -2500.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "biaya bank"
+        },
+        {
+          "id": "cf4508e8-0dc7-447e-8c7b-815a6bbc53b8",
+          "txn_date": "2025-02-08T00:00:00",
+          "description": "TRSF E-BANKING DB 0802/FTSCY/WS95271  58000000.00 Tangki ARIO PERMADI",
+          "amount": 58000000.0,
+          "db_cr": "CR",
+          "signed_amount": -58000000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "pembelian - convensional"
+        },
+        {
+          "id": "f24938fa-6b62-4358-9a8c-9f11b7baaa73",
+          "txn_date": "2025-02-08T00:00:00",
+          "description": "BI-FAST DB BIF TRANSFER KE  008 LENI YUNANDA MyBCA",
+          "amount": 14000000.0,
+          "db_cr": "CR",
+          "signed_amount": -14000000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "broker"
+        },
+        {
+          "id": "bb0e4d69-1cdf-4b08-8c32-e100b08fd966",
+          "txn_date": "2025-08-05T00:00:00",
+          "description": "BI-FAST CR BIF TRANSFER DR  087 PT MURI AGUNG ABAD",
+          "amount": 36000000.0,
+          "db_cr": "DB",
+          "signed_amount": 36000000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "penjualan - convensional"
+        },
+        {
+          "id": "7ea906da-3cde-49cc-946f-f9323a1a4f62",
+          "txn_date": "2025-08-08T00:00:00",
+          "description": "BI-FAST CR BIF TRANSFER DR  087 PT MURI AGUNG ABAD",
+          "amount": 3791200.0,
+          "db_cr": "DB",
+          "signed_amount": 3791200.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "penjualan - convensional"
+        },
+        {
+          "id": "be9a8772-3306-458b-870e-bd5f8e150971",
+          "txn_date": "2025-10-24T00:00:00",
+          "description": "BI-FAST DB BIF TRANSFER KE  008 LENI YUNANDA MyBCA",
+          "amount": 7650000.0,
+          "db_cr": "CR",
+          "signed_amount": -7650000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "broker"
+        },
+        {
+          "id": "c2054cc1-a45f-43f4-a74b-6bde1c09ac6f",
+          "txn_date": "2025-10-24T00:00:00",
+          "description": "BI-FAST DB BIF BIAYA TXN KE  008 LENI YUNANDA MyBCA",
+          "amount": 2500.0,
+          "db_cr": "CR",
+          "signed_amount": -2500.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "biaya bank"
+        },
+        {
+          "id": "fd009c99-f91d-4eed-98aa-68d05474a326",
+          "txn_date": "2025-10-24T00:00:00",
+          "description": "TRSF E-BANKING CR 2410/FTSCY/WS95051  10500000.00 Payment DP ASSESMENT FIRE PUM BUMINUSA ESAKARSA",
+          "amount": 10500000.0,
+          "db_cr": "DB",
+          "signed_amount": 10500000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "penjualan - convensional"
+        },
+        {
+          "id": "531fa96a-0628-4390-9c11-1cca3a2f5dee",
+          "txn_date": "2025-11-03T00:00:00",
+          "description": "BI-FAST DB BIF TRANSFER KE  008 DELTA KARYA INDONE MyBCA",
+          "amount": 25000000.0,
+          "db_cr": "CR",
+          "signed_amount": -25000000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "pembelian - convensional"
+        },
+        {
+          "id": "3e00e2a8-42cd-462f-9e46-62c9442b4e49",
+          "txn_date": "2025-12-04T00:00:00",
+          "description": "TRSF E-BANKING DB 0412/FTSCY/WS95271  7500000.00 ANTONIUS BENY CHRI",
+          "amount": 7500000.0,
+          "db_cr": "CR",
+          "signed_amount": -7500000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "broker"
+        },
+        {
+          "id": "702349fb-0188-4b9d-a84c-41e437b5d7c9",
+          "txn_date": "2025-12-04T00:00:00",
+          "description": "TRSF E-BANKING CR 0412/FTSCY/WS95051  10500000.00 pelunasan pek Rinnai tahap 1 BUMINUSA ESAKARSA",
+          "amount": 10500000.0,
+          "db_cr": "DB",
+          "signed_amount": 10500000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "penjualan - convensional"
+        },
+        {
+          "id": "2f08e52a-39ff-4374-aa1c-36b27a0433df",
+          "txn_date": "2025-12-18T00:00:00",
+          "description": "TRSF E-BANKING CR 1812/FTSCY/WS95051  82957392.00 payment Inv Pt Sag Ungineering BUMINUSA ESAKARSA",
+          "amount": 82957392.0,
+          "db_cr": "DB",
+          "signed_amount": 82957392.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "penjualan - convensional"
+        },
+        {
+          "id": "67d0c3d7-ec82-4156-8d4b-e2110df1cbd6",
+          "txn_date": "2025-12-19T00:00:00",
+          "description": "TRSF E-BANKING DB 1912/FTSCY/WS95271  39967000.00 EBARA SEI SAHABAT WASKITA TE",
+          "amount": 39967000.0,
+          "db_cr": "CR",
+          "signed_amount": -39967000.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": "pembelian - convensional"
+        }
+      ]
+    },
+    "investing": {
+      "name": "Investing Activities",
+      "inflow_total": 0.0,
+      "outflow_total": 0.0,
+      "net_cash": 0.0,
+      "count": 0,
+      "items": []
+    },
+    "financing": {
+      "name": "Financing Activities",
+      "inflow_total": 0.0,
+      "outflow_total": 0.0,
+      "net_cash": 0.0,
+      "count": 0,
+      "items": []
+    },
+    "unclassified": {
+      "name": "Unclassified",
+      "inflow_total": 63626592.0,
+      "outflow_total": 135398176.0,
+      "net_cash": -71771584.0,
+      "count": 11,
+      "items": [
+        {
+          "id": "d258bd66-b9e7-4049-9de5-36323bab7d41",
+          "txn_date": "2025-06-28T00:00:00",
+          "description": "Tokopedia              Jakarta       ID",
+          "amount": 669054.0,
+          "db_cr": "CR",
+          "signed_amount": -669054.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "5bfe5c08-f4c4-4dbe-bbac-d2cbcfde9cfb",
+          "txn_date": "2025-09-16T00:00:00",
+          "description": "Tokopedia              Jakarta       ID",
+          "amount": 480014.0,
+          "db_cr": "CR",
+          "signed_amount": -480014.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "0dad225f-734e-46d2-a3c5-d4a2338ccb2d",
+          "txn_date": "2025-12-22T00:00:00",
+          "description": "ALP*PERSONALSERVICES     SHANGHAI     CN (CNY 1.493,50 X 2.437,20)",
+          "amount": 3639956.0,
+          "db_cr": "CR",
+          "signed_amount": -3639956.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "6a60e925-6edc-42b4-b192-a583788dfa79",
+          "txn_date": "2025-12-24T00:00:00",
+          "description": "ALP*sundaowei          Shanghai      CN 12/24/25       1369.90  CNY CN  @2,449.79",
+          "amount": 3355968.0,
+          "db_cr": "CR",
+          "signed_amount": -3355968.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "416965e3-0c5b-4bd0-b87b-36daba9b8bef",
+          "txn_date": "2025-12-31T00:00:00",
+          "description": "hutang ",
+          "amount": 63441199.0,
+          "db_cr": "CR",
+          "signed_amount": -63441199.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "5046af71-dee5-4ff5-bae1-e9f61d0c0304",
+          "txn_date": "2025-12-31T00:00:00",
+          "description": "hutang",
+          "amount": 2877405.0,
+          "db_cr": "CR",
+          "signed_amount": -2877405.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "95eeb190-d099-4d06-b793-5ea69de4b4e3",
+          "txn_date": "2025-12-31T00:00:00",
+          "description": "pph badan",
+          "amount": 185393.0,
+          "db_cr": "DB",
+          "signed_amount": 185393.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "c1bc806c-aad2-4baa-bcd9-1c5ba6623947",
+          "txn_date": "2025-12-31T00:00:00",
+          "description": "pph badan",
+          "amount": 185393.0,
+          "db_cr": "CR",
+          "signed_amount": -185393.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "c739724a-b509-4aec-91af-78341fbb1ca9",
+          "txn_date": "2025-12-31T00:00:00",
+          "description": "pph badan",
+          "amount": 185393.0,
+          "db_cr": "CR",
+          "signed_amount": -185393.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "c7f9ff77-a8da-4d83-a41c-0a7f0dc9624f",
+          "txn_date": "2025-12-31T00:00:00",
+          "description": "hutang",
+          "amount": 63441199.0,
+          "db_cr": "DB",
+          "signed_amount": 63441199.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        },
+        {
+          "id": "de5cf743-d9e0-4646-9d61-11121f51ef2a",
+          "txn_date": "2025-12-31T00:00:00",
+          "description": "hutang",
+          "amount": 60563794.0,
+          "db_cr": "CR",
+          "signed_amount": -60563794.0,
+          "company_id": "40e70c5f-43ef-49aa-b73e-7f83d326b301",
+          "company_name": "PT Sagansa Engineering Indonesia",
+          "mark_name": null
+        }
+      ]
+    }
+  },
+  "section_order": [
+    "operating",
+    "investing",
+    "financing",
+    "unclassified"
+  ],
+  "summary": {
+    "opening_cash": -78210967.0,
+    "operating_net": 65126592.0,
+    "investing_net": 0.0,
+    "financing_net": 0.0,
+    "unclassified_net": -71771584.0,
+    "net_change": -6644992.0,
+    "closing_cash": -84855959.0,
+    "reconciliation_difference": 0.0
+  }
+}

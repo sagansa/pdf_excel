@@ -1,0 +1,342 @@
+{
+  "revenue": [
+    {
+      "code": "4002",
+      "name": "Penjualan Domestik",
+      "subcategory": "Operating Revenue",
+      "amount": 2018656185.0,
+      "category": "REVENUE",
+      "fiscal_category": "DEDUCTIBLE",
+      "mark_name": "",
+      "raw_components": [
+        {
+          "code": "4002",
+          "name": "Penjualan Domestik",
+          "subcategory": "Operating Revenue",
+          "amount": 2018656185.0,
+          "category": "REVENUE",
+          "fiscal_category": "DEDUCTIBLE",
+          "mark_name": "",
+          "raw_components": []
+        }
+      ]
+    },
+    {
+      "code": "4011",
+      "name": "Retur Penjualan",
+      "subcategory": "Sales Deductions",
+      "amount": -1867224.0,
+      "category": "REVENUE",
+      "fiscal_category": "DEDUCTIBLE",
+      "mark_name": "",
+      "raw_components": [
+        {
+          "code": "4011",
+          "name": "Retur Penjualan",
+          "subcategory": "Sales Deductions",
+          "amount": -1867224.0,
+          "category": "REVENUE",
+          "fiscal_category": "DEDUCTIBLE",
+          "mark_name": "",
+          "raw_components": []
+        }
+      ]
+    }
+  ],
+  "expenses": [
+    {
+      "code": "5311",
+      "name": "Gaji, Tunjangan, Bonus, Honorarium, THR, dsb",
+      "subcategory": "",
+      "amount": 415328046.0,
+      "category": "EXPENSE",
+      "fiscal_category": "DEDUCTIBLE",
+      "mark_name": "",
+      "raw_components": [
+        {
+          "code": "5311",
+          "name": "Gaji, Tunjangan, Bonus, Honorarium, THR, dsb",
+          "subcategory": "",
+          "amount": 415328046.0,
+          "category": "EXPENSE",
+          "fiscal_category": "DEDUCTIBLE",
+          "mark_name": "",
+          "raw_components": []
+        }
+      ]
+    },
+    {
+      "code": "5313",
+      "name": "Beban Transportasi",
+      "subcategory": "Operating Expenses",
+      "amount": 65384316.0,
+      "category": "EXPENSE",
+      "fiscal_category": "DEDUCTIBLE",
+      "mark_name": "",
+      "raw_components": [
+        {
+          "code": "5313",
+          "name": "Beban Transportasi",
+          "subcategory": "Operating Expenses",
+          "amount": 65384316.0,
+          "category": "EXPENSE",
+          "fiscal_category": "DEDUCTIBLE",
+          "mark_name": "",
+          "raw_components": []
+        }
+      ]
+    },
+    {
+      "code": "5316",
+      "name": "Beban Bunga",
+      "subcategory": "Operating Expenses",
+      "amount": 451706.0,
+      "category": "EXPENSE",
+      "fiscal_category": "DEDUCTIBLE",
+      "mark_name": "",
+      "raw_components": [
+        {
+          "code": "5316",
+          "name": "Beban Bunga",
+          "subcategory": "Operating Expenses",
+          "amount": 451706.0,
+          "category": "EXPENSE",
+          "fiscal_category": "DEDUCTIBLE",
+          "mark_name": "",
+          "raw_components": []
+        }
+      ]
+    },
+    {
+      "code": "5322",
+      "name": "Beban Umum dan Administrasi",
+      "subcategory": "Operating Expenses",
+      "amount": 26099630.3,
+      "category": "EXPENSE",
+      "fiscal_category": "DEDUCTIBLE",
+      "mark_name": "",
+      "raw_components": [
+        {
+          "code": "5322",
+          "name": "Beban Umum dan Administrasi",
+          "subcategory": "Operating Expenses",
+          "amount": 21234657.3,
+          "category": "EXPENSE",
+          "fiscal_category": "DEDUCTIBLE",
+          "mark_name": "",
+          "raw_components": []
+        },
+        {
+          "code": "5322",
+          "name": "Beban Umum dan Administrasi",
+          "subcategory": "Operating Expenses",
+          "amount": 4864973.0,
+          "category": "EXPENSE",
+          "fiscal_category": "NON_DEDUCTIBLE_PERMANENT",
+          "mark_name": "",
+          "raw_components": [
+            {
+              "code": "5322",
+              "name": "Beban Umum dan Administrasi",
+              "subcategory": "Operating Expenses",
+              "amount": 4864973.0,
+              "category": "EXPENSE",
+              "fiscal_category": "NON_DEDUCTIBLE_PERMANENT",
+              "mark_name": "",
+              "raw_components": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "5491",
+      "name": "Beban Pajak Penghasilan Kini",
+      "subcategory": "",
+      "amount": 12563650.0,
+      "category": "EXPENSE",
+      "fiscal_category": "NON_DEDUCTIBLE_PERMANENT",
+      "mark_name": "",
+      "raw_components": [
+        {
+          "code": "5491",
+          "name": "Beban Pajak Penghasilan Kini",
+          "subcategory": "",
+          "amount": 12563650.0,
+          "category": "EXPENSE",
+          "fiscal_category": "NON_DEDUCTIBLE_PERMANENT",
+          "mark_name": "",
+          "raw_components": []
+        }
+      ]
+    },
+    {
+      "code": "5494",
+      "name": "Denda/Sanksi Pajak",
+      "subcategory": "",
+      "amount": 39191564.0,
+      "category": "EXPENSE",
+      "fiscal_category": "NON_DEDUCTIBLE_PERMANENT",
+      "mark_name": "",
+      "raw_components": [
+        {
+          "code": "5494",
+          "name": "Denda/Sanksi Pajak",
+          "subcategory": "",
+          "amount": 39191564.0,
+          "category": "EXPENSE",
+          "fiscal_category": "NON_DEDUCTIBLE_PERMANENT",
+          "mark_name": "",
+          "raw_components": []
+        }
+      ]
+    },
+    {
+      "code": "5314",
+      "name": "Beban Penyusutan dan Amortisasi",
+      "subcategory": "Operating Expenses",
+      "amount": 14268563.125,
+      "category": "EXPENSE",
+      "fiscal_category": "DEDUCTIBLE"
+    }
+  ],
+  "total_revenue": 2016788961.0,
+  "total_expenses": 573287475.425,
+  "cogs_breakdown": {
+    "beginning_inventory": 278374072.0,
+    "purchases": 982794903.0,
+    "purchases_items": [
+      {
+        "code": "5001",
+        "name": "Pembelian",
+        "subcategory": "Cost of Goods Sold",
+        "amount": 982794903.0,
+        "category": "EXPENSE",
+        "fiscal_category": "DEDUCTIBLE",
+        "mark_name": "",
+        "raw_components": [
+          {
+            "code": "5001",
+            "name": "Pembelian",
+            "subcategory": "Cost of Goods Sold",
+            "amount": 982794903.0,
+            "category": "EXPENSE",
+            "fiscal_category": "DEDUCTIBLE",
+            "mark_name": "",
+            "raw_components": []
+          }
+        ]
+      }
+    ],
+    "other_cogs_items": [
+      {
+        "code": "5003",
+        "name": "Beban Pengangkutan",
+        "subcategory": "Cost of Goods Sold",
+        "amount": 61031199.0,
+        "category": "EXPENSE",
+        "fiscal_category": "DEDUCTIBLE",
+        "mark_name": "",
+        "raw_components": [
+          {
+            "code": "5003",
+            "name": "Beban Pengangkutan",
+            "subcategory": "Cost of Goods Sold",
+            "amount": 61031199.0,
+            "category": "EXPENSE",
+            "fiscal_category": "DEDUCTIBLE",
+            "mark_name": "",
+            "raw_components": []
+          }
+        ]
+      },
+      {
+        "code": "5007",
+        "name": "Beban Operasional Lainnya",
+        "subcategory": "Cost of Goods Sold",
+        "amount": 197204636.0,
+        "category": "EXPENSE",
+        "fiscal_category": "DEDUCTIBLE",
+        "mark_name": "",
+        "raw_components": [
+          {
+            "code": "5007",
+            "name": "Beban Operasional Lainnya",
+            "subcategory": "Cost of Goods Sold",
+            "amount": 197204636.0,
+            "category": "EXPENSE",
+            "fiscal_category": "DEDUCTIBLE",
+            "mark_name": "",
+            "raw_components": []
+          }
+        ]
+      }
+    ],
+    "total_other_cogs": 258235835.0,
+    "product_cogs": 0.0,
+    "ending_inventory": 73224775.3,
+    "total_cogs": 1446180034.7,
+    "year": 2024,
+    "previous_year_purchases": 0.0
+  },
+  "net_income_components": {
+    "formula": "total_revenue - total_expenses - total_cogs",
+    "total_revenue": 2016788961.0,
+    "total_expenses": 573287475.425,
+    "total_cogs": 1446180034.7
+  },
+  "amortization_breakdown": {
+    "manual_total": 0.0,
+    "calculated_total": 14268563.125,
+    "total_5314": 14268563.125,
+    "report_year": 2024
+  },
+  "net_income": -2678549.125,
+  "earnings_metrics": {
+    "tax_expense": 51755214.0,
+    "earnings_before_tax": 49076664.875,
+    "earnings_after_tax": -2678549.125,
+    "earnings_before_tax_depreciation_and_amortization": 63345228.0
+  },
+  "fiscal_reconciliation": {
+    "commercial_net_income": -2678549.125,
+    "positive_corrections": [
+      {
+        "code": "5322",
+        "name": "Beban Umum dan Administrasi",
+        "amount": 4864973.0,
+        "fiscal_category": "NON_DEDUCTIBLE_PERMANENT"
+      }
+    ],
+    "tax_expense_corrections": [
+      {
+        "code": "5491",
+        "name": "Beban Pajak Penghasilan Kini",
+        "amount": 12563650.0,
+        "fiscal_category": "NON_DEDUCTIBLE_PERMANENT"
+      },
+      {
+        "code": "5494",
+        "name": "Denda/Sanksi Pajak",
+        "amount": 39191564.0,
+        "fiscal_category": "NON_DEDUCTIBLE_PERMANENT"
+      }
+    ],
+    "negative_corrections": [],
+    "total_positive_correction": 56620187.0,
+    "total_tax_expense_correction": 51755214.0,
+    "total_negative_correction": 0,
+    "fiscal_net_income": 53941637.875
+  },
+  "cogs_detail": [
+    {
+      "code": "INV_ADJ",
+      "name": "Penyesuaian Persediaan",
+      "subcategory": "Inventory Adjustment",
+      "amount": 205149296.7,
+      "description": "Perubahan persediaan: Awal Rp 278,374,072 - Akhir Rp 73,224,775",
+      "type": "inventory_adjustment"
+    }
+  ],
+  "total_cogs": 1446180034.7
+}
