@@ -8,6 +8,23 @@ Runtime code is separated from tooling and archive material.
 - `migrate.py`: primary migration runner
 - `requirements.txt`: backend Python dependencies
 
+## Kredensial (API Keys)
+
+Semua API key/token aplikasi dikelola dari **Settings → API Keys** di admin panel:
+token Sagansa superadmin (presence, remaining storage, stock monitoring, sales by
+date, stock comparison), Telegram (bot token + chat id), SMTP (host/port/user/
+password/from/TLS), kunci integrasi n8n, dan API key provider AI.
+
+- Nilai disimpan di tabel `app_settings`; frontend hanya melihat status
+  terisi/tidak — nilai secret tidak pernah ditampilkan kembali.
+- **Environment variable tetap berfungsi sebagai fallback** (nama env = nama
+  setting, mis. `SAGANSA_PRESENCE_TOKEN` = `sagansa_presence_token`). Nilai DB
+  selalu menang atas env.
+- Deployment lama: variabel env yang masih ada ditandai "dari env" di tab API
+  Keys — tekan Simpan untuk memindahkannya ke database.
+- Tombol **Test** menguji koneksi ke service tujuan (termasuk mengirim pesan tes
+  Telegram / login SMTP) tanpa menyimpan nilai.
+
 ## Runtime folders
 
 - `backend/db`
