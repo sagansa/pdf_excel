@@ -148,3 +148,133 @@ def test_unknown_key_raise():
         credentials_service.get_credential_value('bukan_kredensial')
     with pytest.raises(ValueError):
         credentials_service.save_credentials(None, {'bukan_kredensial': 'x'})
+
+
+# ===== Test handler koneksi (Task 2) =====
+
+from urllib.error import HTTPError, URLError
+
+
+def test_run_test_sagansa_sukses(cred_engine, monkeypatch):
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
+    monkeypatch.delenv('SAGANSA_PRESENCE_TOKEN', raising=False)
+    calls = []
+
+    def _fake_urlopen(req, timeout=None):
+        calls.append({'url': req.full_url, 'auth': req.headers.get('Authorization')})
+        class _Resp:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return b'{"data": []}'
+        return _Resp()
+
+    monkeypatch.setattr(credentials_service.urlrequest, 'urlopen', _fake_urlopen)
+    ok, message = credentials_service.run_test('sagansa_presence_token', value='tok-123')
+    assert ok is True
+    assert 'superadmin.sagansa.id/api/presences' in calls[0]['url']
+    assert 'per_page=1' in calls[0]['url']
+    assert calls[0]['auth'] == 'Bearer tok-123'
+    assert 'tok-123' not in message  # nilai token tidak bocor ke pesan
+
+
+def test_run_test_sagansa_401_token_ditolak(cred_engine, monkeypatch):
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
+
+    def _fake_urlopen(req, timeout=None):
+        raise HTTPError(req.full_url, 401, 'Unauthorized', hdrs=None, fp=None)
+
+    monkeypatch.setattr(credentials_service.urlrequest, 'urlopen', _fake_urlopen)
+    ok, message = credentials_service.run_test('sagansa_presence_token', value='salah')
+    assert ok is False
+    assert '401' in message
+    assert 'salah' not in message
+
+
+def test_run_test_sagansa_token_kosong(cred_engine, monkeypatch):
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
+    monkeypatch.delenv('SAGANSA_PRESENCE_TOKEN', raising=False)
+    ok, message = credentials_service.run_test('sagansa_presence_token')
+    assert ok is False
+    assert 'belum diisi' in message
+
+
+def test_run_test_telegram_sukses(cred_engine, monkeypatch):
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
+    calls = []
+
+    def _fake_urlopen(req, timeout=None):
+        calls.append({'url': req.full_url, 'payload': req.data.decode('utf-8')})
+        class _Resp:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return b'{"ok": true}'
+        return _Resp()
+
+    monkeypatch.setattr(credentials_service.urlrequest, 'urlopen', _fake_urlopen)
+    ok, message = credentials_service.run_test(
+        'telegram_bot_token', value='123:ABC', extra={'telegram_chat_id': '98765'})
+    assert ok is True
+    assert calls[0]['url'].startswith('https://api.telegram.org/bot123:ABC/sendMessage')
+    assert '98765' in calls[0]['payload']
+
+
+def test_run_test_telegram_chat_id_dari_form_belum_diisi(cred_engine, monkeypatch):
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
+    ok, message = credentials_service.run_test('telegram_bot_token', value='123:ABC')
+    assert ok is False
+    assert 'Chat ID' in message
+
+
+def test_run_test_smtp_sukses(cred_engine, monkeypatch):
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
+    sent = {}
+
+    class _FakeSMTP:
+        def __init__(self, host, port, timeout=None):
+            sent['host'], sent['port'] = host, port
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def starttls(self):
+            sent['tls'] = True
+        def login(self, user, password):
+            sent['login'] = (user, password)
+
+    monkeypatch.setattr(credentials_service.smtplib, 'SMTP', _FakeSMTP)
+    ok, message = credentials_service.run_test('smtp_pass', value='secret', extra={
+        'smtp_host': 'smtp.example.com', 'smtp_port': '587',
+        'smtp_user': 'noreply@example.com', 'smtp_use_tls': 'true',
+    })
+    assert ok is True
+    assert sent['host'] == 'smtp.example.com'
+    assert sent['login'] == ('noreply@example.com', 'secret')
+
+
+def test_run_test_smtp_host_kosong(cred_engine, monkeypatch):
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
+    # .env asli ikut ke-load (load_dotenv) dan men-set SMTP_HOST — hapus agar
+    # resolusi tidak jatuh ke env dan test tidak menyentuh SMTP sungguhan.
+    monkeypatch.delenv('SMTP_HOST', raising=False)
+    ok, message = credentials_service.run_test('smtp_pass', value='secret')
+    assert ok is False
+    assert 'host' in message.lower()
+
+
+def test_run_test_key_tanpa_handler(cred_engine):
+    ok, message = credentials_service.run_test('integration_api_key')
+    assert ok is False
+    assert 'tidak punya test' in message
+
+
+def test_run_test_key_tak_dikenal():
+    with pytest.raises(ValueError):
+        credentials_service.run_test('bukan_kredensial')

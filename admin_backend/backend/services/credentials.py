@@ -191,3 +191,135 @@ def save_credentials(conn, updates):
                 'ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
             ), {'key': key, 'value': value})
     return get_status(conn)
+
+
+# ===== Handler test koneksi =====
+
+def _resolve_for_test(key, value, extra):
+    """Nilai untuk test: extra/input user menang, lalu nilai tersimpan (DB→env)."""
+    extra = extra or {}
+    candidate = str(extra.get(key) or '').strip()
+    if candidate:
+        return candidate
+    typed = str(value or '').strip()
+    if typed:
+        return typed
+    return get_credential_value(key)
+
+
+def _test_sagansa(key, value, extra):
+    token = _resolve_for_test(key, value, extra)
+    if not token:
+        return False, 'Token belum diisi — tempel token atau isi kolomnya terlebih dahulu.'
+
+    params = {'per_page': 1}
+    if key == 'sagansa_sales_by_date_token':
+        params = {'date': (date.today() - timedelta(days=1)).isoformat()}
+    elif key == 'sagansa_stock_comparison_token':
+        params = {'from_date': date.today().isoformat(), 'to_date': date.today().isoformat()}
+    url = f"{TEST_URLS[key]}?{urlparse.urlencode(params)}"
+
+    req = urlrequest.Request(url, headers={
+        'Accept': 'application/json',
+        'Authorization': f'Bearer {token}',  # header request, tidak di-log
+    })
+    try:
+        with urlrequest.urlopen(req, timeout=CREDENTIAL_TEST_TIMEOUT) as resp:
+            status = int(getattr(resp, 'status', 200))
+    except urlerror.HTTPError as exc:
+        if exc.code in (401, 403):
+            return False, f'HTTP {exc.code} — token ditolak server (tidak valid atau tidak berlaku).'
+        return False, f'HTTP {exc.code} — server Sagansa menjawab error. Coba lagi nanti.'
+    except urlerror.URLError as exc:
+        return False, f'Tidak dapat dihubungi: {exc.reason}'
+    except TimeoutError:
+        return False, 'Server tidak menjawab tepat waktu (timeout).'
+    return True, f'Koneksi berhasil (HTTP {status}).'
+
+
+def _test_telegram(key, value, extra):
+    token = _resolve_for_test(key, value, extra)
+    if not token:
+        return False, 'Bot token belum diisi.'
+    chat_id = _resolve_for_test('telegram_chat_id', None, extra)
+    if not chat_id:
+        return False, 'Chat ID belum diisi — isi kolom Chat ID lalu test lagi.'
+
+    url = f'https://api.telegram.org/bot{token}/sendMessage'
+    payload = json.dumps({
+        'chat_id': chat_id,
+        'text': 'StatementX — tes koneksi API Keys berhasil.',
+    }).encode('utf-8')
+    req = urlrequest.Request(url, data=payload, headers={
+        'Content-Type': 'application/json',
+    }, method='POST')
+    try:
+        with urlrequest.urlopen(req, timeout=CREDENTIAL_TEST_TIMEOUT) as resp:
+            int(getattr(resp, 'status', 200))
+    except urlerror.HTTPError as exc:
+        if exc.code == 401:
+            return False, 'HTTP 401 — bot token salah atau dicabut.'
+        return False, f'HTTP {exc.code} — Telegram menolak request. Periksa chat ID.'
+    except urlerror.URLError as exc:
+        return False, f'Tidak dapat dihubungi: {exc.reason}'
+    except TimeoutError:
+        return False, 'Server Telegram tidak menjawab tepat waktu (timeout).'
+    return True, 'Pesan tes terkirim — cek Telegram Anda.'
+
+
+_SMTP_FIELDS = ('smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_use_tls')
+
+
+def _test_smtp(key, value, extra):
+    values = {}
+    for field in _SMTP_FIELDS:
+        values[field] = _resolve_for_test(field, value if field == key else None, extra)
+
+    if not values['smtp_host']:
+        return False, 'SMTP host belum diisi.'
+    if not values['smtp_user']:
+        return False, 'SMTP user belum diisi.'
+    if not values['smtp_pass']:
+        return False, 'SMTP password belum diisi.'
+    try:
+        port = int(values['smtp_port'] or '587')
+    except ValueError:
+        return False, 'SMTP port harus angka.'
+    use_tls = str(values['smtp_use_tls'] or 'true').strip().lower() not in {'0', 'false', 'no'}
+
+    try:
+        with smtplib.SMTP(values['smtp_host'], port, timeout=CREDENTIAL_TEST_TIMEOUT) as server:
+            if use_tls:
+                server.starttls()
+            server.login(values['smtp_user'], values['smtp_pass'])
+    except smtplib.SMTPAuthenticationError:
+        return False, 'Login SMTP gagal — user atau password salah.'
+    except (smtplib.SMTPException, OSError) as exc:
+        return False, f'Tidak dapat terhubung ke SMTP: {exc}'
+    return True, f'Login SMTP berhasil di {values["smtp_host"]}:{port}.'
+
+
+_TEST_HANDLERS = {
+    'sagansa': _test_sagansa,
+    'telegram': _test_telegram,
+    'smtp': _test_smtp,
+}
+
+
+def run_test(key, value=None, extra=None):
+    """Jalankan test koneksi. Selalu (ok, message) — tidak pernah raise ke pemanggil HTTP.
+
+    `value` = nilai yang baru diketik (belum disimpan); `extra` = field pendamping
+    dari form (telegram_chat_id / field SMTP).
+    """
+    cred = _BY_KEY.get(key)
+    if cred is None:
+        raise ValueError(f'Kredensial tidak dikenal: {key}')
+    handler = _TEST_HANDLERS.get(cred.get('test'))
+    if handler is None:
+        return False, 'Kredensial ini tidak punya test koneksi.'
+    try:
+        return handler(key, value, extra)
+    except Exception as exc:  # pengaman terakhir: test tidak boleh memicu HTTP 500
+        logger.warning('Test kredensial %s gagal tak terduga', key)  # nilai tidak di-log
+        return False, f'Test gagal: {exc}'
