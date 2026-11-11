@@ -425,3 +425,50 @@ main:hover::-webkit-scrollbar-thumb {
 .mono {
   font-family: var(--font-mono);
 }
+
+/* Shared report table (Trial Balance, AI Review, dsb.) — selalu ada jarak antar kolom angka */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.report-table th {
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.report-table th:first-child {
+  text-align: left;
+}
+
+.report-table td {
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--color-text);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.report-table tbody tr {
+  transition: background-color 160ms ease;
+}
+
+.report-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+}
+
+.report-table tfoot td {
+  font-weight: 700;
+  background: var(--color-surface-muted);
+  border-top: 2px solid var(--color-border-strong);
+  border-bottom: none;
+}

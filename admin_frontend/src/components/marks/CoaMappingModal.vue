@@ -87,26 +87,31 @@
           <!-- COA Selection -->
           <div>
             <label class="label-base">Chart of Account <span class="field-required">*</span></label>
-            <select
-              v-model="newMapping.coa_id"
-              required
-              class="input-base w-full"
-            >
-              <option value="">Select account...</option>
-              <optgroup
-                v-for="(accounts, category) in coaByCategory"
-                :key="category"
-                :label="category"
+              <div v-if="availableCoaCount === 0" class="all-mapped-hint">
+                <i class="bi bi-check2-circle"></i>
+                Semua akun COA sudah di-mapping untuk lensa {{ selectedReportType === 'coretax' ? 'Coretax' : 'Real' }}.
+              </div>
+              <select
+                v-else
+                v-model="newMapping.coa_id"
+                required
+                class="input-base w-full"
               >
-                <option
-                  v-for="coa in accounts"
-                  :key="coa.id"
-                  :value="coa.id"
+                <option value="">Select account...</option>
+                <optgroup
+                  v-for="(accounts, category) in availableCoaByCategory"
+                  :key="category"
+                  :label="category"
                 >
-                  {{ coa.code }} - {{ coa.name }}
-                </option>
-              </optgroup>
-            </select>
+                  <option
+                    v-for="coa in accounts"
+                    :key="coa.id"
+                    :value="coa.id"
+                  >
+                    {{ coa.code }} - {{ coa.name }}
+                  </option>
+                </optgroup>
+              </select>
           </div>
 
           <!-- Mapping Type -->
@@ -148,15 +153,15 @@
             ></textarea>
           </div>
 
-          <!-- Actions -->
-          <div class="flex items-center justify-end gap-3 pt-2">
-            <button type="button" @click="resetForm" class="btn-secondary">Reset</button>
-            <button type="submit" :disabled="isSaving" class="btn-primary">
-              <span v-if="isSaving" class="spinner-border w-4 h-4 me-2"></span>
-              <i v-else class="bi bi-plus-circle me-2"></i>
-              <span>Add Mapping</span>
-            </button>
-          </div>
+            <!-- Actions -->
+            <div class="flex items-center justify-end gap-3 pt-2">
+              <button type="button" @click="resetForm" class="btn-secondary">Reset</button>
+              <button type="submit" :disabled="isSaving || availableCoaCount === 0" class="btn-primary">
+                <span v-if="isSaving" class="spinner-border w-4 h-4 me-2"></span>
+                <i v-else class="bi bi-plus-circle me-2"></i>
+                <span>Add Mapping</span>
+              </button>
+            </div>
         </form>
       </div>
     </div>
@@ -207,6 +212,25 @@ const newMapping = ref({
 });
 
 const coaByCategory = computed(() => coaStore.coaByCategory);
+
+// Akun yang sudah di-mapping pada lensa aktif tidak boleh dipilih lagi (cegah mapping dobel).
+const availableCoaByCategory = computed(() => {
+  const mappedKeys = new Set(
+    mappings.value.flatMap((m) => [String(m.coa_id), String(m.code)]),
+  );
+  const result = {};
+  Object.entries(coaByCategory.value).forEach(([category, accounts]) => {
+    const remaining = (accounts || []).filter(
+      (coa) => !mappedKeys.has(String(coa.id)) && !mappedKeys.has(String(coa.code)),
+    );
+    if (remaining.length > 0) result[category] = remaining;
+  });
+  return result;
+});
+
+const availableCoaCount = computed(() => (
+  Object.values(availableCoaByCategory.value).reduce((sum, list) => sum + list.length, 0)
+));
 
 const CATEGORY_TONES = {
   ASSET: 'success',
@@ -301,6 +325,8 @@ watch(() => props.mark, (newMark) => {
 }, { immediate: true });
 
 watch(selectedReportType, () => {
+  // Pilihan akun berubah per lensa; reset agar tidak mempertahankan id yang tak tersedia.
+  newMapping.value.coa_id = '';
   if (props.isOpen && props.mark?.id) {
     loadMappings();
   }
@@ -328,6 +354,18 @@ watch(() => props.isOpen, (isOpen) => {
 
 .field-required {
   color: var(--color-danger);
+}
+
+.all-mapped-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  color: var(--color-success);
 }
 
 .add-form {

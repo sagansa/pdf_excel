@@ -157,8 +157,10 @@
                   <MarkTraitChips :mark="m" show-fiscal-inherit />
                 </td>
                 <td class="mark-row__mapping-cell">
-                  <MarkMappingChips label="Real" :mappings="getRealMappings(m)" />
-                  <MarkMappingChips label="Coretax" :mappings="getCoretaxMappings(m)" />
+                  <template v-if="expandedId !== m.id">
+                    <MarkMappingChips label="Real" :mappings="getRealMappings(m)" />
+                    <MarkMappingChips label="Coretax" :mappings="getCoretaxMappings(m)" />
+                  </template>
                 </td>
                 <td class="marks-table__actions-col">
                   <button @click.stop="openEditModal(m)" class="action-link action-link--primary" aria-label="Edit mark">
@@ -465,8 +467,14 @@ onMounted(() => {
 }
 
 .fiscal-select {
-  @apply shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors;
-  background: var(--color-surface-raised);
+  @apply shrink-0 rounded-xl pl-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 32px;
+  background-color: var(--color-surface-raised);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5L6 8l3.5-3.5' fill='none' stroke='%23667085' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
   border: 1px solid var(--color-border);
   color: var(--color-text);
 }

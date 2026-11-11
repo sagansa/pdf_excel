@@ -92,19 +92,36 @@ COA = [
 
 SAMPLE_MAPPINGS = {
     (3, "real"): [
-        {"id": 301, "code": "6-1100", "name": "Beban Gaji", "mapping_type": "DEBIT", "report_type": "real", "category": "EXPENSE", "notes": "Gaji bulanan tim produksi"},
-        {"id": 302, "code": "2-1200", "name": "Utang Gaji", "mapping_type": "CREDIT", "report_type": "real", "category": "LIABILITY", "notes": None},
+        {"id": 301, "coa_id": 61, "code": "6-1100", "name": "Beban Gaji", "mapping_type": "DEBIT", "report_type": "real", "category": "EXPENSE", "notes": "Gaji bulanan tim produksi"},
+        {"id": 302, "coa_id": 22, "code": "2-1200", "name": "Utang Gaji", "mapping_type": "CREDIT", "report_type": "real", "category": "LIABILITY", "notes": None},
     ],
     (3, "coretax"): [
-        {"id": 311, "code": "6-1100", "name": "Beban Gaji", "mapping_type": "DEBIT", "report_type": "coretax", "category": "EXPENSE", "notes": None},
+        {"id": 311, "coa_id": 61, "code": "6-1100", "name": "Beban Gaji", "mapping_type": "DEBIT", "report_type": "coretax", "category": "EXPENSE", "notes": None},
     ],
     (4, "real"): [
-        {"id": 401, "code": "6-2100", "name": "Beban Sewa", "mapping_type": "DEBIT", "report_type": "real", "category": "EXPENSE", "notes": None},
-        {"id": 402, "code": "1-1100", "name": "Kas", "mapping_type": "CREDIT", "report_type": "real", "category": "ASSET", "notes": None},
+        {"id": 401, "coa_id": 62, "code": "6-2100", "name": "Beban Sewa", "mapping_type": "DEBIT", "report_type": "real", "category": "EXPENSE", "notes": None},
+        {"id": 402, "coa_id": 1, "code": "1-1100", "name": "Kas", "mapping_type": "CREDIT", "report_type": "real", "category": "ASSET", "notes": None},
     ],
     (4, "coretax"): [
-        {"id": 411, "code": "6-2100", "name": "Beban Sewa", "mapping_type": "DEBIT", "report_type": "coretax", "category": "EXPENSE", "notes": None},
+        {"id": 411, "coa_id": 62, "code": "6-2100", "name": "Beban Sewa", "mapping_type": "DEBIT", "report_type": "coretax", "category": "EXPENSE", "notes": None},
     ],
+}
+
+
+TRIAL_BALANCE_ROWS = [
+    {"coa_code": "1101", "coa_name": "Kas dan Setara Kas", "coa_category": "ASSET", "opening_debit": 0, "opening_credit": 0, "period_debit": 271394669.12413838, "period_credit": 124138382.47147256, "closing_debit": 147256286.65, "closing_credit": 0},
+    {"coa_code": "1529", "coa_name": "Aset Tetap Lainnya", "coa_category": "ASSET", "opening_debit": 0, "opening_credit": 0, "period_debit": 9810268, "period_credit": 0, "closing_debit": 9810268, "closing_credit": 0},
+    {"coa_code": "4002", "coa_name": "Penjualan Domestik", "coa_category": "REVENUE", "opening_debit": 0, "opening_credit": 0, "period_debit": 0, "period_credit": 271394669.12, "closing_debit": 0, "closing_credit": 271394669.12},
+    {"coa_code": "4011", "coa_name": "Retur Penjualan", "coa_category": "REVENUE", "opening_debit": 0, "opening_credit": 0, "period_debit": 320000, "period_credit": 0, "closing_debit": 320000, "closing_credit": 0},
+    {"coa_code": "5001", "coa_name": "Pembelian", "coa_category": "EXPENSE", "opening_debit": 0, "opening_credit": 0, "period_debit": 28856287, "period_credit": 0, "closing_debit": 28856287, "closing_credit": 0},
+    {"coa_code": "5311", "coa_name": "Gaji, Tunjangan, Bonus, Honorarium, THR, dsb", "coa_category": "EXPENSE", "opening_debit": 0, "opening_credit": 0, "period_debit": 42946396, "period_credit": 0, "closing_debit": 42946396, "closing_credit": 0},
+    {"coa_code": "5322", "coa_name": "Beban Umum dan Administrasi", "coa_category": "EXPENSE", "opening_debit": 0, "opening_credit": 0, "period_debit": 1520964.47, "period_credit": 0, "closing_debit": 1520964.47, "closing_credit": 0},
+]
+
+TRIAL_BALANCE_TOTALS = {
+    "opening_debit": 0, "opening_credit": 0,
+    "period_debit": 395533051.47, "period_credit": 395533051.47,
+    "closing_debit": 271394669.12, "closing_credit": 271394669.12,
 }
 
 
@@ -126,6 +143,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/auth/me"):
             self._send({"user": {"id": 1, "name": "Reviewer", "email": "review@local.test"}})
+        elif self.path.startswith("/api/reports/trial-balance"):
+            self._send({"success": True, "data": {
+                "is_balanced": True,
+                "rows": TRIAL_BALANCE_ROWS,
+                "totals": TRIAL_BALANCE_TOTALS,
+            }})
+        elif self.path.startswith("/api/companies"):
+            self._send({"companies": []})
         elif "/coa-mappings" in self.path:
             self._send({"mappings": self._match_mappings()})
         elif self.path.startswith("/api/marks"):
