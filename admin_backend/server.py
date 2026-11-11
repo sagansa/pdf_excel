@@ -38,6 +38,7 @@ from backend.routes.transactions.ai_bp import ai_bp
 from backend.routes.transactions.payroll_bp import payroll_bp
 from backend.routes.master_data.mark_bp import mark_bp
 from backend.routes.reporting.fiscal_corrections_bp import fiscal_corrections_bp
+from backend.routes.credentials_bp import credentials_bp
 
 app = Flask(__name__)
 register_error_handlers(app)
@@ -98,6 +99,7 @@ app.register_blueprint(sales_by_date_bp)
 app.register_blueprint(stock_comparison_bp)
 app.register_blueprint(history_bp)
 app.register_blueprint(ai_bp)
+app.register_blueprint(credentials_bp)
 app.register_blueprint(payroll_bp)
 app.register_blueprint(mark_bp)
 app.register_blueprint(fiscal_corrections_bp)
