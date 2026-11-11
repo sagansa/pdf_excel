@@ -11,7 +11,6 @@ dari Gmail. Berbeda dari upload manual (pdf_bp), endpoint ini:
 
 import hashlib
 import logging
-import os
 import secrets
 
 from flask import Blueprint, current_app as app, jsonify, request
@@ -37,6 +36,7 @@ from backend.routes.uploads.pdf_queries import (
     find_transaction_by_file_hash_query,
     find_transaction_by_message_id_query,
 )
+from backend.services import credentials as credentials_service
 from backend.services.notifications.telegram import (
     notify_import_problem,
     notify_missing_statements,
@@ -58,14 +58,15 @@ EMAIL_META_KEYS = ('email_from', 'email_subject', 'email_date', 'email_message_i
 
 @integrations_bp.before_request
 def _require_api_key():
-    """Autentikasi server-to-server: header X-API-Key vs env INTEGRATION_API_KEY.
+    """Autentikasi server-to-server: header X-API-Key vs kredensial integration_api_key.
 
-    Fail closed: tanpa INTEGRATION_API_KEY endpoint mati total (503), bukan
-    terbuka tanpa autentikasi.
+    Sumber nilai: Settings → API Keys (app_settings) dengan fallback env
+    INTEGRATION_API_KEY. Fail closed: tanpa kunci endpoint mati total (503),
+    bukan terbuka tanpa autentikasi.
     """
-    expected = os.environ.get('INTEGRATION_API_KEY', '').strip()
+    expected = credentials_service.get_credential_value('integration_api_key').strip()
     if not expected:
-        logger.error('INTEGRATION_API_KEY belum diset — endpoint integrasi nonaktif')
+        logger.error('integration_api_key belum diset — endpoint integrasi nonaktif')
         return jsonify({
             'error': 'Integration endpoint is not configured',
             'code': 'integration_disabled',

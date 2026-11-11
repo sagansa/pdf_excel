@@ -1,6 +1,14 @@
 import logging
 
+import pytest
+
 from backend.services import mailer
+
+
+@pytest.fixture(autouse=True)
+def _no_db(monkeypatch):
+    from backend.db import session as db_session
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (None, 'no db in unit test'))
 
 
 def test_dev_mode_logs_reset_link_when_smtp_host_missing(caplog, monkeypatch):
@@ -61,3 +69,23 @@ def test_use_tls_can_be_disabled(monkeypatch):
     monkeypatch.delenv('SMTP_USER', raising=False)
     monkeypatch.setenv('SMTP_USE_TLS', 'false')
     assert mailer.get_smtp_config()['use_tls'] is False
+
+
+def test_get_smtp_config_db_priority(monkeypatch):
+    """Nilai di app_settings menang atas env (conn diberikan pemanggil)."""
+    from sqlalchemy import create_engine, text
+
+    engine = create_engine('sqlite:///:memory:')
+    with engine.begin() as conn:
+        conn.execute(text(
+            "CREATE TABLE app_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT)"
+        ))
+        conn.execute(text(
+            "INSERT INTO app_settings (setting_key, setting_value) VALUES ('smtp_host', 'db.example.com')"
+        ))
+    monkeypatch.setenv('SMTP_HOST', 'env.example.com')
+
+    with engine.connect() as conn:
+        config = mailer.get_smtp_config(conn=conn)
+    assert config['host'] == 'db.example.com'
+    engine.dispose()

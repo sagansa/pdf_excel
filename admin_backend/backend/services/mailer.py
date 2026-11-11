@@ -4,21 +4,37 @@ Dev fallback: when SMTP_HOST is not configured the message is not sent;
 the reset link is written to the log instead so the flow stays testable.
 """
 import logging
-import os
 import smtplib
 from email.message import EmailMessage
+
+from backend.services import credentials as credentials_service
 
 logger = logging.getLogger(__name__)
 
 
-def get_smtp_config():
+def get_smtp_config(conn=None):
+    """Konfigurasi SMTP: DB (app_settings) dulu → env fallback.
+
+    `conn` opsional — tanpa conn, service membuka koneksi pendek sendiri (fail-soft).
+    """
+    def _get(key):
+        if conn is not None:
+            value, _ = credentials_service.get_credential(conn, key)
+            if value:
+                return value
+        return credentials_service.get_credential_value(key)
+
+    try:
+        port = int(_get('smtp_port') or '587')
+    except ValueError:
+        port = 587
     return {
-        'host': os.environ.get('SMTP_HOST', '').strip(),
-        'port': int(os.environ.get('SMTP_PORT', '587')),
-        'user': os.environ.get('SMTP_USER', '').strip(),
-        'password': os.environ.get('SMTP_PASS', ''),
-        'from': os.environ.get('SMTP_FROM', '').strip(),
-        'use_tls': os.environ.get('SMTP_USE_TLS', 'true').strip().lower()
+        'host': _get('smtp_host').strip(),
+        'port': port,
+        'user': _get('smtp_user').strip(),
+        'password': _get('smtp_pass'),
+        'from': _get('smtp_from').strip(),
+        'use_tls': (_get('smtp_use_tls') or 'true').strip().lower()
         not in {'0', 'false', 'no'},
     }
 
@@ -27,7 +43,7 @@ def send_reset_email(to_email, reset_link, display_name=''):
     config = get_smtp_config()
     if not config['host']:
         logger.warning(
-            'SMTP_HOST not set; reset link for %s logged instead of emailed: %s',
+            'SMTP not configured (Settings → API Keys atau env); reset link for %s logged instead of emailed: %s',
             to_email, reset_link,
         )
         return

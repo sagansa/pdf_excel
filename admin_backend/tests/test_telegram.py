@@ -43,6 +43,25 @@ def sent_requests(monkeypatch):
     return calls
 
 
+@pytest.fixture(autouse=True)
+def _no_db(monkeypatch):
+    from backend.db import session as db_session
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (None, 'no db in unit test'))
+
+
+@pytest.fixture()
+def cred_engine():
+    from sqlalchemy import create_engine, text as _text
+
+    engine = create_engine('sqlite:///:memory:')
+    with engine.begin() as conn:
+        conn.execute(_text(
+            "CREATE TABLE app_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT)"
+        ))
+    yield engine
+    engine.dispose()
+
+
 def test_noop_tanpa_env(monkeypatch, sent_requests):
     """Tanpa token/chat_id notifier tidak mengirim apa pun dan tidak error."""
     monkeypatch.delenv('TELEGRAM_BOT_TOKEN', raising=False)
@@ -102,3 +121,26 @@ def test_tidak_kirim_jika_tidak_ada_statement_hilang(telegram_env, sent_requests
     sent = telegram_module.notify_missing_statements([])
     assert sent is False
     assert sent_requests == []
+
+
+def test_db_token_menang_atas_env(cred_engine, monkeypatch, sent_requests):
+    """Token dari app_settings dipakai lebih dulu daripada env."""
+    from sqlalchemy import text as _text
+    from backend.db import session as db_session
+    from backend.services import credentials as credentials_service
+
+    with cred_engine.begin() as conn:
+        conn.execute(_text(
+            "INSERT INTO app_settings (setting_key, setting_value) "
+            "VALUES ('telegram_bot_token', 'db-token')"
+        ))
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
+    monkeypatch.setenv('TELEGRAM_BOT_TOKEN', 'env-token')
+    # Chat ID tidak ikut diuji di sini — cukup dari env supaya jalur kirim aktif;
+    # yang ditegaskan: TOKEN dari DB menang atas TOKEN dari env.
+    monkeypatch.setenv('TELEGRAM_CHAT_ID', 'env-chat-id')
+
+    sent = telegram_module.notify_import_problem('dbs', 'f.pdf', 'parse_failed')
+    assert sent is True
+    assert 'db-token' in sent_requests[0]['url']
+    assert 'env-token' not in sent_requests[0]['url']

@@ -1,15 +1,17 @@
 """Notifikasi Telegram untuk masalah pipeline e-statement (fail-soft).
 
 Prinsip: notifikasi adalah pelengkap, bukan bagian kritis — kegagalan mengirim
-apapun penyebabnya (env belum diset, jaringan, API Telegram) tidak boleh
-menggagalkan import statement. Konfigurasi dibaca dari env:
-  - TELEGRAM_BOT_TOKEN: token dari @BotFather
-  - TELEGRAM_CHAT_ID:   chat tujuan (dari @userinfobot atau getUpdates)
+apapun penyebabnya (kredensial belum diisi, jaringan, API Telegram) tidak boleh
+menggagalkan import statement. Kredensial dibaca dari vault (DB → env fallback):
+  - telegram_bot_token: token dari @BotFather
+  - telegram_chat_id:   chat tujuan (dari @userinfobot atau getUpdates)
 """
 
 import json
 import logging
 from urllib.request import Request as _Request, urlopen as _urlopen
+
+from backend.services import credentials as credentials_service
 
 logger = logging.getLogger(__name__)
 
@@ -17,24 +19,21 @@ _TELEGRAM_TIMEOUT = 10
 
 
 def _is_configured():
-    import os
-    return bool(os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()) and bool(
-        os.environ.get('TELEGRAM_CHAT_ID', '').strip()
+    return bool(credentials_service.get_credential_value('telegram_bot_token').strip()) and bool(
+        credentials_service.get_credential_value('telegram_chat_id').strip()
     )
 
 
 def _send_message(text):
     """Kirim pesan teks via Bot API. Return True jika terkirim, False jika tidak."""
-    if not _is_configured():
+    token = credentials_service.get_credential_value('telegram_bot_token').strip()
+    chat_id = credentials_service.get_credential_value('telegram_chat_id').strip()
+    if not token or not chat_id:
         logger.info('Telegram belum dikonfigurasi — notifikasi dilewati')
         return False
-
-    import os
-    token = os.environ['TELEGRAM_BOT_TOKEN'].strip()
-    chat_id = os.environ['TELEGRAM_CHAT_ID'].strip()
     url = f'https://api.telegram.org/bot{token}/sendMessage'
     data = json.dumps({'chat_id': chat_id, 'text': text}).encode('utf-8')
-    request = _Request(  # URL dibangun dari token di env, bukan input user
+    request = _Request(  # URL dibangun dari kredensial vault, bukan input user
         url, data=data,
         headers={'Content-Type': 'application/json'}, method='POST',
     )
