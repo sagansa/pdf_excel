@@ -15,11 +15,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
 """
 
 EXPECTED_KEYS = {
-    'sagansa_presence_token',
-    'sagansa_remaining_storage_token',
-    'sagansa_stock_monitoring_token',
-    'sagansa_sales_by_date_token',
-    'sagansa_stock_comparison_token',
+    'sagansa_api_token',
     'telegram_bot_token',
     'telegram_chat_id',
     'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_use_tls',
@@ -28,11 +24,24 @@ EXPECTED_KEYS = {
 }
 
 SECRET_KEYS = {
-    'sagansa_presence_token', 'sagansa_remaining_storage_token',
-    'sagansa_stock_monitoring_token', 'sagansa_sales_by_date_token',
-    'sagansa_stock_comparison_token', 'telegram_bot_token',
+    'sagansa_api_token', 'telegram_bot_token',
     'smtp_pass', 'integration_api_key', 'ai_api_key',
 }
+
+# Semua nama env Sagansa (baru + legacy) — .env asli bisa memuat nama lama.
+SAGANSA_ENV_NAMES = (
+    'SAGANSA_API_TOKEN',
+    'SAGANSA_PRESENCE_TOKEN', 'SAGANSA_REMAINING_STORAGE_TOKEN',
+    'SAGANSA_STOCK_MONITORING_TOKEN', 'SAGANSA_SALES_BY_DATE_TOKEN',
+    'SAGANSA_STOCK_COMPARISON_TOKEN',
+)
+
+
+@pytest.fixture()
+def no_sagansa_env(monkeypatch):
+    """Hapus semua env Sagansa supaya resolusi tidak jatuh ke .env asli."""
+    for name in SAGANSA_ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
 
 
 @pytest.fixture()
@@ -50,15 +59,33 @@ def test_registry_keys_lengkap_dan_unik():
 
 
 def test_db_value_menang_atas_env(cred_engine, monkeypatch):
-    monkeypatch.setenv('SAGANSA_PRESENCE_TOKEN', 'env-token')
+    monkeypatch.setenv('SAGANSA_API_TOKEN', 'env-token')
     with cred_engine.begin() as conn:
         conn.execute(text(
-            "INSERT INTO app_settings (setting_key, setting_value) VALUES ('sagansa_presence_token', 'db-token')"
+            "INSERT INTO app_settings (setting_key, setting_value) VALUES ('sagansa_api_token', 'db-token')"
         ))
     with cred_engine.connect() as conn:
-        value, source = credentials_service.get_credential(conn, 'sagansa_presence_token')
+        value, source = credentials_service.get_credential(conn, 'sagansa_api_token')
     assert value == 'db-token'
     assert source == 'db'
+
+
+def test_env_utama_menang_atas_env_legacy(cred_engine, monkeypatch):
+    monkeypatch.setenv('SAGANSA_API_TOKEN', 'env-baru')
+    monkeypatch.setenv('SAGANSA_PRESENCE_TOKEN', 'env-lama')
+    with cred_engine.connect() as conn:
+        value, source = credentials_service.get_credential(conn, 'sagansa_api_token')
+    assert value == 'env-baru'
+    assert source == 'env'
+
+
+def test_env_legacy_dipakai_saat_env_utama_kosong(cred_engine, monkeypatch, no_sagansa_env):
+    """Deployment lama dengan env per-fitur tetap jalan tanpa ubah apa pun."""
+    monkeypatch.setenv('SAGANSA_SALES_BY_DATE_TOKEN', 'env-legacy')
+    with cred_engine.connect() as conn:
+        value, source = credentials_service.get_credential(conn, 'sagansa_api_token')
+    assert value == 'env-legacy'
+    assert source == 'env'
 
 
 def test_env_fallback_saaat_db_kosong(cred_engine, monkeypatch):
@@ -99,7 +126,7 @@ def test_clear_sentinel_menghapus_dan_strip_whitespace(cred_engine, monkeypatch)
 
 
 def test_get_status_masking_secret(cred_engine, monkeypatch):
-    monkeypatch.setenv('SAGANSA_PRESENCE_TOKEN', 'env-token')
+    monkeypatch.setenv('SAGANSA_API_TOKEN', 'env-token')
     with cred_engine.begin() as conn:
         conn.execute(text(
             "INSERT INTO app_settings (setting_key, setting_value) VALUES ('smtp_host', 'smtp.example.com')"
@@ -110,36 +137,37 @@ def test_get_status_masking_secret(cred_engine, monkeypatch):
     for key in SECRET_KEYS:
         assert 'value' not in by_key[key], f'secret {key} tidak boleh punya value'
     assert by_key['smtp_host']['value'] == 'smtp.example.com'
-    assert by_key['sagansa_presence_token']['set'] is True
-    assert by_key['sagansa_presence_token']['source'] == 'env'
+    assert by_key['sagansa_api_token']['set'] is True
+    assert by_key['sagansa_api_token']['source'] == 'env'
     # tiap kredensial punya metadata UI
-    assert by_key['sagansa_presence_token']['group'] == 'sagansa'
+    assert by_key['sagansa_api_token']['group'] == 'sagansa'
     assert by_key['ai_api_key']['group'] == 'ai'
     assert by_key['smtp_pass']['test'] == 'smtp'
     assert by_key['integration_api_key']['test'] is None
 
 
-def test_get_credential_value_fail_soft_tanpa_db(monkeypatch):
+def test_get_credential_value_fallback_env_legacy_tanpa_db(monkeypatch, no_sagansa_env):
+    """Tanpa DB: kunci sagansa_api_token jatuh ke env legacy yang terisi."""
     monkeypatch.setattr(db_session, 'get_db_engine', lambda: (None, 'db down'))
     monkeypatch.setenv('SAGANSA_STOCK_MONITORING_TOKEN', 'env-tok')
-    assert credentials_service.get_credential_value('sagansa_stock_monitoring_token') == 'env-tok'
+    assert credentials_service.get_credential_value('sagansa_api_token') == 'env-tok'
 
 
 def test_get_credential_value_db_priority_via_short_conn(cred_engine, monkeypatch):
     monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
-    monkeypatch.setenv('SAGANSA_PRESENCE_TOKEN', 'env-token')
+    monkeypatch.setenv('SAGANSA_API_TOKEN', 'env-token')
     with cred_engine.begin() as conn:
         conn.execute(text(
-            "INSERT INTO app_settings (setting_key, setting_value) VALUES ('sagansa_presence_token', 'db-token')"
+            "INSERT INTO app_settings (setting_key, setting_value) VALUES ('sagansa_api_token', 'db-token')"
         ))
-    assert credentials_service.get_credential_value('sagansa_presence_token') == 'db-token'
+    assert credentials_service.get_credential_value('sagansa_api_token') == 'db-token'
 
 
 def test_get_credential_value_fail_soft_tabel_hilang(monkeypatch):
     engine = create_engine('sqlite:///:memory:')  # tanpa tabel app_settings
     monkeypatch.setattr(db_session, 'get_db_engine', lambda: (engine, None))
-    monkeypatch.setenv('SAGANSA_PRESENCE_TOKEN', 'env-tok')
-    assert credentials_service.get_credential_value('sagansa_presence_token') == 'env-tok'
+    monkeypatch.setenv('SAGANSA_API_TOKEN', 'env-tok')
+    assert credentials_service.get_credential_value('sagansa_api_token') == 'env-tok'
     engine.dispose()
 
 
@@ -155,9 +183,8 @@ def test_unknown_key_raise():
 from urllib.error import HTTPError, URLError
 
 
-def test_run_test_sagansa_sukses(cred_engine, monkeypatch):
+def test_run_test_sagansa_sukses(cred_engine, monkeypatch, no_sagansa_env):
     monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
-    monkeypatch.delenv('SAGANSA_PRESENCE_TOKEN', raising=False)
     calls = []
 
     def _fake_urlopen(req, timeout=None):
@@ -173,7 +200,7 @@ def test_run_test_sagansa_sukses(cred_engine, monkeypatch):
         return _Resp()
 
     monkeypatch.setattr(credentials_service.urlrequest, 'urlopen', _fake_urlopen)
-    ok, message = credentials_service.run_test('sagansa_presence_token', value='tok-123')
+    ok, message = credentials_service.run_test('sagansa_api_token', value='tok-123')
     assert ok is True
     assert 'superadmin.sagansa.id/api/presences' in calls[0]['url']
     assert 'per_page=1' in calls[0]['url']
@@ -188,16 +215,15 @@ def test_run_test_sagansa_401_token_ditolak(cred_engine, monkeypatch):
         raise HTTPError(req.full_url, 401, 'Unauthorized', hdrs=None, fp=None)
 
     monkeypatch.setattr(credentials_service.urlrequest, 'urlopen', _fake_urlopen)
-    ok, message = credentials_service.run_test('sagansa_presence_token', value='salah')
+    ok, message = credentials_service.run_test('sagansa_api_token', value='salah')
     assert ok is False
     assert '401' in message
     assert 'salah' not in message
 
 
-def test_run_test_sagansa_token_kosong(cred_engine, monkeypatch):
+def test_run_test_sagansa_token_kosong(cred_engine, monkeypatch, no_sagansa_env):
     monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
-    monkeypatch.delenv('SAGANSA_PRESENCE_TOKEN', raising=False)
-    ok, message = credentials_service.run_test('sagansa_presence_token')
+    ok, message = credentials_service.run_test('sagansa_api_token')
     assert ok is False
     assert 'belum diisi' in message
 
@@ -291,6 +317,6 @@ def test_run_test_exception_tak_bocorkan_secret(cred_engine, monkeypatch):
         raise RuntimeError('token super-rahasia')
 
     monkeypatch.setattr(credentials_service, '_TEST_HANDLERS', {'sagansa': _handler_meledak})
-    ok, message = credentials_service.run_test('sagansa_presence_token', value='tok-apa-saja')
+    ok, message = credentials_service.run_test('sagansa_api_token', value='tok-apa-saja')
     assert ok is False
     assert 'super-rahasia' not in message

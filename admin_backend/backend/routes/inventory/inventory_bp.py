@@ -64,7 +64,7 @@ def _normalize_product_key(value):
 
 
 def _fetch_stock_monitoring_index():
-    token = credentials_service.get_credential_value('sagansa_stock_monitoring_token')
+    token = credentials_service.get_credential_value('sagansa_api_token')
     api_url = str(DEFAULT_STOCK_MONITORING_API_URL or '').strip()
     if not token or not api_url:
         return {}
@@ -841,7 +841,7 @@ def get_inventory_auto_balances():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or credentials_service.get_credential_value('sagansa_remaining_storage_token')
+        or credentials_service.get_credential_value('sagansa_api_token')
         or ''
     ).strip()
     _require_remaining_storage_token(token)

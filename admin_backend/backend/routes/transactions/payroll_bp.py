@@ -49,7 +49,7 @@ def sync_payroll_presences():
         payload.get('token')
         or payload.get('access_token')
         or payload.get('api_token')
-        or credentials_service.get_credential_value('sagansa_presence_token')
+        or credentials_service.get_credential_value('sagansa_api_token')
         or ''
     ).strip()
     company_id = str(payload.get('company_id') or '').strip() or None

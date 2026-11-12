@@ -76,7 +76,7 @@ def get_dashboard_sales_by_date():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or credentials_service.get_credential_value('sagansa_sales_by_date_token')
+        or credentials_service.get_credential_value('sagansa_api_token')
         or ''
     ).strip()
     _require_sales_by_date_token(token)

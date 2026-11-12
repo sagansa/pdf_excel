@@ -87,7 +87,7 @@ def test_post_test_sukses(cred_client, monkeypatch):
         credentials_service, 'run_test',
         lambda key, value=None, extra=None: (True, 'Koneksi berhasil (HTTP 200).'),
     )
-    resp = cred_client.post('/api/credentials/sagansa_presence_token/test', json={'value': 'tok'})
+    resp = cred_client.post('/api/credentials/sagansa_api_token/test', json={'value': 'tok'})
     assert resp.status_code == 200
     assert resp.get_json() == {'ok': True, 'message': 'Koneksi berhasil (HTTP 200).'}
 
@@ -103,6 +103,6 @@ def test_post_test_tetap_200_saaat_handler_gagal(cred_client, monkeypatch):
         credentials_service, 'run_test',
         lambda key, value=None, extra=None: (False, 'HTTP 401 — token ditolak server (salah atau tidak berlaku).'),
     )
-    resp = cred_client.post('/api/credentials/sagansa_presence_token/test', json={})
+    resp = cred_client.post('/api/credentials/sagansa_api_token/test', json={})
     assert resp.status_code == 200
     assert resp.get_json()['ok'] is False

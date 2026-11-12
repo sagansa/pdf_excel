@@ -11,22 +11,25 @@ Runtime code is separated from tooling and archive material.
 ## Kredensial (API Keys)
 
 Semua API key/token aplikasi dikelola dari **Settings → API Keys** di admin panel:
-token Sagansa superadmin (presence, remaining storage, stock monitoring, sales by
-date, stock comparison), Telegram (bot token + chat id), SMTP (host/port/user/
-password/from/TLS), kunci integrasi n8n, dan API key provider AI.
+token Sagansa Superadmin API (satu token untuk presence, remaining storage, stock
+monitoring, sales by date, dan stock comparison), Telegram (bot token + chat id),
+SMTP (host/port/user/password/from/TLS), kunci integrasi n8n, dan API key provider AI.
 
 - Nilai disimpan di tabel `app_settings`; frontend hanya melihat status
   terisi/tidak — nilai secret tidak pernah ditampilkan kembali.
 - **Environment variable tetap berfungsi sebagai fallback** (nama env = nama
-  setting, mis. `SAGANSA_PRESENCE_TOKEN` = `sagansa_presence_token`). Nilai DB
+  setting, mis. `SAGANSA_API_TOKEN` = `sagansa_api_token`). Nilai DB
   selalu menang atas env.
 - Deployment lama: variabel env yang masih ada ditandai "dari env" di tab API
   Keys — tekan Simpan untuk memindahkannya ke database.
 - Tombol **Test** menguji koneksi ke service tujuan (termasuk mengirim pesan tes
   Telegram / login SMTP) tanpa menyimpan nilai.
-- Catatan upgrade: fallback implisit antar env (`SAGANSA_STOCK_MONITORING_TOKEN`
-  yang dulu jatuh ke `SAGANSA_REMAINING_STORAGE_TOKEN`) sudah dihapus — setiap
-  kunci sekarang berdiri sendiri, jadi set nilainya masing-masing.
+- Catatan upgrade (konsolidasi Sagansa): lima token Sagansa per-fitur digabung
+  menjadi satu `sagansa_api_token` / env `SAGANSA_API_TOKEN`. Fallback env tetap
+  membaca nama-nama lama (`SAGANSA_PRESENCE_TOKEN`,
+  `SAGANSA_REMAINING_STORAGE_TOKEN`, `SAGANSA_STOCK_MONITORING_TOKEN`,
+  `SAGANSA_SALES_BY_DATE_TOKEN`, `SAGANSA_STOCK_COMPARISON_TOKEN`) — .env lama
+  bekerja tanpa diubah. Simpan sekali dari UI untuk memindahkan nilainya ke DB.
 
 ## Runtime folders
 

@@ -63,7 +63,7 @@ def get_stock_comparison():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or credentials_service.get_credential_value('sagansa_stock_comparison_token')
+        or credentials_service.get_credential_value('sagansa_api_token')
         or ''
     ).strip()
     _require_stock_comparison_token(token)

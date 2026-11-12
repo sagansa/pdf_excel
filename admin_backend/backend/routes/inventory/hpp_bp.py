@@ -92,7 +92,7 @@ def _transform_monitoring_row(row):
 
 def _fetch_stock_monitoring_index(category=None):
     api_url = DEFAULT_STOCK_MONITORING_API_URL.strip()
-    token = credentials_service.get_credential_value('sagansa_stock_monitoring_token')
+    token = credentials_service.get_credential_value('sagansa_api_token')
     if not token:
         return {}
 
@@ -134,7 +134,7 @@ def get_hpp_items():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or credentials_service.get_credential_value('sagansa_stock_monitoring_token')
+        or credentials_service.get_credential_value('sagansa_api_token')
         or ''
     ).strip()
 

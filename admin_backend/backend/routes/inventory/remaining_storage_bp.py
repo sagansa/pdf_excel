@@ -164,7 +164,7 @@ def get_remaining_storages():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or credentials_service.get_credential_value('sagansa_remaining_storage_token')
+        or credentials_service.get_credential_value('sagansa_api_token')
         or ''
     ).strip()
     store_id = str(request.args.get('store_id') or '').strip()
@@ -281,7 +281,7 @@ def get_remaining_storage_details(stock_card_id):
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or credentials_service.get_credential_value('sagansa_remaining_storage_token')
+        or credentials_service.get_credential_value('sagansa_api_token')
         or ''
     ).strip()
 
@@ -347,7 +347,7 @@ def get_dashboard_remaining_storage():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or credentials_service.get_credential_value('sagansa_remaining_storage_token')
+        or credentials_service.get_credential_value('sagansa_api_token')
         or ''
     ).strip()
     _require_remaining_storage_token(token)
@@ -624,7 +624,7 @@ def get_dashboard_stock_monitoring_simplified():
         request.args.get('token')
         or request.args.get('access_token')
         or request.args.get('api_token')
-        or credentials_service.get_credential_value('sagansa_stock_monitoring_token')
+        or credentials_service.get_credential_value('sagansa_api_token')
         or ''
     ).strip()
     

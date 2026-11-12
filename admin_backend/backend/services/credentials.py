@@ -13,7 +13,6 @@ import json
 import logging
 import os
 import smtplib
-from datetime import date, timedelta
 from urllib import error as urlerror
 from urllib import parse as urlparse
 from urllib import request as urlrequest
@@ -28,32 +27,27 @@ CREDENTIAL_CLEAR_SENTINEL = '__CLEAR__'
 CREDENTIAL_TEST_TIMEOUT = 15
 
 # URL test (non-secret) — env var sama dengan konstanta URL di blueprint terkait.
+# Satu token Sagansa untuk semua akses → test ping satu endpoint representatif.
 TEST_URLS = {
-    'sagansa_presence_token': os.environ.get(
+    'sagansa_api_token': os.environ.get(
         'SAGANSA_PRESENCE_API_URL', 'https://superadmin.sagansa.id/api/presences'),
-    'sagansa_remaining_storage_token': os.environ.get(
-        'SAGANSA_REMAINING_STORAGE_API_URL', 'https://superadmin.sagansa.id/api/remaining-storages'),
-    'sagansa_stock_monitoring_token': os.environ.get(
-        'SAGANSA_STOCK_MONITORING_API_URL', 'https://superadmin.sagansa.id/api/stock-monitorings'),
-    'sagansa_sales_by_date_token': os.environ.get(
-        'SAGANSA_SALES_BY_DATE_API_URL', 'https://superadmin.sagansa.id/api/detail-sales-orders/sales-by-date'),
-    'sagansa_stock_comparison_token': os.environ.get(
-        'SAGANSA_STOCK_COMPARISON_API_URL', 'https://superadmin.sagansa.id/api/detail-stock-cards/compare-periods'),
 }
+
+# Env legacy per-fitur: deployment lama memakai lima nama env terpisah. Mereka
+# tetap dibaca sebagai fallback (setelah env utama) supaya .env lama bekerja
+# tanpa diubah — satu token berlaku untuk semua endpoint Sagansa superadmin.
+SAGANSA_LEGACY_ENVS = (
+    'SAGANSA_PRESENCE_TOKEN', 'SAGANSA_REMAINING_STORAGE_TOKEN',
+    'SAGANSA_STOCK_MONITORING_TOKEN', 'SAGANSA_SALES_BY_DATE_TOKEN',
+    'SAGANSA_STOCK_COMPARISON_TOKEN',
+)
 
 # Registry: key = nama setting di app_settings (1:1 dengan nama env var).
 # secret=True → nilai tidak pernah keluar dari server. test = nama handler koneksi.
 CREDENTIALS = (
-    {'key': 'sagansa_presence_token', 'label': 'Presence API token',
-     'group': 'sagansa', 'secret': True, 'env': 'SAGANSA_PRESENCE_TOKEN', 'test': 'sagansa'},
-    {'key': 'sagansa_remaining_storage_token', 'label': 'Remaining storage API token',
-     'group': 'sagansa', 'secret': True, 'env': 'SAGANSA_REMAINING_STORAGE_TOKEN', 'test': 'sagansa'},
-    {'key': 'sagansa_stock_monitoring_token', 'label': 'Stock monitoring API token',
-     'group': 'sagansa', 'secret': True, 'env': 'SAGANSA_STOCK_MONITORING_TOKEN', 'test': 'sagansa'},
-    {'key': 'sagansa_sales_by_date_token', 'label': 'Sales by date API token',
-     'group': 'sagansa', 'secret': True, 'env': 'SAGANSA_SALES_BY_DATE_TOKEN', 'test': 'sagansa'},
-    {'key': 'sagansa_stock_comparison_token', 'label': 'Stock comparison API token',
-     'group': 'sagansa', 'secret': True, 'env': 'SAGANSA_STOCK_COMPARISON_TOKEN', 'test': 'sagansa'},
+    {'key': 'sagansa_api_token', 'label': 'Sagansa Superadmin API token',
+     'group': 'sagansa', 'secret': True, 'env': 'SAGANSA_API_TOKEN', 'test': 'sagansa',
+     'legacy_envs': SAGANSA_LEGACY_ENVS},
     {'key': 'telegram_bot_token', 'label': 'Bot token (dari @BotFather)',
      'group': 'telegram', 'secret': True, 'env': 'TELEGRAM_BOT_TOKEN', 'test': 'telegram'},
     {'key': 'telegram_chat_id', 'label': 'Chat ID tujuan',
@@ -100,6 +94,18 @@ def _read_conn():
         return None
 
 
+def _env_fallback(cred):
+    """Nilai env fallback kredensial: env utama dulu, lalu env legacy (jika ada)."""
+    value = os.environ.get(cred['env'], '') if cred['env'] else ''
+    if value.strip():
+        return value
+    for name in cred.get('legacy_envs') or ():
+        value = os.environ.get(name, '')
+        if value.strip():
+            return value
+    return ''
+
+
 def get_credential(conn, key):
     """Baca satu kredensial: (value, source) dengan source 'db' | 'env' | ''."""
     cred = _BY_KEY.get(key)
@@ -116,7 +122,7 @@ def get_credential(conn, key):
     if value.strip():
         return value, 'db'
     if cred['env']:
-        return os.environ.get(cred['env'], ''), 'env'
+        return _env_fallback(cred), 'env'
     return '', ''
 
 
@@ -134,7 +140,7 @@ def get_credential_value(key):
     if cred is None:
         raise ValueError(f'Kredensial tidak dikenal: {key}')
     if cred['env']:
-        return os.environ.get(cred['env'], '')
+        return _env_fallback(cred)
     return ''
 
 
@@ -150,7 +156,7 @@ def get_status(conn=None):
     items = []
     for cred in CREDENTIALS:
         raw = str(stored.get(cred['key']) or '')
-        value = raw if raw.strip() else (os.environ.get(cred['env'], '') if cred['env'] else '')
+        value = raw if raw.strip() else (_env_fallback(cred) if cred['env'] else '')
         is_set = bool(str(value).strip())
         item = {
             'key': cred['key'],
@@ -212,12 +218,8 @@ def _test_sagansa(key, value, extra):
     if not token:
         return False, 'Token belum diisi — tempel token atau isi kolomnya terlebih dahulu.'
 
-    params = {'per_page': 1}
-    if key == 'sagansa_sales_by_date_token':
-        params = {'date': (date.today() - timedelta(days=1)).isoformat()}
-    elif key == 'sagansa_stock_comparison_token':
-        params = {'from_date': date.today().isoformat(), 'to_date': date.today().isoformat()}
-    url = f"{TEST_URLS[key]}?{urlparse.urlencode(params)}"
+    # Satu token untuk semua endpoint → test ping satu URL representatif.
+    url = f"{TEST_URLS[key]}?{urlparse.urlencode({'per_page': 1})}"
 
     req = urlrequest.Request(url, headers={
         'Accept': 'application/json',
