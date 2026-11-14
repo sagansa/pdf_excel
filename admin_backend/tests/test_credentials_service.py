@@ -208,6 +208,33 @@ def test_run_test_sagansa_sukses(cred_engine, monkeypatch, no_sagansa_env):
     assert 'tok-123' not in message  # nilai token tidak bocor ke pesan
 
 
+def test_run_test_sagansa_kirim_user_agent(cred_engine, monkeypatch):
+    """Request test wajib bawa User-Agent aplikasi — UA default Python-urllib
+    diblokir Cloudflare di zona sagansa.id (error 1010) sebelum sampai ke app.
+    """
+
+    monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
+    captured = {}
+
+    def _fake_urlopen(req, timeout=None):
+        captured['ua'] = req.get_header('User-agent')
+        class _Resp:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return b'{"data": []}'
+        return _Resp()
+
+    monkeypatch.setattr(credentials_service.urlrequest, 'urlopen', _fake_urlopen)
+    ok, message = credentials_service.run_test('sagansa_api_token', value='tok-123')
+    assert ok is True
+    assert captured['ua'], 'User-Agent wajib di-set — UA default urllib diblokir Cloudflare'
+    assert 'python-urllib' not in captured['ua'].lower()
+
+
 def test_run_test_sagansa_401_token_ditolak(cred_engine, monkeypatch):
     monkeypatch.setattr(db_session, 'get_db_engine', lambda: (cred_engine, None))
 

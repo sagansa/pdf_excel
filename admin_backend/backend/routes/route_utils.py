@@ -5,6 +5,7 @@ from urllib import parse as urlparse
 from urllib import request as urlrequest
 
 from backend.routes.accounting_utils import normalize_iso_date_value
+from backend.services.http_client import USER_AGENT
 
 
 def _parse_bool(value):
@@ -65,7 +66,7 @@ def _fetch_remote_json(api_url, token, query_params=None, resource_name='API'):
         separator = '&' if '?' in url else '?'
         url = f"{url}{separator}{urlparse.urlencode(params)}"
 
-    headers = {'Accept': 'application/json'}
+    headers = {'Accept': 'application/json', 'User-Agent': USER_AGENT}
     if token:
         headers['Authorization'] = f"Bearer {token}"
 

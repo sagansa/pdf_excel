@@ -20,6 +20,7 @@ from urllib import request as urlrequest
 from sqlalchemy import text
 
 from backend.db import session as db_session
+from backend.services import http_client
 
 logger = logging.getLogger(__name__)
 
@@ -223,6 +224,7 @@ def _test_sagansa(key, value, extra):
 
     req = urlrequest.Request(url, headers={
         'Accept': 'application/json',
+        'User-Agent': http_client.USER_AGENT,  # UA urllib default diblokir Cloudflare
         'Authorization': f'Bearer {token}',  # header request, tidak di-log
     })
     try:
