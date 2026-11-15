@@ -102,6 +102,11 @@
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Financial Reports</span>
         </router-link>
 
+        <router-link to="/general-ledger" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'General Ledger' : ''">
+          <i class="bi bi-journal-text text-lg flex-shrink-0"></i>
+          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">General Ledger</span>
+        </router-link>
+
         <router-link to="/trial-balance" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Trial Balance' : ''">
           <i class="bi bi-columns-gap text-lg flex-shrink-0"></i>
           <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Trial Balance</span>
@@ -222,26 +227,7 @@ const isSidebarOpenMobile = ref(false);
 const isDesktop = ref(false);
 const route = useRoute();
 
-const pageTitle = computed(() => {
-    switch(route.name) {
-        case 'dashboard': return 'Dashboard Overview';
-        case 'converter': return 'Bank Statement Converter';
-        case 'history': return 'Transaction History';
-        case 'upload-summary': return 'Upload Summary';
-        case 'upload-checklist': return 'Upload Checklist';
-        case 'companies': return 'Company Management';
-        case 'marks': return 'Mark Management';
-        case 'chart-of-accounts': return 'Chart of Accounts';
-        case 'products': return 'Product Management';
-        case 'reports': return 'Financial Reports';
-        case 'hrd': return 'HRD Presences';
-        case 'settings': return 'System Settings';
-        case 'management': return 'Locations & Stores';
-        case 'general-ledger': return 'General Ledger';
-        case 'initial-capital': return 'Initial Capital';
-        default: return 'StatementX';
-    }
-});
+const pageTitle = computed(() => route.meta.title ?? 'StatementX');
 
 const closeMobileSidebar = () => {
     isSidebarOpenMobile.value = false;

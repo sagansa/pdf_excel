@@ -45,87 +45,104 @@ const router = createRouter({
     {
       path: '/',
       name: 'dashboard',
-      component: Dashboard
+      component: Dashboard,
+      meta: { title: 'Dashboard Overview' }
     },
     {
       path: '/converter',
       name: 'converter',
-      component: ConverterView
+      component: ConverterView,
+      meta: { title: 'Bank Statement Converter' }
     },
     {
       path: '/history',
       name: 'history',
-      component: HistoryView
+      component: HistoryView,
+      meta: { title: 'Transaction History' }
     },
     {
       path: '/companies',
       name: 'companies',
-      component: CompaniesView
+      component: CompaniesView,
+      meta: { title: 'Company Management' }
     },
     {
       path: '/marks',
       name: 'marks',
-      component: MarksView
+      component: MarksView,
+      meta: { title: 'Mark Management' }
     },
     {
       path: '/chart-of-accounts',
       name: 'chart-of-accounts',
-      component: ChartOfAccountsView
+      component: ChartOfAccountsView,
+      meta: { title: 'Chart of Accounts' }
     },
     {
       path: '/reports',
       name: 'reports',
-      component: ReportsView
+      component: ReportsView,
+      meta: { title: 'Financial Reports' }
     },
     {
       path: '/upload-summary',
       name: 'upload-summary',
-      component: UploadSummaryView
+      component: UploadSummaryView,
+      meta: { title: 'Upload Summary' }
     },
     {
       path: '/upload-checklist',
       name: 'upload-checklist',
-      component: UploadChecklistView
+      component: UploadChecklistView,
+      meta: { title: 'Upload Checklist' }
     },
     {
       path: '/settings',
       name: 'settings',
-      component: SettingsView
+      component: SettingsView,
+      meta: { title: 'System Settings' }
     },
     {
       path: '/management',
       name: 'management',
-      component: ManagementView
+      component: ManagementView,
+      meta: { title: 'Locations & Stores' }
     },
     {
       path: '/initial-capital',
       name: 'initial-capital',
-      component: InitialCapitalPage
+      component: InitialCapitalPage,
+      meta: { title: 'Initial Capital' }
     },
     {
       path: '/general-ledger',
       name: 'general-ledger',
-      component: GeneralLedger
+      component: GeneralLedger,
+      meta: { title: 'General Ledger' }
     },
     {
       path: '/balance-check',
       name: 'balance-check',
-      component: BalanceCheckView
+      component: BalanceCheckView,
+      meta: { title: 'Cek Kontinuitas Saldo' }
     },
     {
       path: '/trial-balance',
       name: 'trial-balance',
-      component: TrialBalanceView
+      component: TrialBalanceView,
+      meta: { title: 'Trial Balance' }
     },
     {
       path: '/ai-review',
       name: 'ai-review',
-      component: AiReviewView
+      component: AiReviewView,
+      meta: { title: 'Review Saran AI' }
     },
     {
       path: '/hrd',
       name: 'hrd',
-      component: HrdView
+      component: HrdView,
+      meta: { title: 'HRD Presences' }
     }
   ]
 })
