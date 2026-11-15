@@ -1,154 +1,12 @@
 <template>
   <div class="app-shell flex h-screen overflow-hidden">
     <!-- Sidebar -->
-    <aside 
-        class="app-sidebar flex flex-col h-full z-50 transition-all duration-300 ease-in-out transform lg:translate-x-0"
-        :class="[
-            isDesktop
-              ? 'static translate-x-0'
-              : (isSidebarOpenMobile ? 'fixed translate-x-0' : '-translate-x-full fixed'),
-            isSidebarCollapsed ? 'w-20' : 'w-64'
-        ]"
-    >
-      <div class="px-5 py-5 mb-4 flex items-center gap-3 overflow-hidden whitespace-nowrap">
-        <div class="brand-mark flex-shrink-0">
-          <i class="bi bi-lightning-fill text-xl"></i>
-        </div>
-        <span 
-            class="text-xl font-bold brand-wordmark transition-opacity duration-300"
-            :class="{ 'opacity-0 w-0': isSidebarCollapsed, 'opacity-100': !isSidebarCollapsed }"
-        >StatementX</span>
-      </div>
-      
-      <nav class="flex-1 px-3 pb-4 space-y-1 overflow-x-hidden overflow-y-auto">
-        <router-link to="/" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Dashboard' : ''">
-          <i class="bi bi-grid-fill text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Dashboard</span>
-        </router-link>
-
-        <router-link to="/converter" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Converter' : ''">
-          <i class="bi bi-file-earmark-medical text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Converter</span>
-        </router-link>
-        
-        <router-link to="/history" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'History' : ''">
-          <i class="bi bi-database-fill text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">History & DB</span>
-        </router-link>
-
-        <router-link to="/ai-review" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Review Saran AI' : ''">
-          <i class="bi bi-stars text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Review Saran AI</span>
-        </router-link>
-
-        <router-link to="/upload-summary" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Upload Summary' : ''">
-          <i class="bi bi-file-check-fill text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Upload Summary</span>
-        </router-link>
-
-        <router-link to="/upload-checklist" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Upload Checklist' : ''">
-          <i class="bi bi-check2-square text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Upload Checklist</span>
-        </router-link>
-
-        <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
-            <p class="sidebar-section-label px-2">HRD</p>
-        </div>
-        <div class="pt-4 pb-2 flex justify-center" v-if="isSidebarCollapsed">
-            <i class="bi bi-three-dots section-dots"></i>
-        </div>
-
-        <router-link to="/hrd" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'HRD' : ''">
-          <i class="bi bi-calendar-check text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Presences</span>
-        </router-link>
-
-        <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
-            <p class="sidebar-section-label px-2">Management</p>
-        </div>
-        <div class="pt-4 pb-2 flex justify-center" v-if="isSidebarCollapsed">
-            <i class="bi bi-three-dots section-dots"></i>
-        </div>
-
-        <router-link to="/companies" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Companies' : ''">
-          <i class="bi bi-building text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Companies</span>
-        </router-link>
-
-        <router-link to="/marks" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Marks' : ''">
-          <i class="bi bi-tags-fill text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Marks</span>
-        </router-link>
-
-        <router-link to="/chart-of-accounts" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Chart of Accounts' : ''">
-          <i class="bi bi-journal-text text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Chart of Accounts</span>
-        </router-link>
-
-        <router-link to="/management" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Locations & Stores' : ''">
-          <i class="bi bi-geo-alt text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Locations & Stores</span>
-        </router-link>
-
-        <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
-            <p class="sidebar-section-label px-2">Reports</p>
-        </div>
-        <div class="pt-4 pb-2 flex justify-center" v-if="isSidebarCollapsed">
-            <i class="bi bi-three-dots section-dots"></i>
-        </div>
-
-        <router-link to="/reports" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Financial Reports' : ''">
-          <i class="bi bi-file-earmark-bar-graph text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Financial Reports</span>
-        </router-link>
-
-        <router-link to="/general-ledger" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'General Ledger' : ''">
-          <i class="bi bi-journal-text text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">General Ledger</span>
-        </router-link>
-
-        <router-link to="/trial-balance" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Trial Balance' : ''">
-          <i class="bi bi-columns-gap text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Trial Balance</span>
-        </router-link>
-
-        <router-link to="/balance-check" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Cek Kontinuitas Saldo' : ''">
-          <i class="bi bi-shield-check text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Cek Kontinuitas Saldo</span>
-        </router-link>
-
-        <div class="pt-4 pb-2 transition-opacity duration-300" :class="{ 'opacity-0 hidden': isSidebarCollapsed }">
-            <p class="sidebar-section-label px-2">Configuration</p>
-        </div>
-        <div class="pt-4 pb-2 flex justify-center" v-if="isSidebarCollapsed">
-            <i class="bi bi-three-dots section-dots"></i>
-        </div>
-
-        <router-link to="/settings" class="sidebar-item" active-class="active" @click="closeMobileSidebar" :title="isSidebarCollapsed ? 'Settings' : ''">
-          <i class="bi bi-gear text-lg flex-shrink-0"></i>
-          <span class="ml-3 font-medium transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">Settings</span>
-        </router-link>
-      </nav>
-
-      <div class="p-4 border-t sidebar-footer overflow-hidden">
-        <div class="surface-card-muted rounded-2xl p-4 flex items-center gap-3">
-          <div class="account-chip flex-shrink-0">{{ userInitials }}</div>
-          <div class="overflow-hidden transition-opacity duration-300" :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }">
-            <p class="text-xs font-bold text-theme truncate">{{ auth.user?.display_name || 'Admin' }}</p>
-            <p class="text-[10px] text-muted uppercase tracking-[0.18em] truncate">{{ auth.user?.email || '' }}</p>
-          </div>
-          <button
-            class="ml-auto flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-            :class="{ 'opacity-0 w-0 hidden': isSidebarCollapsed }"
-            title="Logout"
-            :disabled="isLoggingOut"
-            @click="handleLogout"
-          >
-            <i class="bi bi-box-arrow-right"></i>
-          </button>
-        </div>
-      </div>
-    </aside>
+    <AppSidebar
+        :collapsed="isSidebarCollapsed"
+        :mobile-open="isSidebarOpenMobile"
+        :is-desktop="isDesktop"
+        @close-mobile="isSidebarOpenMobile = false"
+    />
 
     <!-- Overlay for mobile -->
     <div 
@@ -196,31 +54,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
-
-const router = useRouter();
-const auth = useAuthStore();
-const isLoggingOut = ref(false);
-
-const userInitials = computed(() => {
-  const name = auth.user?.display_name || auth.user?.email || 'A';
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('');
-});
-
-const handleLogout = async () => {
-  isLoggingOut.value = true;
-  try {
-    await auth.logout();
-    router.push('/login');
-  } finally {
-    isLoggingOut.value = false;
-  }
-};
+import { useRoute } from 'vue-router';
+import AppSidebar from '../components/layout/AppSidebar.vue';
 
 const isSidebarCollapsed = ref(false);
 const isSidebarOpenMobile = ref(false);
@@ -228,10 +63,6 @@ const isDesktop = ref(false);
 const route = useRoute();
 
 const pageTitle = computed(() => route.meta.title ?? 'StatementX');
-
-const closeMobileSidebar = () => {
-    isSidebarOpenMobile.value = false;
-};
 
 const syncViewportState = () => {
     isDesktop.value = window.innerWidth >= 1024;
@@ -263,48 +94,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.app-sidebar {
-    background: var(--color-panel);
-    border-right: 1px solid var(--color-border);
-    backdrop-filter: blur(14px);
-}
-
 .app-header {
     background: var(--color-panel-strong);
     border-bottom: 1px solid var(--color-border);
     backdrop-filter: blur(16px);
-}
-
-.brand-mark {
-    @apply flex h-11 w-11 items-center justify-center rounded-2xl text-white;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
-    box-shadow: 0 16px 32px rgba(15, 118, 110, 0.22);
-}
-
-.brand-wordmark {
-    background: linear-gradient(135deg, var(--color-text), var(--color-text-muted));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-
-.sidebar-section-label {
-    @apply text-[10px] font-bold uppercase tracking-[0.24em];
-    color: var(--color-text-muted);
-}
-
-.section-dots {
-    color: var(--color-text-muted);
-}
-
-.sidebar-footer {
-    border-color: var(--color-border);
-}
-
-.account-chip {
-    @apply flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold;
-    background: rgba(15, 118, 110, 0.12);
-    color: var(--color-primary);
 }
 
 .nav-divider {
@@ -326,23 +119,5 @@ onBeforeUnmount(() => {
 .header-icon-button:hover {
     color: var(--color-text);
     border-color: var(--color-border-strong);
-}
-
-.sidebar-item {
-    @apply mb-1 flex items-center rounded-2xl px-3 py-2.5 transition-all duration-200 cursor-pointer;
-    color: var(--color-text-muted);
-}
-
-.sidebar-item:hover {
-    background: var(--color-surface-muted);
-    color: var(--color-primary);
-}
-
-.sidebar-item.active {
-    @apply font-semibold;
-    background: rgba(15, 118, 110, 0.12);
-    color: var(--color-primary);
-    border: 1px solid rgba(15, 118, 110, 0.18);
-    box-shadow: var(--shadow-soft);
 }
 </style>
