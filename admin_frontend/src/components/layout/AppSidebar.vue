@@ -18,7 +18,14 @@
       >StatementX</span>
     </div>
 
-    <nav class="flex-1 px-3 pb-4 space-y-1 overflow-x-hidden overflow-y-auto">
+    <nav
+      ref="navEl"
+      class="flex-1 px-3 pb-4 space-y-1 overflow-x-hidden overflow-y-auto"
+      @mousemove="onNavMouseMove"
+      @mouseleave="onNavMouseLeave"
+      @focusin="onNavFocusIn"
+      @focusout="onNavFocusOut"
+    >
       <SidebarSection
         v-for="(section, index) in navigation"
         :key="index"
@@ -48,11 +55,46 @@
         </button>
       </div>
     </div>
+
+    <!-- Overlay mode collapsed (desktop): tooltip & flyout di-teleport ke <body> dengan
+         position: fixed. Overflow nav tidak lagi memotongnya, dan karena elemen ini
+         ada di template AppSidebar sendiri, scoped style berlaku tanpa :deep(). -->
+    <Teleport to="body">
+      <div
+        v-if="tooltip"
+        ref="tooltipEl"
+        class="sidebar-tooltip fixed px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap pointer-events-none"
+        :style="{ left: `${tooltip.left}px`, top: `${tooltip.top}px` }"
+      >{{ tooltip.text }}</div>
+
+      <div
+        v-if="flyout"
+        ref="flyoutPanelEl"
+        class="sidebar-flyout-panel fixed rounded-2xl p-3"
+        :style="{ left: `${flyout.left}px`, top: `${flyout.top}px` }"
+        @pointerenter="cancelFlyoutClose"
+        @pointerleave="scheduleFlyoutClose"
+        @focusin="cancelFlyoutClose"
+        @focusout="scheduleFlyoutClose"
+      >
+        <p class="sidebar-section-label px-2 pb-2">{{ flyout.section.label }}</p>
+        <router-link
+          v-for="item in flyout.section.items"
+          :key="item.to"
+          :to="item.to"
+          class="sidebar-flyout-item"
+          :class="{ active: isRouteActive(item.to, route.path) }"
+          @click="$emit('close-mobile')"
+        >
+          <span class="font-medium">{{ item.title }}</span>
+        </router-link>
+      </div>
+    </Teleport>
   </aside>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { navigation, isRouteActive } from '../../config/navigation';
@@ -64,7 +106,7 @@ const props = defineProps({
   isDesktop: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['close-mobile']);
+defineEmits(['close-mobile']);
 
 const route = useRoute();
 const router = useRouter();
@@ -105,6 +147,191 @@ const toggleSection = (index) => {
   expandedSections.value = next;
 };
 
+// ===== Overlay mode collapsed (desktop): tooltip item + flyout section =====
+// Semua path di-guard collapsedDesktop; markup ter-teleport hanya muncul
+// bila state terisi lewat path yang sudah di-guard tersebut.
+const collapsedDesktop = computed(() => props.collapsed && props.isDesktop);
+
+const navEl = ref(null);
+const tooltipEl = ref(null);
+const flyoutPanelEl = ref(null);
+
+const tooltip = ref(null); // { text, left, top }
+const flyout = ref(null); // { section, left, top }
+
+let flyoutCloseTimer = null;
+let flyoutAnchorEl = null; // toggle section yang sedang membuka flyout
+let activeSectionLabel = null; // label section yang sedang di-hover di nav
+
+const hideTooltip = () => {
+  tooltip.value = null;
+};
+
+// Geser bubble/panel agar tetap di dalam viewport setelah ter-render (ukuran baru diketahui).
+const clampIntoViewport = async (el, box) => {
+  await nextTick();
+  if (!el || !box.value) return;
+  const rect = el.getBoundingClientRect();
+  let dx = 0;
+  let dy = 0;
+  if (rect.right > window.innerWidth - 8) dx = window.innerWidth - 8 - rect.right;
+  if (rect.top < 8) dy = 8 - rect.top;
+  else if (rect.bottom > window.innerHeight - 8) dy = window.innerHeight - 8 - rect.bottom;
+  if (dx || dy) {
+    box.value = { ...box.value, left: box.value.left + dx, top: box.value.top + dy };
+  }
+};
+
+const showTooltip = (el) => {
+  const rect = el.getBoundingClientRect();
+  tooltip.value = {
+    text: el.dataset.tip || '',
+    left: rect.right + 10,
+    top: rect.top + rect.height / 2,
+  };
+  clampIntoViewport(tooltipEl, tooltip);
+};
+
+const closeFlyout = () => {
+  if (flyoutCloseTimer) {
+    clearTimeout(flyoutCloseTimer);
+    flyoutCloseTimer = null;
+  }
+  flyout.value = null;
+  flyoutAnchorEl = null;
+  activeSectionLabel = null;
+};
+
+const scheduleFlyoutClose = () => {
+  if (!flyout.value) return;
+  if (flyoutCloseTimer) clearTimeout(flyoutCloseTimer);
+  flyoutCloseTimer = setTimeout(() => {
+    flyoutCloseTimer = null;
+    closeFlyout();
+  }, 120);
+};
+
+const cancelFlyoutClose = () => {
+  if (flyoutCloseTimer) {
+    clearTimeout(flyoutCloseTimer);
+    flyoutCloseTimer = null;
+  }
+};
+
+const openFlyout = (sectionEl) => {
+  const toggle = sectionEl.querySelector('.sidebar-section-toggle');
+  if (!toggle) return;
+  const label = toggle.dataset.tip;
+  const section = navigation.find((s) => s.label && s.label === label);
+  if (!section) return;
+  if (flyout.value && flyout.value.section.label === label) return; // sudah terbuka untuk section ini
+  cancelFlyoutClose();
+  const rect = toggle.getBoundingClientRect();
+  flyout.value = { section, left: rect.right + 10, top: rect.top };
+  flyoutAnchorEl = toggle;
+  clampIntoViewport(flyoutPanelEl, flyout);
+};
+
+const closeOverlays = () => {
+  closeFlyout();
+  hideTooltip();
+};
+
+// Delegasi event di <nav> (bukan per-item): elemen [data-tip] → tooltip,
+// wrapper .nav-section-labeled → flyout. Flyout menang di atas tooltip
+// agar keduanya tidak tumpang tindih di posisi yang sama.
+const onNavMouseMove = (event) => {
+  if (!collapsedDesktop.value) return;
+  const sectionEl = event.target.closest('.nav-section-labeled');
+  if (sectionEl) {
+    const label = sectionEl.querySelector('.sidebar-section-toggle')?.dataset.tip || null;
+    if (label !== activeSectionLabel) {
+      openFlyout(sectionEl);
+      activeSectionLabel = label;
+    }
+    cancelFlyoutClose();
+    hideTooltip();
+    return;
+  }
+  if (activeSectionLabel !== null) {
+    activeSectionLabel = null;
+    scheduleFlyoutClose();
+  }
+  const tipEl = event.target.closest('[data-tip]');
+  if (tipEl) showTooltip(tipEl);
+  else hideTooltip();
+};
+
+const onNavMouseLeave = () => {
+  hideTooltip();
+  if (activeSectionLabel !== null) {
+    activeSectionLabel = null;
+    scheduleFlyoutClose();
+  }
+};
+
+const onNavFocusIn = (event) => {
+  if (!collapsedDesktop.value) return;
+  const sectionEl = event.target.closest('.nav-section-labeled');
+  if (sectionEl) {
+    hideTooltip();
+    openFlyout(sectionEl);
+    return;
+  }
+  const tipEl = event.target.closest('[data-tip]');
+  if (tipEl) showTooltip(tipEl);
+};
+
+const onNavFocusOut = (event) => {
+  if (!collapsedDesktop.value) return;
+  const to = event.relatedTarget;
+  if (to && navEl.value && navEl.value.contains(to)) return; // fokus pindah di dalam nav
+  scheduleFlyoutClose(); // focusin pada panel flyout akan membatalkan ini
+  hideTooltip();
+};
+
+const onWindowKeydown = (event) => {
+  if (event.key !== 'Escape' || !collapsedDesktop.value) return;
+  closeOverlays();
+};
+
+const onDocumentPointerDown = (event) => {
+  if (!collapsedDesktop.value || !flyout.value) return;
+  const target = event.target;
+  if (flyoutPanelEl.value && flyoutPanelEl.value.contains(target)) return;
+  if (flyoutAnchorEl && flyoutAnchorEl.contains(target)) return;
+  closeOverlays();
+};
+
+const onWindowBlurOrResize = () => {
+  if (!collapsedDesktop.value) return;
+  closeOverlays();
+};
+
+// Listener global dipasang sekali saat mount dan dilepas saat unmount (tanpa leak).
+onMounted(() => {
+  window.addEventListener('keydown', onWindowKeydown);
+  window.addEventListener('blur', onWindowBlurOrResize);
+  window.addEventListener('resize', onWindowBlurOrResize);
+  document.addEventListener('pointerdown', onDocumentPointerDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onWindowKeydown);
+  window.removeEventListener('blur', onWindowBlurOrResize);
+  window.removeEventListener('resize', onWindowBlurOrResize);
+  document.removeEventListener('pointerdown', onDocumentPointerDown);
+  if (flyoutCloseTimer) {
+    clearTimeout(flyoutCloseTimer);
+    flyoutCloseTimer = null;
+  }
+});
+
+// Ganti mode (toggle expand/collapse, pindah desktop/mobile) → tutup overlay.
+watch(collapsedDesktop, (isCollapsedDesktop) => {
+  if (!isCollapsedDesktop) closeOverlays();
+});
+
 watch(
   () => route.path,
   () => {
@@ -115,6 +342,7 @@ watch(
       }
     });
     expandedSections.value = next;
+    closeOverlays(); // navigasi menutup tooltip/flyout seketika
   },
   { immediate: true }
 );
@@ -155,17 +383,20 @@ watch(
     color: var(--color-primary);
 }
 
-.sidebar-item {
+/* Elemen di bawah ini di-render <SidebarSection> (multi-root/fragment): scoped style
+   parent tidak menjangkau isi child, sehingga semua rule yang menarget elemen tersebut
+   wajib lewat :deep(). */
+nav :deep(.sidebar-item) {
     @apply mb-1 flex items-center rounded-2xl px-3 py-2.5 transition-all duration-200 cursor-pointer relative;
     color: var(--color-text-muted);
 }
 
-.sidebar-item:hover {
+nav :deep(.sidebar-item:hover) {
     background: var(--color-surface-muted);
     color: var(--color-primary);
 }
 
-.sidebar-item.active {
+nav :deep(.sidebar-item.active) {
     @apply font-semibold;
     background: rgba(15, 118, 110, 0.12);
     color: var(--color-primary);
@@ -174,64 +405,59 @@ watch(
 }
 
 /* Accordion */
-.sidebar-section-toggle {
+nav :deep(.sidebar-section-toggle) {
     @apply w-full appearance-none bg-transparent border-0;
 }
 
-.nav-sub-list {
+nav :deep(.nav-sub-list) {
     margin-left: 14px;
     padding-left: 12px;
     border-left: 1px solid var(--color-border);
 }
 
-.sidebar-sub-item {
+nav :deep(.sidebar-sub-item) {
     @apply px-3 py-2 text-sm;
 }
 
-/* Mode collapsed */
-.sidebar-collapsed .sidebar-item {
+/* Mode collapsed: ikon item di-tengah; tooltip & flyout disediakan AppSidebar via Teleport. */
+.sidebar-collapsed :deep(.sidebar-item) {
     justify-content: center;
 }
 
-.sidebar-collapsed .sidebar-item:hover::after,
-.sidebar-collapsed .sidebar-item:focus-visible::after {
-    content: attr(data-tip);
-    position: absolute;
-    left: calc(100% + 10px);
-    top: 50%;
+/* Tooltip ter-teleport (pengganti ::after). Left/top di-set inline; transform
+   di bawah untuk vertical centering terhadap item. */
+.sidebar-tooltip {
     transform: translateY(-50%);
-    @apply px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap pointer-events-none;
     background: var(--color-panel-strong);
     color: var(--color-text);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-soft);
-    z-index: 60;
+    z-index: 70;
 }
 
-.nav-section-labeled {
-    position: relative;
-}
-
-.sidebar-flyout {
-    display: none;
-    position: absolute;
-    left: calc(100% + 10px);
-    top: 0;
+/* Panel flyout ter-teleport (pengganti flyout in-place di SidebarSection). */
+.sidebar-flyout-panel {
     min-width: 220px;
-    @apply rounded-2xl p-3;
     background: var(--color-panel-strong);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-soft);
-    z-index: 60;
+    z-index: 70;
 }
 
-.sidebar-collapsed .nav-section-labeled:hover .sidebar-flyout,
-.sidebar-collapsed .nav-section-labeled:focus-within .sidebar-flyout {
-    display: block;
-}
-
-.sidebar-flyout-item {
-    @apply text-sm px-3 py-2;
+.sidebar-flyout-panel :deep(.sidebar-flyout-item) {
+    @apply mb-1 flex items-center rounded-2xl px-3 py-2 text-sm font-medium transition-colors;
     color: var(--color-text-muted);
+}
+
+.sidebar-flyout-panel :deep(.sidebar-flyout-item:hover) {
+    background: var(--color-surface-muted);
+    color: var(--color-primary);
+}
+
+.sidebar-flyout-panel :deep(.sidebar-flyout-item.active) {
+    background: rgba(15, 118, 110, 0.12);
+    color: var(--color-primary);
+    border: 1px solid rgba(15, 118, 110, 0.18);
+    box-shadow: var(--shadow-soft);
 }
 </style>

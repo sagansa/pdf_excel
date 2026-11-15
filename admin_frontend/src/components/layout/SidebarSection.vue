@@ -49,20 +49,8 @@
       </li>
     </ul>
 
-    <!-- Flyout saat collapsed (desktop) — terbuka via :hover / :focus-within, lihat CSS -->
-    <div v-if="collapsed" class="sidebar-flyout" :aria-label="section.label">
-      <p class="sidebar-section-label px-2 pb-2">{{ section.label }}</p>
-      <router-link
-        v-for="item in section.items"
-        :key="item.to"
-        :to="item.to"
-        class="sidebar-item sidebar-flyout-item"
-        :class="{ active: isRouteActive(item.to, route.path) }"
-        @click="$emit('close-mobile')"
-      >
-        <span class="font-medium">{{ item.title }}</span>
-      </router-link>
-    </div>
+    <!-- Flyout mode collapsed dirender AppSidebar via <Teleport to="body"> —
+         tidak di sini, agar tidak terpotong overflow nav. -->
   </div>
 </template>
 
@@ -89,6 +77,6 @@ const onToggle = () => {
   if (!props.collapsed) {
     emit('toggle');
   }
-  // Saat collapsed, klik tidak melipat — flyout muncul via hover/focus (CSS).
+  // Saat collapsed, klik tidak melipat — flyout ditampilkan AppSidebar via Teleport.
 };
 </script>
