@@ -5,7 +5,7 @@
         <div :class="['text-[10px] uppercase font-semibold', labelClass]">
           {{ label }}
         </div>
-        <div :class="['text-lg font-bold font-mono mt-1', valueClass]">
+        <div :class="['text-lg font-bold mono mt-1', valueClass]">
           <slot name="value">{{ value }}</slot>
         </div>
       </div>

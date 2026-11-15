@@ -26,20 +26,34 @@
 
         <div>
           <label for="password" class="block text-xs font-bold text-theme mb-1.5 uppercase tracking-wide">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            autocomplete="current-password"
-            class="input-base py-2.5"
-            :disabled="isLoading"
-            placeholder="Password"
-            required
-          />
+          <div class="relative">
+            <input
+              id="password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              class="input-base py-2.5 pr-11"
+              :disabled="isLoading"
+              placeholder="Password"
+              required
+            />
+            <button
+              type="button"
+              class="password-toggle"
+              :class="{ 'password-toggle--disabled': isLoading }"
+              :disabled="isLoading"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-pressed="showPassword"
+              :title="showPassword ? 'Hide password' : 'Show password'"
+              @click="showPassword = !showPassword"
+            >
+              <i class="bi" :class="showPassword ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
 
-        <p v-if="resetNotice" class="text-sm text-green-600 dark:text-green-400">{{ resetNotice }}</p>
-        <p v-if="error" class="text-sm text-red-500 dark:text-red-400">{{ error }}</p>
+        <p v-if="resetNotice" class="text-sm login-notice">{{ resetNotice }}</p>
+        <p v-if="error" class="text-sm login-error">{{ error }}</p>
 
         <button
           type="submit"
@@ -70,6 +84,7 @@ const auth = useAuthStore();
 
 const email = ref('');
 const password = ref('');
+const showPassword = ref(false);
 const isLoading = ref(false);
 const error = ref('');
 const resetNotice = ref(
@@ -99,3 +114,44 @@ const handleSubmit = async () => {
   }
 };
 </script>
+
+<style scoped>
+.login-notice {
+  color: var(--color-success);
+}
+
+.login-error {
+  color: var(--color-danger);
+}
+
+.password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 11px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.password-toggle:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 1px;
+  border-radius: 8px;
+}
+
+.password-toggle--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>

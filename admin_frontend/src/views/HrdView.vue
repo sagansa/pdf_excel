@@ -1,96 +1,101 @@
 <template>
-  <div class="w-full px-6 space-y-5">
-    <div class="bg-white/95 backdrop-blur border-b border-gray-200 -mx-6 -mt-6 px-6 py-4 sticky top-0 z-40 shadow-sm flex items-center justify-between">
-      <h3 class="text-xl font-bold text-gray-900">HRD</h3>
-      <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">Presence monitoring and sync</p>
-    </div>
-
-    <div class="pt-5 space-y-5">
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div class="border-b border-gray-200">
-          <nav class="flex -mb-px overflow-x-auto">
-            <button
-              v-for="tab in hrdTabs"
-              :key="tab.id"
-              @click="activeTab = tab.id"
-              class="px-5 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors"
-              :class="activeTab === tab.id
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-            >
-              <i :class="[tab.icon, 'mr-2']"></i>
-              {{ tab.label }}
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      <template v-if="activeTab === 'presences'">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <div class="flex flex-col md:flex-row gap-3 items-end">
-            <div class="flex-1">
-              <label class="block text-xs font-semibold text-gray-500 mb-1">Company</label>
-              <select
-                v-model="filters.companyId"
-                class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-              >
-                <option value="">All Companies</option>
-                <option v-for="c in companyStore.companies" :key="c.id" :value="c.id">
-                  {{ c.name }}
-                </option>
-              </select>
-            </div>
-            <div class="w-full md:w-40">
-              <label class="block text-xs font-semibold text-gray-500 mb-1">Year</label>
-              <input
-                v-model.number="filters.year"
-                type="number"
-                min="2000"
-                max="2100"
-                class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-              >
-            </div>
-          </div>
-        </div>
-
-        <PayrollPresencesTable
-          :key="`hrd-presences-${filters.companyId || 'all'}-${filters.year}`"
-          :company-id="filters.companyId"
-          :year="filters.year"
-        />
+  <div class="space-y-4">
+    <PageHeader
+      title="HRD Presences"
+      subtitle="Pantau kehadiran karyawan hasil sync dari API presence Sagansa — filter per perusahaan dan periode, lalu tarik data terbaru."
+    >
+      <template #actions>
+        <template v-if="activeTab === 'presences'">
+          <button
+            type="button"
+            class="btn-secondary flex items-center gap-2 py-2"
+            :disabled="panelLoading"
+            @click="reloadPresences"
+          >
+            <i class="bi bi-arrow-clockwise" :class="{ 'animate-spin': panelLoading }" aria-hidden="true"></i>
+            <span>Reload</span>
+          </button>
+          <button
+            type="button"
+            class="btn-primary flex items-center gap-2 py-2"
+            :disabled="panelSyncing"
+            @click="syncPresences"
+          >
+            <i class="bi" :class="panelSyncing ? 'bi-arrow-repeat animate-spin' : 'bi-cloud-download'" aria-hidden="true"></i>
+            <span>{{ panelSyncing ? 'Syncing…' : 'Sync API' }}</span>
+          </button>
+        </template>
       </template>
+    </PageHeader>
 
-      <div v-else class="bg-white rounded-xl shadow-sm border border-gray-200 p-10 text-center">
-        <div class="text-sm font-semibold text-gray-800">{{ activeTabLabel }}</div>
-        <p class="text-xs text-gray-500 mt-2">
-          Tab ini disiapkan untuk navigasi fitur HRD berikutnya.
-        </p>
+    <SegmentedControl v-model="activeTab" :options="hrdTabs">
+      <template #option="{ option }">
+        <i :class="option.icon" class="mr-1.5" aria-hidden="true"></i>
+        <span>{{ option.label }}</span>
+      </template>
+    </SegmentedControl>
+
+    <PresencesPanel v-if="activeTab === 'presences'" ref="presencesPanel" />
+
+    <SectionCard v-else body-class="px-6 py-12">
+      <div class="hrd-tab-empty">
+        <i class="bi hrd-tab-empty__icon" :class="activeTabMeta.icon" aria-hidden="true"></i>
+        <p class="hrd-tab-empty__title">{{ activeTabMeta.label }}</p>
+        <p class="hrd-tab-empty__hint">{{ activeTabMeta.hint }}</p>
       </div>
-    </div>
+    </SectionCard>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useCompanyStore } from '../stores/companies';
-import PayrollPresencesTable from '../components/history/PayrollPresencesTable.vue';
+import { computed, ref } from 'vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import PresencesPanel from '../components/hrd/PresencesPanel.vue';
+import SectionCard from '../components/ui/SectionCard.vue';
+import SegmentedControl from '../components/ui/SegmentedControl.vue';
 
-const companyStore = useCompanyStore();
 const activeTab = ref('presences');
-const filters = reactive({
-  companyId: '',
-  year: new Date().getFullYear()
-});
+const presencesPanel = ref(null);
+
 const hrdTabs = [
-  { id: 'presences', label: 'Presences', icon: 'bi bi-calendar-check' },
-  { id: 'employees', label: 'Employees', icon: 'bi bi-people' },
-  { id: 'requests', label: 'Requests', icon: 'bi bi-file-earmark-text' }
+  { id: 'presences', label: 'Presences', icon: 'bi-calendar-check', hint: '' },
+  { id: 'employees', label: 'Employees', icon: 'bi-people', hint: 'Modul data karyawan akan tersedia di sini.' },
+  { id: 'requests', label: 'Requests', icon: 'bi-file-earmark-text', hint: 'Modul pengajuan (cuti, izin, lembur) akan tersedia di sini.' }
 ];
-const activeTabLabel = computed(() => {
-  return hrdTabs.find((tab) => tab.id === activeTab.value)?.label || 'Feature';
+
+const activeTabMeta = computed(() => {
+  return hrdTabs.find((tab) => tab.id === activeTab.value) || hrdTabs[0];
 });
 
-onMounted(async () => {
-  await companyStore.fetchCompanies();
-});
+const panelLoading = computed(() => presencesPanel.value?.isLoading ?? false);
+const panelSyncing = computed(() => presencesPanel.value?.isSyncing ?? false);
+
+const reloadPresences = () => presencesPanel.value?.reload();
+const syncPresences = () => presencesPanel.value?.sync();
 </script>
+
+<style scoped>
+.hrd-tab-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.hrd-tab-empty__icon {
+  display: block;
+  font-size: 26px;
+  margin: 0 auto 10px;
+  color: var(--color-border-strong);
+}
+
+.hrd-tab-empty__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.hrd-tab-empty__hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+</style>
