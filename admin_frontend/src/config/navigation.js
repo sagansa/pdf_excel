@@ -1,6 +1,7 @@
 // Single source of truth menu sidebar (spec: docs/superpowers/specs/2026-11-15-sidebar-nav-config-design.md).
 // label: null  -> item di-render langsung sebagai top-level (dengan ikon)
 // label: '...' -> section accordion (ikon representasi = ikon item pertama)
+// soon: true   = menu yang datang, dirender nonaktif dengan badge "Segera", tanpa `to`.
 // badgeKey / roles hanya skema — belum dirender (fase 2 & 3 spec).
 export const navigation = [
   {
@@ -18,6 +19,8 @@ export const navigation = [
     label: 'HRD',
     items: [
       { title: 'Presences', to: '/hrd', icon: 'bi-calendar-check' },
+      { title: 'Payroll', icon: 'bi-cash-coin', soon: true },
+      { title: 'Karyawan', icon: 'bi-people-fill', soon: true },
     ],
   },
   {
@@ -27,6 +30,7 @@ export const navigation = [
       { title: 'Marks', to: '/marks', icon: 'bi-tags-fill' },
       { title: 'Chart of Accounts', to: '/chart-of-accounts', icon: 'bi-journal-text' },
       { title: 'Locations & Stores', to: '/management', icon: 'bi-geo-alt' },
+      { title: 'Products', icon: 'bi-box-seam', soon: true },
     ],
   },
   {

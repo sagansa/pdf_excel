@@ -78,16 +78,27 @@
         @focusout="scheduleFlyoutClose"
       >
         <p class="sidebar-section-label px-2 pb-2">{{ flyout.section.label }}</p>
-        <router-link
-          v-for="item in flyout.section.items"
-          :key="item.to"
-          :to="item.to"
-          class="sidebar-flyout-item"
-          :class="{ active: isRouteActive(item.to, route.path) }"
-          @click="$emit('close-mobile')"
-        >
-          <span class="font-medium">{{ item.title }}</span>
-        </router-link>
+        <template v-for="item in flyout.section.items" :key="item.to || item.title">
+          <router-link
+            v-if="item.to"
+            :to="item.to"
+            class="sidebar-flyout-item"
+            :class="{ active: isRouteActive(item.to, route.path) }"
+            @click="$emit('close-mobile')"
+          >
+            <span class="font-medium">{{ item.title }}</span>
+          </router-link>
+          <!-- Coming-soon: tanpa route, nonaktif + badge "Segera" -->
+          <span
+            v-else
+            class="sidebar-flyout-item sidebar-soon justify-between"
+            aria-disabled="true"
+            :data-tip="item.title"
+          >
+            <span class="font-medium">{{ item.title }}</span>
+            <span class="soon-badge">Segera</span>
+          </span>
+        </template>
       </div>
     </Teleport>
   </aside>
@@ -337,7 +348,7 @@ watch(
   () => {
     const next = new Set(expandedSections.value);
     navigation.forEach((section, index) => {
-      if (section.label && section.items.some((item) => isRouteActive(item.to, route.path))) {
+      if (section.label && section.items.some((item) => item.to && isRouteActive(item.to, route.path))) {
         next.add(index);
       }
     });
@@ -459,5 +470,40 @@ nav :deep(.sidebar-sub-item) {
     color: var(--color-primary);
     border: 1px solid rgba(15, 118, 110, 0.18);
     box-shadow: var(--shadow-soft);
+}
+
+/* ===== Item coming-soon (flag soon: true, tanpa `to`) =====
+   Nonaktif di semua jalur render: opacity turun, cursor default,
+   tanpa hover ke warna primary, tanpa active state (tidak punya route).
+   Jalur nav butuh :deep(); panel flyout ter-teleport memakai plain scoped
+   karena vnode-nya membawa scope attr komponen ini sendiri. */
+nav :deep(.sidebar-item.sidebar-soon),
+.sidebar-flyout-panel .sidebar-soon {
+    cursor: default;
+    opacity: 0.55;
+}
+
+nav :deep(.sidebar-item.sidebar-soon:hover),
+.sidebar-flyout-panel .sidebar-soon:hover {
+    background: transparent;
+    color: var(--color-text-muted);
+}
+
+/* Badge "Segera": jalur nav = tepat setelah judul (ml-2);
+   panel flyout = rata kanan baris (margin-left: auto + justify-between di baris). */
+nav :deep(.soon-badge),
+.sidebar-flyout-panel .soon-badge {
+    @apply flex-shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md;
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+}
+
+nav :deep(.soon-badge) {
+    @apply ml-2;
+}
+
+.sidebar-flyout-panel .soon-badge {
+    margin-left: auto;
 }
 </style>

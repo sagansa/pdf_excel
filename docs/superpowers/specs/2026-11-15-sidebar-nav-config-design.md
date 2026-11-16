@@ -64,6 +64,15 @@ Keterangan:
 - `/initial-capital` **tidak** dimasukkan menu — tetap orphan, tercatat sebagai kandidat penghapusan route di luar scope ini.
 - Label ditulis apa adanya (campuran bahasa sesuai keputusan user).
 
+### Revisi 2026-11-16 (b) — Coming soon
+
+- Flag baru di config: `soon: true` — item **tanpa `to`**, dirender **nonaktif** (bukan router-link) dengan badge kecil **"Segera"**. Item ini tidak pernah aktif dan tidak punya route.
+- Tiga item coming-soon ditambahkan untuk menyiapkan kelompok menu masa depan:
+  - Section **HRD**, setelah Presences: **Payroll** (`bi-cash-coin`) dan **Karyawan** (`bi-people-fill`).
+  - Section **Management**, setelah Locations & Stores: **Products** (`bi-box-seam`).
+- Tujuan: struktur kelompok HRD & Management terlihat utuh sejak sekarang, sehingga saat menu aslinya dibangun tinggal menambahkan `to:` pada config — tidak ada perubahan UI tambahan.
+- Render: semua jalur (top-level, accordion sub-list, flyout collapsed) menampilkan item soon sebagai `<span aria-disabled="true">` ber-class `sidebar-soon` + badge; tooltip collapsed tetap menampilkan judul item.
+
 ## 5. Skema Config
 
 ```js
