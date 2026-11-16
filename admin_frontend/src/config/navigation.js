@@ -12,7 +12,12 @@ export const navigation = [
       { title: 'Review Saran AI', to: '/ai-review', icon: 'bi-stars' },
       { title: 'Upload Summary', to: '/upload-summary', icon: 'bi-file-check-fill' },
       { title: 'Upload Checklist', to: '/upload-checklist', icon: 'bi-check2-square' },
-      { title: 'HRD Presences', to: '/hrd', icon: 'bi-calendar-check' },
+    ],
+  },
+  {
+    label: 'HRD',
+    items: [
+      { title: 'Presences', to: '/hrd', icon: 'bi-calendar-check' },
     ],
   },
   {

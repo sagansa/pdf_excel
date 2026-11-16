@@ -54,7 +54,7 @@ Setiap unit punya satu tanggung jawab:
 | Section | Item | Perubahan dari sekarang |
 |---|---|---|
 | *(top-level)* | Dashboard, Converter, History & DB, Review Saran AI, Upload Summary, Upload Checklist | Tetap |
-| **HRD** | HRD Presences | Section 1-item dihapus → item top-level "HRD Presences" |
+| **HRD** | Presences | **Revisi 2026-11-16 (keputusan user):** section dipertahankan sebagai accordion berisi "Presences" — awalnya direncanakan demote ke item top-level "HRD Presences", dikembalikan karena pengelompokan dirasa lebih baik dan section ini siap menampung menu HRD lain (payroll, karyawan) |
 | **Management** | Companies, Marks, Chart of Accounts, Locations & Stores | Jadi accordion |
 | **Reports** | Financial Reports, Trial Balance, **General Ledger**, Cek Kontinuitas Saldo | General Ledger masuk menu (sebelumnya unreachable); jadi accordion |
 | *(top-level)* | Settings | Section "Configuration" 1-item dihapus |
