@@ -127,7 +127,8 @@ Setiap route di `router/index.js` mendapat `meta: { title: '...' }` — sekaligu
 - Sidebar collapse (desktop, `w-20`): icon-only. Tooltip **custom** (CSS absolut di kanan ikon, muncul saat hover/focus) menggantikan atribut `title` bawaan browser — agar konsisten dengan tema dan muncul instan.
 - Titik-titik `...` pengganti label section dihapus. Saat collapsed:
   - Item top-level tampil sebagai ikon saja (dengan tooltip custom).
-  - Accordion section tampil sebagai **ikon item pertamanya** + chevron mini; klik memunculkan **flyout** di samping berisi item section (bukan membuka panel sidebar).
+  - Accordion section tampil sebagai **ikon item pertamanya** + chevron mini; flyout berisi item section muncul di samping (bukan membuka panel sidebar) via **hover, keyboard focus, ATAU klik** pada toggle.
+  - Klik ulang pada toggle section yang sama **menutup** flyout; klik pada area lain/Escape/pindah route juga menutupnya. Perangkat sentuh berlebar desktop (yang tidak men-fire `focusin`/`mousemove`) dijamin tetap bisa membuka flyout via klik langsung.
   - **Fallback** bila flyout terbukti ribet saat implementasi: saat collapsed, accordion auto-terbuka semua sebagai daftar ikon. Keputusan final di ambil saat implementasi; keduanya memenuhi tujuan (tidak ada label gantung `...`).
 - Mobile: perilaku overlay sekarang dipertahankan apa adanya (fixed + overlay gelap); accordion bekerja sama baiknya.
 - Token visual tidak berubah — tetap memakai variabel `--color-*` dan kelas `sidebar-item` / `sidebar-section-label` yang ada. Tambahan hanya: chevron, indentasi sub-item, tooltip.

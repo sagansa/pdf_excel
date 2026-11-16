@@ -91,7 +91,7 @@ const props = defineProps({
   collapsed: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['toggle', 'close-mobile']);
+const emit = defineEmits(['toggle', 'toggle-collapsed', 'close-mobile']);
 
 const route = useRoute();
 
@@ -99,10 +99,14 @@ const sectionId = computed(() =>
   `nav-section-${String(props.section.label || '').toLowerCase().replace(/\s+/g, '-')}`
 );
 
-const onToggle = () => {
+const onToggle = (event) => {
   if (!props.collapsed) {
     emit('toggle');
+    return;
   }
-  // Saat collapsed, klik tidak melipat — flyout ditampilkan AppSidebar via Teleport.
+  // Saat collapsed: klik = buka/tutup flyout secara eksplisit. AppSidebar yang
+  // menangani (flyout ter-teleport), penting untuk perangkat sentuh yang tidak
+  // men-fire focusin/mousemove sehingga sebelumnya section tak bisa dibuka.
+  emit('toggle-collapsed', props.section.label, event.currentTarget);
 };
 </script>

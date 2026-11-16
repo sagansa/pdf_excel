@@ -33,6 +33,7 @@
         :expanded="expandedSections.has(index)"
         :collapsed="collapsed && isDesktop"
         @toggle="toggleSection(index)"
+        @toggle-collapsed="onToggleCollapsed"
         @close-mobile="$emit('close-mobile')"
       />
     </nav>
@@ -173,6 +174,11 @@ const flyout = ref(null); // { section, left, top }
 let flyoutCloseTimer = null;
 let flyoutAnchorEl = null; // toggle section yang sedang membuka flyout
 let activeSectionLabel = null; // label section yang sedang di-hover di nav
+// Jejak flyout yang BARU dibuka via hover/focusin (keyboard Tab, atau klik mouse —
+// mousemove/focusin selalu mendahului click). Dipakai onToggleCollapsed agar click
+// berikutnya tidak langsung menutup flyout yang baru saja dibuka oleh hover/focusin
+// dari interaksi yang sama (race).
+let lastFocusOpen = null; // { label, at }
 
 const hideTooltip = () => {
   tooltip.value = null;
@@ -214,6 +220,7 @@ const closeFlyout = () => {
   flyout.value = null;
   flyoutAnchorEl = null;
   activeSectionLabel = null;
+  lastFocusOpen = null;
 };
 
 const scheduleFlyoutClose = () => {
@@ -260,7 +267,11 @@ const onNavMouseMove = (event) => {
   if (sectionEl) {
     const label = sectionEl.querySelector('.sidebar-section-toggle')?.dataset.tip || null;
     if (label !== activeSectionLabel) {
+      const alreadyOpen = flyout.value && flyout.value.section.label === label;
       openFlyout(sectionEl);
+      if (!alreadyOpen && flyout.value) {
+        lastFocusOpen = { label, at: Date.now() }; // hover inilah yang membukanya
+      }
       activeSectionLabel = label;
     }
     cancelFlyoutClose();
@@ -289,11 +300,37 @@ const onNavFocusIn = (event) => {
   const sectionEl = event.target.closest('.nav-section-labeled');
   if (sectionEl) {
     hideTooltip();
+    const label = sectionEl.querySelector('.sidebar-section-toggle')?.dataset.tip || null;
+    const alreadyOpen = flyout.value && flyout.value.section.label === label;
     openFlyout(sectionEl);
+    if (!alreadyOpen && flyout.value) {
+      lastFocusOpen = { label, at: Date.now() }; // focusin inilah yang membukanya
+    }
     return;
   }
   const tipEl = event.target.closest('[data-tip]');
   if (tipEl) showTooltip(tipEl);
+};
+
+// Klik eksplisit pada toggle section saat collapsed (emisi SidebarSection).
+// Saat mouse click, mousemove/focusin mendahului click dan sudah membuka flyout —
+// window 400ms di bawah mencegah click yang sama menutupnya kembali. Setelah
+// window itu lewat, klik ulang pada toggle yang sama menutup flyout (dismiss).
+const onToggleCollapsed = (label, toggleEl) => {
+  if (!collapsedDesktop.value) return;
+  const recentlyFocusOpened =
+    flyout.value &&
+    flyout.value.section.label === label &&
+    lastFocusOpen &&
+    lastFocusOpen.label === label &&
+    Date.now() - lastFocusOpen.at < 400;
+  if (recentlyFocusOpened) return; // focusin dari interaksi ini sudah membukanya
+  if (flyout.value && flyoutAnchorEl === toggleEl) {
+    closeFlyout(); // klik ulang pada toggle yang sama = dismiss eksplisit
+    return;
+  }
+  const sectionEl = toggleEl.closest('.nav-section-labeled');
+  if (sectionEl) openFlyout(sectionEl); // buka eksplisit (mis. tap sentuh tanpa focusin)
 };
 
 const onNavFocusOut = (event) => {
