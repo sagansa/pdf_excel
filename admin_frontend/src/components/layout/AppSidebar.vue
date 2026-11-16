@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, unref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { navigation, isRouteActive } from '../../config/navigation';
@@ -179,10 +179,13 @@ const hideTooltip = () => {
 };
 
 // Geser bubble/panel agar tetap di dalam viewport setelah ter-render (ukuran baru diketahui).
+// Argumen el boleh berupa ref (tooltipEl/flyoutPanelEl) maupun elemen DOM — di-unref
+// setelah nextTick agar getBoundingClientRect selalu dipanggil pada elemen sungguhan.
 const clampIntoViewport = async (el, box) => {
   await nextTick();
-  if (!el || !box.value) return;
-  const rect = el.getBoundingClientRect();
+  const node = unref(el);
+  if (!node || !box.value) return;
+  const rect = node.getBoundingClientRect();
   let dx = 0;
   let dy = 0;
   if (rect.right > window.innerWidth - 8) dx = window.innerWidth - 8 - rect.right;
