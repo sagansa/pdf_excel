@@ -1,0 +1,1161 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - generic [ref=e47]:
+        - button " HRD " [expanded] [ref=e7366] [cursor=pointer]:
+          - generic [ref=e49]: 
+          - generic [ref=e50]: HRD
+          - generic [ref=e51]: 
+        - list [ref=e7367]:
+          - listitem [ref=e7368]:
+            - link "Presences" [ref=e7369] [cursor=pointer]:
+              - /url: /hrd
+          - listitem [ref=e7371]:
+            - generic [ref=e7372]:
+              - generic [ref=e7373]: Payroll
+              - generic [ref=e7374]: Segera
+          - listitem [ref=e7375]:
+            - generic [ref=e7376]:
+              - generic [ref=e7377]: Karyawan
+              - generic [ref=e7378]: Segera
+      - generic [ref=e52]:
+        - button " Management " [expanded] [ref=e11157] [cursor=pointer]:
+          - generic [ref=e54]: 
+          - generic [ref=e55]: Management
+          - generic [ref=e56]: 
+        - list [ref=e11158]:
+          - listitem [ref=e11159]:
+            - link "Companies" [ref=e11160] [cursor=pointer]:
+              - /url: /companies
+          - listitem [ref=e11162]:
+            - link "Marks" [ref=e11163] [cursor=pointer]:
+              - /url: /marks
+          - listitem [ref=e11165]:
+            - link "Chart of Accounts" [active] [ref=e11166] [cursor=pointer]:
+              - /url: /chart-of-accounts
+          - listitem [ref=e11168]:
+            - link "Locations & Stores" [ref=e11169] [cursor=pointer]:
+              - /url: /management
+          - listitem [ref=e11171]:
+            - generic [ref=e11172]:
+              - generic [ref=e11173]: Products
+              - generic [ref=e11174]: Segera
+      - button " Reports " [ref=e58] [cursor=pointer]:
+        - generic [ref=e59]: 
+        - generic [ref=e60]: Reports
+        - generic [ref=e61]: 
+      - link " Settings" [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "Chart of Accounts" [level=2] [ref=e14218]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e14219]:
+        - generic [ref=e14220]:
+          - generic [ref=e14221]:
+            - generic [ref=e14222]:
+              - generic [ref=e14223]: 
+              - text: Chart of Accounts
+            - heading "Financial account registry" [level=1] [ref=e14224]
+            - paragraph [ref=e14225]: Kelola akun aset, liabilitas, ekuitas, revenue, dan expense dari satu register.
+          - button " Tambah Akun" [ref=e14227] [cursor=pointer]:
+            - generic [ref=e14228]: 
+            - generic [ref=e14229]: Tambah Akun
+        - generic [ref=e14230]:
+          - generic [ref=e14231]:
+            - generic [ref=e14233]:
+              - generic [ref=e14234]:
+                - generic [ref=e14235]: Assets
+                - generic [ref=e14236]: "29"
+              - generic [ref=e14237]: 
+            - generic [ref=e14240]:
+              - generic [ref=e14241]:
+                - generic [ref=e14242]: Liabilities
+                - generic [ref=e14243]: "19"
+              - generic [ref=e14244]: 
+            - generic [ref=e14247]:
+              - generic [ref=e14248]:
+                - generic [ref=e14249]: Equity
+                - generic [ref=e14250]: "5"
+              - generic [ref=e14251]: 
+            - generic [ref=e14254]:
+              - generic [ref=e14255]:
+                - generic [ref=e14256]: Revenue
+                - generic [ref=e14257]: "10"
+              - generic [ref=e14258]: 
+            - generic [ref=e14261]:
+              - generic [ref=e14262]:
+                - generic [ref=e14263]: Expenses
+                - generic [ref=e14264]: "28"
+              - generic [ref=e14265]: 
+          - generic [ref=e14269]:
+            - generic [ref=e14270]:
+              - generic [ref=e14271]: Category
+              - generic [ref=e14272]:
+                - combobox [ref=e14273]:
+                  - option "All Categories" [selected]
+                  - option "Asset"
+                  - option "Liability"
+                  - option "Equity"
+                  - option "Revenue"
+                  - option "Expense"
+                - generic: 
+            - generic [ref=e14274]:
+              - generic [ref=e14275]: Search
+              - generic [ref=e14276]:
+                - generic: 
+                - textbox "Search by code or name..." [ref=e14277]
+          - generic [ref=e14278]:
+            - table [ref=e14281]:
+              - rowgroup [ref=e14282]:
+                - row [ref=e14283]:
+                  - columnheader "Code" [ref=e14284]
+                  - columnheader "Name" [ref=e14285]
+                  - columnheader "Category" [ref=e14286]
+                  - columnheader "Fiscal Category" [ref=e14287]
+                  - columnheader "Subcategory" [ref=e14288]
+                  - columnheader "Description" [ref=e14289]
+                  - columnheader "Actions" [ref=e14290]
+              - rowgroup [ref=e14291]:
+                - row [ref=e14292]:
+                  - cell "1101" [ref=e14293]
+                  - cell "Kas dan Setara Kas" [ref=e14294]
+                  - cell "ASSET" [ref=e14295]
+                  - 'cell "Fiscal: Deductible" [ref=e14297]'
+                  - cell "Current Assets" [ref=e14299]
+                  - cell "Cash and Cash Equivalents" [ref=e14300]
+                  - cell [ref=e14302]:
+                    - generic [ref=e14303]:
+                      - button "" [ref=e14304] [cursor=pointer]
+                      - button "" [ref=e14306] [cursor=pointer]
+                - row [ref=e14308]:
+                  - cell "1122" [ref=e14309]
+                  - cell "Piutang Usaha - Pihak Ketiga" [ref=e14310]
+                  - cell "ASSET" [ref=e14311]
+                  - 'cell "Fiscal: Deductible" [ref=e14313]'
+                  - cell "Current Assets" [ref=e14315]
+                  - cell "Trade Receivables - Third Parties" [ref=e14316]
+                  - cell [ref=e14318]:
+                    - generic [ref=e14319]:
+                      - button "" [ref=e14320] [cursor=pointer]
+                      - button "" [ref=e14322] [cursor=pointer]
+                - row [ref=e14324]:
+                  - cell "1123" [ref=e14325]
+                  - cell "Piutang Usaha - Hubungan Istimewa" [ref=e14326]
+                  - cell "ASSET" [ref=e14327]
+                  - 'cell "Fiscal: Deductible" [ref=e14329]'
+                  - cell "Current Assets" [ref=e14331]
+                  - cell "Trade Receivables - Related Parties" [ref=e14332]
+                  - cell [ref=e14334]:
+                    - generic [ref=e14335]:
+                      - button "" [ref=e14336] [cursor=pointer]
+                      - button "" [ref=e14338] [cursor=pointer]
+                - row [ref=e14340]:
+                  - cell "1124" [ref=e14341]
+                  - cell "Piutang Lainnya - Pihak Ketiga" [ref=e14342]
+                  - cell "ASSET" [ref=e14343]
+                  - 'cell "Fiscal: Deductible" [ref=e14345]'
+                  - cell "Current Assets" [ref=e14347]
+                  - cell "Other Receivables - Third Parties" [ref=e14348]
+                  - cell [ref=e14350]:
+                    - generic [ref=e14351]:
+                      - button "" [ref=e14352] [cursor=pointer]
+                      - button "" [ref=e14354] [cursor=pointer]
+                - row [ref=e14356]:
+                  - cell "1125" [ref=e14357]
+                  - cell "Piutang Lainnya - Hubungan Istimewa" [ref=e14358]
+                  - cell "ASSET" [ref=e14359]
+                  - 'cell "Fiscal: Deductible" [ref=e14361]'
+                  - cell "Current Assets" [ref=e14363]
+                  - cell "Other Receivables - Related Parties" [ref=e14364]
+                  - cell [ref=e14366]:
+                    - generic [ref=e14367]:
+                      - button "" [ref=e14368] [cursor=pointer]
+                      - button "" [ref=e14370] [cursor=pointer]
+                - row [ref=e14372]:
+                  - cell "1131" [ref=e14373]
+                  - cell "Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar" [ref=e14374]
+                  - cell "ASSET" [ref=e14375]
+                  - 'cell "Fiscal: Deductible" [ref=e14377]'
+                  - cell "Current Assets" [ref=e14379]
+                  - cell "Impairment Allowance" [ref=e14380]
+                  - cell [ref=e14382]:
+                    - generic [ref=e14383]:
+                      - button "" [ref=e14384] [cursor=pointer]
+                      - button "" [ref=e14386] [cursor=pointer]
+                - row [ref=e14388]:
+                  - cell "1181" [ref=e14389]
+                  - cell "Aset Kontrak" [ref=e14390]
+                  - cell "ASSET" [ref=e14391]
+                  - 'cell "Fiscal: Deductible" [ref=e14393]'
+                  - cell "Current Assets" [ref=e14395]
+                  - cell "Contract Assets" [ref=e14396]
+                  - cell [ref=e14398]:
+                    - generic [ref=e14399]:
+                      - button "" [ref=e14400] [cursor=pointer]
+                      - button "" [ref=e14402] [cursor=pointer]
+                - row [ref=e14404]:
+                  - cell "1200" [ref=e14405]
+                  - cell "Investasi" [ref=e14406]
+                  - cell "ASSET" [ref=e14407]
+                  - 'cell "Fiscal: Deductible" [ref=e14409]'
+                  - cell "Current Assets" [ref=e14411]
+                  - cell "Investments" [ref=e14412]
+                  - cell [ref=e14414]:
+                    - generic [ref=e14415]:
+                      - button "" [ref=e14416] [cursor=pointer]
+                      - button "" [ref=e14418] [cursor=pointer]
+                - row [ref=e14420]:
+                  - cell "1401" [ref=e14421]
+                  - cell "Persediaan" [ref=e14422]
+                  - cell "ASSET" [ref=e14423]
+                  - 'cell "Fiscal: Deductible" [ref=e14425]'
+                  - cell "Current Assets" [ref=e14427]
+                  - cell "Inventories" [ref=e14428]
+                  - cell [ref=e14430]:
+                    - generic [ref=e14431]:
+                      - button "" [ref=e14432] [cursor=pointer]
+                      - button "" [ref=e14434] [cursor=pointer]
+                - row [ref=e14436]:
+                  - cell "1421" [ref=e14437]
+                  - cell "Biaya Dibayar di Muka" [ref=e14438]
+                  - cell "ASSET" [ref=e14439]
+                  - 'cell "Fiscal: Deductible" [ref=e14441]'
+                  - cell "Current Assets" [ref=e14443]
+                  - cell "Prepaid Expenses" [ref=e14444]
+                  - cell [ref=e14446]:
+                    - generic [ref=e14447]:
+                      - button "" [ref=e14448] [cursor=pointer]
+                      - button "" [ref=e14450] [cursor=pointer]
+                - row [ref=e14452]:
+                  - cell "1422" [ref=e14453]
+                  - cell "Pendapatan Diterima di Muka (Aset)" [ref=e14454]
+                  - cell "ASSET" [ref=e14455]
+                  - 'cell "Fiscal: Deductible" [ref=e14457]'
+                  - cell "Current Assets" [ref=e14459]
+                  - cell "Accrued Revenue / Unearned Revenue (Asset side)" [ref=e14460]
+                  - cell [ref=e14462]:
+                    - generic [ref=e14463]:
+                      - button "" [ref=e14464] [cursor=pointer]
+                      - button "" [ref=e14466] [cursor=pointer]
+                - row [ref=e14468]:
+                  - cell "1423" [ref=e14469]
+                  - cell "Pajak Dibayar di Muka" [ref=e14470]
+                  - cell "ASSET" [ref=e14471]
+                  - 'cell "Fiscal: Deductible" [ref=e14473]'
+                  - cell "Current Assets" [ref=e14475]
+                  - cell "Prepaid Taxes" [ref=e14476]
+                  - cell [ref=e14478]:
+                    - generic [ref=e14479]:
+                      - button "" [ref=e14480] [cursor=pointer]
+                      - button "" [ref=e14482] [cursor=pointer]
+                - row [ref=e14484]:
+                  - cell "1499" [ref=e14485]
+                  - cell "Aset lancar lainnya" [ref=e14486]
+                  - cell "ASSET" [ref=e14487]
+                  - 'cell "Fiscal: Deductible" [ref=e14489]'
+                  - cell "Current Assets" [ref=e14491]
+                  - cell "Other Current Assets" [ref=e14492]
+                  - cell [ref=e14494]:
+                    - generic [ref=e14495]:
+                      - button "" [ref=e14496] [cursor=pointer]
+                      - button "" [ref=e14498] [cursor=pointer]
+                - row [ref=e14500]:
+                  - cell "1501" [ref=e14501]
+                  - cell "Piutang Jangka Panjang" [ref=e14502]
+                  - cell "ASSET" [ref=e14503]
+                  - 'cell "Fiscal: Deductible" [ref=e14505]'
+                  - cell "Non-Current Assets" [ref=e14507]
+                  - cell "Long-term Receivables" [ref=e14508]
+                  - cell [ref=e14510]:
+                    - generic [ref=e14511]:
+                      - button "" [ref=e14512] [cursor=pointer]
+                      - button "" [ref=e14514] [cursor=pointer]
+                - row [ref=e14516]:
+                  - cell "1520" [ref=e14517]
+                  - cell "Properti Investasi" [ref=e14518]
+                  - cell "ASSET" [ref=e14519]
+                  - 'cell "Fiscal: Deductible" [ref=e14521]'
+                  - cell "Non-Current Assets" [ref=e14523]
+                  - cell "Investment Properties" [ref=e14524]
+                  - cell [ref=e14526]:
+                    - generic [ref=e14527]:
+                      - button "" [ref=e14528] [cursor=pointer]
+                      - button "" [ref=e14530] [cursor=pointer]
+                - row [ref=e14532]:
+                  - cell "1523" [ref=e14533]
+                  - cell "Tanah dan Bangunan" [ref=e14534]
+                  - cell "ASSET" [ref=e14535]
+                  - 'cell "Fiscal: Deductible" [ref=e14537]'
+                  - cell "Non-Current Assets" [ref=e14539]
+                  - cell "Land and Buildings" [ref=e14540]
+                  - cell [ref=e14542]:
+                    - generic [ref=e14543]:
+                      - button "" [ref=e14544] [cursor=pointer]
+                      - button "" [ref=e14546] [cursor=pointer]
+                - row [ref=e14548]:
+                  - cell "1524" [ref=e14549]
+                  - cell "Akumulasi Penyusutan - Tanah dan Bangunan" [ref=e14550]
+                  - cell "ASSET" [ref=e14551]
+                  - 'cell "Fiscal: Deductible" [ref=e14553]'
+                  - cell "Non-Current Assets" [ref=e14555]
+                  - cell "Accumulated Depreciation - Land and Building" [ref=e14556]
+                  - cell [ref=e14558]:
+                    - generic [ref=e14559]:
+                      - button "" [ref=e14560] [cursor=pointer]
+                      - button "" [ref=e14562] [cursor=pointer]
+                - row [ref=e14564]:
+                  - cell "1529" [ref=e14565]
+                  - cell "Aset Tetap Lainnya" [ref=e14566]
+                  - cell "ASSET" [ref=e14567]
+                  - 'cell "Fiscal: Deductible" [ref=e14569]'
+                  - cell "Non-Current Assets" [ref=e14571]
+                  - cell "Other Fixed Assets" [ref=e14572]
+                  - cell [ref=e14574]:
+                    - generic [ref=e14575]:
+                      - button "" [ref=e14576] [cursor=pointer]
+                      - button "" [ref=e14578] [cursor=pointer]
+                - row [ref=e14580]:
+                  - cell "1530" [ref=e14581]
+                  - cell "Akumulasi Penyusutan - Aset Tetap Lainnya" [ref=e14582]
+                  - cell "ASSET" [ref=e14583]
+                  - 'cell "Fiscal: Deductible" [ref=e14585]'
+                  - cell "Non-Current Assets" [ref=e14587]
+                  - cell "Accumulated Depreciation - Other Fixed Assets" [ref=e14588]
+                  - cell [ref=e14590]:
+                    - generic [ref=e14591]:
+                      - button "" [ref=e14592] [cursor=pointer]
+                      - button "" [ref=e14594] [cursor=pointer]
+                - row [ref=e14596]:
+                  - cell "1533" [ref=e14597]
+                  - cell "Aset Hak Guna" [ref=e14598]
+                  - cell "ASSET" [ref=e14599]
+                  - 'cell "Fiscal: Deductible" [ref=e14601]'
+                  - cell "Non-Current Assets" [ref=e14603]
+                  - cell "Right of Use Assets" [ref=e14604]
+                  - cell [ref=e14606]:
+                    - generic [ref=e14607]:
+                      - button "" [ref=e14608] [cursor=pointer]
+                      - button "" [ref=e14610] [cursor=pointer]
+                - row [ref=e14612]:
+                  - cell "1534" [ref=e14613]
+                  - cell "Akumulasi Penyusutan - Aset Hak Guna" [ref=e14614]
+                  - cell "ASSET" [ref=e14615]
+                  - 'cell "Fiscal: Deductible" [ref=e14617]'
+                  - cell "Non-Current Assets" [ref=e14619]
+                  - cell "Accumulated Depreciation - Right of Use Assets" [ref=e14620]
+                  - cell [ref=e14622]:
+                    - generic [ref=e14623]:
+                      - button "" [ref=e14624] [cursor=pointer]
+                      - button "" [ref=e14626] [cursor=pointer]
+                - row [ref=e14628]:
+                  - cell "1551" [ref=e14629]
+                  - cell "Investasi pada Perusahaan Asosiasi" [ref=e14630]
+                  - cell "ASSET" [ref=e14631]
+                  - 'cell "Fiscal: Deductible" [ref=e14633]'
+                  - cell "Non-Current Assets" [ref=e14635]
+                  - cell "Investment in Associates" [ref=e14636]
+                  - cell [ref=e14638]:
+                    - generic [ref=e14639]:
+                      - button "" [ref=e14640] [cursor=pointer]
+                      - button "" [ref=e14642] [cursor=pointer]
+                - row [ref=e14644]:
+                  - cell "1599" [ref=e14645]
+                  - cell "Investasi Jangka Panjang Lainnya" [ref=e14646]
+                  - cell "ASSET" [ref=e14647]
+                  - 'cell "Fiscal: Deductible" [ref=e14649]'
+                  - cell "Non-Current Assets" [ref=e14651]
+                  - cell "Other Long-term Investments" [ref=e14652]
+                  - cell [ref=e14654]:
+                    - generic [ref=e14655]:
+                      - button "" [ref=e14656] [cursor=pointer]
+                      - button "" [ref=e14658] [cursor=pointer]
+                - row [ref=e14660]:
+                  - cell "1600" [ref=e14661]
+                  - cell "Aset Tak Berwujud" [ref=e14662]
+                  - cell "ASSET" [ref=e14663]
+                  - 'cell "Fiscal: Deductible" [ref=e14665]'
+                  - cell "Non-Current Assets" [ref=e14667]
+                  - cell "Intangible Assets" [ref=e14668]
+                  - cell [ref=e14670]:
+                    - generic [ref=e14671]:
+                      - button "" [ref=e14672] [cursor=pointer]
+                      - button "" [ref=e14674] [cursor=pointer]
+                - row [ref=e14676]:
+                  - cell "1601" [ref=e14677]
+                  - cell "Akumulasi Amortisasi - Aset Tak Berwujud" [ref=e14678]
+                  - cell "ASSET" [ref=e14679]
+                  - 'cell "Fiscal: Deductible" [ref=e14681]'
+                  - cell "Non-Current Assets" [ref=e14683]
+                  - cell "Accumulated Amortization" [ref=e14684]
+                  - cell [ref=e14686]:
+                    - generic [ref=e14687]:
+                      - button "" [ref=e14688] [cursor=pointer]
+                      - button "" [ref=e14690] [cursor=pointer]
+                - row [ref=e14692]:
+                  - cell "1611" [ref=e14693]
+                  - cell "Aktiva Pajak Tangguhan" [ref=e14694]
+                  - cell "ASSET" [ref=e14695]
+                  - 'cell "Fiscal: Deductible" [ref=e14697]'
+                  - cell "Non-Current Assets" [ref=e14699]
+                  - cell "Deferred Tax Assets" [ref=e14700]
+                  - cell [ref=e14702]:
+                    - generic [ref=e14703]:
+                      - button "" [ref=e14704] [cursor=pointer]
+                      - button "" [ref=e14706] [cursor=pointer]
+                - row [ref=e14708]:
+                  - cell "1651" [ref=e14709]
+                  - cell "Klaim atas pengembalian pajak" [ref=e14710]
+                  - cell "ASSET" [ref=e14711]
+                  - 'cell "Fiscal: Deductible" [ref=e14713]'
+                  - cell "Non-Current Assets" [ref=e14715]
+                  - cell "Tax Refund Claims" [ref=e14716]
+                  - cell [ref=e14718]:
+                    - generic [ref=e14719]:
+                      - button "" [ref=e14720] [cursor=pointer]
+                      - button "" [ref=e14722] [cursor=pointer]
+                - row [ref=e14724]:
+                  - cell "1658" [ref=e14725]
+                  - cell "Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar" [ref=e14726]
+                  - cell "ASSET" [ref=e14727]
+                  - 'cell "Fiscal: Deductible" [ref=e14729]'
+                  - cell "Non-Current Assets" [ref=e14731]
+                  - cell "Impairment Allowance - Non Current" [ref=e14732]
+                  - cell [ref=e14734]:
+                    - generic [ref=e14735]:
+                      - button "" [ref=e14736] [cursor=pointer]
+                      - button "" [ref=e14738] [cursor=pointer]
+                - row [ref=e14740]:
+                  - cell "1698" [ref=e14741]
+                  - cell "Aset Tidak Lancar Lainnya" [ref=e14742]
+                  - cell "ASSET" [ref=e14743]
+                  - 'cell "Fiscal: Deductible" [ref=e14745]'
+                  - cell "Non-Current Assets" [ref=e14747]
+                  - cell "Other Non-Current Assets" [ref=e14748]
+                  - cell [ref=e14750]:
+                    - generic [ref=e14751]:
+                      - button "" [ref=e14752] [cursor=pointer]
+                      - button "" [ref=e14754] [cursor=pointer]
+                - row [ref=e14756]:
+                  - cell "2102" [ref=e14757]
+                  - cell "Utang Usaha - Pihak Ketiga" [ref=e14758]
+                  - cell "LIABILITY" [ref=e14759]
+                  - 'cell "Fiscal: Deductible" [ref=e14761]'
+                  - cell "Current Liabilities" [ref=e14763]
+                  - cell "Trade Payables - Third Parties" [ref=e14764]
+                  - cell [ref=e14766]:
+                    - generic [ref=e14767]:
+                      - button "" [ref=e14768] [cursor=pointer]
+                      - button "" [ref=e14770] [cursor=pointer]
+                - row [ref=e14772]:
+                  - cell "2103" [ref=e14773]
+                  - cell "Utang Usaha - Hubungan Istimewa" [ref=e14774]
+                  - cell "LIABILITY" [ref=e14775]
+                  - 'cell "Fiscal: Deductible" [ref=e14777]'
+                  - cell "Current Liabilities" [ref=e14779]
+                  - cell "Trade Payables - Related Parties" [ref=e14780]
+                  - cell [ref=e14782]:
+                    - generic [ref=e14783]:
+                      - button "" [ref=e14784] [cursor=pointer]
+                      - button "" [ref=e14786] [cursor=pointer]
+                - row [ref=e14788]:
+                  - cell "2111" [ref=e14789]
+                  - cell "Utang Bunga" [ref=e14790]
+                  - cell "LIABILITY" [ref=e14791]
+                  - 'cell "Fiscal: Deductible" [ref=e14793]'
+                  - cell "Current Liabilities" [ref=e14795]
+                  - cell "Interest Payable" [ref=e14796]
+                  - cell [ref=e14798]:
+                    - generic [ref=e14799]:
+                      - button "" [ref=e14800] [cursor=pointer]
+                      - button "" [ref=e14802] [cursor=pointer]
+                - row [ref=e14804]:
+                  - cell "2186" [ref=e14805]
+                  - cell "Liabilitas Kontrak" [ref=e14806]
+                  - cell "LIABILITY" [ref=e14807]
+                  - 'cell "Fiscal: Deductible" [ref=e14809]'
+                  - cell "Current Liabilities" [ref=e14811]
+                  - cell "Contract Liabilities" [ref=e14812]
+                  - cell [ref=e14814]:
+                    - generic [ref=e14815]:
+                      - button "" [ref=e14816] [cursor=pointer]
+                      - button "" [ref=e14818] [cursor=pointer]
+                - row [ref=e14820]:
+                  - cell "2187" [ref=e14821]
+                  - cell "Liabilitas Sewa Jangka Pendek" [ref=e14822]
+                  - cell "LIABILITY" [ref=e14823]
+                  - 'cell "Fiscal: Deductible" [ref=e14825]'
+                  - cell "Current Liabilities" [ref=e14827]
+                  - cell "Short-term Lease Liabilities" [ref=e14828]
+                  - cell [ref=e14830]:
+                    - generic [ref=e14831]:
+                      - button "" [ref=e14832] [cursor=pointer]
+                      - button "" [ref=e14834] [cursor=pointer]
+                - row [ref=e14836]:
+                  - cell "2191" [ref=e14837]
+                  - cell "Utang Pajak" [ref=e14838]
+                  - cell "LIABILITY" [ref=e14839]
+                  - 'cell "Fiscal: Deductible" [ref=e14841]'
+                  - cell "Current Liabilities" [ref=e14843]
+                  - cell "Tax Payable" [ref=e14844]
+                  - cell [ref=e14846]:
+                    - generic [ref=e14847]:
+                      - button "" [ref=e14848] [cursor=pointer]
+                      - button "" [ref=e14850] [cursor=pointer]
+                - row [ref=e14852]:
+                  - cell "2192" [ref=e14853]
+                  - cell "Utang Dividen" [ref=e14854]
+                  - cell "LIABILITY" [ref=e14855]
+                  - 'cell "Fiscal: Deductible" [ref=e14857]'
+                  - cell "Current Liabilities" [ref=e14859]
+                  - cell "Dividends Payable" [ref=e14860]
+                  - cell [ref=e14862]:
+                    - generic [ref=e14863]:
+                      - button "" [ref=e14864] [cursor=pointer]
+                      - button "" [ref=e14866] [cursor=pointer]
+                - row [ref=e14868]:
+                  - cell "2195" [ref=e14869]
+                  - cell "Beban yang Masih Harus Dibayar" [ref=e14870]
+                  - cell "LIABILITY" [ref=e14871]
+                  - 'cell "Fiscal: Deductible" [ref=e14873]'
+                  - cell "Current Liabilities" [ref=e14875]
+                  - cell "Accrued Expenses" [ref=e14876]
+                  - cell [ref=e14878]:
+                    - generic [ref=e14879]:
+                      - button "" [ref=e14880] [cursor=pointer]
+                      - button "" [ref=e14882] [cursor=pointer]
+                - row [ref=e14884]:
+                  - cell "2201" [ref=e14885]
+                  - cell "Utang Bank Jangka Pendek" [ref=e14886]
+                  - cell "LIABILITY" [ref=e14887]
+                  - 'cell "Fiscal: Deductible" [ref=e14889]'
+                  - cell "Current Liabilities" [ref=e14891]
+                  - cell "Short-term Bank Loans" [ref=e14892]
+                  - cell [ref=e14894]:
+                    - generic [ref=e14895]:
+                      - button "" [ref=e14896] [cursor=pointer]
+                      - button "" [ref=e14898] [cursor=pointer]
+                - row [ref=e14900]:
+                  - cell "2202" [ref=e14901]
+                  - cell "Utang Jangka Panjang Jatuh Tempo Setahun" [ref=e14902]
+                  - cell "LIABILITY" [ref=e14903]
+                  - 'cell "Fiscal: Deductible" [ref=e14905]'
+                  - cell "Current Liabilities" [ref=e14907]
+                  - cell "Current Maturities of Long-term Debt" [ref=e14908]
+                  - cell [ref=e14910]:
+                    - generic [ref=e14911]:
+                      - button "" [ref=e14912] [cursor=pointer]
+                      - button "" [ref=e14914] [cursor=pointer]
+                - row [ref=e14916]:
+                  - cell "2203" [ref=e14917]
+                  - cell "Pendapatan Diterima di Muka" [ref=e14918]
+                  - cell "LIABILITY" [ref=e14919]
+                  - 'cell "Fiscal: Deductible" [ref=e14921]'
+                  - cell "Current Liabilities" [ref=e14923]
+                  - cell "Unearned Revenue" [ref=e14924]
+                  - cell [ref=e14926]:
+                    - generic [ref=e14927]:
+                      - button "" [ref=e14928] [cursor=pointer]
+                      - button "" [ref=e14930] [cursor=pointer]
+                - row [ref=e14932]:
+                  - cell "2228" [ref=e14933]
+                  - cell "Liabilitas Jangka Pendek Lainnya" [ref=e14934]
+                  - cell "LIABILITY" [ref=e14935]
+                  - 'cell "Fiscal: Deductible" [ref=e14937]'
+                  - cell "Current Liabilities" [ref=e14939]
+                  - cell "Other Current Liabilities" [ref=e14940]
+                  - cell [ref=e14942]:
+                    - generic [ref=e14943]:
+                      - button "" [ref=e14944] [cursor=pointer]
+                      - button "" [ref=e14946] [cursor=pointer]
+                - row [ref=e14948]:
+                  - cell "2301" [ref=e14949]
+                  - cell "Utang Bank Jangka Panjang" [ref=e14950]
+                  - cell "LIABILITY" [ref=e14951]
+                  - 'cell "Fiscal: Deductible" [ref=e14953]'
+                  - cell "Non-Current Liabilities" [ref=e14955]
+                  - cell "Long-term Bank Loans" [ref=e14956]
+                  - cell [ref=e14958]:
+                    - generic [ref=e14959]:
+                      - button "" [ref=e14960] [cursor=pointer]
+                      - button "" [ref=e14962] [cursor=pointer]
+                - row [ref=e14964]:
+                  - cell "2303" [ref=e14965]
+                  - cell "Utang Jangka Panjang - Pihak Ketiga" [ref=e14966]
+                  - cell "LIABILITY" [ref=e14967]
+                  - 'cell "Fiscal: Deductible" [ref=e14969]'
+                  - cell "Non-Current Liabilities" [ref=e14971]
+                  - cell "Long-term Debt - Third Parties" [ref=e14972]
+                  - cell [ref=e14974]:
+                    - generic [ref=e14975]:
+                      - button "" [ref=e14976] [cursor=pointer]
+                      - button "" [ref=e14978] [cursor=pointer]
+                - row [ref=e14980]:
+                  - cell "2304" [ref=e14981]
+                  - cell "Utang Jangka Panjang - Hubungan Istimewa" [ref=e14982]
+                  - cell "LIABILITY" [ref=e14983]
+                  - 'cell "Fiscal: Deductible" [ref=e14985]'
+                  - cell "Non-Current Liabilities" [ref=e14987]
+                  - cell "Long-term Debt - Related Parties" [ref=e14988]
+                  - cell [ref=e14990]:
+                    - generic [ref=e14991]:
+                      - button "" [ref=e14992] [cursor=pointer]
+                      - button "" [ref=e14994] [cursor=pointer]
+                - row [ref=e14996]:
+                  - cell "2312" [ref=e14997]
+                  - cell "Liabilitas Sewa" [ref=e14998]
+                  - cell "LIABILITY" [ref=e14999]
+                  - 'cell "Fiscal: Deductible" [ref=e15001]'
+                  - cell "Non-Current Liabilities" [ref=e15003]
+                  - cell "Lease Liabilities" [ref=e15004]
+                  - cell [ref=e15006]:
+                    - generic [ref=e15007]:
+                      - button "" [ref=e15008] [cursor=pointer]
+                      - button "" [ref=e15010] [cursor=pointer]
+                - row [ref=e15012]:
+                  - cell "2321" [ref=e15013]
+                  - cell "Liabilitas Pajak Tangguhan" [ref=e15014]
+                  - cell "LIABILITY" [ref=e15015]
+                  - 'cell "Fiscal: Deductible" [ref=e15017]'
+                  - cell "Non-Current Liabilities" [ref=e15019]
+                  - cell "Deferred Tax Liabilities" [ref=e15020]
+                  - cell [ref=e15022]:
+                    - generic [ref=e15023]:
+                      - button "" [ref=e15024] [cursor=pointer]
+                      - button "" [ref=e15026] [cursor=pointer]
+                - row [ref=e15028]:
+                  - cell "2322" [ref=e15029]
+                  - cell "Liabilitas Imbalan Kerja" [ref=e15030]
+                  - cell "LIABILITY" [ref=e15031]
+                  - 'cell "Fiscal: Deductible" [ref=e15033]'
+                  - cell "Non-Current Liabilities" [ref=e15035]
+                  - cell "Employee Benefit Obligations" [ref=e15036]
+                  - cell [ref=e15038]:
+                    - generic [ref=e15039]:
+                      - button "" [ref=e15040] [cursor=pointer]
+                      - button "" [ref=e15042] [cursor=pointer]
+                - row [ref=e15044]:
+                  - cell "2998" [ref=e15045]
+                  - cell "Liabilitas Jangka Panjang Lainnya" [ref=e15046]
+                  - cell "LIABILITY" [ref=e15047]
+                  - 'cell "Fiscal: Deductible" [ref=e15049]'
+                  - cell "Non-Current Liabilities" [ref=e15051]
+                  - cell "Other Long-term Liabilities" [ref=e15052]
+                  - cell [ref=e15054]:
+                    - generic [ref=e15055]:
+                      - button "" [ref=e15056] [cursor=pointer]
+                      - button "" [ref=e15058] [cursor=pointer]
+                - row [ref=e15060]:
+                  - cell "3102" [ref=e15061]
+                  - cell "Modal Saham" [ref=e15062]
+                  - cell "EQUITY" [ref=e15063]
+                  - 'cell "Fiscal: Deductible" [ref=e15065]'
+                  - cell "Equity" [ref=e15067]
+                  - cell "Share Capital" [ref=e15068]
+                  - cell [ref=e15070]:
+                    - generic [ref=e15071]:
+                      - button "" [ref=e15072] [cursor=pointer]
+                      - button "" [ref=e15074] [cursor=pointer]
+                - row [ref=e15076]:
+                  - cell "3120" [ref=e15077]
+                  - cell "Tambahan Modal Disetor" [ref=e15078]
+                  - cell "EQUITY" [ref=e15079]
+                  - 'cell "Fiscal: Deductible" [ref=e15081]'
+                  - cell "Equity" [ref=e15083]
+                  - cell "Additional Paid-in Capital" [ref=e15084]
+                  - cell [ref=e15086]:
+                    - generic [ref=e15087]:
+                      - button "" [ref=e15088] [cursor=pointer]
+                      - button "" [ref=e15090] [cursor=pointer]
+                - row [ref=e15092]:
+                  - cell "3200" [ref=e15093]
+                  - cell "Laba Ditahan" [ref=e15094]
+                  - cell "EQUITY" [ref=e15095]
+                  - 'cell "Fiscal: Deductible" [ref=e15097]'
+                  - cell "Equity" [ref=e15099]
+                  - cell "Retained Earnings" [ref=e15100]
+                  - cell [ref=e15102]:
+                    - generic [ref=e15103]:
+                      - button "" [ref=e15104] [cursor=pointer]
+                      - button "" [ref=e15106] [cursor=pointer]
+                - row [ref=e15108]:
+                  - cell "3297" [ref=e15109]
+                  - cell "Pendapatan Komprehensif Lainnya" [ref=e15110]
+                  - cell "EQUITY" [ref=e15111]
+                  - 'cell "Fiscal: Deductible" [ref=e15113]'
+                  - cell "Equity" [ref=e15115]
+                  - cell "Other Comprehensive Income" [ref=e15116]
+                  - cell [ref=e15118]:
+                    - generic [ref=e15119]:
+                      - button "" [ref=e15120] [cursor=pointer]
+                      - button "" [ref=e15122] [cursor=pointer]
+                - row [ref=e15124]:
+                  - cell "3298" [ref=e15125]
+                  - cell "Ekuitas Lainnya" [ref=e15126]
+                  - cell "EQUITY" [ref=e15127]
+                  - 'cell "Fiscal: Deductible" [ref=e15129]'
+                  - cell "Equity" [ref=e15131]
+                  - cell "Other Equity" [ref=e15132]
+                  - cell [ref=e15134]:
+                    - generic [ref=e15135]:
+                      - button "" [ref=e15136] [cursor=pointer]
+                      - button "" [ref=e15138] [cursor=pointer]
+                - row [ref=e15140]:
+                  - cell "4002" [ref=e15141]
+                  - cell "Penjualan Domestik" [ref=e15142]
+                  - cell "REVENUE" [ref=e15143]
+                  - 'cell "Fiscal: Deductible" [ref=e15145]'
+                  - cell "Operating Revenue" [ref=e15147]
+                  - cell "Domestic Sales" [ref=e15148]
+                  - cell [ref=e15150]:
+                    - generic [ref=e15151]:
+                      - button "" [ref=e15152] [cursor=pointer]
+                      - button "" [ref=e15154] [cursor=pointer]
+                - row [ref=e15156]:
+                  - cell "4003" [ref=e15157]
+                  - cell "Penjualan Ekspor" [ref=e15158]
+                  - cell "REVENUE" [ref=e15159]
+                  - 'cell "Fiscal: Deductible" [ref=e15161]'
+                  - cell "Operating Revenue" [ref=e15163]
+                  - cell "Export Sales" [ref=e15164]
+                  - cell [ref=e15166]:
+                    - generic [ref=e15167]:
+                      - button "" [ref=e15168] [cursor=pointer]
+                      - button "" [ref=e15170] [cursor=pointer]
+                - row [ref=e15172]:
+                  - cell "4004" [ref=e15173]
+                  - cell "Penjualan Bruto" [ref=e15174]
+                  - cell "REVENUE" [ref=e15175]
+                  - 'cell "Fiscal: Deductible" [ref=e15177]'
+                  - cell "Operating Revenue" [ref=e15179]
+                  - cell "Gross Sales" [ref=e15180]
+                  - cell [ref=e15182]:
+                    - generic [ref=e15183]:
+                      - button "" [ref=e15184] [cursor=pointer]
+                      - button "" [ref=e15186] [cursor=pointer]
+                - row [ref=e15188]:
+                  - cell "4011" [ref=e15189]
+                  - cell "Retur Penjualan" [ref=e15190]
+                  - cell "REVENUE" [ref=e15191]
+                  - 'cell "Fiscal: Deductible" [ref=e15193]'
+                  - cell "Sales Deductions" [ref=e15195]
+                  - cell "Sales Returns" [ref=e15196]
+                  - cell [ref=e15198]:
+                    - generic [ref=e15199]:
+                      - button "" [ref=e15200] [cursor=pointer]
+                      - button "" [ref=e15202] [cursor=pointer]
+                - row [ref=e15204]:
+                  - cell "4012" [ref=e15205]
+                  - cell "Potongan Penjualan" [ref=e15206]
+                  - cell "REVENUE" [ref=e15207]
+                  - 'cell "Fiscal: Deductible" [ref=e15209]'
+                  - cell "Sales Deductions" [ref=e15211]
+                  - cell "Sales Discounts" [ref=e15212]
+                  - cell [ref=e15214]:
+                    - generic [ref=e15215]:
+                      - button "" [ref=e15216] [cursor=pointer]
+                      - button "" [ref=e15218] [cursor=pointer]
+                - row [ref=e15220]:
+                  - cell "4013" [ref=e15221]
+                  - cell "Penyesuaian Penjualan" [ref=e15222]
+                  - cell "REVENUE" [ref=e15223]
+                  - 'cell "Fiscal: Deductible" [ref=e15225]'
+                  - cell "Sales Deductions" [ref=e15227]
+                  - cell "Sales Adjustments" [ref=e15228]
+                  - cell [ref=e15230]:
+                    - generic [ref=e15231]:
+                      - button "" [ref=e15232] [cursor=pointer]
+                      - button "" [ref=e15234] [cursor=pointer]
+                - row [ref=e15236]:
+                  - cell "4501" [ref=e15237]
+                  - cell "Keuntungan Selisih Kurs" [ref=e15238]
+                  - cell "REVENUE" [ref=e15239]
+                  - 'cell "Fiscal: Deductible" [ref=e15241]'
+                  - cell "Non-Operating Revenue" [ref=e15243]
+                  - cell "Check CoreTax for category" [ref=e15244]
+                  - cell [ref=e15246]:
+                    - generic [ref=e15247]:
+                      - button "" [ref=e15248] [cursor=pointer]
+                      - button "" [ref=e15250] [cursor=pointer]
+                - row [ref=e15252]:
+                  - cell "4503" [ref=e15253]
+                  - cell "Keuntungan Penjualan Aset selain Persediaan" [ref=e15254]
+                  - cell "REVENUE" [ref=e15255]
+                  - 'cell "Fiscal: Deductible" [ref=e15257]'
+                  - cell "-" [ref=e15259]
+                  - cell "-" [ref=e15260]
+                  - cell [ref=e15262]:
+                    - generic [ref=e15263]:
+                      - button "" [ref=e15264] [cursor=pointer]
+                      - button "" [ref=e15266] [cursor=pointer]
+                - row [ref=e15268]:
+                  - cell "4511" [ref=e15269]
+                  - cell "Pendapatan Bunga" [ref=e15270]
+                  - cell "REVENUE" [ref=e15271]
+                  - 'cell "Fiscal: Deductible" [ref=e15273]'
+                  - cell "Non-Operating Revenue" [ref=e15275]
+                  - cell "Interest Income" [ref=e15276]
+                  - cell [ref=e15278]:
+                    - generic [ref=e15279]:
+                      - button "" [ref=e15280] [cursor=pointer]
+                      - button "" [ref=e15282] [cursor=pointer]
+                - row [ref=e15284]:
+                  - cell "4599" [ref=e15285]
+                  - cell "Pendapatan Non Usaha Lainnya" [ref=e15286]
+                  - cell "REVENUE" [ref=e15287]
+                  - 'cell "Fiscal: Deductible" [ref=e15289]'
+                  - cell "Non-Operating Revenue" [ref=e15291]
+                  - cell "Other Income" [ref=e15292]
+                  - cell [ref=e15294]:
+                    - generic [ref=e15295]:
+                      - button "" [ref=e15296] [cursor=pointer]
+                      - button "" [ref=e15298] [cursor=pointer]
+                - row [ref=e15300]:
+                  - cell "5001" [ref=e15301]
+                  - cell "Pembelian" [ref=e15302]
+                  - cell "EXPENSE" [ref=e15303]
+                  - 'cell "Fiscal: Deductible" [ref=e15305]'
+                  - cell "Cost of Goods Sold" [ref=e15307]
+                  - cell "Purchases" [ref=e15308]
+                  - cell [ref=e15310]:
+                    - generic [ref=e15311]:
+                      - button "" [ref=e15312] [cursor=pointer]
+                      - button "" [ref=e15314] [cursor=pointer]
+                - row [ref=e15316]:
+                  - cell "5003" [ref=e15317]
+                  - cell "Beban Pengangkutan" [ref=e15318]
+                  - cell "EXPENSE" [ref=e15319]
+                  - 'cell "Fiscal: Deductible" [ref=e15321]'
+                  - cell "Cost of Goods Sold" [ref=e15323]
+                  - cell "Freight In" [ref=e15324]
+                  - cell [ref=e15326]:
+                    - generic [ref=e15327]:
+                      - button "" [ref=e15328] [cursor=pointer]
+                      - button "" [ref=e15330] [cursor=pointer]
+                - row [ref=e15332]:
+                  - cell "5007" [ref=e15333]
+                  - cell "Beban Operasional Lainnya" [ref=e15334]
+                  - cell "EXPENSE" [ref=e15335]
+                  - 'cell "Fiscal: Deductible" [ref=e15337]'
+                  - cell "Cost of Goods Sold" [ref=e15339]
+                  - cell "Other COGS Expenses" [ref=e15340]
+                  - cell [ref=e15342]:
+                    - generic [ref=e15343]:
+                      - button "" [ref=e15344] [cursor=pointer]
+                      - button "" [ref=e15346] [cursor=pointer]
+                - row [ref=e15348]:
+                  - cell "5008" [ref=e15349]
+                  - cell "Persediaan - Awal" [ref=e15350]
+                  - cell "EXPENSE" [ref=e15351]
+                  - 'cell "Fiscal: Deductible" [ref=e15353]'
+                  - cell "Cost of Goods Sold" [ref=e15355]
+                  - cell "Beginning Inventory" [ref=e15356]
+                  - cell [ref=e15358]:
+                    - generic [ref=e15359]:
+                      - button "" [ref=e15360] [cursor=pointer]
+                      - button "" [ref=e15362] [cursor=pointer]
+                - row [ref=e15364]:
+                  - cell "5009" [ref=e15365]
+                  - cell "Persediaan - Akhir" [ref=e15366]
+                  - cell "EXPENSE" [ref=e15367]
+                  - 'cell "Fiscal: Deductible" [ref=e15369]'
+                  - cell "Cost of Goods Sold" [ref=e15371]
+                  - cell "Ending Inventory (Contra)" [ref=e15372]
+                  - cell [ref=e15374]:
+                    - generic [ref=e15375]:
+                      - button "" [ref=e15376] [cursor=pointer]
+                      - button "" [ref=e15378] [cursor=pointer]
+                - row [ref=e15380]:
+                  - cell "5105" [ref=e15381]
+                  - cell "Beban Sewa" [ref=e15382]
+                  - cell "EXPENSE" [ref=e15383]
+                  - 'cell "Fiscal: Deductible" [ref=e15385]'
+                  - cell "Operating Expenses" [ref=e15387]
+                  - cell "Rent Expense" [ref=e15388]
+                  - cell [ref=e15390]:
+                    - generic [ref=e15391]:
+                      - button "" [ref=e15392] [cursor=pointer]
+                      - button "" [ref=e15394] [cursor=pointer]
+                - row [ref=e15396]:
+                  - cell "5211" [ref=e15397]
+                  - cell "Beban Pajak Pegawai" [ref=e15398]
+                  - cell "EXPENSE" [ref=e15399]
+                  - 'cell "Fiscal: Deductible" [ref=e15401]'
+                  - cell "-" [ref=e15403]
+                  - cell "-" [ref=e15404]
+                  - cell [ref=e15406]:
+                    - generic [ref=e15407]:
+                      - button "" [ref=e15408] [cursor=pointer]
+                      - button "" [ref=e15410] [cursor=pointer]
+                - row [ref=e15412]:
+                  - cell "5311" [ref=e15413]
+                  - cell "Gaji, Tunjangan, Bonus, Honorarium, THR, dsb" [ref=e15414]
+                  - cell "EXPENSE" [ref=e15415]
+                  - 'cell "Fiscal: Deductible" [ref=e15417]'
+                  - cell "-" [ref=e15419]
+                  - cell "-" [ref=e15420]
+                  - cell [ref=e15422]:
+                    - generic [ref=e15423]:
+                      - button "" [ref=e15424] [cursor=pointer]
+                      - button "" [ref=e15426] [cursor=pointer]
+                - row [ref=e15428]:
+                  - cell "5312" [ref=e15429]
+                  - cell "Beban Imbalan Kerja Lainnya" [ref=e15430]
+                  - cell "EXPENSE" [ref=e15431]
+                  - 'cell "Fiscal: Deductible" [ref=e15433]'
+                  - cell "-" [ref=e15435]
+                  - cell "-" [ref=e15436]
+                  - cell [ref=e15438]:
+                    - generic [ref=e15439]:
+                      - button "" [ref=e15440] [cursor=pointer]
+                      - button "" [ref=e15442] [cursor=pointer]
+                - row [ref=e15444]:
+                  - cell "5313" [ref=e15445]
+                  - cell "Beban Transportasi" [ref=e15446]
+                  - cell "EXPENSE" [ref=e15447]
+                  - 'cell "Fiscal: Deductible" [ref=e15449]'
+                  - cell "Operating Expenses" [ref=e15451]
+                  - cell "Transport Expense" [ref=e15452]
+                  - cell [ref=e15454]:
+                    - generic [ref=e15455]:
+                      - button "" [ref=e15456] [cursor=pointer]
+                      - button "" [ref=e15458] [cursor=pointer]
+                - row [ref=e15460]:
+                  - cell "5314" [ref=e15461]
+                  - cell "Beban Penyusutan dan Amortisasi" [ref=e15462]
+                  - cell "EXPENSE" [ref=e15463]
+                  - 'cell "Fiscal: Deductible" [ref=e15465]'
+                  - cell "Operating Expenses" [ref=e15467]
+                  - cell "Depreciation & Amortization" [ref=e15468]
+                  - cell [ref=e15470]:
+                    - generic [ref=e15471]:
+                      - button "" [ref=e15472] [cursor=pointer]
+                      - button "" [ref=e15474] [cursor=pointer]
+                - row [ref=e15476]:
+                  - cell "5315" [ref=e15477]
+                  - cell "Beban Sewa" [ref=e15478]
+                  - cell "EXPENSE" [ref=e15479]
+                  - 'cell "Fiscal: Deductible" [ref=e15481]'
+                  - cell "Operating Expenses" [ref=e15483]
+                  - cell "Rent Expense" [ref=e15484]
+                  - cell [ref=e15486]:
+                    - generic [ref=e15487]:
+                      - button "" [ref=e15488] [cursor=pointer]
+                      - button "" [ref=e15490] [cursor=pointer]
+                - row [ref=e15492]:
+                  - cell "5316" [ref=e15493]
+                  - cell "Beban Bunga" [ref=e15494]
+                  - cell "EXPENSE" [ref=e15495]
+                  - 'cell "Fiscal: Deductible" [ref=e15497]'
+                  - cell "Operating Expenses" [ref=e15499]
+                  - cell "Interest Expense" [ref=e15500]
+                  - cell [ref=e15502]:
+                    - generic [ref=e15503]:
+                      - button "" [ref=e15504] [cursor=pointer]
+                      - button "" [ref=e15506] [cursor=pointer]
+                - row [ref=e15508]:
+                  - cell "5317" [ref=e15509]
+                  - cell "Beban Sehubungan dengan Jasa" [ref=e15510]
+                  - cell "EXPENSE" [ref=e15511]
+                  - 'cell "Fiscal: Deductible" [ref=e15513]'
+                  - cell "Operating Expenses" [ref=e15515]
+                  - cell "Service Fees" [ref=e15516]
+                  - cell [ref=e15518]:
+                    - generic [ref=e15519]:
+                      - button "" [ref=e15520] [cursor=pointer]
+                      - button "" [ref=e15522] [cursor=pointer]
+                - row [ref=e15524]:
+                  - cell "5318" [ref=e15525]
+                  - cell "Beban Penurunan Nilai" [ref=e15526]
+                  - cell "EXPENSE" [ref=e15527]
+                  - 'cell "Fiscal: Deductible" [ref=e15529]'
+                  - cell "Operating Expenses" [ref=e15531]
+                  - cell "Impairment Loss" [ref=e15532]
+                  - cell [ref=e15534]:
+                    - generic [ref=e15535]:
+                      - button "" [ref=e15536] [cursor=pointer]
+                      - button "" [ref=e15538] [cursor=pointer]
+                - row [ref=e15540]:
+                  - cell "5319" [ref=e15541]
+                  - cell "Beban Royalti" [ref=e15542]
+                  - cell "EXPENSE" [ref=e15543]
+                  - 'cell "Fiscal: Deductible" [ref=e15545]'
+                  - cell "Operating Expenses" [ref=e15547]
+                  - cell "Royalty Expense" [ref=e15548]
+                  - cell [ref=e15550]:
+                    - generic [ref=e15551]:
+                      - button "" [ref=e15552] [cursor=pointer]
+                      - button "" [ref=e15554] [cursor=pointer]
+                - row [ref=e15556]:
+                  - cell "5320" [ref=e15557]
+                  - cell "Beban Pemasaran atau Promosi" [ref=e15558]
+                  - cell "EXPENSE" [ref=e15559]
+                  - 'cell "Fiscal: Deductible" [ref=e15561]'
+                  - cell "Operating Expenses" [ref=e15563]
+                  - cell "Marketing Expense" [ref=e15564]
+                  - cell [ref=e15566]:
+                    - generic [ref=e15567]:
+                      - button "" [ref=e15568] [cursor=pointer]
+                      - button "" [ref=e15570] [cursor=pointer]
+                - row [ref=e15572]:
+                  - cell "5321" [ref=e15573]
+                  - cell "Beban Entertainment" [ref=e15574]
+                  - cell "EXPENSE" [ref=e15575]
+                  - 'cell "Fiscal: Deductible" [ref=e15577]'
+                  - cell "Operating Expenses" [ref=e15579]
+                  - cell "Entertainment Expense" [ref=e15580]
+                  - cell [ref=e15582]:
+                    - generic [ref=e15583]:
+                      - button "" [ref=e15584] [cursor=pointer]
+                      - button "" [ref=e15586] [cursor=pointer]
+                - row [ref=e15588]:
+                  - cell "5322" [ref=e15589]
+                  - cell "Beban Umum dan Administrasi" [ref=e15590]
+                  - cell "EXPENSE" [ref=e15591]
+                  - 'cell "Fiscal: Deductible" [ref=e15593]'
+                  - cell "Operating Expenses" [ref=e15595]
+                  - cell "G&A Expense" [ref=e15596]
+                  - cell [ref=e15598]:
+                    - generic [ref=e15599]:
+                      - button "" [ref=e15600] [cursor=pointer]
+                      - button "" [ref=e15602] [cursor=pointer]
+                - row [ref=e15604]:
+                  - cell "5399" [ref=e15605]
+                  - cell "Beban usaha lainnya" [ref=e15606]
+                  - cell "EXPENSE" [ref=e15607]
+                  - 'cell "Fiscal: Deductible" [ref=e15609]'
+                  - cell "Operating Expenses" [ref=e15611]
+                  - cell "Other Operating Expenses" [ref=e15612]
+                  - cell [ref=e15614]:
+                    - generic [ref=e15615]:
+                      - button "" [ref=e15616] [cursor=pointer]
+                      - button "" [ref=e15618] [cursor=pointer]
+                - row [ref=e15620]:
+                  - cell "5405" [ref=e15621]
+                  - cell "Kerugian Penjualan Aset selain Persediaan" [ref=e15622]
+                  - cell "EXPENSE" [ref=e15623]
+                  - 'cell "Fiscal: Deductible" [ref=e15625]'
+                  - cell "-" [ref=e15627]
+                  - cell "-" [ref=e15628]
+                  - cell [ref=e15630]:
+                    - generic [ref=e15631]:
+                      - button "" [ref=e15632] [cursor=pointer]
+                      - button "" [ref=e15634] [cursor=pointer]
+                - row [ref=e15636]:
+                  - cell "5409" [ref=e15637]
+                  - cell "Sumbangan" [ref=e15638]
+                  - cell "EXPENSE" [ref=e15639]
+                  - 'cell "Fiscal: Non-Deductible (P)" [ref=e15641]'
+                  - cell "-" [ref=e15643]
+                  - cell "-" [ref=e15644]
+                  - cell [ref=e15646]:
+                    - generic [ref=e15647]:
+                      - button "" [ref=e15648] [cursor=pointer]
+                      - button "" [ref=e15650] [cursor=pointer]
+                - row [ref=e15652]:
+                  - cell "5421" [ref=e15653]
+                  - cell "Kerugian Selisih Kurs" [ref=e15654]
+                  - cell "EXPENSE" [ref=e15655]
+                  - 'cell "Fiscal: Deductible" [ref=e15657]'
+                  - cell "-" [ref=e15659]
+                  - cell "-" [ref=e15660]
+                  - cell [ref=e15662]:
+                    - generic [ref=e15663]:
+                      - button "" [ref=e15664] [cursor=pointer]
+                      - button "" [ref=e15666] [cursor=pointer]
+                - row [ref=e15668]:
+                  - cell "5491" [ref=e15669]
+                  - cell "Beban Pajak Penghasilan Kini" [ref=e15670]
+                  - cell "EXPENSE" [ref=e15671]
+                  - 'cell "Fiscal: Non-Deductible (P)" [ref=e15673]'
+                  - cell "-" [ref=e15675]
+                  - cell "-" [ref=e15676]
+                  - cell [ref=e15678]:
+                    - generic [ref=e15679]:
+                      - button "" [ref=e15680] [cursor=pointer]
+                      - button "" [ref=e15682] [cursor=pointer]
+                - row [ref=e15684]:
+                  - cell "5492" [ref=e15685]
+                  - cell "Beban Pajak Penghasilan Tangguhan" [ref=e15686]
+                  - cell "EXPENSE" [ref=e15687]
+                  - 'cell "Fiscal: Non-Deductible (P)" [ref=e15689]'
+                  - cell "-" [ref=e15691]
+                  - cell "-" [ref=e15692]
+                  - cell [ref=e15694]:
+                    - generic [ref=e15695]:
+                      - button "" [ref=e15696] [cursor=pointer]
+                      - button "" [ref=e15698] [cursor=pointer]
+                - row [ref=e15700]:
+                  - cell "5493" [ref=e15701]
+                  - cell "Penyesuaian Pajak Tahun Lalu" [ref=e15702]
+                  - cell "EXPENSE" [ref=e15703]
+                  - 'cell "Fiscal: Non-Deductible (P)" [ref=e15705]'
+                  - cell "-" [ref=e15707]
+                  - cell "-" [ref=e15708]
+                  - cell [ref=e15710]:
+                    - generic [ref=e15711]:
+                      - button "" [ref=e15712] [cursor=pointer]
+                      - button "" [ref=e15714] [cursor=pointer]
+                - row [ref=e15716]:
+                  - cell "5494" [ref=e15717]
+                  - cell "Denda/Sanksi Pajak" [ref=e15718]
+                  - cell "EXPENSE" [ref=e15719]
+                  - 'cell "Fiscal: Non-Deductible (P)" [ref=e15721]'
+                  - cell "-" [ref=e15723]
+                  - cell "-" [ref=e15724]
+                  - cell [ref=e15726]:
+                    - generic [ref=e15727]:
+                      - button "" [ref=e15728] [cursor=pointer]
+                      - button "" [ref=e15730] [cursor=pointer]
+                - row [ref=e15732]:
+                  - cell "5499" [ref=e15733]
+                  - cell "Beban Non Usaha Lainnya" [ref=e15734]
+                  - cell "EXPENSE" [ref=e15735]
+                  - 'cell "Fiscal: Deductible" [ref=e15737]'
+                  - cell "-" [ref=e15739]
+                  - cell "-" [ref=e15740]
+                  - cell [ref=e15742]:
+                    - generic [ref=e15743]:
+                      - button "" [ref=e15744] [cursor=pointer]
+                      - button "" [ref=e15746] [cursor=pointer]
+            - paragraph [ref=e15750]: Showing 91 accounts

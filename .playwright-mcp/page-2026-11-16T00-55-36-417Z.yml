@@ -1,0 +1,154 @@
+- generic [ref=f4e3]:
+  - complementary [ref=f4e4]:
+    - generic [ref=f4e5]:
+      - generic [ref=f4e6]: 
+      - generic [ref=f4e8]: StatementX
+    - navigation [ref=f4e9]:
+      - link " Dashboard" [ref=f4e10] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f4e11]: 
+        - generic [ref=f4e12]: Dashboard
+      - link " Converter" [ref=f4e13] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=f4e14]: 
+        - generic [ref=f4e15]: Converter
+      - link " History & DB" [ref=f4e16] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=f4e17]: 
+        - generic [ref=f4e18]: History & DB
+      - link " Review Saran AI" [ref=f4e19] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=f4e20]: 
+        - generic [ref=f4e21]: Review Saran AI
+      - link " Upload Summary" [ref=f4e22] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=f4e23]: 
+        - generic [ref=f4e24]: Upload Summary
+      - link " Upload Checklist" [ref=f4e25] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=f4e26]: 
+        - generic [ref=f4e27]: Upload Checklist
+      - button " HRD " [ref=f4e29] [cursor=pointer]:
+        - generic [ref=f4e30]: 
+        - generic [ref=f4e31]: HRD
+        - generic [ref=f4e32]: 
+      - button " Management " [ref=f4e34] [cursor=pointer]:
+        - generic [ref=f4e35]: 
+        - generic [ref=f4e36]: Management
+        - generic [ref=f4e37]: 
+      - button " Reports " [ref=f4e39] [cursor=pointer]:
+        - generic [ref=f4e40]: 
+        - generic [ref=f4e41]: Reports
+        - generic [ref=f4e42]: 
+      - link " Settings" [ref=f4e43] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=f4e44]: 
+        - generic [ref=f4e45]: Settings
+    - generic [ref=f4e47]:
+      - generic [ref=f4e48]: ES
+      - generic [ref=f4e49]:
+        - paragraph [ref=f4e50]: E2E Sidebar
+        - paragraph [ref=f4e51]: e2e-sidebar@statementx.local
+      - button "" [ref=f4e52] [cursor=pointer]
+  - generic [ref=f4e54]:
+    - banner [ref=f4e55]:
+      - generic [ref=f4e56]:
+        - button "" [ref=f4e57] [cursor=pointer]
+        - generic [ref=f4e60]:
+          - paragraph [ref=f4e61]: Admin Workspace
+          - heading "Dashboard Overview" [level=2] [ref=f4e62]
+      - generic [ref=f4e63]: SERVER ONLINE
+    - main [ref=f4e68]:
+      - generic [ref=f4e69]:
+        - generic [ref=f4e70]:
+          - generic [ref=f4e71]:
+            - generic [ref=f4e72]:
+              - generic [ref=f4e73]: 
+              - text: Operations Hub
+            - heading "Statement operations in one place" [level=1] [ref=f4e74]
+            - paragraph [ref=f4e75]: Monitor financial performance, recent data intake, and storage health from a single control surface designed for daily admin work.
+          - generic [ref=f4e76]:
+            - generic [ref=f4e77]:
+              - generic [ref=f4e78]: 
+              - text: Fast intake
+            - generic [ref=f4e79]:
+              - generic [ref=f4e80]: 
+              - text: Report-ready
+            - generic [ref=f4e81]:
+              - generic [ref=f4e82]: 
+              - text: Live backend
+        - generic [ref=f4e84]:
+          - generic [ref=f4e85]:
+            - heading "Financial Overview" [level=3] [ref=f4e86]
+            - paragraph [ref=f4e87]: November 2026
+          - link "View Full Report " [ref=f4e88] [cursor=pointer]:
+            - /url: /reports
+            - generic [ref=f4e89]: View Full Report
+            - generic [ref=f4e90]: 
+        - generic [ref=f4e96]:
+          - generic [ref=f4e97]:
+            - heading "Stock Comparison" [level=3] [ref=f4e98]
+            - paragraph [ref=f4e99]: Compare sales vs stock changes between two dates
+          - generic [ref=f4e100]:
+            - generic [ref=f4e101]:
+              - textbox [ref=f4e102]:
+                - /placeholder: From
+                - text: 2026-11-15
+              - generic [ref=f4e103]: →
+              - textbox [ref=f4e104]:
+                - /placeholder: To
+                - text: 2026-11-16
+            - button " Reload" [disabled] [ref=f4e105]:
+              - generic [ref=f4e106]: 
+              - text: Reload
+        - generic [ref=f4e113]:
+          - generic [ref=f4e114]:
+            - heading "Sales by Date" [level=3] [ref=f4e115]
+            - paragraph [ref=f4e116]: Daily product sales with quantity and total price
+          - generic [ref=f4e117]:
+            - textbox [ref=f4e118]: 2026-11-15
+            - button " Reload" [disabled] [ref=f4e119]:
+              - generic [ref=f4e120]: 
+              - text: Reload
+        - generic [ref=f4e127]:
+          - generic [ref=f4e128]:
+            - heading "Remaining Storage Monitor" [level=3] [ref=f4e129]
+            - paragraph [ref=f4e130]: "Based on local `stock_monitorings` thresholds and remote `remaining-storages` snapshots"
+          - generic [ref=f4e131]:
+            - textbox [ref=f4e132]: 2026-11-15
+            - button " Reload" [disabled] [ref=f4e133]:
+              - generic [ref=f4e134]: 
+              - text: Reload
+        - generic [ref=f4e140]:
+          - generic [ref=f4e142]:
+            - heading "Priority Workflows" [level=3] [ref=f4e143]
+            - paragraph [ref=f4e144]: Masuk ke area kerja yang paling sering dipakai tim operasional.
+          - generic [ref=f4e146]:
+            - link " Converter Intake Upload PDF/CSV statements and extract transactions automatically." [ref=f4e147] [cursor=pointer]:
+              - /url: /converter
+              - generic [ref=f4e148]: 
+              - generic [ref=f4e150]:
+                - heading "Converter" [level=3] [ref=f4e151]
+                - generic [ref=f4e152]: Intake
+              - paragraph [ref=f4e153]: Upload PDF/CSV statements and extract transactions automatically.
+            - link " History & DB Review Search, filter, and manage your full transaction history." [ref=f4e154] [cursor=pointer]:
+              - /url: /history
+              - generic [ref=f4e155]: 
+              - generic [ref=f4e157]:
+                - heading "History & DB" [level=3] [ref=f4e158]
+                - generic [ref=f4e159]: Review
+              - paragraph [ref=f4e160]: Search, filter, and manage your full transaction history.
+            - link " Companies Master Data Add or edit company entities and mapping rules." [ref=f4e161] [cursor=pointer]:
+              - /url: /companies
+              - generic [ref=f4e162]: 
+              - generic [ref=f4e164]:
+                - heading "Companies" [level=3] [ref=f4e165]
+                - generic [ref=f4e166]: Master Data
+              - paragraph [ref=f4e167]: Add or edit company entities and mapping rules.
+            - link " Marks Classification Manage reporting categories for transaction tagging." [ref=f4e168] [cursor=pointer]:
+              - /url: /marks
+              - generic [ref=f4e169]: 
+              - generic [ref=f4e171]:
+                - heading "Marks" [level=3] [ref=f4e172]
+                - generic [ref=f4e173]: Classification
+              - paragraph [ref=f4e174]: Manage reporting categories for transaction tagging.

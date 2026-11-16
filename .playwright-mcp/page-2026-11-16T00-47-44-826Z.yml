@@ -1,0 +1,258 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - generic [ref=e47]:
+        - button " HRD " [expanded] [ref=e7366] [cursor=pointer]:
+          - generic [ref=e49]: 
+          - generic [ref=e50]: HRD
+          - generic [ref=e51]: 
+        - list [ref=e7367]:
+          - listitem [ref=e7368]:
+            - link "Presences" [ref=e7369] [cursor=pointer]:
+              - /url: /hrd
+          - listitem [ref=e7371]:
+            - generic [ref=e7372]:
+              - generic [ref=e7373]: Payroll
+              - generic [ref=e7374]: Segera
+          - listitem [ref=e7375]:
+            - generic [ref=e7376]:
+              - generic [ref=e7377]: Karyawan
+              - generic [ref=e7378]: Segera
+      - generic [ref=e52]:
+        - button " Management " [expanded] [ref=e11157] [cursor=pointer]:
+          - generic [ref=e54]: 
+          - generic [ref=e55]: Management
+          - generic [ref=e56]: 
+        - list [ref=e11158]:
+          - listitem [ref=e11159]:
+            - link "Companies" [ref=e11160] [cursor=pointer]:
+              - /url: /companies
+          - listitem [ref=e11162]:
+            - link "Marks" [ref=e11163] [cursor=pointer]:
+              - /url: /marks
+          - listitem [ref=e11165]:
+            - link "Chart of Accounts" [ref=e11166] [cursor=pointer]:
+              - /url: /chart-of-accounts
+          - listitem [ref=e11168]:
+            - link "Locations & Stores" [ref=e11169] [cursor=pointer]:
+              - /url: /management
+          - listitem [ref=e11171]:
+            - generic [ref=e11172]:
+              - generic [ref=e11173]: Products
+              - generic [ref=e11174]: Segera
+      - generic [ref=e57]:
+        - button " Reports " [expanded] [ref=e15783] [cursor=pointer]:
+          - generic [ref=e59]: 
+          - generic [ref=e60]: Reports
+          - generic [ref=e61]: 
+        - list [ref=e15784]:
+          - listitem [ref=e15785]:
+            - link "Financial Reports" [ref=e15786] [cursor=pointer]:
+              - /url: /reports
+          - listitem [ref=e15788]:
+            - link "Trial Balance" [active] [ref=e15789] [cursor=pointer]:
+              - /url: /trial-balance
+          - listitem [ref=e15791]:
+            - link "General Ledger" [ref=e15792] [cursor=pointer]:
+              - /url: /general-ledger
+          - listitem [ref=e15794]:
+            - link "Cek Kontinuitas Saldo" [ref=e15795] [cursor=pointer]:
+              - /url: /balance-check
+      - link " Settings" [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "Trial Balance" [level=2] [ref=e15951]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e15952]:
+        - generic [ref=e15953]:
+          - generic [ref=e15954]:
+            - generic [ref=e15955]:
+              - generic [ref=e15956]: 
+              - text: Integritas Data
+            - heading "Trial Balance" [level=1] [ref=e15957]
+            - paragraph [ref=e15958]: Saldo awal + mutasi periode = saldo akhir per akun COA, dengan cek keseimbangan debit = kredit.
+          - generic [ref=e15960]:
+            - button " Saldo Awal" [ref=e15962] [cursor=pointer]:
+              - generic [ref=e15963]: 
+              - generic [ref=e15964]: Saldo Awal
+            - button " Refresh" [ref=e15966] [cursor=pointer]:
+              - generic [ref=e15967]: 
+              - generic [ref=e15968]: Refresh
+        - generic [ref=e15971]:
+          - generic [ref=e15972]:
+            - generic [ref=e15973]: Tahun
+            - spinbutton [ref=e15975]: "2026"
+          - generic [ref=e15976]:
+            - generic [ref=e15977]: Perusahaan
+            - combobox [ref=e15978]:
+              - option "Semua perusahaan" [selected]
+              - option "Not Included"
+              - option "PT Asa Pangan Bangsa"
+              - option "PT Sagansa Engineering Indonesia"
+          - generic [ref=e15979]:
+            - generic [ref=e15980]: Jenis Laporan
+            - combobox [ref=e15981]:
+              - option "Real" [selected]
+              - option "CoreTax"
+        - generic [ref=e15982]:
+          - generic [ref=e15983]: 
+          - generic [ref=e15985]:
+            - heading "Seimbang (D = C)" [level=4] [ref=e15986]
+            - paragraph [ref=e15987]: Total debit dan kredit saldo akhir seimbang.
+        - table [ref=e15991]:
+          - rowgroup [ref=e15992]:
+            - row [ref=e15993]:
+              - columnheader "Akun" [ref=e15994]
+              - columnheader "Opening D" [ref=e15995]
+              - columnheader "Opening K" [ref=e15996]
+              - columnheader "Mutasi D" [ref=e15997]
+              - columnheader "Mutasi K" [ref=e15998]
+              - columnheader "Closing D" [ref=e15999]
+              - columnheader "Closing K" [ref=e16000]
+          - rowgroup [ref=e16001]:
+            - row [ref=e16002]:
+              - cell "1101Kas dan Setara KasASSET" [ref=e16003]
+              - cell "0" [ref=e16004]
+              - cell "0" [ref=e16005]
+              - cell "271.394.669" [ref=e16006]
+              - cell "124.104.382,47" [ref=e16007]
+              - cell "147.290.286,53" [ref=e16008]
+              - cell "0" [ref=e16009]
+            - row [ref=e16010]:
+              - cell "1529Aset Tetap LainnyaASSET" [ref=e16011]
+              - cell "0" [ref=e16012]
+              - cell "0" [ref=e16013]
+              - cell "9.810.268" [ref=e16014]
+              - cell "0" [ref=e16015]
+              - cell "9.810.268" [ref=e16016]
+              - cell "0" [ref=e16017]
+            - row [ref=e16018]:
+              - cell "4002Penjualan DomestikREVENUE" [ref=e16019]
+              - cell "0" [ref=e16020]
+              - cell "0" [ref=e16021]
+              - cell "0" [ref=e16022]
+              - cell "271.394.669" [ref=e16023]
+              - cell "0" [ref=e16024]
+              - cell "271.394.669" [ref=e16025]
+            - row [ref=e16026]:
+              - cell "4011Retur PenjualanREVENUE" [ref=e16027]
+              - cell "0" [ref=e16028]
+              - cell "0" [ref=e16029]
+              - cell "320.000" [ref=e16030]
+              - cell "0" [ref=e16031]
+              - cell "320.000" [ref=e16032]
+              - cell "0" [ref=e16033]
+            - row [ref=e16034]:
+              - cell "5001PembelianEXPENSE" [ref=e16035]
+              - cell "0" [ref=e16036]
+              - cell "0" [ref=e16037]
+              - cell "28.756.287" [ref=e16038]
+              - cell "0" [ref=e16039]
+              - cell "28.756.287" [ref=e16040]
+              - cell "0" [ref=e16041]
+            - row [ref=e16042]:
+              - cell "5003Beban PengangkutanEXPENSE" [ref=e16043]
+              - cell "0" [ref=e16044]
+              - cell "0" [ref=e16045]
+              - cell "3.933.500" [ref=e16046]
+              - cell "0" [ref=e16047]
+              - cell "3.933.500" [ref=e16048]
+              - cell "0" [ref=e16049]
+            - row [ref=e16050]:
+              - cell "5007Beban Operasional LainnyaEXPENSE" [ref=e16051]
+              - cell "0" [ref=e16052]
+              - cell "0" [ref=e16053]
+              - cell "18.996.288" [ref=e16054]
+              - cell "0" [ref=e16055]
+              - cell "18.996.288" [ref=e16056]
+              - cell "0" [ref=e16057]
+            - row [ref=e16058]:
+              - cell "5311Gaji, Tunjangan, Bonus, Honorarium, THR, dsbEXPENSE" [ref=e16059]
+              - cell "0" [ref=e16060]
+              - cell "0" [ref=e16061]
+              - cell "43.012.396" [ref=e16062]
+              - cell "0" [ref=e16063]
+              - cell "43.012.396" [ref=e16064]
+              - cell "0" [ref=e16065]
+            - row [ref=e16066]:
+              - cell "5312Beban Imbalan Kerja LainnyaEXPENSE" [ref=e16067]
+              - cell "0" [ref=e16068]
+              - cell "0" [ref=e16069]
+              - cell "10.720.000" [ref=e16070]
+              - cell "0" [ref=e16071]
+              - cell "10.720.000" [ref=e16072]
+              - cell "0" [ref=e16073]
+            - row [ref=e16074]:
+              - cell "5313Beban TransportasiEXPENSE" [ref=e16075]
+              - cell "0" [ref=e16076]
+              - cell "0" [ref=e16077]
+              - cell "5.704.558" [ref=e16078]
+              - cell "0" [ref=e16079]
+              - cell "5.704.558" [ref=e16080]
+              - cell "0" [ref=e16081]
+            - row [ref=e16082]:
+              - cell "5322Beban Umum dan AdministrasiEXPENSE" [ref=e16083]
+              - cell "0" [ref=e16084]
+              - cell "0" [ref=e16085]
+              - cell "1.520.964,47" [ref=e16086]
+              - cell "0" [ref=e16087]
+              - cell "1.520.964,47" [ref=e16088]
+              - cell "0" [ref=e16089]
+            - row [ref=e16090]:
+              - cell "5494Denda/Sanksi PajakEXPENSE" [ref=e16091]
+              - cell "0" [ref=e16092]
+              - cell "0" [ref=e16093]
+              - cell "1.330.121" [ref=e16094]
+              - cell "0" [ref=e16095]
+              - cell "1.330.121" [ref=e16096]
+              - cell "0" [ref=e16097]
+          - rowgroup [ref=e16098]:
+            - row [ref=e16099]:
+              - cell "TOTAL" [ref=e16100]
+              - cell "0" [ref=e16101]
+              - cell "0" [ref=e16102]
+              - cell "395.499.051,47" [ref=e16103]
+              - cell "395.499.051,47" [ref=e16104]
+              - cell "271.394.669" [ref=e16105]
+              - cell "271.394.669" [ref=e16106]

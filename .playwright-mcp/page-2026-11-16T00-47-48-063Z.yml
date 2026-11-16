@@ -1,0 +1,907 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - generic [ref=e47]:
+        - button " HRD " [expanded] [ref=e7366] [cursor=pointer]:
+          - generic [ref=e49]: 
+          - generic [ref=e50]: HRD
+          - generic [ref=e51]: 
+        - list [ref=e7367]:
+          - listitem [ref=e7368]:
+            - link "Presences" [ref=e7369] [cursor=pointer]:
+              - /url: /hrd
+          - listitem [ref=e7371]:
+            - generic [ref=e7372]:
+              - generic [ref=e7373]: Payroll
+              - generic [ref=e7374]: Segera
+          - listitem [ref=e7375]:
+            - generic [ref=e7376]:
+              - generic [ref=e7377]: Karyawan
+              - generic [ref=e7378]: Segera
+      - generic [ref=e52]:
+        - button " Management " [expanded] [ref=e11157] [cursor=pointer]:
+          - generic [ref=e54]: 
+          - generic [ref=e55]: Management
+          - generic [ref=e56]: 
+        - list [ref=e11158]:
+          - listitem [ref=e11159]:
+            - link "Companies" [ref=e11160] [cursor=pointer]:
+              - /url: /companies
+          - listitem [ref=e11162]:
+            - link "Marks" [ref=e11163] [cursor=pointer]:
+              - /url: /marks
+          - listitem [ref=e11165]:
+            - link "Chart of Accounts" [ref=e11166] [cursor=pointer]:
+              - /url: /chart-of-accounts
+          - listitem [ref=e11168]:
+            - link "Locations & Stores" [ref=e11169] [cursor=pointer]:
+              - /url: /management
+          - listitem [ref=e11171]:
+            - generic [ref=e11172]:
+              - generic [ref=e11173]: Products
+              - generic [ref=e11174]: Segera
+      - generic [ref=e57]:
+        - button " Reports " [expanded] [ref=e15783] [cursor=pointer]:
+          - generic [ref=e59]: 
+          - generic [ref=e60]: Reports
+          - generic [ref=e61]: 
+        - list [ref=e15784]:
+          - listitem [ref=e15785]:
+            - link "Financial Reports" [ref=e15786] [cursor=pointer]:
+              - /url: /reports
+          - listitem [ref=e15788]:
+            - link "Trial Balance" [ref=e15789] [cursor=pointer]:
+              - /url: /trial-balance
+          - listitem [ref=e15791]:
+            - link "General Ledger" [ref=e15792] [cursor=pointer]:
+              - /url: /general-ledger
+          - listitem [ref=e15794]:
+            - link "Cek Kontinuitas Saldo" [active] [ref=e15795] [cursor=pointer]:
+              - /url: /balance-check
+      - link " Settings" [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "Cek Kontinuitas Saldo" [level=2] [ref=e16172]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e16173]:
+        - generic [ref=e16174]:
+          - generic [ref=e16175]:
+            - generic [ref=e16176]:
+              - generic [ref=e16177]: 
+              - text: Integritas Data
+            - heading "Cek Kontinuitas Saldo" [level=1] [ref=e16178]
+            - paragraph [ref=e16179]: Verifikasi saldo berjalan antar-transaksi & deteksi statement yang bolong per akun bank.
+          - button " Refresh" [ref=e16182] [cursor=pointer]:
+            - generic [ref=e16183]: 
+            - generic [ref=e16184]: Refresh
+        - generic [ref=e16185]:
+          - generic [ref=e16187]:
+            - generic [ref=e16188]:
+              - generic [ref=e16189]: Akun Bank
+              - generic [ref=e16190]: "11"
+            - generic [ref=e16191]: 
+          - generic [ref=e16194]:
+            - generic [ref=e16195]:
+              - generic [ref=e16196]: Akun dengan Break
+              - generic [ref=e16197]: "5"
+            - generic [ref=e16198]: 
+          - generic [ref=e16201]:
+            - generic [ref=e16202]:
+              - generic [ref=e16203]: Total Break
+              - generic [ref=e16204]: "111"
+            - generic [ref=e16205]: 
+        - generic [ref=e16207]:
+          - generic [ref=e16211]:
+            - generic [ref=e16212]:
+              - generic [ref=e16213]: BCA
+              - generic [ref=e16214]: "0842463856"
+              - generic [ref=e16215]: Kontinu
+              - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16216]: Tanpa data saldo
+            - paragraph [ref=e16217]: 3824 transaksi · 2023-01-01 s/d 2026-02-28
+          - generic [ref=e16221]:
+            - generic [ref=e16222]:
+              - generic [ref=e16223]: BCA
+              - generic [ref=e16224]: "4671357722"
+              - generic [ref=e16225]: Kontinu
+              - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16226]: Tanpa data saldo
+            - paragraph [ref=e16227]: 8190 transaksi · 2023-01-01 s/d 2026-02-28
+          - generic [ref=e16229]:
+            - generic [ref=e16230]:
+              - generic [ref=e16231]:
+                - generic [ref=e16232]:
+                  - generic [ref=e16233]: BCA
+                  - generic [ref=e16234]: "5485106259"
+                  - generic [ref=e16235]: 8 break
+                  - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16236]: Tanpa data saldo
+                - paragraph [ref=e16237]: 202 transaksi · 2023-01-01 s/d 2024-12-27
+              - button " Tutup detail" [ref=e16238] [cursor=pointer]:
+                - generic [ref=e16239]: 
+                - text: Tutup detail
+            - generic [ref=e16240]:
+              - generic [ref=e16241]:
+                - generic [ref=e16242]:
+                  - generic [ref=e16243]: 
+                  - text: Celah 4 hari antar statement
+                - paragraph [ref=e16244]: 2023-01-28 s/d 2023-01-31
+                - paragraph [ref=e16245]: 5485106259_2023_01.pdf → 5485106259_2023_02.pdf — periksa statement periode tersebut.
+              - generic [ref=e16246]:
+                - generic [ref=e16247]:
+                  - generic [ref=e16248]: 
+                  - text: Celah 7 hari antar statement
+                - paragraph [ref=e16249]: 2023-02-22 s/d 2023-02-28
+                - paragraph [ref=e16250]: 5485106259_2023_02.pdf → 5485106259_2023_03.pdf — periksa statement periode tersebut.
+              - generic [ref=e16251]:
+                - generic [ref=e16252]:
+                  - generic [ref=e16253]: 
+                  - text: Celah 9 hari antar statement
+                - paragraph [ref=e16254]: 2023-07-23 s/d 2023-07-31
+                - paragraph [ref=e16255]: 5485106259_2023_07.pdf → 5485106259_2023_08.pdf — periksa statement periode tersebut.
+              - generic [ref=e16256]:
+                - generic [ref=e16257]:
+                  - generic [ref=e16258]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16259]: 2023-08-31 s/d 2023-08-31
+                - paragraph [ref=e16260]: 5485106259_2023_08.pdf → 5485106259_2023_09.pdf — periksa statement periode tersebut.
+              - generic [ref=e16261]:
+                - generic [ref=e16262]:
+                  - generic [ref=e16263]: 
+                  - text: Celah 7 hari antar statement
+                - paragraph [ref=e16264]: 2023-10-25 s/d 2023-10-31
+                - paragraph [ref=e16265]: 5485106259_2023_10.pdf → 5485106259_2023_11.pdf — periksa statement periode tersebut.
+              - generic [ref=e16266]:
+                - generic [ref=e16267]:
+                  - generic [ref=e16268]: 
+                  - text: Celah 3 hari antar statement
+                - paragraph [ref=e16269]: 2024-01-29 s/d 2024-01-31
+                - paragraph [ref=e16270]: 5485106259_202401.pdf → 5485106259_202402.pdf — periksa statement periode tersebut.
+              - generic [ref=e16271]:
+                - generic [ref=e16272]:
+                  - generic [ref=e16273]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16274]: 2024-02-29 s/d 2024-02-29
+                - paragraph [ref=e16275]: 5485106259_202402.pdf → 5485106259_202403.pdf — periksa statement periode tersebut.
+              - generic [ref=e16276]:
+                - generic [ref=e16277]:
+                  - generic [ref=e16278]: 
+                  - text: Celah 4 hari antar statement
+                - paragraph [ref=e16279]: 2024-03-28 s/d 2024-03-31
+                - paragraph [ref=e16280]: 5485106259_202403.pdf → 5485106259_202404.pdf — periksa statement periode tersebut.
+          - generic [ref=e16284]:
+            - generic [ref=e16285]:
+              - generic [ref=e16286]: BCA
+              - generic [ref=e16287]: "5485921921"
+              - generic [ref=e16288]: Kontinu
+              - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16289]: Tanpa data saldo
+            - paragraph [ref=e16290]: 155 transaksi · 2021-01-01 s/d 2026-01-31
+          - generic [ref=e16292]:
+            - generic [ref=e16293]:
+              - generic [ref=e16294]:
+                - generic [ref=e16295]:
+                  - generic [ref=e16296]: BCA_CC
+                  - generic [ref=e16297]: (tanpa nomor)
+                  - generic [ref=e16298]: 32 break
+                  - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16299]: Tanpa data saldo
+                - paragraph [ref=e16300]: 239 transaksi · 2023-01-09 s/d 2026-02-23
+              - button " Tutup detail" [ref=e16301] [cursor=pointer]:
+                - generic [ref=e16302]: 
+                - text: Tutup detail
+            - generic [ref=e16303]:
+              - generic [ref=e16304]:
+                - generic [ref=e16305]:
+                  - generic [ref=e16306]: 
+                  - text: Celah 14 hari antar statement
+                - paragraph [ref=e16307]: 2023-01-24 s/d 2023-02-06
+                - paragraph [ref=e16308]: CC_BCA_2023_01.pdf → CC_BCA_2023_02.pdf — periksa statement periode tersebut.
+              - generic [ref=e16309]:
+                - generic [ref=e16310]:
+                  - generic [ref=e16311]: 
+                  - text: Celah 6 hari antar statement
+                - paragraph [ref=e16312]: 2023-02-23 s/d 2023-02-28
+                - paragraph [ref=e16313]: CC_BCA_2023_02.pdf → CC_BCA_2023_03.pdf — periksa statement periode tersebut.
+              - generic [ref=e16314]:
+                - generic [ref=e16315]:
+                  - generic [ref=e16316]: 
+                  - text: Celah 24 hari antar statement
+                - paragraph [ref=e16317]: 2023-03-16 s/d 2023-04-08
+                - paragraph [ref=e16318]: CC_BCA_2023_03.pdf → CC_BCA_2023_04.pdf — periksa statement periode tersebut.
+              - generic [ref=e16319]:
+                - generic [ref=e16320]:
+                  - generic [ref=e16321]: 
+                  - text: Celah 16 hari antar statement
+                - paragraph [ref=e16322]: 2023-04-10 s/d 2023-04-25
+                - paragraph [ref=e16323]: CC_BCA_2023_04.pdf → CC_BCA_2023_05.pdf — periksa statement periode tersebut.
+              - generic [ref=e16324]:
+                - generic [ref=e16325]:
+                  - generic [ref=e16326]: 
+                  - text: Celah 41 hari antar statement
+                - paragraph [ref=e16327]: 2023-04-27 s/d 2023-06-06
+                - paragraph [ref=e16328]: CC_BCA_2023_05.pdf → CC_BCA_2023_06.pdf — periksa statement periode tersebut.
+              - generic [ref=e16329]:
+                - generic [ref=e16330]:
+                  - generic [ref=e16331]: 
+                  - text: Celah 15 hari antar statement
+                - paragraph [ref=e16332]: 2023-06-23 s/d 2023-07-07
+                - paragraph [ref=e16333]: CC_BCA_2023_06.pdf → CC_BCA_2023_07.pdf — periksa statement periode tersebut.
+              - generic [ref=e16334]:
+                - generic [ref=e16335]:
+                  - generic [ref=e16336]: 
+                  - text: Celah 7 hari antar statement
+                - paragraph [ref=e16337]: 2023-07-16 s/d 2023-07-22
+                - paragraph [ref=e16338]: CC_BCA_2023_07.pdf → CC_BCA_2023_08.pdf — periksa statement periode tersebut.
+              - generic [ref=e16339]:
+                - generic [ref=e16340]:
+                  - generic [ref=e16341]: 
+                  - text: Celah 5 hari antar statement
+                - paragraph [ref=e16342]: 2023-08-19 s/d 2023-08-23
+                - paragraph [ref=e16343]: CC_BCA_2023_08.pdf → CC_BCA_2023_09.pdf — periksa statement periode tersebut.
+              - generic [ref=e16344]:
+                - generic [ref=e16345]:
+                  - generic [ref=e16346]: 
+                  - text: Celah 23 hari antar statement
+                - paragraph [ref=e16347]: 2023-09-16 s/d 2023-10-08
+                - paragraph [ref=e16348]: CC_BCA_2023_09.pdf → CC_BCA_2023_10.pdf — periksa statement periode tersebut.
+              - generic [ref=e16349]:
+                - generic [ref=e16350]:
+                  - generic [ref=e16351]: 
+                  - text: Celah 45 hari antar statement
+                - paragraph [ref=e16352]: 2023-10-24 s/d 2023-12-07
+                - paragraph [ref=e16353]: CC_BCA_2023_10.pdf → CC_BCA_2023_12.pdf — periksa statement periode tersebut.
+              - generic [ref=e16354]:
+                - generic [ref=e16355]:
+                  - generic [ref=e16356]: 
+                  - text: Celah 21 hari antar statement
+                - paragraph [ref=e16357]: 2023-12-19 s/d 2024-01-08
+                - paragraph [ref=e16358]: CC_BCA_2023_12.pdf → CC_BCA_2024_01.pdf — periksa statement periode tersebut.
+              - generic [ref=e16359]:
+                - generic [ref=e16360]:
+                  - generic [ref=e16361]: 
+                  - text: Celah 42 hari antar statement
+                - paragraph [ref=e16362]: 2024-01-10 s/d 2024-02-20
+                - paragraph [ref=e16363]: CC_BCA_2024_01.pdf → CC_BCA_2024_02.pdf — periksa statement periode tersebut.
+              - generic [ref=e16364]:
+                - generic [ref=e16365]:
+                  - generic [ref=e16366]: 
+                  - text: Celah 15 hari antar statement
+                - paragraph [ref=e16367]: 2024-02-23 s/d 2024-03-08
+                - paragraph [ref=e16368]: CC_BCA_2024_02.pdf → CC_BCA_2024_03.pdf — periksa statement periode tersebut.
+              - generic [ref=e16369]:
+                - generic [ref=e16370]:
+                  - generic [ref=e16371]: 
+                  - text: Celah 17 hari antar statement
+                - paragraph [ref=e16372]: 2024-03-24 s/d 2024-04-09
+                - paragraph [ref=e16373]: CC_BCA_2024_03.pdf → CC_BCA_2024_04.pdf — periksa statement periode tersebut.
+              - generic [ref=e16374]:
+                - generic [ref=e16375]:
+                  - generic [ref=e16376]: 
+                  - text: Celah 79 hari antar statement
+                - paragraph [ref=e16377]: 2024-04-11 s/d 2024-06-28
+                - paragraph [ref=e16378]: CC_BCA_2024_04.pdf → CC_BCA_2024_07.pdf — periksa statement periode tersebut.
+              - generic [ref=e16379]:
+                - generic [ref=e16380]:
+                  - generic [ref=e16381]: 
+                  - text: Celah 29 hari antar statement
+                - paragraph [ref=e16382]: 2024-07-09 s/d 2024-08-06
+                - paragraph [ref=e16383]: CC_BCA_2024_07.pdf → CC_BCA_2024_08.pdf — periksa statement periode tersebut.
+              - generic [ref=e16384]:
+                - generic [ref=e16385]:
+                  - generic [ref=e16386]: 
+                  - text: Celah 30 hari antar statement
+                - paragraph [ref=e16387]: 2024-08-24 s/d 2024-09-22
+                - paragraph [ref=e16388]: CC_BCA_2024_08.pdf → CC_BCA_2024_09.pdf — periksa statement periode tersebut.
+              - generic [ref=e16389]:
+                - generic [ref=e16390]:
+                  - generic [ref=e16391]: 
+                  - text: Celah 14 hari antar statement
+                - paragraph [ref=e16392]: 2024-09-24 s/d 2024-10-07
+                - paragraph [ref=e16393]: CC_BCA_2024_09.pdf → CC_BCA_2024_10.pdf — periksa statement periode tersebut.
+              - generic [ref=e16394]:
+                - generic [ref=e16395]:
+                  - generic [ref=e16396]: 
+                  - text: Celah 11 hari antar statement
+                - paragraph [ref=e16397]: 2024-10-21 s/d 2024-10-31
+                - paragraph [ref=e16398]: CC_BCA_2024_10.pdf → CC_BCA_2024_11.pdf — periksa statement periode tersebut.
+              - generic [ref=e16399]:
+                - generic [ref=e16400]:
+                  - generic [ref=e16401]: 
+                  - text: Celah 24 hari antar statement
+                - paragraph [ref=e16402]: 2024-11-08 s/d 2024-12-01
+                - paragraph [ref=e16403]: CC_BCA_2024_11.pdf → CC_BCA_2024_12.pdf — periksa statement periode tersebut.
+              - generic [ref=e16404]:
+                - generic [ref=e16405]:
+                  - generic [ref=e16406]: 
+                  - text: Celah 29 hari antar statement
+                - paragraph [ref=e16407]: 2024-12-09 s/d 2025-01-06
+                - paragraph [ref=e16408]: CC_BCA_2024_12.pdf → CC_BCA_2025_01.pdf — periksa statement periode tersebut.
+              - generic [ref=e16409]:
+                - generic [ref=e16410]:
+                  - generic [ref=e16411]: 
+                  - text: Celah 22 hari antar statement
+                - paragraph [ref=e16412]: 2025-01-16 s/d 2025-02-06
+                - paragraph [ref=e16413]: CC_BCA_2025_01.pdf → CC_BCA_2025_02.pdf — periksa statement periode tersebut.
+              - generic [ref=e16414]:
+                - generic [ref=e16415]:
+                  - generic [ref=e16416]: 
+                  - text: Celah 10 hari antar statement
+                - paragraph [ref=e16417]: 2025-02-14 s/d 2025-02-23
+                - paragraph [ref=e16418]: CC_BCA_2025_02.pdf → CC_BCA_2025_03.pdf — periksa statement periode tersebut.
+              - generic [ref=e16419]:
+                - generic [ref=e16420]:
+                  - generic [ref=e16421]: 
+                  - text: Celah 20 hari antar statement
+                - paragraph [ref=e16422]: 2025-03-07 s/d 2025-03-26
+                - paragraph [ref=e16423]: CC_BCA_2025_03.pdf → CC_BCA_2025_04.pdf — periksa statement periode tersebut.
+              - generic [ref=e16424]:
+                - generic [ref=e16425]:
+                  - generic [ref=e16426]: 
+                  - text: Celah 9 hari antar statement
+                - paragraph [ref=e16427]: 2025-04-14 s/d 2025-04-22
+                - paragraph [ref=e16428]: CC_BCA_2025_04.pdf → CC_BCA_2025_05.pdf — periksa statement periode tersebut.
+              - generic [ref=e16429]:
+                - generic [ref=e16430]:
+                  - generic [ref=e16431]: 
+                  - text: Celah 14 hari antar statement
+                - paragraph [ref=e16432]: 2025-05-24 s/d 2025-06-06
+                - paragraph [ref=e16433]: CC_BCA_2025_05.pdf → CC_BCA_2025_06.pdf — periksa statement periode tersebut.
+              - generic [ref=e16434]:
+                - generic [ref=e16435]:
+                  - generic [ref=e16436]: 
+                  - text: Celah 26 hari antar statement
+                - paragraph [ref=e16437]: 2025-06-12 s/d 2025-07-07
+                - paragraph [ref=e16438]: CC_BCA_2025_06.pdf → CC_BCA_2025_07.pdf — periksa statement periode tersebut.
+              - generic [ref=e16439]:
+                - generic [ref=e16440]:
+                  - generic [ref=e16441]: 
+                  - text: Celah 19 hari antar statement
+                - paragraph [ref=e16442]: 2025-07-09 s/d 2025-07-27
+                - paragraph [ref=e16443]: CC_BCA_2025_07.pdf → CC_BCA_2025_08.pdf — periksa statement periode tersebut.
+              - generic [ref=e16444]:
+                - generic [ref=e16445]:
+                  - generic [ref=e16446]: 
+                  - text: Celah 27 hari antar statement
+                - paragraph [ref=e16447]: 2025-07-29 s/d 2025-08-24
+                - paragraph [ref=e16448]: CC_BCA_2025_08.pdf → CC_BCA_2025_09.pdf — periksa statement periode tersebut.
+              - generic [ref=e16449]:
+                - generic [ref=e16450]:
+                  - generic [ref=e16451]: 
+                  - text: Celah 16 hari antar statement
+                - paragraph [ref=e16452]: 2025-09-18 s/d 2025-10-03
+                - paragraph [ref=e16453]: CC_BCA_2025_09.pdf → CC_BCA_2025_10.pdf — periksa statement periode tersebut.
+              - generic [ref=e16454]:
+                - generic [ref=e16455]:
+                  - generic [ref=e16456]: 
+                  - text: Celah 22 hari antar statement
+                - paragraph [ref=e16457]: 2025-10-18 s/d 2025-11-08
+                - paragraph [ref=e16458]: CC_BCA_2025_10.pdf → CC_BCA_2025_11.pdf — periksa statement periode tersebut.
+              - generic [ref=e16459]:
+                - generic [ref=e16460]:
+                  - generic [ref=e16461]: 
+                  - text: Celah 15 hari antar statement
+                - paragraph [ref=e16462]: 2026-01-15 s/d 2026-01-29
+                - paragraph [ref=e16463]: CC_BCA_2026_01.pdf → CC_BCA_2026_02.pdf — periksa statement periode tersebut.
+          - generic [ref=e16465]:
+            - generic [ref=e16466]:
+              - generic [ref=e16467]:
+                - generic [ref=e16468]:
+                  - generic [ref=e16469]: BRI
+                  - generic [ref=e16470]: (tanpa nomor)
+                  - generic [ref=e16471]: 24 break
+                  - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16472]: Tanpa data saldo
+                - paragraph [ref=e16473]: 919 transaksi · 2023-01-01 s/d 2026-02-28
+              - button " Tutup detail" [ref=e16474] [cursor=pointer]:
+                - generic [ref=e16475]: 
+                - text: Tutup detail
+            - generic [ref=e16476]:
+              - generic [ref=e16477]:
+                - generic [ref=e16478]:
+                  - generic [ref=e16479]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16480]: 2023-03-30 s/d 2023-03-31
+                - paragraph [ref=e16481]: 050501000524539_2023_03.csv → 050501000524539_2023_04.csv — periksa statement periode tersebut.
+              - generic [ref=e16482]:
+                - generic [ref=e16483]:
+                  - generic [ref=e16484]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16485]: 2023-06-29 s/d 2023-06-30
+                - paragraph [ref=e16486]: 050501000524539_2023_06.csv → 050501000524539_2023_07.csv — periksa statement periode tersebut.
+              - generic [ref=e16487]:
+                - generic [ref=e16488]:
+                  - generic [ref=e16489]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16490]: 2023-07-30 s/d 2023-07-31
+                - paragraph [ref=e16491]: 050501000524539_2023_07.csv → 050501000524539_2023_08.csv — periksa statement periode tersebut.
+              - generic [ref=e16492]:
+                - generic [ref=e16493]:
+                  - generic [ref=e16494]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16495]: 2023-09-30 s/d 2023-09-30
+                - paragraph [ref=e16496]: 050501000524539_2023_09.csv → 050501000524539_2023_10.csv — periksa statement periode tersebut.
+              - generic [ref=e16497]:
+                - generic [ref=e16498]:
+                  - generic [ref=e16499]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16500]: 2023-12-01 s/d 2023-12-02
+                - paragraph [ref=e16501]: 050501000524539_2023_11.csv → 050501000524539_2023_12.csv — periksa statement periode tersebut.
+              - generic [ref=e16502]:
+                - generic [ref=e16503]:
+                  - generic [ref=e16504]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16505]: 2024-03-01 s/d 2024-03-01
+                - paragraph [ref=e16506]: BRI_2024_02.csv → BRI_2024_03.csv — periksa statement periode tersebut.
+              - generic [ref=e16507]:
+                - generic [ref=e16508]:
+                  - generic [ref=e16509]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16510]: 2024-04-30 s/d 2024-04-30
+                - paragraph [ref=e16511]: BRI_2024_04.csv → BRI_2024_05.csv — periksa statement periode tersebut.
+              - generic [ref=e16512]:
+                - generic [ref=e16513]:
+                  - generic [ref=e16514]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16515]: 2024-06-30 s/d 2024-06-30
+                - paragraph [ref=e16516]: BRI_2024_06.csv → BRI_2024_07.csv — periksa statement periode tersebut.
+              - generic [ref=e16517]:
+                - generic [ref=e16518]:
+                  - generic [ref=e16519]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16520]: 2024-09-30 s/d 2024-09-30
+                - paragraph [ref=e16521]: BRI_2024_09.csv → BRI_2024_10.csv — periksa statement periode tersebut.
+              - generic [ref=e16522]:
+                - generic [ref=e16523]:
+                  - generic [ref=e16524]: 
+                  - text: Celah 4 hari antar statement
+                - paragraph [ref=e16525]: 2024-11-01 s/d 2024-11-04
+                - paragraph [ref=e16526]: BRI_2024_10.csv → BRI_2024_11.csv — periksa statement periode tersebut.
+              - generic [ref=e16527]:
+                - generic [ref=e16528]:
+                  - generic [ref=e16529]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16530]: 2024-11-30 s/d 2024-11-30
+                - paragraph [ref=e16531]: BRI_2024_11.csv → BRI_2024_12.csv — periksa statement periode tersebut.
+              - generic [ref=e16532]:
+                - generic [ref=e16533]:
+                  - generic [ref=e16534]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16535]: 2024-12-30 s/d 2024-12-31
+                - paragraph [ref=e16536]: BRI_2024_12.csv → 050501000524539_2025_01.csv — periksa statement periode tersebut.
+              - generic [ref=e16537]:
+                - generic [ref=e16538]:
+                  - generic [ref=e16539]: 
+                  - text: Celah 3 hari antar statement
+                - paragraph [ref=e16540]: 2025-02-28 s/d 2025-03-02
+                - paragraph [ref=e16541]: 050501000524539_2025_02.csv → 050501000524539_2025_03.csv — periksa statement periode tersebut.
+              - generic [ref=e16542]:
+                - generic [ref=e16543]:
+                  - generic [ref=e16544]: 
+                  - text: Celah 12 hari antar statement
+                - paragraph [ref=e16545]: 2025-03-26 s/d 2025-04-06
+                - paragraph [ref=e16546]: 050501000524539_2025_03.csv → 050501000524539_2025_04.csv — periksa statement periode tersebut.
+              - generic [ref=e16547]:
+                - generic [ref=e16548]:
+                  - generic [ref=e16549]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16550]: 2025-05-01 s/d 2025-05-02
+                - paragraph [ref=e16551]: 050501000524539_2025_04.csv → 050501000524539_2025_05.csv — periksa statement periode tersebut.
+              - generic [ref=e16552]:
+                - generic [ref=e16553]:
+                  - generic [ref=e16554]: 
+                  - text: Celah 4 hari antar statement
+                - paragraph [ref=e16555]: 2025-05-28 s/d 2025-05-31
+                - paragraph [ref=e16556]: 050501000524539_2025_05.csv → 050501000524539_2025_06.csv — periksa statement periode tersebut.
+              - generic [ref=e16557]:
+                - generic [ref=e16558]:
+                  - generic [ref=e16559]: 
+                  - text: Celah 3 hari antar statement
+                - paragraph [ref=e16560]: 2025-06-28 s/d 2025-06-30
+                - paragraph [ref=e16561]: 050501000524539_2025_06.csv → 050501000524539_2025_07.csv — periksa statement periode tersebut.
+              - generic [ref=e16562]:
+                - generic [ref=e16563]:
+                  - generic [ref=e16564]: 
+                  - text: Celah 9 hari antar statement
+                - paragraph [ref=e16565]: 2025-07-28 s/d 2025-08-05
+                - paragraph [ref=e16566]: 050501000524539_2025_07.csv → 050501000524539_2025_08.csv — periksa statement periode tersebut.
+              - generic [ref=e16567]:
+                - generic [ref=e16568]:
+                  - generic [ref=e16569]: 
+                  - text: Celah 6 hari antar statement
+                - paragraph [ref=e16570]: 2025-08-27 s/d 2025-09-01
+                - paragraph [ref=e16571]: 050501000524539_2025_08.csv → 050501000524539_2025_09.csv — periksa statement periode tersebut.
+              - generic [ref=e16572]:
+                - generic [ref=e16573]:
+                  - generic [ref=e16574]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16575]: 2025-09-29 s/d 2025-09-30
+                - paragraph [ref=e16576]: 050501000524539_2025_09.csv → 050501000524539_2025_10.csv — periksa statement periode tersebut.
+              - generic [ref=e16577]:
+                - generic [ref=e16578]:
+                  - generic [ref=e16579]: 
+                  - text: Celah 5 hari antar statement
+                - paragraph [ref=e16580]: 2025-10-31 s/d 2025-11-04
+                - paragraph [ref=e16581]: 050501000524539_2025_10.csv → 050501000524539_2025_11.csv — periksa statement periode tersebut.
+              - generic [ref=e16582]:
+                - generic [ref=e16583]:
+                  - generic [ref=e16584]: 
+                  - text: Celah 4 hari antar statement
+                - paragraph [ref=e16585]: 2025-12-01 s/d 2025-12-04
+                - paragraph [ref=e16586]: 050501000524539_2025_11.csv → 050501000524539_2025_12.csv — periksa statement periode tersebut.
+              - generic [ref=e16587]:
+                - generic [ref=e16588]:
+                  - generic [ref=e16589]: 
+                  - text: Celah 10 hari antar statement
+                - paragraph [ref=e16590]: 2025-12-29 s/d 2026-01-07
+                - paragraph [ref=e16591]: 050501000524539_2025_12.csv → 050501000524539_2026_01.csv — periksa statement periode tersebut.
+              - generic [ref=e16592]:
+                - generic [ref=e16593]:
+                  - generic [ref=e16594]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16595]: 2026-01-31 s/d 2026-01-31
+                - paragraph [ref=e16596]: 050501000524539_2026_01.csv → 050501000524539_2026_02.csv — periksa statement periode tersebut.
+          - generic [ref=e16600]:
+            - generic [ref=e16601]:
+              - generic [ref=e16602]: DBS
+              - generic [ref=e16603]: (tanpa nomor)
+              - generic [ref=e16604]: Kontinu
+              - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16605]: Tanpa data saldo
+            - paragraph [ref=e16606]: 2318 transaksi · 2022-12-17 s/d 2026-02-19
+          - generic [ref=e16608]:
+            - generic [ref=e16609]:
+              - generic [ref=e16610]:
+                - generic [ref=e16611]:
+                  - generic [ref=e16612]: MANDIRI
+                  - generic [ref=e16613]: (tanpa nomor)
+                  - generic [ref=e16614]: 15 break
+                  - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16615]: Tanpa data saldo
+                - paragraph [ref=e16616]: 1337 transaksi · 2023-01-01 s/d 2026-02-28
+              - button " Tutup detail" [ref=e16617] [cursor=pointer]:
+                - generic [ref=e16618]: 
+                - text: Tutup detail
+            - generic [ref=e16619]:
+              - generic [ref=e16620]:
+                - generic [ref=e16621]:
+                  - generic [ref=e16622]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16623]: 2023-07-01 s/d 2023-07-01
+                - paragraph [ref=e16624]: MANDIRI_2023_06.pdf → MANDIRI_2023_07.pdf — periksa statement periode tersebut.
+              - generic [ref=e16625]:
+                - generic [ref=e16626]:
+                  - generic [ref=e16627]: 
+                  - text: Celah 31 hari antar statement
+                - paragraph [ref=e16628]: 2024-04-01 s/d 2024-05-01
+                - paragraph [ref=e16629]: MANDIRI_2024_03.pdf → MANDIRI_2024_05.pdf — periksa statement periode tersebut.
+              - generic [ref=e16630]:
+                - generic [ref=e16631]:
+                  - generic [ref=e16632]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16633]: 2024-06-01 s/d 2024-06-01
+                - paragraph [ref=e16634]: MANDIRI_2024_05.pdf → MANDIRI_2024_06.pdf — periksa statement periode tersebut.
+              - generic [ref=e16635]:
+                - generic [ref=e16636]:
+                  - generic [ref=e16637]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16638]: 2024-10-01 s/d 2024-10-02
+                - paragraph [ref=e16639]: MANDIRI_2024_09.pdf → MANDIRI_2024_10.pdf — periksa statement periode tersebut.
+              - generic [ref=e16640]:
+                - generic [ref=e16641]:
+                  - generic [ref=e16642]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16643]: 2024-11-01 s/d 2024-11-01
+                - paragraph [ref=e16644]: MANDIRI_2024_10.pdf → MANDIRI_2024_11.pdf — periksa statement periode tersebut.
+              - generic [ref=e16645]:
+                - generic [ref=e16646]:
+                  - generic [ref=e16647]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16648]: 2025-02-01 s/d 2025-02-02
+                - paragraph [ref=e16649]: 4481_2025_01.pdf → 7608_2025_02.pdf — periksa statement periode tersebut.
+              - generic [ref=e16650]:
+                - generic [ref=e16651]:
+                  - generic [ref=e16652]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16653]: 2025-03-01 s/d 2025-03-02
+                - paragraph [ref=e16654]: 4481_2025_02.pdf → 7608_2025_03.pdf — periksa statement periode tersebut.
+              - generic [ref=e16655]:
+                - generic [ref=e16656]:
+                  - generic [ref=e16657]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16658]: 2025-04-01 s/d 2025-04-02
+                - paragraph [ref=e16659]: 4481_2025_03.pdf → 4481_2025_04.pdf — periksa statement periode tersebut.
+              - generic [ref=e16660]:
+                - generic [ref=e16661]:
+                  - generic [ref=e16662]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16663]: 2025-05-01 s/d 2025-05-01
+                - paragraph [ref=e16664]: 7608_2025_04.pdf → 4481_2025_05.pdf — periksa statement periode tersebut.
+              - generic [ref=e16665]:
+                - generic [ref=e16666]:
+                  - generic [ref=e16667]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16668]: 2025-06-01 s/d 2025-06-02
+                - paragraph [ref=e16669]: 7608_2025_05.pdf → 4481_2025_06.pdf — periksa statement periode tersebut.
+              - generic [ref=e16670]:
+                - generic [ref=e16671]:
+                  - generic [ref=e16672]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16673]: 2025-07-01 s/d 2025-07-01
+                - paragraph [ref=e16674]: 7608_2025_06.pdf → 4481_2025_07.pdf — periksa statement periode tersebut.
+              - generic [ref=e16675]:
+                - generic [ref=e16676]:
+                  - generic [ref=e16677]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16678]: 2025-09-01 s/d 2025-09-01
+                - paragraph [ref=e16679]: 7608_2025_08.pdf → 7608_2025_09.pdf — periksa statement periode tersebut.
+              - generic [ref=e16680]:
+                - generic [ref=e16681]:
+                  - generic [ref=e16682]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16683]: 2025-11-01 s/d 2025-11-01
+                - paragraph [ref=e16684]: 4481_2025_10.pdf → 7608_2025_11.pdf — periksa statement periode tersebut.
+              - generic [ref=e16685]:
+                - generic [ref=e16686]:
+                  - generic [ref=e16687]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16688]: 2026-01-01 s/d 2026-01-02
+                - paragraph [ref=e16689]: 7608_2025_12.pdf → XXXXXXXXX4481_2026_01.pdf — periksa statement periode tersebut.
+              - generic [ref=e16690]:
+                - generic [ref=e16691]:
+                  - generic [ref=e16692]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16693]: 2026-02-01 s/d 2026-02-01
+                - paragraph [ref=e16694]: XXXXXXXXX7608_2026_01.pdf → XXXXXXXXX4481_2026_02.pdf — periksa statement periode tersebut.
+          - generic [ref=e16698]:
+            - generic [ref=e16699]:
+              - generic [ref=e16700]: MANDIRI
+              - generic [ref=e16701]: "1160005317608"
+              - generic [ref=e16702]: Kontinu
+              - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16703]: Tanpa data saldo
+            - paragraph [ref=e16704]: 3 transaksi · 2024-04-01 s/d 2024-04-30
+          - generic [ref=e16708]:
+            - generic [ref=e16709]:
+              - generic [ref=e16710]: MANDIRI
+              - generic [ref=e16711]: "1170006124481"
+              - generic [ref=e16712]: Kontinu
+              - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16713]: Tanpa data saldo
+            - paragraph [ref=e16714]: 32 transaksi · 2024-04-01 s/d 2024-04-30
+          - generic [ref=e16716]:
+            - generic [ref=e16717]:
+              - generic [ref=e16718]:
+                - generic [ref=e16719]:
+                  - generic [ref=e16720]: MANDIRI_CC
+                  - generic [ref=e16721]: (tanpa nomor)
+                  - generic [ref=e16722]: 32 break
+                  - generic "Data lama sebelum kolom saldo tersimpan — belum bisa diverifikasi" [ref=e16723]: Tanpa data saldo
+                - paragraph [ref=e16724]: 525 transaksi · 2023-01-10 s/d 2026-02-21
+              - button " Tutup detail" [ref=e16725] [cursor=pointer]:
+                - generic [ref=e16726]: 
+                - text: Tutup detail
+            - generic [ref=e16727]:
+              - generic [ref=e16728]:
+                - generic [ref=e16729]:
+                  - generic [ref=e16730]: 
+                  - text: Celah 11 hari antar statement
+                - paragraph [ref=e16731]: 2023-01-29 s/d 2023-02-08
+                - paragraph [ref=e16732]: CC_MANDIRI_2023_01.pdf → CC_MANDIRI_2023_02.pdf — periksa statement periode tersebut.
+              - generic [ref=e16733]:
+                - generic [ref=e16734]:
+                  - generic [ref=e16735]: 
+                  - text: Celah 15 hari antar statement
+                - paragraph [ref=e16736]: 2023-02-18 s/d 2023-03-04
+                - paragraph [ref=e16737]: CC_MANDIRI_2023_02.pdf → CC_MANDIRI_2023_03.pdf — periksa statement periode tersebut.
+              - generic [ref=e16738]:
+                - generic [ref=e16739]:
+                  - generic [ref=e16740]: 
+                  - text: Celah 21 hari antar statement
+                - paragraph [ref=e16741]: 2023-03-18 s/d 2023-04-07
+                - paragraph [ref=e16742]: CC_MANDIRI_2023_03.pdf → CC_MANDIRI_2023_04.pdf — periksa statement periode tersebut.
+              - generic [ref=e16743]:
+                - generic [ref=e16744]:
+                  - generic [ref=e16745]: 
+                  - text: Celah 22 hari antar statement
+                - paragraph [ref=e16746]: 2023-04-17 s/d 2023-05-08
+                - paragraph [ref=e16747]: CC_MANDIRI_2023_04.pdf → CC_MANDIRI_2023_05.pdf — periksa statement periode tersebut.
+              - generic [ref=e16748]:
+                - generic [ref=e16749]:
+                  - generic [ref=e16750]: 
+                  - text: Celah 6 hari antar statement
+                - paragraph [ref=e16751]: 2023-05-29 s/d 2023-06-03
+                - paragraph [ref=e16752]: CC_MANDIRI_2023_05.pdf → CC_MANDIRI_2023_06.pdf — periksa statement periode tersebut.
+              - generic [ref=e16753]:
+                - generic [ref=e16754]:
+                  - generic [ref=e16755]: 
+                  - text: Celah 22 hari antar statement
+                - paragraph [ref=e16756]: 2023-06-17 s/d 2023-07-08
+                - paragraph [ref=e16757]: CC_MANDIRI_2023_06.pdf → CC_MANDIRI_2023_07.pdf — periksa statement periode tersebut.
+              - generic [ref=e16758]:
+                - generic [ref=e16759]:
+                  - generic [ref=e16760]: 
+                  - text: Celah 30 hari antar statement
+                - paragraph [ref=e16761]: 2023-07-10 s/d 2023-08-08
+                - paragraph [ref=e16762]: CC_MANDIRI_2023_07.pdf → CC_MANDIRI_2023_08.pdf — periksa statement periode tersebut.
+              - generic [ref=e16763]:
+                - generic [ref=e16764]:
+                  - generic [ref=e16765]: 
+                  - text: Celah 7 hari antar statement
+                - paragraph [ref=e16766]: 2023-08-26 s/d 2023-09-01
+                - paragraph [ref=e16767]: CC_MANDIRI_2023_08.pdf → CC_MANDIRI_2023_09.pdf — periksa statement periode tersebut.
+              - generic [ref=e16768]:
+                - generic [ref=e16769]:
+                  - generic [ref=e16770]: 
+                  - text: Celah 26 hari antar statement
+                - paragraph [ref=e16771]: 2023-09-23 s/d 2023-10-18
+                - paragraph [ref=e16772]: CC_MANDIRI_2023_09.pdf → CC_MANDIRI_2023_10.pdf — periksa statement periode tersebut.
+              - generic [ref=e16773]:
+                - generic [ref=e16774]:
+                  - generic [ref=e16775]: 
+                  - text: Celah 11 hari antar statement
+                - paragraph [ref=e16776]: 2023-11-23 s/d 2023-12-03
+                - paragraph [ref=e16777]: CC_MANDIRI_2023_11.pdf → CC_MANDIRI_2023_12.pdf — periksa statement periode tersebut.
+              - generic [ref=e16778]:
+                - generic [ref=e16779]:
+                  - generic [ref=e16780]: 
+                  - text: Celah 3 hari antar statement
+                - paragraph [ref=e16781]: 2023-12-29 s/d 2023-12-31
+                - paragraph [ref=e16782]: CC_MANDIRI_2023_12.pdf → CC_MANDIRI_2024_01.pdf — periksa statement periode tersebut.
+              - generic [ref=e16783]:
+                - generic [ref=e16784]:
+                  - generic [ref=e16785]: 
+                  - text: Celah 6 hari antar statement
+                - paragraph [ref=e16786]: 2024-01-29 s/d 2024-02-03
+                - paragraph [ref=e16787]: CC_MANDIRI_2024_01.pdf → CC_MANDIRI_2024_02.pdf — periksa statement periode tersebut.
+              - generic [ref=e16788]:
+                - generic [ref=e16789]:
+                  - generic [ref=e16790]: 
+                  - text: Celah 10 hari antar statement
+                - paragraph [ref=e16791]: 2024-02-23 s/d 2024-03-03
+                - paragraph [ref=e16792]: CC_MANDIRI_2024_02.pdf → CC_MANDIRI_2024_03.pdf — periksa statement periode tersebut.
+              - generic [ref=e16793]:
+                - generic [ref=e16794]:
+                  - generic [ref=e16795]: 
+                  - text: Celah 6 hari antar statement
+                - paragraph [ref=e16796]: 2024-03-23 s/d 2024-03-28
+                - paragraph [ref=e16797]: CC_MANDIRI_2024_03.pdf → CC_MANDIRI_2024_04.pdf — periksa statement periode tersebut.
+              - generic [ref=e16798]:
+                - generic [ref=e16799]:
+                  - generic [ref=e16800]: 
+                  - text: Celah 11 hari antar statement
+                - paragraph [ref=e16801]: 2024-04-23 s/d 2024-05-03
+                - paragraph [ref=e16802]: CC_MANDIRI_2024_04.pdf → CC_MANDIRI_2024_05.pdf — periksa statement periode tersebut.
+              - generic [ref=e16803]:
+                - generic [ref=e16804]:
+                  - generic [ref=e16805]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16806]: 2024-05-29 s/d 2024-05-30
+                - paragraph [ref=e16807]: CC_MANDIRI_2024_05.pdf → CC_MANDIRI_2024_06.pdf — periksa statement periode tersebut.
+              - generic [ref=e16808]:
+                - generic [ref=e16809]:
+                  - generic [ref=e16810]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16811]: 2024-06-26 s/d 2024-06-27
+                - paragraph [ref=e16812]: CC_MANDIRI_2024_06.pdf → CC_MANDIRI_2024_07.pdf — periksa statement periode tersebut.
+              - generic [ref=e16813]:
+                - generic [ref=e16814]:
+                  - generic [ref=e16815]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16816]: 2024-07-29 s/d 2024-07-30
+                - paragraph [ref=e16817]: CC_MANDIRI_2024_07.pdf → CC_MANDIRI_2024_08.pdf — periksa statement periode tersebut.
+              - generic [ref=e16818]:
+                - generic [ref=e16819]:
+                  - generic [ref=e16820]: 
+                  - text: Celah 6 hari antar statement
+                - paragraph [ref=e16821]: 2024-08-29 s/d 2024-09-03
+                - paragraph [ref=e16822]: CC_MANDIRI_2024_08.pdf → CC_MANDIRI_2024_09.pdf — periksa statement periode tersebut.
+              - generic [ref=e16823]:
+                - generic [ref=e16824]:
+                  - generic [ref=e16825]: 
+                  - text: Celah 11 hari antar statement
+                - paragraph [ref=e16826]: 2024-09-23 s/d 2024-10-03
+                - paragraph [ref=e16827]: CC_MANDIRI_2024_09.pdf → CC_MANDIRI_2024_10.pdf — periksa statement periode tersebut.
+              - generic [ref=e16828]:
+                - generic [ref=e16829]:
+                  - generic [ref=e16830]: 
+                  - text: Celah 3 hari antar statement
+                - paragraph [ref=e16831]: 2024-10-29 s/d 2024-10-31
+                - paragraph [ref=e16832]: CC_MANDIRI_2024_10.pdf → CC_MANDIRI_2024_11.pdf — periksa statement periode tersebut.
+              - generic [ref=e16833]:
+                - generic [ref=e16834]:
+                  - generic [ref=e16835]: 
+                  - text: Celah 5 hari antar statement
+                - paragraph [ref=e16836]: 2024-11-25 s/d 2024-11-29
+                - paragraph [ref=e16837]: CC_MANDIRI_2024_11.pdf → CC_MANDIRI_2024_12.pdf — periksa statement periode tersebut.
+              - generic [ref=e16838]:
+                - generic [ref=e16839]:
+                  - generic [ref=e16840]: 
+                  - text: Celah 20 hari antar statement
+                - paragraph [ref=e16841]: 2024-12-29 s/d 2025-01-17
+                - paragraph [ref=e16842]: CC_MANDIRI_2024_12.pdf → CC_MANDIRI_2025_01.pdf — periksa statement periode tersebut.
+              - generic [ref=e16843]:
+                - generic [ref=e16844]:
+                  - generic [ref=e16845]: 
+                  - text: Celah 40 hari antar statement
+                - paragraph [ref=e16846]: 2025-01-19 s/d 2025-02-27
+                - paragraph [ref=e16847]: CC_MANDIRI_2025_01.pdf → CC_MANDIRI_2025_03.pdf — periksa statement periode tersebut.
+              - generic [ref=e16848]:
+                - generic [ref=e16849]:
+                  - generic [ref=e16850]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16851]: 2025-03-29 s/d 2025-03-29
+                - paragraph [ref=e16852]: CC_MANDIRI_2025_03.pdf → CC_MANDIRI_2025_04.pdf — periksa statement periode tersebut.
+              - generic [ref=e16853]:
+                - generic [ref=e16854]:
+                  - generic [ref=e16855]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16856]: 2025-04-29 s/d 2025-04-29
+                - paragraph [ref=e16857]: CC_MANDIRI_2025_04.pdf → CC_MANDIRI_2025_05.pdf — periksa statement periode tersebut.
+              - generic [ref=e16858]:
+                - generic [ref=e16859]:
+                  - generic [ref=e16860]: 
+                  - text: Celah 1 hari antar statement
+                - paragraph [ref=e16861]: 2025-05-28 s/d 2025-05-28
+                - paragraph [ref=e16862]: CC_MANDIRI_2025_05.pdf → CC_MANDIRI_2025_06.pdf — periksa statement periode tersebut.
+              - generic [ref=e16863]:
+                - generic [ref=e16864]:
+                  - generic [ref=e16865]: 
+                  - text: Celah 12 hari antar statement
+                - paragraph [ref=e16866]: 2025-06-29 s/d 2025-07-10
+                - paragraph [ref=e16867]: CC_MANDIRI_2025_06.pdf → CC_MANDIRI_2025_07.pdf — periksa statement periode tersebut.
+              - generic [ref=e16868]:
+                - generic [ref=e16869]:
+                  - generic [ref=e16870]: 
+                  - text: Celah 3 hari antar statement
+                - paragraph [ref=e16871]: 2025-08-28 s/d 2025-08-30
+                - paragraph [ref=e16872]: CC_MANDIRI_2025_08.pdf → CC_MANDIRI_2025_09.pdf — periksa statement periode tersebut.
+              - generic [ref=e16873]:
+                - generic [ref=e16874]:
+                  - generic [ref=e16875]: 
+                  - text: Celah 2 hari antar statement
+                - paragraph [ref=e16876]: 2025-09-25 s/d 2025-09-26
+                - paragraph [ref=e16877]: CC_MANDIRI_2025_09.pdf → CC_MANDIRI_2025_10.pdf — periksa statement periode tersebut.
+              - generic [ref=e16878]:
+                - generic [ref=e16879]:
+                  - generic [ref=e16880]: 
+                  - text: Celah 3 hari antar statement
+                - paragraph [ref=e16881]: 2025-10-20 s/d 2025-10-22
+                - paragraph [ref=e16882]: CC_MANDIRI_2025_10.pdf → CC_MANDIRI_2025_11.pdf — periksa statement periode tersebut.
+              - generic [ref=e16883]:
+                - generic [ref=e16884]:
+                  - generic [ref=e16885]: 
+                  - text: Celah 3 hari antar statement
+                - paragraph [ref=e16886]: 2026-01-20 s/d 2026-01-22
+                - paragraph [ref=e16887]: CC_MANDIRI_2026_01.pdf → CC_MANDIRI_2026_02.pdf — periksa statement periode tersebut.

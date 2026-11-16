@@ -1,0 +1,94 @@
+- generic [ref=f2e3]:
+  - complementary [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]: 
+      - generic: StatementX
+    - navigation [ref=f2e9]:
+      - link "" [ref=f2e3861] [cursor=pointer]:
+        - /url: /
+      - link "" [ref=f2e3862] [cursor=pointer]:
+        - /url: /converter
+      - link "" [ref=f2e3863] [cursor=pointer]:
+        - /url: /history
+      - link "" [ref=f2e3864] [cursor=pointer]:
+        - /url: /ai-review
+      - link "" [ref=f2e3865] [cursor=pointer]:
+        - /url: /upload-summary
+      - link "" [ref=f2e3866] [cursor=pointer]:
+        - /url: /upload-checklist
+      - button " " [ref=f2e3867] [cursor=pointer]:
+        - generic [ref=f2e30]: 
+        - generic [ref=f2e3868]: 
+      - button " " [ref=f2e3869] [cursor=pointer]:
+        - generic [ref=f2e47]: 
+        - generic [ref=f2e3870]: 
+      - button " " [ref=f2e3871] [cursor=pointer]:
+        - generic [ref=f2e52]: 
+        - generic [ref=f2e3872]: 
+      - link "" [ref=f2e3873] [cursor=pointer]:
+        - /url: /settings
+    - generic [ref=f2e59]:
+      - generic [ref=f2e60]: ES
+      - text: 
+  - generic [ref=f2e66]:
+    - banner [ref=f2e67]:
+      - generic [ref=f2e68]:
+        - button "" [ref=f2e3874] [cursor=pointer]
+        - generic [ref=f2e72]:
+          - paragraph [ref=f2e73]: Admin Workspace
+          - heading "Company Management" [level=2] [ref=f2e3959]
+      - generic [ref=f2e75]: SERVER ONLINE
+    - main [ref=f2e80]:
+      - generic [ref=f2e3960]:
+        - generic [ref=f2e3961]:
+          - generic [ref=f2e3962]:
+            - generic [ref=f2e3963]:
+              - generic [ref=f2e3964]: 
+              - text: Company Management
+            - heading "Company Directory" [level=1] [ref=f2e3965]
+            - paragraph [ref=f2e3966]: Manage your business entities, abbreviations, and organizational identifiers for tracking.
+          - generic [ref=f2e3968]:
+            - generic [ref=f2e3969]: 
+            - text: Master Data
+        - generic [ref=f2e3970]:
+          - generic [ref=f2e3972]:
+            - generic [ref=f2e3973]:
+              - heading "Entities" [level=3] [ref=f2e3974]
+              - paragraph [ref=f2e3975]: A list of all registered business units
+            - button " Add Company" [ref=f2e3976] [cursor=pointer]:
+              - generic [ref=f2e3977]: 
+              - text: Add Company
+          - generic [ref=f2e3979]:
+            - generic [ref=f2e3981]:
+              - generic [ref=f2e3982]:
+                - generic [ref=f2e3983]: NI
+                - generic [ref=f2e3984]:
+                  - heading "Not Included" [level=4] [ref=f2e3985]
+                  - generic [ref=f2e3986]:
+                    - generic [ref=f2e3987]: NI
+                    - generic [ref=f2e3988]: "ID: d8fc0225..."
+              - generic [ref=f2e3989]:
+                - button "" [ref=f2e3990] [cursor=pointer]
+                - button "" [ref=f2e3992] [cursor=pointer]
+            - generic [ref=f2e3995]:
+              - generic [ref=f2e3996]:
+                - generic [ref=f2e3997]: AP
+                - generic [ref=f2e3998]:
+                  - heading "PT Asa Pangan Bangsa" [level=4] [ref=f2e3999]
+                  - generic [ref=f2e4000]:
+                    - generic [ref=f2e4001]: APB
+                    - generic [ref=f2e4002]: "ID: 8ab69d4a..."
+              - generic [ref=f2e4003]:
+                - button "" [ref=f2e4004] [cursor=pointer]
+                - button "" [ref=f2e4006] [cursor=pointer]
+            - generic [ref=f2e4009]:
+              - generic [ref=f2e4010]:
+                - generic [ref=f2e4011]: SE
+                - generic [ref=f2e4012]:
+                  - heading "PT Sagansa Engineering Indonesia" [level=4] [ref=f2e4013]
+                  - generic [ref=f2e4014]:
+                    - generic [ref=f2e4015]: SEI
+                    - generic [ref=f2e4016]: "ID: 40e70c5f..."
+              - generic [ref=f2e4017]:
+                - button "" [ref=f2e4018] [cursor=pointer]
+                - button "" [ref=f2e4020] [cursor=pointer]

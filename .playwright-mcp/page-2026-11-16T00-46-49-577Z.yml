@@ -1,0 +1,182 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [active] [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - button " HRD " [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: 
+        - generic [ref=e50]: HRD
+        - generic [ref=e51]: 
+      - button " Management " [ref=e53] [cursor=pointer]:
+        - generic [ref=e54]: 
+        - generic [ref=e55]: Management
+        - generic [ref=e56]: 
+      - button " Reports " [ref=e58] [cursor=pointer]:
+        - generic [ref=e59]: 
+        - generic [ref=e60]: Reports
+        - generic [ref=e61]: 
+      - link " Settings" [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "Transaction History" [level=2] [ref=e256]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e257]:
+        - generic [ref=e258]:
+          - generic [ref=e259]:
+            - generic [ref=e260]:
+              - generic [ref=e261]: 
+              - text: History & Database
+            - heading "Transaction review and adjustment workspace" [level=1] [ref=e262]
+            - paragraph [ref=e263]: Kelola transaksi mentah, lakukan bulk action, dan masuk ke modul penyesuaian tanpa keluar dari satu area kerja.
+          - generic [ref=e264]:
+            - generic [ref=e265]:
+              - generic [ref=e266]: 
+              - text: Filter-heavy
+            - generic [ref=e267]:
+              - generic [ref=e268]: 
+              - text: Bulk edits
+            - generic [ref=e269]:
+              - generic [ref=e270]: 
+              - text: Operational data
+        - tablist [ref=e273]:
+          - tab "Transactions" [selected] [ref=e274] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e275]: 
+            - text: Transactions
+          - tab "Remaining Storage" [ref=e276] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e277]: 
+            - text: Remaining Storage
+          - tab "COGS Batches" [ref=e278] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e279]: 
+            - text: COGS Batches
+          - tab "Inventory" [ref=e280] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e281]: 
+            - text: Inventory
+          - tab "Amortization" [ref=e282] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e283]: 
+            - text: Amortization
+          - tab "Service Tax" [ref=e284] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e285]: 
+            - text: Service Tax
+          - tab "Rental Contracts" [ref=e286] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e287]: 
+            - text: Rental Contracts
+          - tab "Payroll" [ref=e288] [cursor=pointer]:
+            - generic [aria-hidden] [ref=e289]: 
+            - text: Payroll
+        - generic [ref=e291]:
+          - generic [ref=e293]:
+            - generic [ref=e294]:
+              - heading "Database Transactions" [level=3] [ref=e295]
+              - paragraph [ref=e296]: Manage and analyze your historical statement data
+            - generic [ref=e298]:
+              - button " Import" [ref=e299] [cursor=pointer]:
+                - generic [ref=e300]: 
+                - text: Import
+              - button " Manual Journal" [ref=e301] [cursor=pointer]:
+                - generic [ref=e302]: 
+                - text: Manual Journal
+              - button " Export " [ref=e304] [cursor=pointer]:
+                - generic [ref=e305]: 
+                - text: Export
+                - generic [ref=e306]: 
+          - generic [ref=e308]:
+            - generic [ref=e309]:
+              - generic [ref=e310]:
+                - generic [ref=e311]: Search
+                - generic [ref=e312]:
+                  - generic: 
+                  - textbox "Description, amount, mark, COA, source file..." [ref=e313]
+              - generic [ref=e314]:
+                - generic [ref=e315]: Mark Status
+                - button "Unmarked Only " [ref=e318] [cursor=pointer]:
+                  - generic [ref=e319]: Unmarked Only
+                  - generic: 
+              - generic [ref=e320]:
+                - generic [ref=e321]: Periode
+                - generic [ref=e322]:
+                  - generic [ref=e324]:
+                    - combobox [ref=e325]:
+                      - option "Tahun"
+                    - generic: 
+                  - generic [ref=e326]:
+                    - textbox "Dari tanggal" [ref=e329]:
+                      - /placeholder: ""
+                    - generic [aria-hidden] [ref=e330]: –
+                    - textbox "s/d tanggal" [ref=e333]:
+                      - /placeholder: ""
+              - generic [ref=e334]:
+                - generic [ref=e335]: Company
+                - generic [ref=e336]:
+                  - combobox [ref=e337]:
+                    - option "All Companies"
+                  - generic: 
+              - generic [ref=e338]:
+                - button " Lanjutan " [ref=e339] [cursor=pointer]:
+                  - generic [ref=e340]: 
+                  - text: Lanjutan
+                  - generic [ref=e341]: 
+                - button " Reset" [ref=e342] [cursor=pointer]:
+                  - generic [ref=e343]: 
+                  - text: Reset
+            - generic [ref=e344]:
+              - generic [ref=e345]: Filter aktif
+              - 'button "Tahun: 2025" [ref=e346] [cursor=pointer]':
+                - generic [aria-hidden] [ref=e348]: 
+              - 'button "Company: 8ab69d4a-e591-4f05-909e-25ff12352efb" [ref=e349] [cursor=pointer]':
+                - generic [aria-hidden] [ref=e351]: 
+              - button "Unmarked Only" [ref=e352] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e354]: 
+            - text:   
+          - generic [ref=e356]:
+            - generic [ref=e357]:
+              - checkbox [ref=e358]
+              - generic [ref=e359]: Urutkan
+              - generic [ref=e360]:
+                - button "Tanggal " [ref=e361] [cursor=pointer]:
+                  - text: Tanggal
+                  - generic [ref=e362]: 
+                - button "Deskripsi" [ref=e363] [cursor=pointer]
+                - button "Jumlah" [ref=e364] [cursor=pointer]
+              - generic [ref=e365]: Marking
+            - generic [ref=e368]:
+              - generic [ref=e369]: 40%
+              - generic [ref=e372]: Mengambil transaksi… · 8.000/18.006 transaksi

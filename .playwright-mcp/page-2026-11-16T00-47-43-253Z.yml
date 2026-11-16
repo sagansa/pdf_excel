@@ -1,0 +1,258 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - generic [ref=e47]:
+        - button " HRD " [expanded] [ref=e7366] [cursor=pointer]:
+          - generic [ref=e49]: 
+          - generic [ref=e50]: HRD
+          - generic [ref=e51]: 
+        - list [ref=e7367]:
+          - listitem [ref=e7368]:
+            - link "Presences" [ref=e7369] [cursor=pointer]:
+              - /url: /hrd
+          - listitem [ref=e7371]:
+            - generic [ref=e7372]:
+              - generic [ref=e7373]: Payroll
+              - generic [ref=e7374]: Segera
+          - listitem [ref=e7375]:
+            - generic [ref=e7376]:
+              - generic [ref=e7377]: Karyawan
+              - generic [ref=e7378]: Segera
+      - generic [ref=e52]:
+        - button " Management " [expanded] [ref=e11157] [cursor=pointer]:
+          - generic [ref=e54]: 
+          - generic [ref=e55]: Management
+          - generic [ref=e56]: 
+        - list [ref=e11158]:
+          - listitem [ref=e11159]:
+            - link "Companies" [ref=e11160] [cursor=pointer]:
+              - /url: /companies
+          - listitem [ref=e11162]:
+            - link "Marks" [ref=e11163] [cursor=pointer]:
+              - /url: /marks
+          - listitem [ref=e11165]:
+            - link "Chart of Accounts" [ref=e11166] [cursor=pointer]:
+              - /url: /chart-of-accounts
+          - listitem [ref=e11168]:
+            - link "Locations & Stores" [ref=e11169] [cursor=pointer]:
+              - /url: /management
+          - listitem [ref=e11171]:
+            - generic [ref=e11172]:
+              - generic [ref=e11173]: Products
+              - generic [ref=e11174]: Segera
+      - generic [ref=e57]:
+        - button " Reports " [expanded] [ref=e15783] [cursor=pointer]:
+          - generic [ref=e59]: 
+          - generic [ref=e60]: Reports
+          - generic [ref=e61]: 
+        - list [ref=e15784]:
+          - listitem [ref=e15785]:
+            - link "Financial Reports" [active] [ref=e15786] [cursor=pointer]:
+              - /url: /reports
+          - listitem [ref=e15788]:
+            - link "Trial Balance" [ref=e15789] [cursor=pointer]:
+              - /url: /trial-balance
+          - listitem [ref=e15791]:
+            - link "General Ledger" [ref=e15792] [cursor=pointer]:
+              - /url: /general-ledger
+          - listitem [ref=e15794]:
+            - link "Cek Kontinuitas Saldo" [ref=e15795] [cursor=pointer]:
+              - /url: /balance-check
+      - link " Settings" [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "Financial Reports" [level=2] [ref=e15797]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e15798]:
+        - generic [ref=e15799]:
+          - generic [ref=e15800]:
+            - generic [ref=e15801]:
+              - generic [ref=e15802]: 
+              - text: Reporting Studio
+            - heading "Financial Reports" [level=1] [ref=e15803]
+            - paragraph [ref=e15804]: Income statement, balance sheet, revenue, cash flow, and payroll summary in one reporting workspace.
+          - button " Export " [ref=e15807] [cursor=pointer]:
+            - generic [ref=e15808]: 
+            - generic [ref=e15809]: Export
+            - generic [ref=e15810]: 
+        - generic [ref=e15811]:
+          - generic [ref=e15813]:
+            - tablist [ref=e15815]:
+              - tab "Income Statement" [selected] [ref=e15816] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e15817]: 
+                - text: Income Statement
+              - tab "Monthly Revenue" [ref=e15818] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e15819]: 
+                - text: Monthly Revenue
+              - tab "Balance Sheet" [ref=e15820] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e15821]: 
+                - text: Balance Sheet
+              - tab "Cash Flow" [ref=e15822] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e15823]: 
+                - text: Cash Flow
+              - tab "Payroll Summary" [ref=e15824] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e15825]: 
+                - text: Payroll Summary
+              - tab "Marks Summary" [ref=e15826] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e15827]: 
+                - text: Marks Summary
+            - generic [ref=e15829]:
+              - generic [ref=e15830]:
+                - generic [ref=e15831]: Report Type
+                - generic [ref=e15832]:
+                  - combobox [ref=e15833]:
+                    - option "Real" [selected]
+                    - option "Coretax"
+                  - generic: 
+              - generic [ref=e15834]:
+                - generic [ref=e15835]: Year
+                - generic [ref=e15836]:
+                  - combobox [ref=e15837]:
+                    - option "2023" [selected]
+                  - generic: 
+              - generic [ref=e15838]:
+                - generic [ref=e15839]: "Period: Start"
+                - textbox [ref=e15841]: 2023-01-01
+              - generic [ref=e15842]:
+                - generic [ref=e15843]: "Period: End"
+                - textbox [ref=e15845]: 2023-12-31
+              - generic [ref=e15846]:
+                - generic [ref=e15847]: As of Date
+                - textbox [ref=e15849]: 2023-12-31
+              - generic [ref=e15850]:
+                - generic [ref=e15851]: Company
+                - generic [ref=e15852]:
+                  - combobox [ref=e15853]:
+                    - option "All Companies"
+                    - option "Not Included" [selected]
+                    - option "PT Asa Pangan Bangsa"
+                    - option "PT Sagansa Engineering Indonesia"
+                  - generic: 
+              - status [ref=e15854]:
+                - generic [ref=e15855]:
+                  - generic [aria-hidden] [ref=e15856]: 
+                  - text: Auto refresh
+          - generic [ref=e15859]:
+            - generic [ref=e15860]:
+              - heading "Income Statement (Comparative)" [level=2] [ref=e15861]
+              - paragraph [ref=e15862]: Laporan Laba Rugi Komparatif
+            - generic [ref=e15863]:
+              - generic [ref=e15864]:
+                - generic [ref=e15865]:
+                  - paragraph [ref=e15866]: Earnings Before Tax
+                  - paragraph [ref=e15867]: "Previous: Rp 0"
+                  - paragraph [ref=e15868]: Rp 0
+                - generic [ref=e15869]:
+                  - paragraph [ref=e15870]: Earnings After Tax
+                  - paragraph [ref=e15871]: "Previous: Rp 0"
+                  - paragraph [ref=e15872]: Rp 0
+                - generic [ref=e15873]:
+                  - paragraph [ref=e15874]: Earnings Before Tax, Depreciation and Amortization
+                  - paragraph [ref=e15875]: "Previous: Rp 0"
+                  - paragraph [ref=e15876]: Rp 0
+              - heading "Revenue" [level=3] [ref=e15878]
+              - table [ref=e15880]:
+                - rowgroup [ref=e15881]:
+                  - row [ref=e15882]:
+                    - columnheader "Code" [ref=e15883]
+                    - columnheader "Account Name" [ref=e15884]
+                    - columnheader "Previous Year" [ref=e15885]
+                    - columnheader "Current Year" [ref=e15886]
+                    - columnheader "Actions" [ref=e15887]
+                - rowgroup [ref=e15888]:
+                  - row [ref=e15889]:
+                    - cell "No revenue recorded" [ref=e15890]
+            - generic [ref=e15891]:
+              - heading "Cost of Goods Sold" [level=3] [ref=e15893]
+              - generic [ref=e15895]:
+                - generic [ref=e15896]:
+                  - paragraph [ref=e15897]: Beginning Inventory - 5008
+                  - paragraph [ref=e15898]: Rp 0
+                - generic [ref=e15899]:
+                  - paragraph [ref=e15900]: "- Ending Inventory - 5009"
+                  - paragraph [ref=e15901]: Rp 0
+                - generic [ref=e15902]:
+                  - paragraph [ref=e15903]: Total COGS
+                  - paragraph [ref=e15904]: Rp 0
+            - generic [ref=e15905]:
+              - heading "Expenses" [level=3] [ref=e15907]
+              - table [ref=e15909]:
+                - rowgroup [ref=e15910]:
+                  - row [ref=e15911]:
+                    - columnheader "Code" [ref=e15912]
+                    - columnheader "Account Name" [ref=e15913]
+                    - columnheader "Previous Year" [ref=e15914]
+                    - columnheader "Current Year" [ref=e15915]
+                    - columnheader "Actions" [ref=e15916]
+                - rowgroup [ref=e15917]:
+                  - row [ref=e15918]:
+                    - cell "5314" [ref=e15919]
+                    - cell "Beban Penyusutan dan Amortisasi" [ref=e15920]
+                    - cell "Rp 0" [ref=e15922]
+                    - cell "Rp 0" [ref=e15923]
+                    - cell [ref=e15924]:
+                      - generic [ref=e15925]:
+                        - button "" [ref=e15926] [cursor=pointer]
+                        - button "" [ref=e15928] [cursor=pointer]
+                - rowgroup [ref=e15930]:
+                  - row [ref=e15931]:
+                    - cell "Total Expenses" [ref=e15932]
+                    - cell "Rp 0" [ref=e15933]
+                    - cell "Rp 0" [ref=e15934]
+                    - cell [ref=e15935]
+            - generic [ref=e15936]:
+              - generic [ref=e15937]:
+                - generic [ref=e15938]:
+                  - paragraph [ref=e15939]: Laba (Rugi) Bersih Komersial
+                  - button " Tambah Koreksi Fiskal Manual" [ref=e15940] [cursor=pointer]:
+                    - generic [ref=e15941]: 
+                    - text: Tambah Koreksi Fiskal Manual
+                - generic [ref=e15942]:
+                  - paragraph [ref=e15943]: "Previous: Rp 0"
+                  - paragraph [ref=e15944]: Rp 0
+              - generic [ref=e15945]:
+                - paragraph [ref=e15947]: Penghasilan Neto Fiskal
+                - generic [ref=e15948]:
+                  - paragraph [ref=e15949]: "Previous: Rp 0"
+                  - paragraph [ref=e15950]: Rp 0

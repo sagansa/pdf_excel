@@ -176,7 +176,7 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
     _ensure_payroll_month_buckets(month_groups, start_date, end_date)
     months = _finalize_payroll_months(month_groups)
 
-    return {
+    payload = {
         'period': {'start_date': start_date, 'end_date': end_date},
         'months': months,
         'summary': {
@@ -186,3 +186,19 @@ def fetch_payroll_salary_summary_data(conn, start_date, end_date, company_id=Non
             'month_count': len(months)
         }
     }
+
+    # Names that fell back to their ID mean the Sagansa user map was unavailable
+    # (e.g. DB unreachable) — tell the UI instead of silently showing raw IDs.
+    unresolved_ids = {
+        item['sagansa_user_id']
+        for group in month_groups.values()
+        for item in group['rows']
+        if item['sagansa_user_id'] and item['sagansa_user_name'] == item['sagansa_user_id']
+    }
+    if unresolved_ids:
+        payload['message'] = (
+            'Nama karyawan tidak dapat dimuat dari database Sagansa; '
+            'ID pengguna ditampilkan sebagai gantinya.'
+        )
+
+    return payload

@@ -298,22 +298,18 @@
               <td colspan="4" class="px-4 py-8 text-center text-theme-muted">No payroll summary for selected period</td>
             </tr>
             <tr v-for="row in displaySummaryRows" :key="summaryRowKey(row)" class="hover:bg-surface-muted/50 transition-colors">
-              <td class="px-4 py-3">
-                <div class="font-bold text-theme">{{ row.sagansa_user_name || 'Unassigned' }}</div>
-                <div class="text-[10px] text-theme-muted mono">{{ row.sagansa_user_id || '-' }}</div>
-              </td>
+              <PayrollEmployeeCell :name="row.sagansa_user_name" :employee-id="row.sagansa_user_id" />
               <td class="px-4 py-3 text-right text-theme">{{ row.transaction_count }}</td>
               <td class="px-4 py-3 text-right font-bold text-theme">{{ formatCurrency(row.total_amount) }}</td>
               <td class="px-4 py-3">
                 <div v-if="!row.components || row.components.length === 0" class="text-xs text-theme-muted">-</div>
                 <div v-else class="flex flex-wrap gap-1.5">
-                  <span
+                  <PayrollComponentChip
                     v-for="component in row.components"
                     :key="`${row.sagansa_user_id || 'unassigned'}-${component.component_name}`"
-                    class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20"
-                  >
-                    {{ component.component_name }}: {{ formatCurrency(component.amount) }}
-                  </span>
+                    :name="component.component_name"
+                    :value="formatCurrency(component.amount)"
+                  />
                 </div>
               </td>
             </tr>
@@ -336,6 +332,8 @@ import TextInput from '../ui/TextInput.vue';
 import SelectInput from '../ui/SelectInput.vue';
 import Alert from '../ui/Alert.vue';
 import SegmentedControl from '../ui/SegmentedControl.vue';
+import PayrollEmployeeCell from '../payroll/PayrollEmployeeCell.vue';
+import PayrollComponentChip from '../payroll/PayrollComponentChip.vue';
 
 const props = defineProps({
   companyId: {

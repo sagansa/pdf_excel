@@ -3,138 +3,88 @@
     <PageHeader
       eyebrow="Reporting Studio"
       icon="bi bi-file-earmark-bar-graph-fill"
-      title="Financial reports with a cleaner analysis shell"
+      title="Financial Reports"
       subtitle="Income statement, balance sheet, revenue, cash flow, and payroll summary in one reporting workspace."
     >
       <template #actions>
-      <div class="flex items-center gap-2 relative">
+        <div class="flex items-center gap-2 relative">
+          <button
+            v-if="canExportCurrentTab"
+            @click="showExportMenu = !showExportMenu"
+            class="btn-primary gap-2 text-sm"
+          >
+            <i class="bi bi-download"></i>
+            <span>Export</span>
+            <i class="bi bi-chevron-down text-xs"></i>
+          </button>
+
+          <!-- Export Dropdown -->
+          <div
+            v-if="showExportMenu"
+            class="reports-menu absolute right-0 top-full mt-2 w-48 py-1 z-50"
+          >
             <button
-              v-if="canExportCurrentTab"
-              @click="showExportMenu = !showExportMenu"
-              class="btn-secondary gap-2 text-sm"
+              @click="handleExport('excel')"
+              class="reports-menu__item"
             >
-              <i class="bi bi-download"></i>
-              <span>Export</span>
-              <i class="bi bi-chevron-down text-xs"></i>
+              <i class="bi bi-file-earmark-spreadsheet text-muted"></i>
+              Excel (.xlsx)
             </button>
-            
-            <!-- Export Dropdown -->
-            <div 
-              v-if="showExportMenu" 
-              class="reports-menu absolute right-0 top-full mt-2 w-48 py-1 z-50"
+            <button
+              v-if="supportsPdfExport"
+              @click="handleExport('pdf')"
+              class="reports-menu__item"
             >
-              <button
-                @click="handleExport('excel')"
-                class="reports-menu__item"
-              >
-                <i class="bi bi-file-earmark-spreadsheet text-green-600"></i>
-                Excel (.xlsx)
-              </button>
-              <button
-                v-if="supportsPdfExport"
-                @click="handleExport('pdf')"
-                class="reports-menu__item"
-              >
-                <i class="bi bi-file-earmark-pdf text-red-600"></i>
-                {{ pdfExportLabel }}
-              </button>
-              <button
-                @click="handleExport('xml')"
-                class="reports-menu__item"
-              >
-                <i class="bi bi-file-earmark-code text-orange-600"></i>
-                CoreTax XML
-              </button>
-            </div>
-      </div>
+              <i class="bi bi-file-earmark-pdf text-muted"></i>
+              {{ pdfExportLabel }}
+            </button>
+            <button
+              @click="handleExport('xml')"
+              class="reports-menu__item"
+            >
+              <i class="bi bi-file-earmark-code text-muted"></i>
+              CoreTax XML
+            </button>
+          </div>
+        </div>
       </template>
     </PageHeader>
 
     <!-- Main Content -->
     <div class="space-y-6">
-      <!-- Report Type Tabs -->
-      <SectionCard body-class="p-3">
-        <div class="reports-tab-wrap">
-            <button
-              @click="handleTabClick('income-statement')"
-              class="reports-tab"
-              :class="{ 'reports-tab--active': activeTab === 'income-statement' }"
-            >
-              <i class="bi bi-file-earmark-bar-graph mr-2"></i>
-              Income Statement
-            </button>
-            <button
-              @click="handleTabClick('monthly-revenue')"
-              class="reports-tab"
-              :class="{ 'reports-tab--active': activeTab === 'monthly-revenue' }"
-            >
-              <i class="bi bi-calendar3 mr-2"></i>
-              Monthly Revenue
-            </button>
-            <button
-              @click="handleTabClick('balance-sheet')"
-              class="reports-tab"
-              :class="{ 'reports-tab--active': activeTab === 'balance-sheet' }"
-            >
-              <i class="bi bi-file-earmark-spreadsheet mr-2"></i>
-              Balance Sheet
-            </button>
-            <button
-              @click="handleTabClick('cash-flow')"
-              class="reports-tab"
-              :class="{ 'reports-tab--active': activeTab === 'cash-flow' }"
-            >
-              <i class="bi bi-cash-stack mr-2"></i>
-              Cash Flow
-            </button>
-            <button
-              @click="navigateToGeneralLedger()"
-              class="reports-tab"
-            >
-              <i class="bi bi-journal-text mr-2"></i>
-              GL
-            </button>
-            <button
-              @click="handleTabClick('payroll-summary')"
-              class="reports-tab"
-              :class="{ 'reports-tab--active': activeTab === 'payroll-summary' }"
-            >
-              <i class="bi bi-people mr-2"></i>
-              Payroll Summary
-            </button>
-            <button
-              @click="handleTabClick('marks-report')"
-              class="reports-tab"
-              :class="{ 'reports-tab--active': activeTab === 'marks-report' }"
-            >
-              <i class="bi bi-tags mr-2"></i>
-              Marks Summary
-            </button>
+      <!-- Analysis shell: report tabs + filters on one ruled surface -->
+      <SectionCard body-class="p-0 overflow-hidden">
+        <div class="reports-tab-band">
+          <PillTabs
+            :model-value="activeTab"
+            :tabs="tabs"
+            @update:model-value="handleTabClick"
+          />
+        </div>
+
+        <div class="reports-filter-band">
+          <ReportFilters
+            v-model="store.filters"
+            :available-years="store.availableYears"
+            :companies="companies"
+            :is-loading="store.isLoading"
+          />
+        </div>
+
+        <!-- Error strip -->
+        <div v-if="store.error" class="reports-error" role="alert">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <p class="text-sm">{{ store.error }}</p>
+          <button class="reports-error__retry" @click="generateReport">Retry</button>
         </div>
       </SectionCard>
 
-      <!-- Filters -->
-      <ReportFilters
-        v-model="store.filters"
-        :available-years="store.availableYears"
-        :companies="companies"
-        :is-loading="store.isLoading"
-      />
-
-      <!-- Error Message -->
-      <div v-if="store.error" class="mt-6 reports-error rounded-2xl p-4">
-        <div class="flex items-center gap-2">
-          <i class="bi bi-exclamation-triangle-fill" style="color: var(--color-danger)"></i>
-          <p class="text-sm" style="color: var(--color-danger)">{{ store.error }}</p>
-        </div>
-      </div>
-
       <!-- Loading and Content Area -->
-      <div class="mt-6 relative min-h-[400px]">
+      <div class="relative min-h-[400px]">
         <!-- Global Loading Overlay (Subtle) -->
         <div v-if="store.isLoading" class="absolute inset-0 reports-loading z-20 flex flex-col items-center justify-center rounded-2xl">
           <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2" style="border-color: var(--color-primary)"></div>
-          <p class="text-sm text-muted mt-4">Generating all reports...</p>
+          <p class="text-sm text-muted mt-4">Generating reports…</p>
         </div>
 
         <!-- Report Content -->
@@ -147,7 +97,7 @@
           />
           <MonthlyRevenue
             v-if="activeTab === 'monthly-revenue'"
-            :key="`mr-${refreshKey}`"
+            :key="`mrev-${refreshKey}`"
             :company-id="store.filters.companyId"
           />
           <BalanceSheet
@@ -168,7 +118,7 @@
           />
           <MarksReport
             v-if="activeTab === 'marks-report'"
-            :key="`mr-${refreshKey}`"
+            :key="`marks-${refreshKey}`"
           />
         </div>
       </div>
@@ -200,6 +150,7 @@ import MarksReport from '../components/reports/MarksReport.vue';
 import COADetailModal from '../components/reports/COADetailModal.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
+import PillTabs from '../components/ui/PillTabs.vue';
 
 const store = useReportsStore();
 const companyStore = useCompanyStore();
@@ -213,6 +164,15 @@ const showCoaModal = ref(false);
 const selectedCoa = ref(null);
 const isHydratingFilters = ref(true);
 const autoGenerateTimer = ref(null);
+
+const tabs = [
+  { key: 'income-statement', label: 'Income Statement', icon: 'bi bi-file-earmark-bar-graph' },
+  { key: 'monthly-revenue', label: 'Monthly Revenue', icon: 'bi bi-calendar3' },
+  { key: 'balance-sheet', label: 'Balance Sheet', icon: 'bi bi-file-earmark-spreadsheet' },
+  { key: 'cash-flow', label: 'Cash Flow', icon: 'bi bi-cash-stack' },
+  { key: 'payroll-summary', label: 'Payroll Summary', icon: 'bi bi-people' },
+  { key: 'marks-report', label: 'Marks Summary', icon: 'bi bi-tags' }
+];
 const reportTabs = new Set([
   'income-statement',
   'monthly-revenue',
@@ -402,10 +362,6 @@ const handleExport = async (format) => {
   }
 };
 
-const navigateToGeneralLedger = () => {
-  router.push({ name: 'general-ledger' });
-};
-
 watch(
   () => route.query.tab,
   (tabFromQuery) => {
@@ -452,27 +408,38 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.reports-tab-wrap {
-  @apply flex gap-2 overflow-x-auto;
+.reports-tab-band {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.reports-tab {
-  @apply inline-flex items-center whitespace-nowrap rounded-2xl px-4 py-2.5 text-sm font-medium transition-all;
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
+.reports-filter-band {
+  padding: 16px 20px;
 }
 
-.reports-tab:hover {
-  border-color: var(--color-border-strong);
-  color: var(--color-text);
+.reports-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border-top: 1px solid rgba(185, 28, 28, 0.18);
+  background: rgba(185, 28, 28, 0.08);
+  color: var(--color-danger);
 }
 
-.reports-tab--active {
-  background: rgba(15, 118, 110, 0.12);
-  border-color: rgba(15, 118, 110, 0.18);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-soft);
+.reports-error p {
+  flex: 1;
+  min-width: 0;
+}
+
+.reports-error__retry {
+  @apply shrink-0 rounded-lg px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors;
+  border: 1px solid rgba(185, 28, 28, 0.24);
+  color: var(--color-danger);
+}
+
+.reports-error__retry:hover {
+  background: rgba(185, 28, 28, 0.10);
 }
 
 .reports-menu {
@@ -490,11 +457,6 @@ onBeforeUnmount(() => {
 
 .reports-menu__item:hover {
   background: var(--color-surface-muted);
-}
-
-.reports-error {
-  background: rgba(185, 28, 28, 0.08);
-  border: 1px solid rgba(185, 28, 28, 0.18);
 }
 
 .reports-loading {

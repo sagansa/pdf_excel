@@ -9,18 +9,11 @@
     />
 
     <SectionCard body-class="p-3">
-      <div class="history-tabs-wrap">
-          <button 
-            v-for="tab in tabs" 
-            :key="tab.id"
-            @click="activeTab = tab.id"
-            class="history-tab"
-            :class="{ 'history-tab--active': activeTab === tab.id }"
-          >
-            <i :class="tab.icon"></i>
-            {{ tab.name }}
-          </button>
-      </div>
+      <PillTabs
+        :model-value="activeTab"
+        :tabs="railTabs"
+        @update:model-value="activeTab = $event"
+      />
     </SectionCard>
 
     <!-- Active Content Area -->
@@ -310,6 +303,7 @@ import { useNotifications } from '../composables/useNotifications';
 import FormField from '../components/ui/FormField.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
+import PillTabs from '../components/ui/PillTabs.vue';
 import SelectInput from '../components/ui/SelectInput.vue';
 import TextInput from '../components/ui/TextInput.vue';
 import api from '../api';
@@ -342,6 +336,8 @@ const tabs = [
   { id: 'rental', name: 'Rental Contracts', icon: 'bi bi-file-earmark-text' },
   { id: 'payroll', name: 'Payroll', icon: 'bi bi-people' }
 ];
+
+const railTabs = tabs.map((tab) => ({ key: tab.id, label: tab.name, icon: tab.icon }));
 
 const showDetails = ref(false);
 const showAssignMark = ref(false);
@@ -574,29 +570,6 @@ const handleExport = async (format) => {
 </script>
 
 <style scoped>
-.history-tabs-wrap {
-  @apply flex gap-2 overflow-x-auto;
-}
-
-.history-tab {
-  @apply inline-flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2.5 text-sm font-medium transition-all;
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-}
-
-.history-tab:hover {
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
-}
-
-.history-tab--active {
-  background: rgba(15, 118, 110, 0.12);
-  border-color: rgba(15, 118, 110, 0.18);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-soft);
-}
-
 .history-menu {
   background: var(--color-surface);
   border: 1px solid var(--color-border);

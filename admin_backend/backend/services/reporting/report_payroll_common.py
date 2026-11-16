@@ -4,7 +4,7 @@ import re
 
 from sqlalchemy import text
 
-from backend.db.session import get_sagansa_engine
+from backend.db.session import get_sagansa_engine, dispose_sagansa_engine
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,10 @@ def _fetch_sagansa_user_map():
                     'name': str(row.name or '').strip() or user_id,
                 }
     except Exception as exc:
+        # A stale pooled connection (e.g. MySQL restart) must not poison the
+        # cached engine for every later request; drop it and reconnect next time.
         logger.warning("Failed to fetch Sagansa users for payroll summary: %s", exc)
+        dispose_sagansa_engine()
         return {}
 
     return user_map

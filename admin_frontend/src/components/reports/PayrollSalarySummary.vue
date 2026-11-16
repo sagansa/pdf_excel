@@ -28,9 +28,9 @@
     <SectionCard v-else body-class="p-0 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm min-w-[980px]">
-          <thead class="bg-surface-muted/30 border-b border-border">
+          <thead class="border-b border-border">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase sticky left-0 bg-surface-muted/30 z-10 min-w-[260px]">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase sticky left-0 bg-surface-muted z-10 min-w-[260px]">
                 Employee / Mark
               </th>
               <th
@@ -48,21 +48,14 @@
           <tbody class="divide-y divide-border">
             <template v-for="employee in employeeRows" :key="employee.key">
               <tr class="hover:bg-hover active:bg-hover/80 transition-colors">
-                <td class="px-4 py-3 sticky left-0 bg-surface z-10 transition-colors">
-                  <button
-                    class="w-full flex items-center justify-between gap-2 text-left"
-                    @click="toggleExpanded(employee.key)"
-                  >
-                    <div class="min-w-0">
-                      <div class="font-semibold text-theme truncate">{{ employee.name }}</div>
-                      <div class="text-[11px] text-muted truncate">{{ employee.id || '-' }}</div>
-                    </div>
-                    <i
-                      :class="isExpanded(employee.key) ? 'bi bi-chevron-up' : 'bi bi-chevron-down'"
-                      class="text-xs text-muted shrink-0"
-                    ></i>
-                  </button>
-                </td>
+                <PayrollEmployeeCell
+                  :name="employee.name"
+                  :employee-id="employee.id"
+                  expandable
+                  :expanded="isExpanded(employee.key)"
+                  sticky
+                  @toggle="toggleExpanded(employee.key)"
+                />
                 <td
                   v-for="month in monthColumns"
                   :key="`employee-${employee.key}-${month.month_key}`"
@@ -77,12 +70,11 @@
               <tr
                 v-for="component in isExpanded(employee.key) ? employee.components : []"
                 :key="`component-${employee.key}-${component.mark_name}`"
-                class="bg-surface-muted/20"
+                class="bg-surface-muted"
               >
-                <td class="px-6 py-2 text-theme min-w-[260px] sticky left-0 bg-surface-muted/20 z-10">
-                  <span class="inline-flex items-center gap-2">
-                    <i class="bi bi-dot text-base text-muted"></i>
-                    {{ component.mark_name }}
+                <td class="px-6 py-2 min-w-[260px] sticky left-0 bg-surface-muted z-10">
+                  <span class="inline-flex items-center">
+                    <PayrollComponentChip :name="component.mark_name" />
                   </span>
                 </td>
                 <td
@@ -108,6 +100,8 @@
 import { computed, ref, watch } from 'vue';
 import SectionCard from '../ui/SectionCard.vue';
 import StatCard from '../ui/StatCard.vue';
+import PayrollEmployeeCell from '../payroll/PayrollEmployeeCell.vue';
+import PayrollComponentChip from '../payroll/PayrollComponentChip.vue';
 
 const props = defineProps({
   data: {
@@ -120,10 +114,24 @@ const expandedEmployees = ref([]);
 
 const monthColumns = computed(() => {
   if (!Array.isArray(props.data?.months)) return [];
-  return props.data.months.map((month) => ({
-    month_key: month.month_key,
-    month_label: month.month_label || month.month_key
-  }));
+  const months = props.data.months;
+  // The period (with its year) is already shown in the card header, so the
+  // year is dropped from month headers unless the range crosses years.
+  const years = new Set(months.map((month) => String(month.month_key || '').slice(0, 4)));
+  const singleYear = years.size <= 1;
+  return months.map((month) => {
+    const key = String(month.month_key || '');
+    const parts = key.split('-');
+    let label = month.month_label || key;
+    if (singleYear && parts.length === 2) {
+      const date = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+      if (!Number.isNaN(date.getTime())) label = date.toLocaleString('en-US', { month: 'long' });
+    }
+    return {
+      month_key: month.month_key,
+      month_label: label
+    };
+  });
 });
 
 const employeeRows = computed(() => {

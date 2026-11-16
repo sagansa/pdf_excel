@@ -12,72 +12,7 @@
     <div class="space-y-6">
       <!-- Settings Tabs -->
       <SectionCard body-class="p-3">
-        <div class="settings-tab-wrap">
-            <button
-              @click="activeTab = 'amortization'"
-              class="settings-tab"
-              :class="{ 'settings-tab--active': activeTab === 'amortization' }"
-            >
-              <i class="bi bi-calculator mr-2"></i>
-              Amortization
-            </button>
-            <button
-              @click="activeTab = 'payroll'"
-              class="settings-tab"
-              :class="{ 'settings-tab--active': activeTab === 'payroll' }"
-            >
-              <i class="bi bi-people mr-2"></i>
-              Payroll Employee
-            </button>
-            <button
-              @click="activeTab = 'initialCapital'"
-              class="settings-tab"
-              :class="{ 'settings-tab--active': activeTab === 'initialCapital' }"
-            >
-              <i class="bi bi-coins mr-2"></i>
-              Initial Capital
-            </button>
-            <button
-              @click="activeTab = 'rentalContracts'"
-              class="settings-tab"
-              :class="{ 'settings-tab--active': activeTab === 'rentalContracts' }"
-            >
-              <i class="bi bi-house-door mr-2"></i>
-              Rental Contracts
-            </button>
-            <button
-              @click="activeTab = 'reports'"
-              class="settings-tab"
-              :class="{ 'settings-tab--active': activeTab === 'reports' }"
-            >
-              <i class="bi bi-file-earmark-pdf mr-2"></i>
-              Report Details
-            </button>
-            <button
-              @click="activeTab = 'apiKeys'"
-              class="settings-tab"
-              :class="{ 'settings-tab--active': activeTab === 'apiKeys' }"
-            >
-              <i class="bi bi-key-fill mr-2"></i>
-              API Keys
-            </button>
-            <button
-              @click="activeTab = 'general'"
-              class="settings-tab"
-              :class="{ 'settings-tab--active': activeTab === 'general' }"
-            >
-              <i class="bi bi-gear mr-2"></i>
-              General
-            </button>
-            <button
-              @click="activeTab = 'ai'"
-              class="settings-tab"
-              :class="{ 'settings-tab--active': activeTab === 'ai' }"
-            >
-              <i class="bi bi-cpu mr-2"></i>
-              AI
-            </button>
-        </div>
+        <PillTabs v-model="activeTab" :tabs="settingsTabs" />
       </SectionCard>
 
       <!-- Settings Content -->
@@ -121,8 +56,19 @@ import CredentialsSettings from '../components/settings/CredentialsSettings.vue'
 import GeneralSettings from '../components/settings/GeneralSettings.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SectionCard from '../components/ui/SectionCard.vue';
+import PillTabs from '../components/ui/PillTabs.vue';
 
 const activeTab = ref('amortization');
+const settingsTabs = [
+  { key: 'amortization', label: 'Amortization', icon: 'bi bi-calculator' },
+  { key: 'payroll', label: 'Payroll Employee', icon: 'bi bi-people' },
+  { key: 'initialCapital', label: 'Initial Capital', icon: 'bi bi-coins' },
+  { key: 'rentalContracts', label: 'Rental Contracts', icon: 'bi bi-house-door' },
+  { key: 'reports', label: 'Report Details', icon: 'bi bi-file-earmark-pdf' },
+  { key: 'apiKeys', label: 'API Keys', icon: 'bi bi-key-fill' },
+  { key: 'general', label: 'General', icon: 'bi bi-gear' },
+  { key: 'ai', label: 'AI', icon: 'bi bi-cpu' }
+];
 const companyId = ref('');
 const headerBadges = [
   { icon: 'bi bi-gear', label: 'System config' },
@@ -143,31 +89,4 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.settings-tab-wrap {
-  @apply flex gap-2 overflow-x-auto;
-}
-
-.settings-tab {
-  @apply inline-flex items-center whitespace-nowrap rounded-2xl px-4 py-2.5 text-sm font-medium transition-all;
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-}
-
-.settings-tab:hover {
-  border-color: var(--color-border-strong);
-  color: var(--color-text);
-}
-
-.settings-tab--active {
-  background: rgba(15, 118, 110, 0.12);
-  border-color: rgba(15, 118, 110, 0.18);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-soft);
-}
-
-.settings-tab--disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
 </style>

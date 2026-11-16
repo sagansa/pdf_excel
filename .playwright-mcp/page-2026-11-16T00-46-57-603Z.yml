@@ -1,0 +1,397 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - button " HRD " [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: 
+        - generic [ref=e50]: HRD
+        - generic [ref=e51]: 
+      - button " Management " [ref=e53] [cursor=pointer]:
+        - generic [ref=e54]: 
+        - generic [ref=e55]: Management
+        - generic [ref=e56]: 
+      - button " Reports " [ref=e58] [cursor=pointer]:
+        - generic [ref=e59]: 
+        - generic [ref=e60]: Reports
+        - generic [ref=e61]: 
+      - link " Settings" [active] [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "System Settings" [level=2] [ref=e7120]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e7121]:
+        - generic [ref=e7122]:
+          - generic [ref=e7123]:
+            - generic [ref=e7124]:
+              - generic [ref=e7125]: 
+              - text: Configuration
+            - heading "System settings and operational configuration" [level=1] [ref=e7126]
+            - paragraph [ref=e7127]: Kelola konfigurasi amortisasi, payroll, modal awal, dan kontrak rental dari satu workspace.
+          - generic [ref=e7128]:
+            - generic [ref=e7129]:
+              - generic [ref=e7130]: 
+              - text: System config
+            - generic [ref=e7131]:
+              - generic [ref=e7132]: 
+              - text: Company-aware
+        - generic [ref=e7133]:
+          - tablist [ref=e7136]:
+            - tab "Amortization" [selected] [ref=e7137] [cursor=pointer]:
+              - generic [aria-hidden] [ref=e7138]: 
+              - text: Amortization
+            - tab "Payroll Employee" [ref=e7139] [cursor=pointer]:
+              - generic [aria-hidden] [ref=e7140]: 
+              - text: Payroll Employee
+            - tab "Initial Capital" [ref=e7141] [cursor=pointer]
+            - tab "Rental Contracts" [ref=e7142] [cursor=pointer]:
+              - generic [aria-hidden] [ref=e7143]: 
+              - text: Rental Contracts
+            - tab "Report Details" [ref=e7144] [cursor=pointer]:
+              - generic [aria-hidden] [ref=e7145]: 
+              - text: Report Details
+            - tab "API Keys" [ref=e7146] [cursor=pointer]:
+              - generic [aria-hidden] [ref=e7147]: 
+              - text: API Keys
+            - tab "General" [ref=e7148] [cursor=pointer]:
+              - generic [aria-hidden] [ref=e7149]: 
+              - text: General
+            - tab "AI" [ref=e7150] [cursor=pointer]:
+              - generic [aria-hidden] [ref=e7151]: 
+              - text: AI
+          - generic [ref=e7153]:
+            - generic [ref=e7155]:
+              - heading "Amortization Settings" [level=2] [ref=e7156]
+              - paragraph [ref=e7157]: "Pengaturan global Coretax: kelompok aset dan mapping akun akumulasi."
+            - generic [ref=e7158]:
+              - generic [ref=e7159]:
+                - generic [ref=e7160]:
+                  - generic [ref=e7161]: 
+                  - heading "Harta Berwujud" [level=3] [ref=e7162]
+                - paragraph [ref=e7163]: Mesin, peralatan, kendaraan, furniture, dan aset fisik lainnya.
+              - generic [ref=e7164]:
+                - generic [ref=e7165]:
+                  - generic [ref=e7166]: 
+                  - heading "Harta Tidak Berwujud" [level=3] [ref=e7167]
+                - paragraph [ref=e7168]: Hak paten, lisensi, goodwill, software, dan aset non-fisik.
+              - generic [ref=e7169]:
+                - generic [ref=e7170]:
+                  - generic [ref=e7171]: 
+                  - heading "Bangunan" [level=3] [ref=e7172]
+                - paragraph [ref=e7173]: Bangunan permanen dan non-permanen.
+            - generic [ref=e7174]:
+              - generic [ref=e7176]:
+                - generic [ref=e7177]:
+                  - heading "Kelompok Aset & Tarif" [level=3] [ref=e7178]
+                  - paragraph [ref=e7179]: Standar tarif global yang dipakai di seluruh perusahaan.
+                - button " Tambah Kelompok" [ref=e7180] [cursor=pointer]:
+                  - generic [ref=e7181]: 
+                  - text: Tambah Kelompok
+              - generic [ref=e7183]:
+                - generic [ref=e7184]:
+                  - heading "Harta Berwujud" [level=4] [ref=e7186]
+                  - table [ref=e7188]:
+                    - rowgroup [ref=e7189]:
+                      - row [ref=e7190]:
+                        - columnheader "Kelompok" [ref=e7191]
+                        - columnheader "Masa Manfaat" [ref=e7192]
+                        - columnheader "Tarif (100%)" [ref=e7193]
+                        - columnheader "Tarif (50%)" [ref=e7194]
+                        - columnheader "Aksi" [ref=e7195]
+                    - rowgroup [ref=e7196]:
+                      - row [ref=e7197]:
+                        - cell "Kelompok 1 - Harta Berwujud Kelompok 1" [ref=e7198]:
+                          - generic [ref=e7199]: Kelompok 1 - Harta Berwujud
+                          - generic [ref=e7200]: Kelompok 1
+                        - cell "4 tahun" [ref=e7201]
+                        - cell "25%" [ref=e7202]
+                        - cell "12.5%" [ref=e7204]
+                        - cell [ref=e7206]:
+                          - button "" [ref=e7207] [cursor=pointer]
+                      - row [ref=e7209]:
+                        - cell "Kelompok 2 - Harta Berwujud Kelompok 2" [ref=e7210]:
+                          - generic [ref=e7211]: Kelompok 2 - Harta Berwujud
+                          - generic [ref=e7212]: Kelompok 2
+                        - cell "8 tahun" [ref=e7213]
+                        - cell "12.5%" [ref=e7214]
+                        - cell "6.25%" [ref=e7216]
+                        - cell [ref=e7218]:
+                          - button "" [ref=e7219] [cursor=pointer]
+                      - row [ref=e7221]:
+                        - cell "Kelompok 3 - Harta Berwujud Kelompok 3" [ref=e7222]:
+                          - generic [ref=e7223]: Kelompok 3 - Harta Berwujud
+                          - generic [ref=e7224]: Kelompok 3
+                        - cell "16 tahun" [ref=e7225]
+                        - cell "6.25%" [ref=e7226]
+                        - cell "3.13%" [ref=e7228]
+                        - cell [ref=e7230]:
+                          - button "" [ref=e7231] [cursor=pointer]
+                      - row [ref=e7233]:
+                        - cell "Kelompok 4 - Harta Berwujud Kelompok 4" [ref=e7234]:
+                          - generic [ref=e7235]: Kelompok 4 - Harta Berwujud
+                          - generic [ref=e7236]: Kelompok 4
+                        - cell "20 tahun" [ref=e7237]
+                        - cell "5%" [ref=e7238]
+                        - cell "2.5%" [ref=e7240]
+                        - cell [ref=e7242]:
+                          - button "" [ref=e7243] [cursor=pointer]
+                - generic [ref=e7245]:
+                  - heading "Harta Tidak Berwujud" [level=4] [ref=e7247]
+                  - table [ref=e7249]:
+                    - rowgroup [ref=e7250]:
+                      - row [ref=e7251]:
+                        - columnheader "Kelompok" [ref=e7252]
+                        - columnheader "Masa Manfaat" [ref=e7253]
+                        - columnheader "Tarif (100%)" [ref=e7254]
+                        - columnheader "Tarif (50%)" [ref=e7255]
+                        - columnheader "Aksi" [ref=e7256]
+                    - rowgroup [ref=e7257]:
+                      - row [ref=e7258]:
+                        - cell "Kelompok 1 - Harta Tidak Berwujud Kelompok 1" [ref=e7259]:
+                          - generic [ref=e7260]: Kelompok 1 - Harta Tidak Berwujud
+                          - generic [ref=e7261]: Kelompok 1
+                        - cell "4 tahun" [ref=e7262]
+                        - cell "25%" [ref=e7263]
+                        - cell "12.5%" [ref=e7265]
+                        - cell [ref=e7267]:
+                          - button "" [ref=e7268] [cursor=pointer]
+                      - row [ref=e7270]:
+                        - cell "Kelompok 2 - Harta Tidak Berwujud Kelompok 2" [ref=e7271]:
+                          - generic [ref=e7272]: Kelompok 2 - Harta Tidak Berwujud
+                          - generic [ref=e7273]: Kelompok 2
+                        - cell "8 tahun" [ref=e7274]
+                        - cell "12.5%" [ref=e7275]
+                        - cell "6.25%" [ref=e7277]
+                        - cell [ref=e7279]:
+                          - button "" [ref=e7280] [cursor=pointer]
+                      - row [ref=e7282]:
+                        - cell "Kelompok 3 - Harta Tidak Berwujud Kelompok 3" [ref=e7283]:
+                          - generic [ref=e7284]: Kelompok 3 - Harta Tidak Berwujud
+                          - generic [ref=e7285]: Kelompok 3
+                        - cell "16 tahun" [ref=e7286]
+                        - cell "6.25%" [ref=e7287]
+                        - cell "3.13%" [ref=e7289]
+                        - cell [ref=e7291]:
+                          - button "" [ref=e7292] [cursor=pointer]
+                      - row [ref=e7294]:
+                        - cell "Kelompok 4 - Harta Tidak Berwujud Kelompok 4" [ref=e7295]:
+                          - generic [ref=e7296]: Kelompok 4 - Harta Tidak Berwujud
+                          - generic [ref=e7297]: Kelompok 4
+                        - cell "20 tahun" [ref=e7298]
+                        - cell "5%" [ref=e7299]
+                        - cell "2.5%" [ref=e7301]
+                        - cell [ref=e7303]:
+                          - button "" [ref=e7304] [cursor=pointer]
+                - generic [ref=e7306]:
+                  - heading "Bangunan" [level=4] [ref=e7308]
+                  - table [ref=e7310]:
+                    - rowgroup [ref=e7311]:
+                      - row [ref=e7312]:
+                        - columnheader "Kelompok" [ref=e7313]
+                        - columnheader "Masa Manfaat" [ref=e7314]
+                        - columnheader "Tarif (100%)" [ref=e7315]
+                        - columnheader "Tarif (50%)" [ref=e7316]
+                        - columnheader "Aksi" [ref=e7317]
+                    - rowgroup [ref=e7318]:
+                      - row [ref=e7319]:
+                        - cell "Bangunan Permanen Kelompok 1" [ref=e7320]:
+                          - generic [ref=e7321]: Bangunan Permanen
+                          - generic [ref=e7322]: Kelompok 1
+                        - cell "20 tahun" [ref=e7323]
+                        - cell "5%" [ref=e7324]
+                        - cell "2.5%" [ref=e7326]
+                        - cell [ref=e7328]:
+                          - button "" [ref=e7329] [cursor=pointer]
+                      - row [ref=e7331]:
+                        - cell "Bangunan Non-Permanen Kelompok 2" [ref=e7332]:
+                          - generic [ref=e7333]: Bangunan Non-Permanen
+                          - generic [ref=e7334]: Kelompok 2
+                        - cell "10 tahun" [ref=e7335]
+                        - cell "10%" [ref=e7336]
+                        - cell "5%" [ref=e7338]
+                        - cell [ref=e7340]:
+                          - button "" [ref=e7341] [cursor=pointer]
+            - generic [ref=e7343]:
+              - generic [ref=e7345]:
+                - heading "Mapping COA Akumulasi Penyusutan" [level=3] [ref=e7346]
+                - paragraph [ref=e7347]: Dipakai untuk klasifikasi akumulasi penyusutan/amortisasi di Balance Sheet.
+              - generic [ref=e7349]:
+                - generic [ref=e7350]:
+                  - generic [ref=e7351]: Building (Bangunan) - default 1524
+                  - generic [ref=e7352]:
+                    - combobox [ref=e7353]:
+                      - option "Pilih COA..."
+                      - option "1101 - Kas dan Setara Kas"
+                      - option "1122 - Piutang Usaha - Pihak Ketiga"
+                      - option "1123 - Piutang Usaha - Hubungan Istimewa"
+                      - option "1124 - Piutang Lainnya - Pihak Ketiga"
+                      - option "1125 - Piutang Lainnya - Hubungan Istimewa"
+                      - option "1131 - Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar"
+                      - option "1181 - Aset Kontrak"
+                      - option "1200 - Investasi"
+                      - option "1401 - Persediaan"
+                      - option "1421 - Biaya Dibayar di Muka"
+                      - option "1422 - Pendapatan Diterima di Muka (Aset)"
+                      - option "1423 - Pajak Dibayar di Muka"
+                      - option "1499 - Aset lancar lainnya"
+                      - option "1501 - Piutang Jangka Panjang"
+                      - option "1520 - Properti Investasi"
+                      - option "1523 - Tanah dan Bangunan"
+                      - option "1524 - Akumulasi Penyusutan - Tanah dan Bangunan" [selected]
+                      - option "1529 - Aset Tetap Lainnya"
+                      - option "1530 - Akumulasi Penyusutan - Aset Tetap Lainnya"
+                      - option "1533 - Aset Hak Guna"
+                      - option "1534 - Akumulasi Penyusutan - Aset Hak Guna"
+                      - option "1551 - Investasi pada Perusahaan Asosiasi"
+                      - option "1599 - Investasi Jangka Panjang Lainnya"
+                      - option "1600 - Aset Tak Berwujud"
+                      - option "1601 - Akumulasi Amortisasi - Aset Tak Berwujud"
+                      - option "1611 - Aktiva Pajak Tangguhan"
+                      - option "1651 - Klaim atas pengembalian pajak"
+                      - option "1658 - Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar"
+                      - option "1698 - Aset Tidak Lancar Lainnya"
+                    - generic: 
+                - generic [ref=e7354]:
+                  - generic [ref=e7355]: Tangible (Harta Berwujud) - default 1530
+                  - generic [ref=e7356]:
+                    - combobox [ref=e7357]:
+                      - option "Pilih COA..."
+                      - option "1101 - Kas dan Setara Kas"
+                      - option "1122 - Piutang Usaha - Pihak Ketiga"
+                      - option "1123 - Piutang Usaha - Hubungan Istimewa"
+                      - option "1124 - Piutang Lainnya - Pihak Ketiga"
+                      - option "1125 - Piutang Lainnya - Hubungan Istimewa"
+                      - option "1131 - Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar"
+                      - option "1181 - Aset Kontrak"
+                      - option "1200 - Investasi"
+                      - option "1401 - Persediaan"
+                      - option "1421 - Biaya Dibayar di Muka"
+                      - option "1422 - Pendapatan Diterima di Muka (Aset)"
+                      - option "1423 - Pajak Dibayar di Muka"
+                      - option "1499 - Aset lancar lainnya"
+                      - option "1501 - Piutang Jangka Panjang"
+                      - option "1520 - Properti Investasi"
+                      - option "1523 - Tanah dan Bangunan"
+                      - option "1524 - Akumulasi Penyusutan - Tanah dan Bangunan"
+                      - option "1529 - Aset Tetap Lainnya"
+                      - option "1530 - Akumulasi Penyusutan - Aset Tetap Lainnya" [selected]
+                      - option "1533 - Aset Hak Guna"
+                      - option "1534 - Akumulasi Penyusutan - Aset Hak Guna"
+                      - option "1551 - Investasi pada Perusahaan Asosiasi"
+                      - option "1599 - Investasi Jangka Panjang Lainnya"
+                      - option "1600 - Aset Tak Berwujud"
+                      - option "1601 - Akumulasi Amortisasi - Aset Tak Berwujud"
+                      - option "1611 - Aktiva Pajak Tangguhan"
+                      - option "1651 - Klaim atas pengembalian pajak"
+                      - option "1658 - Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar"
+                      - option "1698 - Aset Tidak Lancar Lainnya"
+                    - generic: 
+                - generic [ref=e7358]:
+                  - generic [ref=e7359]: LandRights (Hak Guna) - default 1534
+                  - generic [ref=e7360]:
+                    - combobox [ref=e7361]:
+                      - option "Pilih COA..."
+                      - option "1101 - Kas dan Setara Kas"
+                      - option "1122 - Piutang Usaha - Pihak Ketiga"
+                      - option "1123 - Piutang Usaha - Hubungan Istimewa"
+                      - option "1124 - Piutang Lainnya - Pihak Ketiga"
+                      - option "1125 - Piutang Lainnya - Hubungan Istimewa"
+                      - option "1131 - Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar"
+                      - option "1181 - Aset Kontrak"
+                      - option "1200 - Investasi"
+                      - option "1401 - Persediaan"
+                      - option "1421 - Biaya Dibayar di Muka"
+                      - option "1422 - Pendapatan Diterima di Muka (Aset)"
+                      - option "1423 - Pajak Dibayar di Muka"
+                      - option "1499 - Aset lancar lainnya"
+                      - option "1501 - Piutang Jangka Panjang"
+                      - option "1520 - Properti Investasi"
+                      - option "1523 - Tanah dan Bangunan"
+                      - option "1524 - Akumulasi Penyusutan - Tanah dan Bangunan"
+                      - option "1529 - Aset Tetap Lainnya"
+                      - option "1530 - Akumulasi Penyusutan - Aset Tetap Lainnya"
+                      - option "1533 - Aset Hak Guna"
+                      - option "1534 - Akumulasi Penyusutan - Aset Hak Guna" [selected]
+                      - option "1551 - Investasi pada Perusahaan Asosiasi"
+                      - option "1599 - Investasi Jangka Panjang Lainnya"
+                      - option "1600 - Aset Tak Berwujud"
+                      - option "1601 - Akumulasi Amortisasi - Aset Tak Berwujud"
+                      - option "1611 - Aktiva Pajak Tangguhan"
+                      - option "1651 - Klaim atas pengembalian pajak"
+                      - option "1658 - Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar"
+                      - option "1698 - Aset Tidak Lancar Lainnya"
+                    - generic: 
+                - generic [ref=e7362]:
+                  - generic [ref=e7363]: Intangible (Tidak Berwujud) - default 1601
+                  - generic [ref=e7364]:
+                    - combobox [ref=e7365]:
+                      - option "Pilih COA..."
+                      - option "1101 - Kas dan Setara Kas"
+                      - option "1122 - Piutang Usaha - Pihak Ketiga"
+                      - option "1123 - Piutang Usaha - Hubungan Istimewa"
+                      - option "1124 - Piutang Lainnya - Pihak Ketiga"
+                      - option "1125 - Piutang Lainnya - Hubungan Istimewa"
+                      - option "1131 - Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar"
+                      - option "1181 - Aset Kontrak"
+                      - option "1200 - Investasi"
+                      - option "1401 - Persediaan"
+                      - option "1421 - Biaya Dibayar di Muka"
+                      - option "1422 - Pendapatan Diterima di Muka (Aset)"
+                      - option "1423 - Pajak Dibayar di Muka"
+                      - option "1499 - Aset lancar lainnya"
+                      - option "1501 - Piutang Jangka Panjang"
+                      - option "1520 - Properti Investasi"
+                      - option "1523 - Tanah dan Bangunan"
+                      - option "1524 - Akumulasi Penyusutan - Tanah dan Bangunan"
+                      - option "1529 - Aset Tetap Lainnya"
+                      - option "1530 - Akumulasi Penyusutan - Aset Tetap Lainnya"
+                      - option "1533 - Aset Hak Guna"
+                      - option "1534 - Akumulasi Penyusutan - Aset Hak Guna"
+                      - option "1551 - Investasi pada Perusahaan Asosiasi"
+                      - option "1599 - Investasi Jangka Panjang Lainnya"
+                      - option "1600 - Aset Tak Berwujud"
+                      - option "1601 - Akumulasi Amortisasi - Aset Tak Berwujud" [selected]
+                      - option "1611 - Aktiva Pajak Tangguhan"
+                      - option "1651 - Klaim atas pengembalian pajak"
+                      - option "1658 - Cadangan Kerugian Penurunan Nilai - Aset Tidak Lancar"
+                      - option "1698 - Aset Tidak Lancar Lainnya"
+                    - generic: 

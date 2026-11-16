@@ -34,8 +34,8 @@ def get_db_engine():
     global _db_engine, _db_last_error
     if _db_engine is None:
         try:
-            # First, try to connect to the specific database
-            _db_engine = create_engine(DB_URL)
+            # pool_pre_ping drops pooled connections that died with a MySQL restart
+            _db_engine = create_engine(DB_URL, pool_pre_ping=True)
             # Test connection
             with _db_engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
@@ -50,7 +50,7 @@ def get_db_engine():
                         conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {DB_NAME}"))
                         conn.commit()
                     # Now try connecting again
-                    _db_engine = create_engine(DB_URL)
+                    _db_engine = create_engine(DB_URL, pool_pre_ping=True)
                     _db_last_error = None
                 except Exception as create_err:
                     _db_last_error = f"Database creation failed: {str(create_err)}"
@@ -69,7 +69,7 @@ def get_sagansa_engine():
     global _sagansa_engine, _sagansa_last_error
     if _sagansa_engine is None:
         try:
-            _sagansa_engine = create_engine(SAGANSA_DB_URL)
+            _sagansa_engine = create_engine(SAGANSA_DB_URL, pool_pre_ping=True)
             with _sagansa_engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             _sagansa_last_error = None
@@ -77,3 +77,14 @@ def get_sagansa_engine():
             _sagansa_last_error = f"Sagansa DB connection failed: {str(e)}"
             _sagansa_engine = None
     return _sagansa_engine, _sagansa_last_error
+
+
+def dispose_sagansa_engine():
+    """Drop the cached Sagansa engine so the next call reconnects from scratch."""
+    global _sagansa_engine, _sagansa_last_error
+    if _sagansa_engine is not None:
+        try:
+            _sagansa_engine.dispose()
+        except Exception:
+            pass
+    _sagansa_engine = None

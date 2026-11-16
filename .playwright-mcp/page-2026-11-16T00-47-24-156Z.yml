@@ -1,0 +1,145 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - generic [ref=e47]:
+        - button " HRD " [expanded] [ref=e7366] [cursor=pointer]:
+          - generic [ref=e49]: 
+          - generic [ref=e50]: HRD
+          - generic [ref=e51]: 
+        - list [ref=e7367]:
+          - listitem [ref=e7368]:
+            - link "Presences" [ref=e7369] [cursor=pointer]:
+              - /url: /hrd
+          - listitem [ref=e7371]:
+            - generic [ref=e7372]:
+              - generic [ref=e7373]: Payroll
+              - generic [ref=e7374]: Segera
+          - listitem [ref=e7375]:
+            - generic [ref=e7376]:
+              - generic [ref=e7377]: Karyawan
+              - generic [ref=e7378]: Segera
+      - generic [ref=e52]:
+        - button " Management " [expanded] [ref=e11157] [cursor=pointer]:
+          - generic [ref=e54]: 
+          - generic [ref=e55]: Management
+          - generic [ref=e56]: 
+        - list [ref=e11158]:
+          - listitem [ref=e11159]:
+            - link "Companies" [active] [ref=e11160] [cursor=pointer]:
+              - /url: /companies
+          - listitem [ref=e11162]:
+            - link "Marks" [ref=e11163] [cursor=pointer]:
+              - /url: /marks
+          - listitem [ref=e11165]:
+            - link "Chart of Accounts" [ref=e11166] [cursor=pointer]:
+              - /url: /chart-of-accounts
+          - listitem [ref=e11168]:
+            - link "Locations & Stores" [ref=e11169] [cursor=pointer]:
+              - /url: /management
+          - listitem [ref=e11171]:
+            - generic [ref=e11172]:
+              - generic [ref=e11173]: Products
+              - generic [ref=e11174]: Segera
+      - button " Reports " [ref=e58] [cursor=pointer]:
+        - generic [ref=e59]: 
+        - generic [ref=e60]: Reports
+        - generic [ref=e61]: 
+      - link " Settings" [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "Company Management" [level=2] [ref=e11175]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e11176]:
+        - generic [ref=e11177]:
+          - generic [ref=e11178]:
+            - generic [ref=e11179]:
+              - generic [ref=e11180]: 
+              - text: Company Management
+            - heading "Company Directory" [level=1] [ref=e11181]
+            - paragraph [ref=e11182]: Manage your business entities, abbreviations, and organizational identifiers for tracking.
+          - generic [ref=e11184]:
+            - generic [ref=e11185]: 
+            - text: Master Data
+        - generic [ref=e11186]:
+          - generic [ref=e11188]:
+            - generic [ref=e11189]:
+              - heading "Entities" [level=3] [ref=e11190]
+              - paragraph [ref=e11191]: A list of all registered business units
+            - button " Add Company" [ref=e11192] [cursor=pointer]:
+              - generic [ref=e11193]: 
+              - text: Add Company
+          - generic [ref=e11195]:
+            - generic [ref=e11197]:
+              - generic [ref=e11198]:
+                - generic [ref=e11199]: NI
+                - generic [ref=e11200]:
+                  - heading "Not Included" [level=4] [ref=e11201]
+                  - generic [ref=e11202]:
+                    - generic [ref=e11203]: NI
+                    - generic [ref=e11204]: "ID: d8fc0225..."
+              - generic [ref=e11205]:
+                - button "" [ref=e11206] [cursor=pointer]
+                - button "" [ref=e11208] [cursor=pointer]
+            - generic [ref=e11211]:
+              - generic [ref=e11212]:
+                - generic [ref=e11213]: AP
+                - generic [ref=e11214]:
+                  - heading "PT Asa Pangan Bangsa" [level=4] [ref=e11215]
+                  - generic [ref=e11216]:
+                    - generic [ref=e11217]: APB
+                    - generic [ref=e11218]: "ID: 8ab69d4a..."
+              - generic [ref=e11219]:
+                - button "" [ref=e11220] [cursor=pointer]
+                - button "" [ref=e11222] [cursor=pointer]
+            - generic [ref=e11225]:
+              - generic [ref=e11226]:
+                - generic [ref=e11227]: SE
+                - generic [ref=e11228]:
+                  - heading "PT Sagansa Engineering Indonesia" [level=4] [ref=e11229]
+                  - generic [ref=e11230]:
+                    - generic [ref=e11231]: SEI
+                    - generic [ref=e11232]: "ID: 40e70c5f..."
+              - generic [ref=e11233]:
+                - button "" [ref=e11234] [cursor=pointer]
+                - button "" [ref=e11236] [cursor=pointer]

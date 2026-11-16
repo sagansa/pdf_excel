@@ -1,0 +1,90 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [active] [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - button " HRD " [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: 
+        - generic [ref=e50]: HRD
+        - generic [ref=e51]: 
+      - button " Management " [ref=e53] [cursor=pointer]:
+        - generic [ref=e54]: 
+        - generic [ref=e55]: Management
+        - generic [ref=e56]: 
+      - button " Reports " [ref=e58] [cursor=pointer]:
+        - generic [ref=e59]: 
+        - generic [ref=e60]: Reports
+        - generic [ref=e61]: 
+      - link " Settings" [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "Review Saran AI" [level=2] [ref=e422]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e423]:
+        - generic [ref=e424]:
+          - generic [ref=e425]:
+            - generic [ref=e426]:
+              - generic [ref=e427]: 
+              - text: AI Review
+            - heading "Review Saran AI" [level=1] [ref=e428]
+            - paragraph [ref=e429]: Transaksi dengan saran mark ber-confidence rendah — terima atau tolak sekaligus.
+          - generic [ref=e431]:
+            - button " Refresh" [disabled] [ref=e433]:
+              - generic [ref=e434]: 
+              - generic [ref=e435]: Refresh
+            - button " Terima (0)" [disabled] [ref=e437]:
+              - generic [ref=e438]: 
+              - generic [ref=e439]: Terima (0)
+            - button " Tolak" [disabled] [ref=e441]:
+              - generic [ref=e442]: 
+              - generic [ref=e443]: Tolak
+        - generic [ref=e444]:
+          - generic [ref=e445]: 
+          - generic [ref=e446]:
+            - text: Menampilkan saran ber-status
+            - strong [ref=e447]: pending
+            - text: dengan confidence <
+            - strong [ref=e448]: "0.90"
+            - text: (threshold auto-apply — atur di Settings). 0 transaksi menunggu review.
+        - generic [ref=e449]:
+          - generic [ref=e450]: 
+          - paragraph [ref=e451]: Tidak ada saran yang menunggu review. 🎉

@@ -1,0 +1,177 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - button " HRD " [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: 
+        - generic [ref=e50]: HRD
+        - generic [ref=e51]: 
+      - button " Management " [ref=e53] [cursor=pointer]:
+        - generic [ref=e54]: 
+        - generic [ref=e55]: Management
+        - generic [ref=e56]: 
+      - button " Reports " [ref=e58] [cursor=pointer]:
+        - generic [ref=e59]: 
+        - generic [ref=e60]: Reports
+        - generic [ref=e61]: 
+      - link " Settings" [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "Dashboard Overview" [level=2] [ref=e81]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e88]:
+        - generic [ref=e89]:
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: 
+              - text: Operations Hub
+            - heading "Statement operations in one place" [level=1] [ref=e93]
+            - paragraph [ref=e94]: Monitor financial performance, recent data intake, and storage health from a single control surface designed for daily admin work.
+          - generic [ref=e95]:
+            - generic [ref=e96]:
+              - generic [ref=e97]: 
+              - text: Fast intake
+            - generic [ref=e98]:
+              - generic [ref=e99]: 
+              - text: Report-ready
+            - generic [ref=e100]:
+              - generic [ref=e101]: 
+              - text: Live backend
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - heading "Financial Overview" [level=3] [ref=e105]
+              - paragraph [ref=e106]: November 2026
+            - link "View Full Report " [ref=e107] [cursor=pointer]:
+              - /url: /reports
+              - generic [ref=e108]: View Full Report
+              - generic [ref=e109]: 
+          - generic [ref=e110]:
+            - generic [ref=e111]:
+              - generic [ref=e112]:
+                - generic [ref=e113]: 
+                - generic [ref=e115]: Revenue
+              - paragraph [ref=e116]: Rp 0
+            - generic [ref=e117]:
+              - generic [ref=e118]:
+                - generic [ref=e119]: 
+                - generic [ref=e121]: Expenses
+              - paragraph [ref=e122]: Rp 26.700.451
+            - generic [ref=e123]:
+              - generic [ref=e124]:
+                - generic [ref=e125]: 
+                - generic [ref=e127]: Net Income
+              - paragraph [ref=e128]: "-Rp 332.876.641"
+        - generic [ref=e129]:
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - heading "Stock Comparison" [level=3] [ref=e132]
+              - paragraph [ref=e133]: Compare sales vs stock changes between two dates
+            - generic [ref=e134]:
+              - generic [ref=e135]:
+                - textbox [ref=e136]:
+                  - /placeholder: From
+                  - text: 2026-11-15
+                - generic [ref=e137]: →
+                - textbox [ref=e138]:
+                  - /placeholder: To
+                  - text: 2026-11-16
+              - button " Reload" [ref=e139] [cursor=pointer]:
+                - generic [ref=e140]: 
+                - text: Reload
+          - generic [ref=e141]: Stock Comparison API is unavailable
+        - generic [ref=e142]:
+          - generic [ref=e143]:
+            - generic [ref=e144]:
+              - heading "Sales by Date" [level=3] [ref=e145]
+              - paragraph [ref=e146]: Daily product sales with quantity and total price
+            - generic [ref=e147]:
+              - textbox [ref=e148]: 2026-11-15
+              - button " Reload" [ref=e149] [cursor=pointer]:
+                - generic [ref=e150]: 
+                - text: Reload
+          - generic [ref=e151]: Sales by Date API is unavailable
+        - generic [ref=e152]:
+          - generic [ref=e153]:
+            - generic [ref=e154]:
+              - heading "Remaining Storage Monitor" [level=3] [ref=e155]
+              - paragraph [ref=e156]: "Based on local `stock_monitorings` thresholds and remote `remaining-storages` snapshots"
+            - generic [ref=e157]:
+              - textbox [ref=e158]: 2026-11-15
+              - button " Reload" [ref=e159] [cursor=pointer]:
+                - generic [ref=e160]: 
+                - text: Reload
+          - generic [ref=e161]: "RemainingStorage API request failed (401): {\"message\":\"Unauthenticated.\"}"
+        - generic [ref=e162]:
+          - generic [ref=e164]:
+            - heading "Priority Workflows" [level=3] [ref=e165]
+            - paragraph [ref=e166]: Masuk ke area kerja yang paling sering dipakai tim operasional.
+          - generic [ref=e168]:
+            - link " Converter Intake Upload PDF/CSV statements and extract transactions automatically." [ref=e169] [cursor=pointer]:
+              - /url: /converter
+              - generic [ref=e170]: 
+              - generic [ref=e172]:
+                - heading "Converter" [level=3] [ref=e173]
+                - generic [ref=e174]: Intake
+              - paragraph [ref=e175]: Upload PDF/CSV statements and extract transactions automatically.
+            - link " History & DB Review Search, filter, and manage your full transaction history." [ref=e176] [cursor=pointer]:
+              - /url: /history
+              - generic [ref=e177]: 
+              - generic [ref=e179]:
+                - heading "History & DB" [level=3] [ref=e180]
+                - generic [ref=e181]: Review
+              - paragraph [ref=e182]: Search, filter, and manage your full transaction history.
+            - link " Companies Master Data Add or edit company entities and mapping rules." [ref=e183] [cursor=pointer]:
+              - /url: /companies
+              - generic [ref=e184]: 
+              - generic [ref=e186]:
+                - heading "Companies" [level=3] [ref=e187]
+                - generic [ref=e188]: Master Data
+              - paragraph [ref=e189]: Add or edit company entities and mapping rules.
+            - link " Marks Classification Manage reporting categories for transaction tagging." [ref=e190] [cursor=pointer]:
+              - /url: /marks
+              - generic [ref=e191]: 
+              - generic [ref=e193]:
+                - heading "Marks" [level=3] [ref=e194]
+                - generic [ref=e195]: Classification
+              - paragraph [ref=e196]: Manage reporting categories for transaction tagging.

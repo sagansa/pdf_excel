@@ -1,0 +1,179 @@
+- generic [ref=e22]:
+  - complementary [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 
+      - generic [ref=e27]: StatementX
+    - navigation [ref=e28]:
+      - link " Dashboard" [ref=e29] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e30]: 
+        - generic [ref=e31]: Dashboard
+      - link " Converter" [ref=e32] [cursor=pointer]:
+        - /url: /converter
+        - generic [ref=e33]: 
+        - generic [ref=e34]: Converter
+      - link " History & DB" [ref=e35] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e36]: 
+        - generic [ref=e37]: History & DB
+      - link " Review Saran AI" [ref=e38] [cursor=pointer]:
+        - /url: /ai-review
+        - generic [ref=e39]: 
+        - generic [ref=e40]: Review Saran AI
+      - link " Upload Summary" [ref=e41] [cursor=pointer]:
+        - /url: /upload-summary
+        - generic [ref=e42]: 
+        - generic [ref=e43]: Upload Summary
+      - link " Upload Checklist" [ref=e44] [cursor=pointer]:
+        - /url: /upload-checklist
+        - generic [ref=e45]: 
+        - generic [ref=e46]: Upload Checklist
+      - generic [ref=e47]:
+        - button " HRD " [expanded] [ref=e7366] [cursor=pointer]:
+          - generic [ref=e49]: 
+          - generic [ref=e50]: HRD
+          - generic [ref=e51]: 
+        - list [ref=e7367]:
+          - listitem [ref=e7368]:
+            - link "Presences" [ref=e7369] [cursor=pointer]:
+              - /url: /hrd
+          - listitem [ref=e7371]:
+            - generic [ref=e7372]:
+              - generic [ref=e7373]: Payroll
+              - generic [ref=e7374]: Segera
+          - listitem [ref=e7375]:
+            - generic [ref=e7376]:
+              - generic [ref=e7377]: Karyawan
+              - generic [ref=e7378]: Segera
+      - generic [ref=e52]:
+        - button " Management " [expanded] [ref=e11157] [cursor=pointer]:
+          - generic [ref=e54]: 
+          - generic [ref=e55]: Management
+          - generic [ref=e56]: 
+        - list [ref=e11158]:
+          - listitem [ref=e11159]:
+            - link "Companies" [ref=e11160] [cursor=pointer]:
+              - /url: /companies
+          - listitem [ref=e11162]:
+            - link "Marks" [ref=e11163] [cursor=pointer]:
+              - /url: /marks
+          - listitem [ref=e11165]:
+            - link "Chart of Accounts" [ref=e11166] [cursor=pointer]:
+              - /url: /chart-of-accounts
+          - listitem [ref=e11168]:
+            - link "Locations & Stores" [ref=e11169] [cursor=pointer]:
+              - /url: /management
+          - listitem [ref=e11171]:
+            - generic [ref=e11172]:
+              - generic [ref=e11173]: Products
+              - generic [ref=e11174]: Segera
+      - generic [ref=e57]:
+        - button " Reports " [expanded] [ref=e15783] [cursor=pointer]:
+          - generic [ref=e59]: 
+          - generic [ref=e60]: Reports
+          - generic [ref=e61]: 
+        - list [ref=e15784]:
+          - listitem [ref=e15785]:
+            - link "Financial Reports" [ref=e15786] [cursor=pointer]:
+              - /url: /reports
+          - listitem [ref=e15788]:
+            - link "Trial Balance" [ref=e15789] [cursor=pointer]:
+              - /url: /trial-balance
+          - listitem [ref=e15791]:
+            - link "General Ledger" [active] [ref=e15792] [cursor=pointer]:
+              - /url: /general-ledger
+          - listitem [ref=e15794]:
+            - link "Cek Kontinuitas Saldo" [ref=e15795] [cursor=pointer]:
+              - /url: /balance-check
+      - link " Settings" [ref=e62] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e63]: 
+        - generic [ref=e64]: Settings
+    - generic [ref=e66]:
+      - generic [ref=e67]: ES
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: E2E Sidebar
+        - paragraph [ref=e70]: e2e-sidebar@statementx.local
+      - button "" [ref=e71] [cursor=pointer]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - button "" [ref=e76] [cursor=pointer]
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Admin Workspace
+          - heading "General Ledger" [level=2] [ref=e16107]
+      - generic [ref=e82]: SERVER ONLINE
+    - main [ref=e87]:
+      - generic [ref=e16108]:
+        - generic [ref=e16110]:
+          - generic [ref=e16111]:
+            - generic [ref=e16112]: 
+            - text: General Ledger
+          - heading "Ledger detail by account" [level=1] [ref=e16113]
+          - paragraph [ref=e16114]: Telusuri pergerakan debit, kredit, dan saldo berjalan per akun untuk periode aktif.
+        - generic [ref=e16115]:
+          - generic [ref=e16118]:
+            - button " Income Statement" [ref=e16119] [cursor=pointer]:
+              - generic [ref=e16120]: 
+              - text: Income Statement
+            - button " Monthly Revenue" [ref=e16121] [cursor=pointer]:
+              - generic [ref=e16122]: 
+              - text: Monthly Revenue
+            - button " Balance Sheet" [ref=e16123] [cursor=pointer]:
+              - generic [ref=e16124]: 
+              - text: Balance Sheet
+            - button " Cash Flow" [ref=e16125] [cursor=pointer]:
+              - generic [ref=e16126]: 
+              - text: Cash Flow
+            - button " GL" [ref=e16127] [cursor=pointer]:
+              - generic [ref=e16128]: 
+              - text: GL
+            - button " Payroll Summary" [ref=e16129] [cursor=pointer]:
+              - generic [ref=e16130]: 
+              - text: Payroll Summary
+            - button " Marks Summary" [ref=e16131] [cursor=pointer]:
+              - generic [ref=e16132]: 
+              - text: Marks Summary
+          - generic [ref=e16133]:
+            - generic [ref=e16134]:
+              - generic [ref=e16135]: Report Type
+              - generic [ref=e16136]:
+                - combobox [ref=e16137]:
+                  - option "Real" [selected]
+                  - option "Coretax"
+                - generic: 
+            - generic [ref=e16138]:
+              - generic [ref=e16139]: Year
+              - generic [ref=e16140]:
+                - combobox [ref=e16141]:
+                  - option "2023" [selected]
+                - generic: 
+            - generic [ref=e16142]:
+              - generic [ref=e16143]: "Period: Start"
+              - textbox [ref=e16145]: 2023-01-01
+            - generic [ref=e16146]:
+              - generic [ref=e16147]: "Period: End"
+              - textbox [ref=e16149]: 2023-12-31
+            - generic [ref=e16150]:
+              - generic [ref=e16151]: As of Date
+              - textbox [ref=e16153]: 2023-12-31
+            - generic [ref=e16154]:
+              - generic [ref=e16155]: Company
+              - generic [ref=e16156]:
+                - combobox [ref=e16157]:
+                  - option "All Companies"
+                  - option "Not Included" [selected]
+                  - option "PT Asa Pangan Bangsa"
+                  - option "PT Sagansa Engineering Indonesia"
+                - generic: 
+            - status [ref=e16158]:
+              - generic [ref=e16159]:
+                - generic [aria-hidden] [ref=e16160]: 
+                - text: Auto refresh
+          - generic [ref=e16163]:
+            - generic [ref=e16164]: COA Code (Opsional)
+            - 'textbox "Contoh: 1101" [ref=e16166]'
+          - generic [ref=e16167]:
+            - generic [ref=e16168]: 
+            - heading "Tidak Ada Data" [level=3] [ref=e16170]
+            - paragraph [ref=e16171]: Belum ada transaksi untuk filter atau perusahaan yang dipilih dalam periode ini.

@@ -1,76 +1,76 @@
 <template>
-  <SectionCard body-class="p-4">
-    <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-      <div>
-        <h3 class="text-sm font-semibold text-theme">Report Filters</h3>
-        <p class="mt-1 text-xs text-muted">Set company, period, and report mode before generating reports.</p>
-      </div>
-      <span class="stat-pill !px-2.5 !py-1 text-[10px]">Auto refresh enabled</span>
+  <div class="reports-filters">
+    <FormField label="Report Type" label-class="!text-xs">
+      <SelectInput
+        :model-value="modelValue.reportType || 'real'"
+        :options="reportTypeOptions"
+        size="md"
+        @update:model-value="handleReportTypeChange"
+      />
+    </FormField>
+
+    <FormField label="Year" label-class="!text-xs">
+      <SelectInput
+        :model-value="modelValue.year || currentYear"
+        :options="yearOptions"
+        size="md"
+        @update:model-value="handleYearChange"
+      />
+    </FormField>
+
+    <FormField label="Period: Start" label-class="!text-xs">
+      <TextInput
+        :model-value="modelValue.startDate"
+        type="date"
+        size="md"
+        @update:model-value="updateFilter('startDate', $event)"
+      />
+    </FormField>
+
+    <FormField label="Period: End" label-class="!text-xs">
+      <TextInput
+        :model-value="modelValue.endDate"
+        type="date"
+        size="md"
+        @update:model-value="updateFilter('endDate', $event)"
+      />
+    </FormField>
+
+    <FormField label="As of Date" label-class="!text-xs">
+      <TextInput
+        :model-value="modelValue.asOfDate"
+        type="date"
+        size="md"
+        @update:model-value="updateFilter('asOfDate', $event)"
+      />
+    </FormField>
+
+    <FormField label="Company" label-class="!text-xs">
+      <SelectInput
+        :model-value="modelValue.companyId"
+        :options="companyOptions"
+        placeholder="All Companies"
+        size="md"
+        @update:model-value="updateFilter('companyId', $event)"
+      />
+    </FormField>
+
+    <div class="reports-filters__status" role="status" aria-live="polite">
+      <span v-if="isLoading" class="reports-filters__status-item text-primary">
+        <i class="bi bi-arrow-repeat reports-filters__spinner" aria-hidden="true"></i>
+        Updating…
+      </span>
+      <span v-else class="reports-filters__status-item text-muted">
+        <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+        Auto refresh
+      </span>
     </div>
-
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-6">
-      <FormField label="Report Type" label-class="!text-xs">
-        <SelectInput
-          :model-value="modelValue.reportType || 'real'"
-          :options="reportTypeOptions"
-          size="md"
-          @update:model-value="handleReportTypeChange"
-        />
-      </FormField>
-
-      <FormField label="Year" label-class="!text-xs">
-        <SelectInput
-          :model-value="modelValue.year || currentYear"
-          :options="yearOptions"
-          size="md"
-          @update:model-value="handleYearChange"
-        />
-      </FormField>
-
-      <FormField label="Period: Start" label-class="!text-xs">
-        <TextInput
-          :model-value="modelValue.startDate"
-          type="date"
-          size="md"
-          @update:model-value="updateFilter('startDate', $event)"
-        />
-      </FormField>
-
-      <FormField label="Period: End" label-class="!text-xs">
-        <TextInput
-          :model-value="modelValue.endDate"
-          type="date"
-          size="md"
-          @update:model-value="updateFilter('endDate', $event)"
-        />
-      </FormField>
-
-      <FormField label="As of Date" label-class="!text-xs">
-        <TextInput
-          :model-value="modelValue.asOfDate"
-          type="date"
-          size="md"
-          @update:model-value="updateFilter('asOfDate', $event)"
-        />
-      </FormField>
-
-      <FormField label="Company" label-class="!text-xs">
-        <SelectInput
-          :model-value="modelValue.companyId"
-          :options="companyOptions"
-          placeholder="All Companies"
-          size="md"
-          @update:model-value="updateFilter('companyId', $event)"
-        />
-      </FormField>
-    </div>
-  </SectionCard>
+  </div>
 </template>
 
 <script setup>
 import { computed } from 'vue';
 import FormField from '../ui/FormField.vue';
-import SectionCard from '../ui/SectionCard.vue';
 import SelectInput from '../ui/SelectInput.vue';
 import TextInput from '../ui/TextInput.vue';
 
@@ -147,3 +147,69 @@ const handleYearChange = (year) => {
   });
 };
 </script>
+
+<style scoped>
+.reports-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
+
+.reports-filters > :deep(.field-stack) {
+  flex: 1 1 132px;
+  min-width: 122px;
+  max-width: 200px;
+}
+
+.reports-filters > :deep(.field-stack:last-of-type) {
+  flex: 1 1 160px;
+  min-width: 150px;
+  max-width: 230px;
+}
+
+.reports-filters__status {
+  margin-left: auto;
+  padding-bottom: 8px;
+  flex: 0 0 auto;
+}
+
+.reports-filters__status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.reports-filters__spinner {
+  animation: reports-filters-spin 1s linear infinite;
+}
+
+@keyframes reports-filters-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reports-filters__spinner {
+    animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .reports-filters > :deep(.field-stack),
+  .reports-filters > :deep(.field-stack:last-of-type) {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .reports-filters__status {
+    margin-left: 0;
+    padding-bottom: 0;
+  }
+}
+</style>
